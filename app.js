@@ -237,16 +237,26 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 
 loadAndRender();
 
-// 기존 로직은 건드리지 말고 아래 코드만 맨 밑에 추가
+// 저장 버튼 클릭 시 빨간 막대 애니메이션 시작
 document.getElementById("save-btn").addEventListener("click", () => {
-    document.getElementById("loading-spinner").classList.remove("hidden");
+    const spinner = document.getElementById("loading-spinner");
+    const bar = document.getElementById("red-progress-bar");
+    
+    spinner.classList.remove("hidden");
+    bar.style.width = "0%";
+    
+    // 강제로 리플로우 발생 후 애니메이션 시작
+    setTimeout(() => {
+        bar.style.width = "100%";
+    }, 50);
 });
 
-// 리스트로 돌아갈 때(접수 완료 시) 강제 닫기
+// 접수 완료/취소 시 닫기 (원래 있던 switchView 가로채기)
 const originalSwitchView = window.switchView;
 window.switchView = function(viewName) {
     if (viewName === 'list') {
         document.getElementById("loading-spinner").classList.add("hidden");
+        document.getElementById("red-progress-bar").style.width = "0%";
     }
     originalSwitchView(viewName);
 };
