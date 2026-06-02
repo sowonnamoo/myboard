@@ -6,15 +6,21 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg" width="744" height="158" border="0" usemap="#Map">
-<map name="Map"><area shape="rect" coords="0,-1,211,57" href="http://ecogr1.dothome.co.kr/?kboard_id=1">
-<area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo1005.cafe24.com/front/php/b/board_list.php?board_no=7">
-<area shape="rect" coords="383,-1,572,58" href="https://isecogr.cafe24.com/front/php/b/board_list.php?board_no=1002">
-<area shape="rect" coords="572,-3,742,58" href="https://sowonnamoo1004.cafe24.com/front/php/b/board_list.php?board_no=1">
-</map>
+<body class="bg-white">
+
+    <div class="w-[744px] mx-auto min-h-screen">
+        
+        <header class="w-full flex justify-center pt-6 pb-4 border-b border-gray-200">
+            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg" width="744" height="158" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+            <map name="Map">
+                <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
+                <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo1005.cafe24.com/front/php/b/board_list.php?board_no=7" target="_self">
+                <area shape="rect" coords="383,-1,572,58" href="https://isecogr.cafe24.com/front/php/b/board_list.php?board_no=1002" target="_self">
+                <area shape="rect" coords="572,-3,742,58" href="https://sowonnamoo1004.cafe24.com/front/php/b/board_list.php?board_no=1" target="_self">
+            </map>
         </header>
 
-        <div class="py-8 px-4">
+        <div class="py-8">
             
             <section id="view-list" class="space-y-4">
                 <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
@@ -47,7 +53,7 @@
                 </div>
             </section>
 
-            <section id="view-write" class="hidden w-[650px] mx-auto">
+            <section id="view-write" class="hidden w-full">
                 <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-6">🔹 주문작성</h2>
                 
                 <table class="w-full text-sm border-t border-b border-gray-200 divide-y">
@@ -102,7 +108,7 @@
                 </div>
             </section>
 
-            <section id="view-detail" class="hidden w-[750px] mx-auto space-y-5">
+            <section id="view-detail" class="hidden w-full space-y-5">
                 <div class="bg-sky-600 text-white p-3 font-bold text-center rounded shadow-inner text-base">
                     🛒 접수가완료되셨습니다. 입금하시면 제작이 시작됩니다.
                     <div class="text-xs font-normal opacity-90 mt-0.5">농협 : 123-45-67890 | 국민 : 987-65-43210</div>
@@ -133,8 +139,8 @@
 
                 <div class="bg-gray-50 p-4 rounded border border-gray-200 border-dashed flex space-x-3 items-start">
                     <div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold shrink-0">管</div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between text-xs w-[610px]"><span class="font-bold text-gray-700">관리자</span><span class="text-gray-400">시스템 자동 안내</span></div>
+                    <div class="space-y-1 class-custom-reply">
+                        <div class="flex justify-between text-xs w-[600px]"><span class="font-bold text-gray-700">관리자</span><span class="text-gray-400">시스템 자동 안내</span></div>
                         <p class="text-sm text-gray-600">안녕하세요. 고객님. 소중한 도안 접수가 정상 완료되었습니다. 기재해주신 사양 검토 후 시안 작업선 업로드 예정입니다.</p>
                     </div>
                 </div>
