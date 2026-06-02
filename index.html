@@ -29,25 +29,37 @@
                             <th class="py-3 w-16 text-center">번호</th>
                             <th class="py-3 px-4 text-left">제목</th>
                             <th class="py-3 w-28 text-center">작성자</th>
-                            <th class="py-3 w-24 text-center">작성일</th>
+                            <th class="py-3 w-32 text-center">작성일</th>
                         </tr>
                     </thead>
                     <tbody id="list-body" class="divide-y">
                         </tbody>
                 </table>
 
-                <div class="text-right">
+                <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600">
+                    </div>
+
+                <div class="flex justify-between items-center pt-2 border-t border-gray-100">
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="search-author" class="border px-3 py-1.5 text-sm rounded bg-white w-48" placeholder="작성자 이름 검색...">
+                        <button id="search-btn" class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700">검색</button>
+                        <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
+                    </div>
                     <button id="go-write-btn" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
                 </div>
             </section>
 
             <section id="view-write" class="hidden w-[650px] mx-auto">
-                <h2 class="text-xl font-bold text-blue-600 border-b pb-2 mb-6">🔹 주문작성</h2>
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-2 mb-6">🔹 주문작성</h2>
                 
                 <table class="w-full text-sm border-t border-b border-gray-200 divide-y">
                     <tr class="form-row">
+                        <td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 회사명"></td>
+                    </tr>
+                    <tr class="form-row">
                         <td class="w-28 font-bold text-gray-700 py-3">구입 제품명 <span class="text-red-500">*</span></td>
-                        <td><input type="text" id="product-name" class="form-input"></td>
+                        <td><input type="text" id="product-name" class="form-input" placeholder="제품명을 입력하세요"></td>
                     </tr>
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">수량 <span class="text-red-500">*</span></td>
