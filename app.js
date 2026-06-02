@@ -4,7 +4,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6ShVNtgLYEQZNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -201,29 +201,52 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         alert("필수 항목을 모두 입력해주세요."); return;
     }
 
-    const saveBtn = document.getElementById("save-btn");
-    saveBtn.innerText = "파일 업로드중...잠시 기다려주세요";
-    saveBtn.disabled = true;
+document.getElementById("save-btn").addEventListener("click", async () => {
+    const authorName = document.getElementById("input-author").value.trim();
+    const pName = document.getElementById("product-name").value.trim();
+    // ... (기타 변수들 생략)
+    
+    if (!authorName || !pName || !phone || !password) {
+        alert("필수 항목을 모두 입력해주세요."); return;
+    }
+
+    // 1. 로딩창 띄우기 (HTML에 넣은 그 div)
+    const spinner = document.getElementById('loading-spinner');
+    const progressText = document.getElementById('upload-progress');
+    spinner.classList.remove('hidden');
+
+    // 2. 가짜 퍼센트 증가 (심리적 안정감)
+    let percent = 0;
+    const interval = setInterval(() => {
+        if (percent < 90) {
+            percent += Math.floor(Math.random() * 10) + 5;
+            progressText.innerText = percent + "%";
+        }
+    }, 300);
 
     try {
-        // 구글 드라이브에 작성자 이름을 넘겨 실시간 파일 업로드 실행
+        // 3. 실제 업로드 시작
         const file1Url = await uploadToGoogleDrive("file-1", authorName);
         const file2Url = await uploadToGoogleDrive("file-2", authorName);
 
-        // 파이어베이스 데이터베이스에 문서 추가
         await addDoc(ordersCollection, {
-            author: authorName, productName: pName, quantity: qty, size: size, phone: phone, address: address,
-            password: password, message: message, file1Url, file2Url, views: 0, createdAt: new Date()
+            author: authorName, productName: pName, quantity: document.getElementById("quantity").value,
+            size: document.getElementById("size").value, phone: document.getElementById("phone").value, 
+            address: document.getElementById("address").value, password: password, 
+            message: message, file1Url, file2Url, views: 0, createdAt: new Date()
         });
 
+        progressText.innerText = "100%";
         alert("접수되었습니다.");
         document.querySelectorAll("#view-write input, #view-write textarea").forEach(el => el.value = "");
         switchView('list');
     } catch (e) { 
         alert("오류가 발생했습니다: " + e.message); 
     } finally {
-        saveBtn.innerText = "저장하기";
-        saveBtn.disabled = false;
+        // 4. 완료 후 로딩창 닫기 및 정리
+        clearInterval(interval);
+        spinner.classList.add('hidden');
+        progressText.innerText = "0%";
     }
 });
 
