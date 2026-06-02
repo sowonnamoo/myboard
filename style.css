@@ -40,3 +40,13 @@ input[type="file"] {
     border-color: #4b5563;
     font-weight: bold;
 }
+
+
+/* 📋 게시판 목록의 위아래 선 간격을 줄이는 설정 */
+#list-body tr td {
+    padding-top: 6px !important;    /* 위쪽 여백 (기존 12px -> 6px로 축소) */
+    padding-bottom: 6px !important; /* 아래쪽 여백 (기존 12px -> 6px로 축소) */
+    font-size: 13px;                /* 글씨 크기도 약간 줄여서 구식 느낌 강조 */
+}
+
+
