@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Community Board</title>
+    <title>Premium Community Board (Private Pack)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
     <header class="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
         <div class="mx-auto flex max-w-5xl h-16 items-center justify-between px-4 sm:px-6">
             <h1 class="text-xl font-bold tracking-tight text-indigo-600 cursor-pointer" onclick="location.reload()">SOWON Board</h1>
-            <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">Serverless System</span>
+            <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">Secret Mode Active</span>
         </div>
     </header>
 
@@ -35,7 +35,7 @@
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-slate-500 mb-1">비밀번호 (수정/삭제용)</label>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">비밀번호</label>
                                 <input type="password" id="password" placeholder="4자리 이상" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:outline-none transition">
                             </div>
                             <div>
@@ -43,6 +43,12 @@
                                 <input type="text" id="phone" placeholder="010-XXXX-XXXX" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:outline-none transition">
                             </div>
                         </div>
+
+                        <div class="flex items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <input type="checkbox" id="is-private" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                            <label for="is-private" class="ml-2.5 text-sm font-medium text-slate-700 cursor-pointer select-none">🔒 이 글을 비밀글로 설정합니다.</label>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-medium text-slate-500 mb-1">글 제목</label>
                             <input type="text" id="title" placeholder="제목을 입력하세요" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-medium focus:border-indigo-500 focus:bg-white focus:outline-none transition">
@@ -64,16 +70,27 @@
                     <h3 class="font-semibold text-slate-900">전체 피드</h3>
                     <span id="post-count" class="text-sm font-medium text-slate-500">불러오는 중...</span>
                 </div>
-                
                 <div id="posts-list" class="space-y-4"></div>
             </div>
 
         </div>
     </main>
 
+    <div id="secret-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <h3 class="font-bold text-slate-900 flex items-center"><span class="mr-1.5">🔒</span> 비밀글 보기</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+            <div id="modal-meta" class="text-xs text-slate-400 mb-2"></div>
+            <h4 id="modal-title" class="text-lg font-bold text-slate-900 mb-3"></h4>
+            <div id="modal-content" class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100 max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, increment, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // 🔥 본인의 Firebase 설정을 여기에 복사/붙여넣기 하세요!
   const firebaseConfig = {
@@ -99,10 +116,7 @@
         // 1. 게시글 목록 로딩
         async function loadPosts() {
             const postsList = document.getElementById("posts-list");
-            postsList.innerHTML = `
-                <div class="text-center py-12 bg-white rounded-2xl border border-slate-100">
-                    <p class="text-sm text-slate-400 animate-pulse">데이터 로드 중...</p>
-                </div>`;
+            postsList.innerHTML = `<div class="text-center py-12 bg-white rounded-2xl border border-slate-100"><p class="text-sm text-slate-400 animate-pulse">데이터 로드 중...</p></div>`;
 
             try {
                 const q = query(boardsCollection, orderBy("createdAt", "desc"));
@@ -112,10 +126,7 @@
                 document.getElementById("post-count").innerText = `총 ${querySnapshot.size}개의 글`;
 
                 if (querySnapshot.empty) {
-                    postsList.innerHTML = `
-                        <div class="text-center py-16 bg-white rounded-2xl border border-slate-200">
-                            <p class="text-slate-400 text-sm">첫 번째 주인공이 되어 글을 남겨보세요!</p>
-                        </div>`;
+                    postsList.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-slate-200"><p class="text-slate-400 text-sm">첫 번째 주인공이 되어 글을 남겨보세요!</p></div>`;
                     return;
                 }
 
@@ -123,15 +134,20 @@
                     const post = documentSnapshot.data();
                     const id = documentSnapshot.id;
                     
-                    // 조회수 및 연락처 기본값 방어 코드
                     const views = post.views || 0;
                     const author = post.author || "익명";
+                    const isPrivate = post.isPrivate || false;
+
+                    // 💡 비밀글 핵심 로직: 비밀글일 경우 제목을 마스킹하고 내용을 숨깁니다.
+                    const displayTitle = isPrivate ? "🔒 비밀글입니다. (작성자와 관리자만 볼 수 있습니다)" : post.title;
+                    const displayContent = isPrivate ? "비밀글로 보호된 콘텐츠입니다. 내용을 보려면 클릭하여 비밀번호를 입력하세요." : post.content;
+                    const textStyle = isPrivate ? "text-slate-400 italic select-none" : "text-slate-600";
 
                     const postHtml = `
                         <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition duration-200" data-id="${id}">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center space-x-2">
-                                    <span class="h-7 w-7 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-between justify-content justify-items-center justify-center">${author.substring(0,1)}</span>
+                                    <span class="h-7 w-7 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-center">${author.substring(0,1)}</span>
                                     <span class="text-sm font-semibold text-slate-700">${author}</span>
                                     <span class="text-xs text-slate-400">•</span>
                                     <span class="text-xs text-slate-400">${formatTime(post.createdAt)}</span>
@@ -141,14 +157,13 @@
                                     <button class="delete-btn text-rose-500 hover:underline font-medium" data-id="${id}" data-pw="${post.password}">삭제</button>
                                 </div>
                             </div>
-                            <h4 class="text-base font-bold text-slate-900 mb-2 cursor-pointer hover:text-indigo-600 transition post-title" data-id="${id}">${post.title}</h4>
-                            <p class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap mb-4">${post.content}</p>
+                            <h4 class="text-base font-bold ${isPrivate ? 'text-slate-500' : 'text-slate-900'} mb-2 cursor-pointer hover:text-indigo-600 transition post-title" data-id="${id}" data-private="${isPrivate}">${displayTitle}</h4>
+                            <p class="text-sm ${textStyle} leading-relaxed whitespace-pre-wrap mb-4 cursor-pointer post-title" data-id="${id}" data-private="${isPrivate}">${displayContent}</p>
                         </div>
                     `;
                     postsList.innerHTML += postHtml;
                 });
 
-                // 이벤트 리스너 재바인딩
                 bindPostEvents();
 
             } catch (error) {
@@ -157,27 +172,55 @@
             }
         }
 
-        // 2. 제목 클릭 시 조회수 올리기 및 이벤트 바인딩
+        // 2. 이벤트 바인딩 (조회수, 비밀글 검증, 삭제)
         function bindPostEvents() {
-            // 조회수 증가 시스템
-            document.querySelectorAll(".post-title").forEach(title => {
-                title.addEventListener("click", async (e) => {
-                    const docId = e.target.getAttribute("data-id");
-                    const washingtonRef = doc(db, "boards", docId);
+            // 글 클릭 시 (상세 보기 혹은 비밀글 검증)
+            document.querySelectorAll(".post-title").forEach(element => {
+                element.addEventListener("click", async (e) => {
+                    const docId = e.target.closest('[data-id]').getAttribute("data-id");
+                    const isPrivate = e.target.getAttribute("data-private") === "true";
                     
-                    // 서버 조회수 1 증가시키고 새로고침 없이 화면만 먼저 올려두기
-                    await updateDoc(washingtonRef, { views: increment(1) });
-                    loadPosts();
+                    const docRef = doc(db, "boards", docId);
+                    const docSnap = await getDoc(docRef);
+                    
+                    if (!docSnap.exists()) return;
+                    const post = docSnap.data();
+
+                    // 비밀글인 경우 권한 체크
+                    if (isPrivate) {
+                        const inputPassword = prompt("비밀글입니다. 작성 시 입력한 비밀번호를 입력하세요:");
+                        if (!inputPassword) return;
+
+                        if (inputPassword !== post.password) {
+                            alert("비밀번호가 일치하지 않습니다!");
+                            return;
+                        }
+                    }
+
+                    // 검증 통과 후 조회수 1 증가시키고 모달 팝업 띄우기
+                    await updateDoc(docRef, { views: increment(1) });
+                    
+                    document.getElementById("modal-meta").innerText = `작성자: ${post.author || '익명'} | ${formatTime(post.createdAt)}`;
+                    document.getElementById("modal-title").innerText = (isPrivate ? "🔒 " : "") + post.title;
+                    document.getElementById("modal-content").innerText = post.content;
+                    document.getElementById("secret-modal").classList.remove("hidden");
+                    
+                    // 모달 닫힐 때 백그라운드 리로드하여 조회수 최신화
+                    window.closeModal = () => {
+                        document.getElementById("secret-modal").classList.add("hidden");
+                        loadPosts();
+                    };
                 });
             });
 
-            // 비밀번호 기반 삭제 시스템
+            // 삭제 버튼 시스템
             document.querySelectorAll(".delete-btn").forEach(button => {
                 button.addEventListener("click", async (e) => {
+                    e.stopPropagation(); // 부모 클릭 이벤트 방지
                     const docId = e.target.getAttribute("data-id");
                     const realPassword = e.target.getAttribute("data-pw");
                     
-                    const inputPassword = prompt("글을 작성할 때 입력한 비밀번호를 입력하세요:");
+                    const inputPassword = prompt("글을 삭제하기 위해 비밀번호를 입력하세요:");
                     if (!inputPassword) return;
 
                     if (inputPassword === realPassword) {
@@ -193,11 +236,12 @@
             });
         }
 
-        // 3. 새 게시글 등록 프로세스
+        // 3. 새 게시글 등록
         document.getElementById("save-btn").addEventListener("click", async () => {
             const authorInput = document.getElementById("author");
             const passwordInput = document.getElementById("password");
             const phoneInput = document.getElementById("phone");
+            const isPrivateInput = document.getElementById("is-private");
             const titleInput = document.getElementById("title");
             const contentInput = document.getElementById("content");
 
@@ -210,7 +254,8 @@
                 await addDoc(boardsCollection, {
                     author: authorInput.value,
                     password: passwordInput.value,
-                    phone: phoneInput.value || null, // 💡 사용자가 입력하지 않았다면 프로그래밍에서의 null(값 없음) 상태로 저장! (화면에 노출안됨)
+                    phone: phoneInput.value || null,
+                    isPrivate: isPrivateInput.checked, // 💡 true / false 상태 값 저장
                     title: titleInput.value,
                     content: contentInput.value,
                     views: 0,
@@ -221,10 +266,11 @@
                 authorInput.value = "";
                 passwordInput.value = "";
                 phoneInput.value = "";
+                isPrivateInput.checked = false;
                 titleInput.value = "";
                 contentInput.value = "";
                 
-                loadPosts(); // 목록 리로드
+                loadPosts();
                 alert("게시글이 성공적으로 등록되었습니다!");
             } catch (error) {
                 alert("등록 실패: " + error.message);
