@@ -4,7 +4,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6ShVnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -205,6 +205,33 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     saveBtn.innerText = "업로드 및 저장 중...";
     saveBtn.disabled = true;
 
+
+
+    const spinner = document.getElementById("loading-spinner");
+const progressText = document.getElementById("upload-progress");
+
+spinner.classList.remove("hidden");
+progressText.innerText = "0%";
+
+let progress = 0;
+
+const fakeProgress = setInterval(() => {
+
+    if (progress < 70) {
+        progress += 2;
+    } else if (progress < 90) {
+        progress += 1;
+    } else if (progress < 95) {
+        progress += 0.2;
+    }
+
+    progressText.innerText = Math.floor(progress) + "%";
+
+}, 150);
+
+
+
+    
     try {
         // 구글 드라이브에 작성자 이름을 넘겨 실시간 파일 업로드 실행
         const file1Url = await uploadToGoogleDrive("file-1", authorName);
@@ -216,12 +243,52 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             password: password, message: message, file1Url, file2Url, views: 0, createdAt: new Date()
         });
 
-        alert("접수되었습니다.");
-        document.querySelectorAll("#view-write input, #view-write textarea").forEach(el => el.value = "");
-        switchView('list');
-    } catch (e) { 
-        alert("오류가 발생했습니다: " + e.message); 
-    } finally {
+       clearInterval(fakeProgress);
+
+const finishProgress = setInterval(() => {
+
+    progress += 2;
+
+    if (progress >= 100) {
+
+        progress = 100;
+        progressText.innerText = "100%";
+
+        clearInterval(finishProgress);
+
+        setTimeout(() => {
+
+            spinner.classList.add("hidden");
+
+            alert("접수되었습니다.");
+
+            document.querySelectorAll(
+                "#view-write input, #view-write textarea"
+            ).forEach(el => el.value = "");
+
+            switchView("list");
+
+        }, 300);
+
+        return;
+    }
+
+    progressText.innerText = Math.floor(progress) + "%";
+
+}, 20);
+
+        
+   } catch (e) {
+
+    clearInterval(fakeProgress);
+
+    spinner.classList.add("hidden");
+
+    alert("오류가 발생했습니다: " + e.message);
+
+}
+    
+    finally {
         saveBtn.innerText = "저장하기";
         saveBtn.disabled = false;
     }
