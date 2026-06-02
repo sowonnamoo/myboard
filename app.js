@@ -80,18 +80,17 @@ function renderTable() {
     const endIndex = Math.min(startIndex + POSTS_PER_PAGE, totalPosts);
     const pageData = filteredOrders.slice(startIndex, endIndex);
 
-    let virtualNumber = totalPosts - startIndex;
 
-    pageData.forEach((data) => {
+pageData.forEach((data) => {
         let dateStr = "";
         if (data.createdAt) {
             const d = data.createdAt.toDate();
             dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
+        // 👇 번호가 들어가는 첫 번째 <td> 태그를 삭제하고 '제목'부터 시작하게 만듭니다.
         listBody.innerHTML += `
             <tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
-                <td class="py-3 text-xs text-gray-400">${virtualNumber--}</td>
                 <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${data.productName} 시안입니다.</td>
                 <td class="py-3 text-sm text-gray-600">${data.author || "익명"}</td>
                 <td class="py-3 text-xs text-gray-400">${dateStr}</td>
