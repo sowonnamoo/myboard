@@ -34,12 +34,12 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-// 📁 [버그 수정 완료] 파일별 실시간 업로드 퍼센트(%)를 추적하는 XHR 업로드 함수
+// 📁 [네트워크 오류 해결 완료] 구글 보안 우회를 위한 FormData 기반 Progress 업로드 함수
 function uploadToGoogleDriveWithProgress(fileInputId, authorName, onProgress) {
     return new Promise((resolve, reject) => {
         const fileInput = document.getElementById(fileInputId);
         if (!fileInput || fileInput.files.length === 0) {
-            resolve(null); // 파일이 없으면 즉시 null 반환 (pass)
+            resolve(null);
             return;
         }
 
@@ -50,16 +50,14 @@ function uploadToGoogleDriveWithProgress(fileInputId, authorName, onProgress) {
         reader.onload = function(e) {
             const base64Data = e.target.result.split(',')[1];
             
-            // 실시간 퍼센트 감지를 위해 fetch 대신 XMLHttpRequest(XHR) 사용
             const xhr = new XMLHttpRequest();
             xhr.open("POST", GOOGLE_WEB_APP_URL, true);
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-            // 📊 파일 업로드 진행률 실시간 계산 이벤트
+            // 📊 파일 업로드 진행률 실시간 계산 (이 부분은 유지)
             xhr.upload.onprogress = function(event) {
                 if (event.lengthComputable) {
                     const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    if (onProgress) onProgress(percentComplete); // 콜백 함수로 퍼센트 전달
+                    if (onProgress) onProgress(percentComplete);
                 }
             };
 
@@ -68,28 +66,37 @@ function uploadToGoogleDriveWithProgress(fileInputId, authorName, onProgress) {
                     try {
                         const data = JSON.parse(xhr.responseText);
                         if (data && data.url) {
-                            resolve(data.url); // 성공 시 진짜 구글 드라이브 주소 반환
+                            resolve(data.url);
                         } else {
                             resolve(null);
                         }
                     } catch (err) {
-                        resolve(null);
+                        // 구글 리턴 값이 순수 텍스트(URL)로 올 경우를 대비한 안전장치
+                        if (xhr.responseText && xhr.responseText.startsWith("http")) {
+                            resolve(xhr.responseText.trim());
+                        } else {
+                            resolve(null);
+                        }
                     }
                 } else {
-                    reject(new Error("구글 업로드 실패"));
+                    reject(new Error("구글 업로드 실패 (Status: " + xhr.status + ")"));
                 }
             };
 
             xhr.onerror = function() {
-                reject(new Error("네트워크 오류 발생"));
+                reject(new Error("네트워크 오류 발생 (구글 웹앱 URL 및 권한을 확인해 주세요)"));
             };
 
-            // 구글 웹 앱 양식에 맞춰 데이터 가공 후 전송
-            const body = `data=${encodeURIComponent(base64Data)}&filename=${encodeURIComponent(fileName)}&mimetype=${encodeURIComponent(file.type)}`;
-            xhr.send(body);
+            // 💡 [핵심 변경] 문자열 포맷팅 대신 FormData를 사용하여 구글 CORS 차단을 우회합니다.
+            const formData = new FormData();
+            formData.append("data", base64Data);
+            formData.append("filename", fileName);
+            formData.append("mimetype", file.type);
+
+            // 주석 처리: xhr.setRequestHeader("Content-Type", ...) 사용 금지 (FormData가 자동으로 생성함)
+            xhr.send(formData);
         };
 
-        // 💡 [수정] 변수명이 fr로 잘못되어 멈추던 버그를 reader.onerror로 올바르게 수정했습니다.
         reader.onerror = function() {
             reject(new Error("파일을 읽는 중 오류가 발생했습니다."));
         };
