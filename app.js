@@ -241,17 +241,19 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     try {
         // 구글 드라이브에 작성자 이름을 넘겨 실시간 파일 업로드 실행
-        const file1Url = await uploadToGoogleDrive("file-1", authorName);
-        const file2Url = await uploadToGoogleDrive("file-2", authorName);
-        const file3Url = await uploadToGoogleDrive("file-3", authorName); // 👈 [추가 1]
+const file1Url = await uploadToGoogleDrive("file-1", authorName);
+    const file2Url = await uploadToGoogleDrive("file-2", authorName);
+    const file3Url = await uploadToGoogleDrive("file-3", authorName); // 👈 [추가 1]
 
-        // 파이어베이스 데이터베이스에 문서 추가
-        await addDoc(ordersCollection, {
-            author: authorName, productName: pName, quantity: qty, size: size, phone: phone, address: address,
-            password: password, message: message, file1Url, file2Url, views: 0, createdAt: new Date()
-        });
+    // 파이어베이스 데이터베이스에 문서 추가 (file3Url 추가 ⭕)
+    await addDoc(ordersCollection, {
+        author: authorName, productName: pName, quantity: qty, size: size, phone: phone, address: address,
+        password: password, message: message, 
+        file1Url, file2Url, file3Url, // 👈 [추가 2] 파이어베이스 필드에 등록
+        views: 0, createdAt: new Date()
+    });
 
-        alert("접수되었습니다.");
+    alert("접수되었습니다.");
         document.querySelectorAll("#view-write input, #view-write textarea").forEach(el => el.value = "");
         switchView('list');
     } catch (e) { 
