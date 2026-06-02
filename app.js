@@ -256,7 +256,7 @@ document.getElementById("save-btn").addEventListener("click", () => {
 // 2. 3초마다 배열에 있는 글자가 순서대로 나오게 하기
 const messages = [
     "파일 접수중...", 
-    "잠시만 기다려주세요", 
+    "잠시 기다려주세요", 
     "파일이 정상적으로 업로드중 입니다", 
     "용량이 많으면 시간이 걸립니다"
 ];
