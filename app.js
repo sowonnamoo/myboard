@@ -243,6 +243,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         // 구글 드라이브에 작성자 이름을 넘겨 실시간 파일 업로드 실행
         const file1Url = await uploadToGoogleDrive("file-1", authorName);
         const file2Url = await uploadToGoogleDrive("file-2", authorName);
+        const file3Url = await uploadToGoogleDrive("file-3", authorName); // 👈 [추가 1]
 
         // 파이어베이스 데이터베이스에 문서 추가
         await addDoc(ordersCollection, {
