@@ -182,7 +182,18 @@
     </div>
 </div>
 
-
+document.querySelector('form').onsubmit = function() {
+    const btn = document.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    
+    let i = 1;
+    // 0.5초마다 숫자를 올려서 "일하고 있음"을 과시함
+    const timer = setInterval(() => {
+        btn.innerText = "업로드 중... (" + i + "%)";
+        if (i >= 99) clearInterval(timer);
+        i += 10; 
+    }, 500);
+};
 
 
     
