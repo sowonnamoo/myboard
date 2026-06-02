@@ -253,12 +253,19 @@ document.getElementById("save-btn").addEventListener("click", () => {
         bar.style.width = "90%";
     }, 50);
 
-    // 2. 3초마다 글자 번갈아 바꾸기
-    let toggle = true;
-    textInterval = setInterval(() => {
-        text.innerText = toggle ? "잠시만 기다려주세요" : "파일 접수중...";
-        toggle = !toggle;
-    }, 3000);
+// 2. 3초마다 배열에 있는 글자가 순서대로 나오게 하기
+const messages = [
+    "파일 접수중...", 
+    "잠시만 기다려주세요", 
+    "파일이 정상적으로 업로드중 입니다", 
+    "용량이 많으면 시간이 걸립니다"
+];
+let index = 0;
+
+textInterval = setInterval(() => {
+    index = (index + 1) % messages.length; // 다음 순서로 넘기기
+    text.innerText = messages[index];
+}, 3000);
 });
 
 // 화면 전환 시 로딩창 닫고 타이머 정리
