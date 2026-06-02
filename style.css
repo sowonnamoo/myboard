@@ -1,10 +1,6 @@
-/* PC 전용 고정 레이아웃 상단바 테마 */
-.main-nav {
-    background-color: #5ea11b;
-    border-bottom: 4px solid #1a5fbc;
-}
-.main-nav .active {
-    background-color: #83cc16;
+/* 전체 바디 마진 초기화 및 순수 화이트 컬러 통일 */
+body {
+    background-color: #ffffff;
 }
 
 /* 폼 가로 폭 고정 배치 */
@@ -15,7 +11,7 @@
     width: 100%;
 }
 .form-input:focus {
-    border-color: #2563eb;
+    border-color: #4b5563;
     outline: none;
 }
 .form-row td {
