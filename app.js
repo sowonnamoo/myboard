@@ -237,44 +237,58 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 
 loadAndRender();
 
-let textInterval; // 텍스트 변경 타이머 관리용
+let textInterval;
+let barInterval;
 
 document.getElementById("save-btn").addEventListener("click", () => {
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
     const text = document.getElementById("loading-text");
     
+    // 초기화
     spinner.classList.remove("hidden");
-    bar.style.width = "0%";
+    bar.style.transition = "width 0.5s linear"; // 부드러운 움직임을 위해 0.5초 설정
+    bar.style.width = "10%"; // 10%에서 시작
     text.innerText = "파일 접수중...";
+    
+    let percent = 10;
+    const messages = [
+        "파일 접수중...", 
+        "잠시만 기다려주세요", 
+        "파일이 정상적으로 업로드중 입니다", 
+        "용량이 많으면 시간이 걸립니다 10MB기준 50~100초"
+    ];
+    let msgIndex = 0;
 
-    // 1. 막대는 90%까지만 채우기
-    setTimeout(() => {
-        bar.style.width = "90%";
-    }, 50);
+    // 1. 10초마다 10%씩 증가 (90%에서 멈춤)
+    barInterval = setInterval(() => {
+        if (percent < 90) {
+            percent += 10;
+            bar.style.width = percent + "%";
+        } else {
+            clearInterval(barInterval);
+        }
+    }, 10000); // 10초(10,000ms) 간격
 
-// 2. 3초마다 배열에 있는 글자가 순서대로 나오게 하기
-const messages = [
-    "파일 접수중...", 
-    "잠시 기다려주세요", 
-    "파일이 정상적으로 업로드중 입니다", 
-    "용량이 많으면 시간이 걸립니다"
-];
-let index = 0;
-
-textInterval = setInterval(() => {
-    index = (index + 1) % messages.length; // 다음 순서로 넘기기
-    text.innerText = messages[index];
-}, 3000);
+    // 2. 3초마다 문구 변경 (마지막 문구 고정)
+    textInterval = setInterval(() => {
+        if (msgIndex < messages.length - 1) {
+            msgIndex++;
+            text.innerText = messages[msgIndex];
+        } else {
+            text.innerText = messages[messages.length - 1];
+        }
+    }, 3000);
 });
 
-// 화면 전환 시 로딩창 닫고 타이머 정리
+// 화면 전환 시 타이머들 강제 정리
 const originalSwitchView = window.switchView;
 window.switchView = function(viewName) {
     if (viewName === 'list') {
         document.getElementById("loading-spinner").classList.add("hidden");
         document.getElementById("red-progress-bar").style.width = "0%";
-        clearInterval(textInterval); // 텍스트 타이머 강제 종료
+        clearInterval(barInterval);
+        clearInterval(textInterval);
     }
     originalSwitchView(viewName);
 };
