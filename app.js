@@ -9,17 +9,16 @@ import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, order
     messagingSenderId: "25881766316",
     appId: "1:25881766316:web:c03e118cf26d3fff11b209"
   };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ordersCollection = collection(db, "orders");
 
-// 페이징 및 검색 제어 전역 변수
-let allOrders = [];       // 서버에서 가져온 원본 전체 데이터
-let filteredOrders = [];  // 검색 필터링이 적용된 데이터
-let currentPage = 1;      // 현재 활성화된 페이지 번음
-const POSTS_PER_PAGE = 10; // 한 페이지당 보여줄 게시글 수
+let allOrders = [];       
+let filteredOrders = [];  
+let currentPage = 1;      
+const POSTS_PER_PAGE = 10; 
 
-// 🖥️ 화면 전환 단순 제어
 window.switchView = function(viewName) {
     document.getElementById("view-list").classList.add("hidden");
     document.getElementById("view-write").classList.add("hidden");
@@ -33,14 +32,12 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-// 🚀 구글 드라이브 연동 모듈 전용 임시 함수
 async function uploadToGoogleDrive(fileInputId) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null;
     return "https://drive.google.com/drive/my-drive"; 
 }
 
-// 📥 최초 서버 데이터 일괄 다운로드
 async function loadAndRender() {
     try {
         const q = query(ordersCollection, orderBy("createdAt", "desc"));
@@ -49,13 +46,10 @@ async function loadAndRender() {
         snapshot.forEach(doc => {
             allOrders.push({ id: doc.id, ...doc.data() });
         });
-        
-        // 검색어 상태 체크 후 가공 필터링 호출
         applyFilter();
     } catch (err) { console.error(err); }
 }
 
-// 🔍 작성자 필터 적용
 function applyFilter() {
     const searchVal = document.getElementById("search-author").value.trim().toLowerCase();
     if (searchVal) {
@@ -65,11 +59,10 @@ function applyFilter() {
         filteredOrders = [...allOrders];
         document.getElementById("search-reset-btn").classList.add("hidden");
     }
-    currentPage = 1; // 검색 시 첫 페이지로 리셋
+    currentPage = 1; 
     renderTable();
 }
 
-// 📥 테이블 및 페이징 출력 (숫자 분류 연산 루프)
 function renderTable() {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
@@ -80,7 +73,6 @@ function renderTable() {
         return;
     }
 
-    // 페이징 범위 산출 계산식
     const totalPosts = filteredOrders.length;
     const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
     
@@ -88,18 +80,15 @@ function renderTable() {
     const endIndex = Math.min(startIndex + POSTS_PER_PAGE, totalPosts);
     const pageData = filteredOrders.slice(startIndex, endIndex);
 
-    // 가상 고유 번호 (구식 게시판 형태의 넘버링 역순 매핑)
     let virtualNumber = totalPosts - startIndex;
 
     pageData.forEach((data) => {
-        // 📅 년도까지 표기하도록 포맷 수정 (예: 2026-06-02)
         let dateStr = "";
         if (data.createdAt) {
             const d = data.createdAt.toDate();
             dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
-        // 🎨 제목 텍스트 검은색 수정 완료 (`text-gray-900`)
         listBody.innerHTML += `
             <tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
                 <td class="py-3 text-xs text-gray-400">${virtualNumber--}</td>
@@ -110,7 +99,6 @@ function renderTable() {
         `;
     });
 
-    // 🔢 하단 숫자 링크 바 렌더링
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
 
@@ -120,13 +108,11 @@ function renderTable() {
     }
 }
 
-// 페이지 다이렉트 점프 위임 함수
 window.goToPage = function(pageNum) {
     currentPage = pageNum;
     renderTable();
 }
 
-// 🔍 단일 주문 상세 열람 (비밀번호 체크)
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "orders", id));
     if (!snap.exists()) return;
@@ -170,7 +156,6 @@ window.viewDetail = async function(id) {
     switchView('detail');
 }
 
-// 💽 주문 데이터 DB 저장
 document.getElementById("save-btn").addEventListener("click", async () => {
     const authorName = document.getElementById("input-author").value.trim();
     const pName = document.getElementById("product-name").value.trim();
@@ -200,7 +185,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     } catch (e) { alert(e.message); }
 });
 
-// 이벤트 리스너 세팅
 document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
 document.getElementById("search-btn").addEventListener("click", applyFilter);
 document.getElementById("search-author").addEventListener("keypress", (e) => { if(e.key === 'Enter') applyFilter(); });
@@ -209,5 +193,4 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
     applyFilter();
 });
 
-// 최초 실행
 loadAndRender();
