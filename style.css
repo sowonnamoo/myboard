@@ -1,0 +1,28 @@
+/* PC 전용 고정 레이아웃 상단바 테마 */
+.main-nav {
+    background-color: #5ea11b;
+    border-bottom: 4px solid #1a5fbc;
+}
+.main-nav .active {
+    background-color: #83cc16;
+}
+
+/* 폼 가로 폭 고정 배치 */
+.form-input {
+    border: 1px solid #d1d5db;
+    border-radius: 2px;
+    padding: 5px 8px;
+    width: 100%;
+}
+.form-input:focus {
+    border-color: #2563eb;
+    outline: none;
+}
+.form-row td {
+    padding: 6px 0;
+}
+
+/* 파일 업로드 폰트 축소 */
+input[type="file"] {
+    font-size: 12px;
+}
