@@ -254,9 +254,9 @@ document.getElementById("save-btn").addEventListener("click", () => {
     let percent = 10;
     const messages = [
         "파일 접수중...", 
-        "잠시만 기다려주세요", 
-        "좀 기다려 새기야", 
-        "파일이 정상입니다. 서버 전송중..."
+        "잠시 기다려주세요", 
+        "파일이 정상적으로 업로드중 입니다", 
+        "업로드시간 10MB기준 약50~100초 걸립니다."
     ];
     let msgIndex = 0;
 
