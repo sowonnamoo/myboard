@@ -17,7 +17,7 @@ const ordersCollection = collection(db, "orders");
 let allOrders = [];       
 let filteredOrders = [];  
 let currentPage = 1;      
-const POSTS_PER_PAGE = 10; 
+const POSTS_PER_PAGE = 8; 
 
 window.switchView = function(viewName) {
     document.getElementById("view-list").classList.add("hidden");
