@@ -235,28 +235,35 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         alert("필수 항목을 모두 입력해주세요."); return;
     }
 
+    // 엘리먼트 제어용 변수 선언
     const saveBtn = document.getElementById("save-btn");
+    const spinner = document.getElementById("loading-spinner");
+
+    // 1. 버튼 비활성화 및 폼 잠금 + 중앙 로딩 바 등장!
     saveBtn.innerText = "업로드 및 저장 중...";
     saveBtn.disabled = true;
+    spinner.classList.remove("hidden"); // 로딩창 켜기
 
     try {
-        // 구글 드라이브에 작성자 이름을 넘겨 실시간 파일 업로드 실행
-const file1Url = await uploadToGoogleDrive("file-1", authorName);
-    const file2Url = await uploadToGoogleDrive("file-2", authorName);
-    const file3Url = await uploadToGoogleDrive("file-3", authorName); // 👈 [추가 1]
+        // 2. 구글 드라이브 파일 전송 (최대 3개 비동기 순차 처리)
+        const file1Url = await uploadToGoogleDrive("file-1", authorName);
+        const file2Url = await uploadToGoogleDrive("file-2", authorName);
+        const file3Url = await uploadToGoogleDrive("file-3", authorName);
 
-    // 파이어베이스 데이터베이스에 문서 추가 (file3Url 추가 ⭕)
-    await addDoc(ordersCollection, {
-        author: authorName, productName: pName, quantity: qty, size: size, phone: phone, address: address,
-        password: password, message: message, 
-        file1Url, file2Url, file3Url, // 👈 [추가 2] 파이어베이스 필드에 등록
-        views: 0, createdAt: new Date()
-    });
+        // 3. 파이어베이스 최종 데이터 안착
+        await addDoc(ordersCollection, {
+            author: authorName, productName: pName, quantity: qty, size: size, phone: phone, address: address,
+            password: password, message: message, file1Url, file2Url, file3Url, views: 0, createdAt: new Date()
+        });
 
-    alert("접수되었습니다.");
+        // 4. 로딩창 끄고 마무리 성공 안내
+        spinner.classList.add("hidden"); 
+        alert("접수되었습니다.");
+        
         document.querySelectorAll("#view-write input, #view-write textarea").forEach(el => el.value = "");
         switchView('list');
     } catch (e) { 
+        spinner.classList.add("hidden"); // 에러 나더라도 로딩창은 꺼줍니다.
         alert("오류가 발생했습니다: " + e.message); 
     } finally {
         saveBtn.innerText = "저장하기";
