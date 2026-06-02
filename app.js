@@ -236,3 +236,29 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 });
 
 loadAndRender();
+
+// 기존 코드 냅두고, 버튼 클릭 시 로딩바 추가 동작만 정의
+document.getElementById("save-btn").addEventListener("click", () => {
+    const spinner = document.getElementById("loading-spinner");
+    const bar = document.getElementById("progress-bar");
+    
+    // 로딩창 보이기
+    spinner.classList.remove("hidden");
+    bar.style.width = "0%";
+    
+    // 게이지바 이동 (0.1초 뒤에 90%로 이동)
+    setTimeout(() => {
+        bar.style.width = "90%";
+    }, 100);
+});
+
+// 접수 완료 시 로딩창 닫기 (이건 감시자 역할)
+// 만약 다른 곳에서 접수 완료 후 switchView('list')를 부른다면, 
+// 그 직후에 로딩창이 닫히도록 강제 설정
+const originalSwitchView = window.switchView;
+window.switchView = function(viewName) {
+    if (viewName === 'list') {
+        document.getElementById("loading-spinner").classList.add("hidden");
+    }
+    originalSwitchView(viewName);
+};
