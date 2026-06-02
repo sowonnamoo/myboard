@@ -34,7 +34,7 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-// 📁 [수정완료] 가짜 링크 대신 구글 앱스 스크립트로 진짜 파일을 업로드하는 함수
+// 📁 [수정완료] 가짜 링크 대신 구글 앱스 스크립트로 진짜 파일을 하는 함수
 async function uploadToGoogleDrive(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null; // 파일이 없으면 그냥 pass
@@ -202,7 +202,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     }
 
     const saveBtn = document.getElementById("save-btn");
-    saveBtn.innerText = "업로드 및 저장 중...";
+    saveBtn.innerText = "파일 업로드중...잠시 기다려주세요";
     saveBtn.disabled = true;
 
     try {
