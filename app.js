@@ -143,47 +143,81 @@ window.goToPage = function(pageNum) {
     renderTable();
 }
 
+// 🔒 [이 코드로 통째로 교체하세요]
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "orders", id));
     if (!snap.exists()) return;
     const data = snap.data();
     
-    if (prompt("비밀번호를 입력하세요 (핸드폰 뒷자리 4자리):") !== data.password) {
-        alert("비밀번호가 다릅니다."); return;
-    }
+    // HTML에 추가한 모달 엘리먼트들 가져오기
+    const modal = document.getElementById("password-modal");
+    const passwordInput = document.getElementById("modal-password-input");
+    const confirmBtn = document.getElementById("modal-confirm-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
 
-    await updateDoc(doc(db, "orders", id), { views: increment(1) });
+    // 초기화 후 모달 열기
+    passwordInput.value = "";
+    modal.classList.remove("hidden");
+    passwordInput.focus();
 
-    document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
-    document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
-    
-    let fullDate = "";
-    if (data.createdAt) {
-        const d = data.createdAt.toDate();
-        fullDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours()}:${d.getMinutes()}`;
-    }
-    document.getElementById("detail-date").innerText = `작성일: ${fullDate}`;
-    document.getElementById("detail-views").innerText = `조회: ${data.views + 1}`;
-    
-    document.getElementById("detail-qty").innerText = data.quantity;
-    document.getElementById("detail-size").innerText = data.size;
-    document.getElementById("detail-phone").innerText = data.phone;
-    document.getElementById("detail-address").innerText = data.address;
-    document.getElementById("detail-msg").innerText = data.message || "내용 없음";
-
-    const filesDiv = document.getElementById("detail-files");
-    filesDiv.innerHTML = "";
-    if(data.file1Url) filesDiv.innerHTML += `<a href="${data.file1Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (구글 드라이브)</a>`;
-    if(data.file2Url) filesDiv.innerHTML += `<a href="${data.file2Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (구글 드라이브)</a>`;
-    if(!data.file1Url && !data.file2Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
-
-    document.getElementById("detail-delete-btn").onclick = async () => {
-        if (confirm("정말 삭제하시겠습니까?")) {
-            await deleteDoc(doc(db, "orders", id));
-            switchView('list');
+    // [확인] 버튼 클릭 시
+    confirmBtn.onclick = async () => {
+        const inputPass = passwordInput.value.trim();
+        
+        if (inputPass !== data.password) {
+            alert("비밀번호가 다릅니다.");
+            passwordInput.value = "";
+            passwordInput.focus();
+            return;
         }
+
+        // 비밀번호 맞으면 모달 가리기
+        modal.classList.add("hidden");
+
+        // 조회수 1 증가 및 데이터 연동
+        await updateDoc(doc(db, "orders", id), { views: increment(1) });
+
+        document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
+        document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
+        
+        let fullDate = "";
+        if (data.createdAt) {
+            const d = data.createdAt.toDate();
+            fullDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours()}:${d.getMinutes()}`;
+        }
+        document.getElementById("detail-date").innerText = `작성일: ${fullDate}`;
+        document.getElementById("detail-views").innerText = `조회: ${data.views + 1}`;
+        
+        document.getElementById("detail-qty").innerText = data.quantity;
+        document.getElementById("detail-size").innerText = data.size;
+        document.getElementById("detail-phone").innerText = data.phone;
+        document.getElementById("detail-address").innerText = data.address;
+        document.getElementById("detail-msg").innerText = data.message || "내용 없음";
+
+        const filesDiv = document.getElementById("detail-files");
+        filesDiv.innerHTML = "";
+        if(data.file1Url) filesDiv.innerHTML += `<a href="${data.file1Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (구글 드라이브)</a>`;
+        if(data.file2Url) filesDiv.innerHTML += `<a href="${data.file2Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (구글 드라이브)</a>`;
+        if(!data.file1Url && !data.file2Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
+
+        document.getElementById("detail-delete-btn").onclick = async () => {
+            if (confirm("정말 삭제하시겠습니까?")) {
+                await deleteDoc(doc(db, "orders", id));
+                switchView('list');
+            }
+        };
+        switchView('detail');
     };
-    switchView('detail');
+
+    // [취소] 버튼 클릭 시 모달 닫기
+    cancelBtn.onclick = () => {
+        modal.classList.add("hidden");
+    };
+
+    // 엔터키 편의성 추가
+    passwordInput.onkeypress = (e) => {
+        if (e.key === 'Enter') confirmBtn.click();
+    };
 }
 
 // 💾 [수정완료] 저장 처리 및 비동기 업로드 완벽 제어
