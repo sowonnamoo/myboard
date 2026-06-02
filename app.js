@@ -260,10 +260,10 @@ document.getElementById("save-btn").addEventListener("click", () => {
     ];
     let msgIndex = 0;
 
-    // 1. 10초마다 10%씩 증가 (90%에서 멈춤)
+    // 1. 5초마다 10%씩 증가 (90%에서 멈춤)
     barInterval = setInterval(() => {
         if (percent < 90) {
-            percent += 10;
+            percent += 5;
             bar.style.width = percent + "%";
         } else {
             clearInterval(barInterval);
