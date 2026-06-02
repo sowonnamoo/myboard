@@ -10,8 +10,7 @@
 
     <div class="w-[744px] mx-auto min-h-screen">
         
-        <header class="w-full flex justify-center pb-4">
-            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+<header class="w-full flex justify-center pb-4">           <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
             <map name="Map">
                 <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
                 <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo1005.cafe24.com/front/php/b/board_list.php?board_no=7" target="_self">
@@ -36,11 +35,11 @@
                         </tr>
                     </thead>
                     <tbody id="list-body" class="divide-y">
-                    </tbody>
+                        </tbody>
                 </table>
 
                 <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600">
-                </div>
+                    </div>
 
                 <div class="flex justify-between items-center pt-4 border-t border-gray-200">
                     <div class="flex items-center space-x-2">
@@ -53,8 +52,8 @@
             </section>
 
             <section id="view-write" class="hidden w-full">
-                <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
-                <table class="w-full text-sm border-collapse">
+<h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
+              <table class="w-full text-sm border-collapse">
                     <tr class="form-row">
                         <td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 회사명"></td>
@@ -71,14 +70,14 @@
                         <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="size" class="form-input"></td>
                     </tr>
-                    <tr class="form-row">
-                        <td class="font-bold text-gray-700 py-3">파일1</td>
-                        <td><input type="file" id="file-1"></td>
-                    </tr>
-                    <tr class="form-row">
-                        <td class="font-bold text-gray-700 py-3">파일2</td>
-                        <td><input type="file" id="file-2"></td>
-                    </tr>
+                  <tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">파일1</td>
+    <td><input type="file" id="file-1"></td>
+</tr>
+<tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">파일2</td>
+    <td><input type="file" id="file-2"></td>
+</tr>
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3 align-top">작업메시지</td>
                         <td><textarea id="message" rows="4" class="form-input resize-none"></textarea></td>
@@ -94,7 +93,7 @@
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">비밀번호 <span class="text-red-500">*</span></td>
                         <td class="flex items-center space-x-2 py-2">
-                            <input type="text" id="password" style="-webkit-text-security: disc;" maxlength="4" placeholder="휴대폰 뒷자리 4자리">
+<input type="text" id="password" style="-webkit-text-security: disc;" maxlength="4" placeholder="휴대폰 뒷자리 4자리">
                             <span class="text-xs text-gray-400">(핸드폰번호 뒷 네자리 입력)</span>
                         </td>
                     </tr>
@@ -154,93 +153,38 @@
 
     <script type="module" src="app.js"></script>
 
-    <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
-            <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글 열람</h3>
-            <p class="text-xs text-gray-500 mb-4">비밀번호(휴대폰 뒷자리 4자리)를 입력하세요.</p>
-            
-            <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;"
-                   class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500 bg-white text-gray-900" placeholder="••••">
-            
-            <div class="flex gap-2 text-sm font-medium">
-                <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">취소</button>
-                <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">확인</button>
-            </div>
+    
+
+<div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
+        <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글 열람</h3>
+        <p class="text-xs text-gray-500 mb-4">비밀번호(휴대폰 뒷자리 4자리)를 입력하세요.</p>
+        
+        <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;"
+               class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500 bg-white text-gray-900" placeholder="••••">
+        
+        <div class="flex gap-2 text-sm font-medium">
+            <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">취소</button>
+            <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">확인</button>
         </div>
     </div>
+</div>
 
-    <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 flex flex-col items-center shadow-2xl space-y-4 w-72">
-            <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <div class="text-center">
-                <p class="text-sm font-bold text-gray-700">파일 업로드 중...</p>
-                <p id="upload-progress" class="text-xl font-extrabold text-blue-600 mt-1">0%</p>
-            </div>
-            <p class="text-xs text-gray-400">잠시만 기다려 주세요.</p>
+
+<div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center shadow-2xl space-y-4 w-72">
+        <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <div class="text-center">
+            <p class="text-sm font-bold text-gray-700">파일 업로드 중...</p>
+            <p id="upload-progress" class="text-xl font-extrabold text-blue-600 mt-1">0%</p>
         </div>
+        <p class="text-xs text-gray-400">잠시만 기다려 주세요.</p>
     </div>
+</div>
 
-    <script>
-        // 화면 전환용 임시 글로벌 함수 정의 (app.js 연동 전 에러 방지용)
-        if (typeof window.switchView !== 'function') {
-            window.switchView = function(viewId) {
-                ['view-list', 'view-write', 'view-detail'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if(el) {
-                        if(id === 'view-' + viewId) el.classList.remove('hidden');
-                        else el.classList.add('hidden');
-                    }
-                });
-            };
-        }
 
-        // 글쓰기 버튼 누르면 작성 폼 보여주기 예시
-        document.getElementById('go-write-btn')?.addEventListener('click', () => switchView('write'));
 
-        // ⭐ 핵심: 저장하기 클릭 시 스튜디오(DROP IT)와 동일한 메커니즘으로 % 수치 올려주는 로직
-        document.getElementById('save-btn').addEventListener('click', async function() {
-            const spinner = document.getElementById('loading-spinner');
-            const progressText = document.getElementById('upload-progress');
-            
-            // 1. 스피너 활성화 및 0% 세팅
-            spinner.classList.remove('hidden');
-            progressText.innerText = '0%';
-            
-            // 2. 80ms마다 2%씩 가짜 진행률 채우기 시작 (최대 90%까지)
-            let p = 0;
-            const iv = setInterval(() => {
-                if (p >= 90) { 
-                    clearInterval(iv); 
-                } else { 
-                    p += 2; 
-                    progressText.innerText = p + '%'; 
-                }
-            }, 80);
 
-            try {
-                // ------------------------------------------------------------------
-                // 🚀 만약 백엔드 전송 처리를 app.js가 아닌 여기서 처리하게 된다면 
-                // 아래 주석을 풀고 실제 fetch 주소나 로직을 넣으시면 됩니다.
-                // ------------------------------------------------------------------
-                // await new Promise(resolve => setTimeout(resolve, 4000)); // (테스트용 4초 대기 지연)
-                
-                // 가상의 업로드 완료 시점 제어 (서버 성공 시)
-                clearInterval(iv);
-                progressText.innerText = '100%';
-                
-                setTimeout(() => {
-                    spinner.classList.add('hidden');
-                    // 완료 후 상세 뷰어로 이동 혹은 안내
-                    switchView('detail'); 
-                    // 필요 시 작성 폼 데이터 세팅 구문을 여기에 결합하세요.
-                }, 4000); // 100% 도달 후 사용자 확인을 위해 잠시 머무는 시간 설정
-
-            } catch (error) {
-                clearInterval(iv);
-                alert("업로드 중 오류가 발생했습니다. 다시 시도해 주세요.");
-                spinner.classList.add('hidden');
-            }
-        });
-    </script>
+    
 </body>
 </html>
