@@ -184,10 +184,11 @@
 
 
 <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-    <div class="bg-white p-8 rounded-2xl flex flex-col items-center shadow-2xl">
-        <div class="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-        <p class="font-bold text-gray-700">접수 중입니다...</p>
-        <p class="text-xs text-gray-400 mt-1">창을 닫지 마세요.</p>
+    <div class="bg-[#f0ece2] p-8 rounded-lg shadow-xl text-center w-80">
+        <p class="font-bold text-gray-800 text-lg mb-4">파일접수중</p>
+        <div class="w-full bg-black h-5 rounded-sm overflow-hidden">
+            <div id="red-progress-bar" class="bg-red-600 h-full w-0 transition-all duration-[3000ms] ease-linear"></div>
+        </div>
     </div>
 </div>
     
