@@ -170,27 +170,21 @@ window.viewDetail = async function(id) {
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
-    
-const filesDiv = document.getElementById("detail-files");
-filesDiv.innerHTML = "";
 
-        // 파일 3개 출력 로직 정돈
-        const filesDiv = document.getElementById("detail-files");
-        filesDiv.innerHTML = "";
-        if(data.file1Url) filesDiv.innerHTML += `<a href="${data.file1Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (구글 드라이브)</a>`;
-        if(data.file2Url) filesDiv.innerHTML += `<a href="${data.file2Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (구글 드라이브)</a>`;
-        if(data.file3Url) filesDiv.innerHTML += `<a href="${data.file3Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 3 (구글 드라이브)</a>`;
-        if(!data.file1Url && !data.file2Url && !data.file3Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
+    const filesDiv = document.getElementById("detail-files");
+    filesDiv.innerHTML = "";
+    if(data.file1Url) filesDiv.innerHTML += `<a href="${data.file1Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (구글 드라이브)</a>`;
+    if(data.file2Url) filesDiv.innerHTML += `<a href="${data.file2Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (구글 드라이브)</a>`;
+    if(!data.file1Url && !data.file2Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
 
-        document.getElementById("detail-delete-btn").onclick = async () => {
-            if (confirm("정말 삭제하시겠습니까?")) {
-                await deleteDoc(doc(db, "orders", id));
-                switchView('list');
-            }
-        };
-        switchView('detail');
+    document.getElementById("detail-delete-btn").onclick = async () => {
+        if (confirm("정말 삭제하시겠습니까?")) {
+            await deleteDoc(doc(db, "orders", id));
+            switchView('list');
+        }
     };
-
+    switchView('detail');
+}
 
 // 💾 [수정완료] 저장 처리 및 비동기 업로드 완벽 제어
 document.getElementById("save-btn").addEventListener("click", async () => {
