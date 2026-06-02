@@ -257,7 +257,7 @@ document.getElementById("save-btn").addEventListener("click", () => {
 const messages = [
     "파일 접수중...", 
     "잠시 기다려주세요", 
-    "파일이 정상적으로 업로드중 입니다", 
+    "정상적으로 업로드중 입니다", 
     "용량이 많으면 시간이 걸립니다"
 ];
 let index = 0;
