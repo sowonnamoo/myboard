@@ -237,7 +237,7 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 
 loadAndRender();
 
-// 기존 코드 냅두고, 버튼 클릭 시 로딩바 추가 동작만 정의
+// 기존 로딩바 로직은 그대로 두고, 숫자만 추가됨
 document.getElementById("save-btn").addEventListener("click", () => {
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("progress-bar");
@@ -246,19 +246,26 @@ document.getElementById("save-btn").addEventListener("click", () => {
     spinner.classList.remove("hidden");
     bar.style.width = "0%";
     
-    // 게이지바 이동 (0.1초 뒤에 90%로 이동)
-    setTimeout(() => {
-        bar.style.width = "90%";
-    }, 100);
+    // 숫자가 올라가는 로직 추가 (0.1초마다 5%씩 증가)
+    let percent = 0;
+    const interval = setInterval(() => {
+        percent += 5;
+        if (percent > 90) percent = 90; // 90%에서 대기
+        bar.style.width = percent + "%";
+        
+        // 로딩창이 숨겨지면 타이머도 중지
+        if (spinner.classList.contains("hidden")) {
+            clearInterval(interval);
+        }
+    }, 200);
 });
 
-// 접수 완료 시 로딩창 닫기 (이건 감시자 역할)
-// 만약 다른 곳에서 접수 완료 후 switchView('list')를 부른다면, 
-// 그 직후에 로딩창이 닫히도록 강제 설정
+// 접수 완료 시 감시자 역할 (로딩창 닫기)
 const originalSwitchView = window.switchView;
 window.switchView = function(viewName) {
     if (viewName === 'list') {
         document.getElementById("loading-spinner").classList.add("hidden");
+        document.getElementById("progress-bar").style.width = "0%";
     }
     originalSwitchView(viewName);
 };
