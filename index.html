@@ -157,6 +157,7 @@
 
     <script type="module" src="app.js"></script>
 
+    
 
 <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
@@ -172,6 +173,19 @@
         </div>
     </div>
 </div>
+
+
+<div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center shadow-2xl space-y-4">
+        <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <p class="text-sm font-bold text-gray-700">파일 업로드 중...</p>
+        <p class="text-xs text-gray-400">잠시만 기다려 주세요.</p>
+    </div>
+</div>
+
+
+
+
     
 </body>
 </html>
