@@ -6,17 +6,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-100">
+<body class="bg-white"> <div class="w-[900px] mx-auto bg-white min-h-screen">
+        <header class="w-full flex justify-center pt-6 pb-4 border-b border-gray-200">
+            <img src="YOUR_IMAGE_NAME.png" alt="상단 배너" class="w-[744px] h-[158px] object-cover" onerror="this.style.display='none'; alert('YOUR_IMAGE_NAME.png 파일을 index.html과 같은 폴더에 넣어주세요!')">
+        </header>
 
-    <div class="w-[900px] mx-auto bg-white min-h-screen shadow-md">
-        <nav class="main-nav flex text-white font-bold text-center text-base">
-            <div class="flex-1 py-4 active cursor-pointer">질문답변/주문</div>
-            <div class="flex-1 py-4 hover:bg-green-700 cursor-pointer">시안보기</div>
-            <div class="flex-1 py-4 hover:bg-green-700 cursor-pointer">포트폴리오</div>
-            <div class="flex-1 py-4 hover:bg-green-700 cursor-pointer">작업선</div>
-        </nav>
-
-        <div class="p-8">
+        <div class="py-8 px-4">
             
             <section id="view-list" class="space-y-4">
                 <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
@@ -39,9 +34,9 @@
                 <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600">
                     </div>
 
-                <div class="flex justify-between items-center pt-2 border-t border-gray-100">
+                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
                     <div class="flex items-center space-x-2">
-                        <input type="text" id="search-author" class="border px-3 py-1.5 text-sm rounded bg-white w-48" placeholder="작성자 이름 검색...">
+                        <input type="text" id="search-author" class="border px-3 py-1.5 text-sm rounded bg-white w-48 focus:border-gray-400 focus:outline-none" placeholder="작성자 이름 검색...">
                         <button id="search-btn" class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700">검색</button>
                         <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
                     </div>
@@ -110,7 +105,7 @@
                     <div class="text-xs font-normal opacity-90 mt-0.5">농협 : 123-45-67890 | 국민 : 987-65-43210</div>
                 </div>
 
-                <div class="border rounded bg-white shadow-sm overflow-hidden">
+                <div class="border border-gray-200 rounded bg-white overflow-hidden">
                     <div id="detail-title" class="bg-gray-50 px-4 py-3 font-bold text-lg text-gray-700 border-b"></div>
                     <div class="flex justify-between text-xs bg-slate-50 border-b text-gray-400 p-2.5 px-4">
                         <span id="detail-author"></span>
@@ -125,7 +120,7 @@
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">배송지</span><span id="detail-address"></span></div>
                         <div class="flex flex-col py-2 space-y-2">
                             <span class="font-semibold text-gray-400">작업메시지</span>
-                            <div id="detail-msg" class="whitespace-pre-wrap text-gray-700 bg-gray-50 p-4 rounded border"></div>
+                            <div id="detail-msg" class="whitespace-pre-wrap text-gray-700 bg-gray-50 p-4 rounded border border-gray-200"></div>
                         </div>
                         <div class="flex py-2 items-center"><span class="w-28 font-semibold text-gray-400">첨부파일</span><div id="detail-files" class="space-y-1"></div></div>
                     </div>
@@ -133,10 +128,10 @@
 
                 <p class="text-red-500 font-semibold text-xs">※ 가격표의 금액을 입금해주세요. / 결제 완료되시면 시안이 등록됩니다.</p>
 
-                <div class="bg-gray-50 p-4 rounded border border-dashed flex space-x-3 items-start">
+                <div class="bg-gray-50 p-4 rounded border border-gray-200 border-dashed flex space-x-3 items-start">
                     <div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold shrink-0">管</div>
                     <div class="space-y-1">
-                        <div class="flex justify-between text-xs w-[630px]"><span class="font-bold text-gray-700">관리자</span><span class="text-gray-400">시스템 자동 안내</span></div>
+                        <div class="flex justify-between text-xs w-[610px]"><span class="font-bold text-gray-700">관리자</span><span class="text-gray-400">시스템 자동 안내</span></div>
                         <p class="text-sm text-gray-600">안녕하세요. 고객님. 소중한 도안 접수가 정상 완료되었습니다. 기재해주신 사양 검토 후 시안 작업선 업로드 예정입니다.</p>
                     </div>
                 </div>
