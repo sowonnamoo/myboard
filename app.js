@@ -173,9 +173,15 @@ window.viewDetail = async function(id) {
 
     const filesDiv = document.getElementById("detail-files");
     filesDiv.innerHTML = "";
-    if(data.file1Url) filesDiv.innerHTML += `<a href="${data.file1Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (구글 드라이브)</a>`;
-    if(data.file2Url) filesDiv.innerHTML += `<a href="${data.file2Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (구글 드라이브)</a>`;
-    if(!data.file1Url && !data.file2Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
+if(data.file1Url) {
+    // 구글 드라이브 링크가 .../view 로 끝난다면 .../download 로 변경하고 download 속성 추가
+    const dlUrl1 = data.file1Url.replace(/\/view$/, '/download');
+    filesDiv.innerHTML += `<a href="${dlUrl1}" download class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
+}
+if(data.file2Url) {
+    const dlUrl2 = data.file2Url.replace(/\/view$/, '/download');
+    filesDiv.innerHTML += `<a href="${dlUrl2}" download class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
+}    if(!data.file1Url && !data.file2Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
 
     document.getElementById("detail-delete-btn").onclick = async () => {
         if (confirm("정말 삭제하시겠습니까?")) {
