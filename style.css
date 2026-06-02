@@ -26,3 +26,21 @@
 input[type="file"] {
     font-size: 12px;
 }
+
+/* 🔢 구식 페이징 번호 디자인 스타일링 */
+.page-num {
+    padding: 2px 8px;
+    border: 1px solid #d1d5db;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 2px;
+}
+.page-num:hover {
+    background-color: #f3f4f6;
+}
+.page-num.active-page {
+    background-color: #4b5563;
+    color: #fff;
+    border-color: #4b5563;
+    font-weight: bold;
+}
