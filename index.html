@@ -4,13 +4,28 @@
     <meta charset="UTF-8">
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 기본 폼 인풋 스타일 커스텀 정의 */
+        .form-input {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            background-color: #fff;
+            color: #111827;
+        }
+        .form-input:focus {
+            border-color: #9ca3af;
+            outline: 2px solid transparent;
+        }
+    </style>
 </head>
 <body class="bg-white">
 
     <div class="w-[744px] mx-auto min-h-screen">
         
-<header class="w-full flex justify-center pb-4">           <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+        <header class="w-full flex justify-center pb-4">
+            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
             <map name="Map">
                 <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
                 <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo1005.cafe24.com/front/php/b/board_list.php?board_no=7" target="_self">
@@ -35,7 +50,12 @@
                         </tr>
                     </thead>
                     <tbody id="list-body" class="divide-y">
-                        </tbody>
+                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="switchView('detail', '홍길동')">
+                            <td class="py-3 px-4 font-medium text-blue-600">🔒 아크릴 키링 주문 제작 요청합니다.</td>
+                            <td class="py-3 text-center text-gray-500">홍길동</td>
+                            <td class="py-3 text-center text-gray-400">2026-06-02</td>
+                        </tr>
+                    </tbody>
                 </table>
 
                 <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600">
@@ -47,13 +67,13 @@
                         <button id="search-btn" class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700">검색</button>
                         <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
                     </div>
-                    <button id="go-write-btn" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
+                    <button id="go-write-btn" onclick="switchView('write')" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
                 </div>
             </section>
 
             <section id="view-write" class="hidden w-full">
-<h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
-              <table class="w-full text-sm border-collapse">
+                <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
+                <table class="w-full text-sm border-collapse">
                     <tr class="form-row">
                         <td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 회사명"></td>
@@ -70,14 +90,14 @@
                         <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="size" class="form-input"></td>
                     </tr>
-                  <tr class="form-row">
-    <td class="font-bold text-gray-700 py-3">파일1</td>
-    <td><input type="file" id="file-1"></td>
-</tr>
-<tr class="form-row">
-    <td class="font-bold text-gray-700 py-3">파일2</td>
-    <td><input type="file" id="file-2"></td>
-</tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">파일1</td>
+                        <td><input type="file" id="file-1" class="text-gray-500 text-xs"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">파일2</td>
+                        <td><input type="file" id="file-2" class="text-gray-500 text-xs"></td>
+                    </tr>
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3 align-top">작업메시지</td>
                         <td><textarea id="message" rows="4" class="form-input resize-none"></textarea></td>
@@ -93,7 +113,7 @@
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">비밀번호 <span class="text-red-500">*</span></td>
                         <td class="flex items-center space-x-2 py-2">
-<input type="text" id="password" style="-webkit-text-security: disc;" maxlength="4" placeholder="휴대폰 뒷자리 4자리">
+                            <input type="text" id="password" class="border rounded p-1.5 w-40 text-sm focus:outline-none focus:border-gray-400 bg-white text-gray-900" style="-webkit-text-security: disc;" maxlength="4" placeholder="휴대폰 뒷자리 4자리">
                             <span class="text-xs text-gray-400">(핸드폰번호 뒷 네자리 입력)</span>
                         </td>
                     </tr>
@@ -116,7 +136,7 @@
                     <div class="flex justify-between text-xs bg-slate-50 border-b text-gray-400 p-2.5 px-4">
                         <span id="detail-author"></span>
                         <span id="detail-date"></span>
-                        <span id="detail-views"></span>
+                        <span id="detail-views">조회수: 1</span>
                     </div>
 
                     <div class="p-4 divide-y divide-gray-100 text-sm space-y-3">
@@ -151,40 +171,111 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
-
-    
-
-<div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
-        <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글 열람</h3>
-        <p class="text-xs text-gray-500 mb-4">비밀번호(휴대폰 뒷자리 4자리)를 입력하세요.</p>
-        
-        <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;"
-               class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500 bg-white text-gray-900" placeholder="••••">
-        
-        <div class="flex gap-2 text-sm font-medium">
-            <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">취소</button>
-            <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">확인</button>
+    <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
+            <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글 열람</h3>
+            <p class="text-xs text-gray-500 mb-4">비밀번호(휴대폰 뒷자리 4자리)를 입력하세요.</p>
+            
+            <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;"
+                   class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500 bg-white text-gray-900" placeholder="••••">
+            
+            <div class="flex gap-2 text-sm font-medium">
+                <button id="modal-cancel-btn" onclick="document.getElementById('password-modal').classList.add('hidden')" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">취소</button>
+                <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">확인</button>
+            </div>
         </div>
     </div>
-</div>
 
-
-<div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 flex flex-col items-center shadow-2xl space-y-4 w-72">
-        <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-        <div class="text-center">
-            <p class="text-sm font-bold text-gray-700">파일 업로드 중...</p>
-            <p id="upload-progress" class="text-xl font-extrabold text-blue-600 mt-1">0%</p>
+    <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 flex flex-col items-center shadow-2xl space-y-4 w-72">
+            <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <div class="text-center">
+                <p class="text-sm font-bold text-gray-700">파일 업로드 중...</p>
+                <p id="upload-progress" class="text-xl font-extrabold text-blue-600 mt-1">0%</p>
+            </div>
+            <p class="text-xs text-gray-400">잠시만 기다려 주세요.</p>
         </div>
-        <p class="text-xs text-gray-400">잠시만 기다려 주세요.</p>
     </div>
-</div>
 
+    <script>
+        // 1. 화면 뷰(View) 전환용 간단 함수
+        function switchView(viewId, sampleAuthor = '') {
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-write').classList.add('hidden');
+            document.getElementById('view-detail').classList.add('hidden');
+            
+            const targetSection = document.getElementById(`view-${viewId}`);
+            if(targetSection) targetSection.classList.remove('hidden');
 
+            // 상세 보기를 켰을 때 데이터 매핑 시뮬레이션
+            if (viewId === 'detail') {
+                const author = sampleAuthor || document.getElementById('input-author').value || "고객";
+                const product = document.getElementById('product-name').value || "주문 상품";
+                
+                document.getElementById('detail-title').innerText = `🔒 ${product} 주문제작 요청의 건`;
+                document.getElementById('detail-author').innerText = `작성자: ${author}`;
+                document.getElementById('detail-date').innerText = `작성일: ${new Date().toISOString().split('T')[0]}`;
+                document.getElementById('detail-qty').innerText = `${document.getElementById('quantity').value || '1'}장`;
+                document.getElementById('detail-size').innerText = document.getElementById('size').value || '규격 없음';
+                document.getElementById('detail-phone').innerText = document.getElementById('phone').value || '미입력';
+                document.getElementById('detail-address').innerText = document.getElementById('address').value || '미입력';
+                document.getElementById('detail-msg').innerText = document.getElementById('message').value || '남기신 작업 메시지가 없습니다.';
+                
+                // 임시 파일명 띄우기
+                const file1 = document.getElementById('file-1').files[0];
+                document.getElementById('detail-files').innerHTML = file1 ? `<span class="text-blue-500 underline text-xs cursor-pointer">📎 ${file1.name}</span>` : '<span class="text-gray-400 text-xs">첨부파일 없음</span>';
+            }
+        }
 
+        // 2. ⭐ [핵심 요구사항] 파일 업로드 가짜 게이지 및 데이터 전송 처리 로직
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            // 유효성 체크 기본 예시
+            if(!document.getElementById('input-author').value || !document.getElementById('product-name').value) {
+                alert("필수 입력란(*)을 모두 기재해 주세요.");
+                return;
+            }
 
-    
+            const spinner = document.getElementById('loading-spinner');
+            const progressText = document.getElementById('upload-progress');
+            
+            // 업로드 UI 활성화 및 리셋
+            spinner.classList.remove('hidden');
+            progressText.innerText = '0%';
+
+            // ⏱️ DROP IT 스튜디오와 동일한 가짜 인터벌 작동 방식 (80ms마다 2%씩 가중)
+            let p = 0;
+            const iv = setInterval(() => {
+                if (p >= 90) {
+                    clearInterval(iv);
+                } else {
+                    p += 2;
+                    progressText.innerText = `${p}%`;
+                }
+            }, 80);
+
+            try {
+                // -----------------------------------------------------------------
+                // 🚀 실제 백엔드 연동 전 가상 통신 딜레이 타임아웃 (서버 처리 시뮬레이션 3초)
+                // 추후 실제 연동 시 이 부분을 fetch 혹은 가동할 구글 웹앱 URL 송신 구문으로 바꾸시면 됩니다.
+                // -----------------------------------------------------------------
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // 통신이 완전히 정상 종료되면 타이머 클리어 후 100% 강제 고정
+                clearInterval(iv);
+                progressText.innerText = '100%';
+                
+                setTimeout(() => {
+                    alert('주문 접수가 정상적으로 완료되었습니다!');
+                    spinner.classList.add('hidden'); // 로딩 숨김
+                    switchView('detail'); // 상세페이지 뷰 전환
+                }, 300);
+
+            } catch (error) {
+                clearInterval(iv);
+                alert("업로드 중 오류가 발생했습니다. 다시 시도해 주세요.");
+                spinner.classList.add('hidden');
+            }
+        });
+    </script>
 </body>
 </html>
