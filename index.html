@@ -2,363 +2,142 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Community Board (Search Pack)</title>
+    <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+KR:wght=300;400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', 'Noto Sans KR', sans-serif; background-color: #f8fafc; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="text-slate-800 antialiased">
+<body class="bg-gray-100">
 
-    <header class="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
-        <div class="mx-auto flex max-w-5xl h-16 items-center justify-between px-4 sm:px-6">
-            <h1 class="text-xl font-bold tracking-tight text-indigo-600 cursor-pointer" onclick="location.reload()">SOWON Board</h1>
-            <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">Secret & Search Active</span>
-        </div>
-    </header>
+    <div class="w-[900px] mx-auto bg-white min-h-screen shadow-md">
+        <nav class="main-nav flex text-white font-bold text-center text-base">
+            <div class="flex-1 py-4 active cursor-pointer">질문답변/주문</div>
+            <div class="flex-1 py-4 hover:bg-green-700 cursor-pointer">시안보기</div>
+            <div class="flex-1 py-4 hover:bg-green-700 cursor-pointer">포트폴리오</div>
+            <div class="flex-1 py-4 hover:bg-green-700 cursor-pointer">작업선</div>
+        </nav>
 
-    <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:py-12">
-        <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div class="p-8">
             
-            <div class="lg:col-span-1">
-                <div class="sticky top-24 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h2 class="text-lg font-semibold text-slate-900 mb-4">새 글 작성하기</h2>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-500 mb-1">작성자</label>
-                            <input type="text" id="author" placeholder="닉네임" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:outline-none transition">
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-500 mb-1">비밀번호</label>
-                                <input type="password" id="password" placeholder="4자리 이상" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:outline-none transition">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-500 mb-1">비공개 연락처 (선택)</label>
-                                <input type="text" id="phone" placeholder="010-XXXX-XXXX" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:outline-none transition">
-                            </div>
-                        </div>
-
-                        <div class="flex items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <input type="checkbox" id="is-private" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
-                            <label for="is-private" class="ml-2.5 text-sm font-medium text-slate-700 cursor-pointer select-none">🔒 이 글을 비밀글로 설정합니다.</label>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-slate-500 mb-1">글 제목</label>
-                            <input type="text" id="title" placeholder="제목을 입력하세요" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-medium focus:border-indigo-500 focus:bg-white focus:outline-none transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-500 mb-1">본문 내용</label>
-                            <textarea id="content" rows="6" placeholder="타인을 존중하는 멋진 글을 남겨주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm focus:border-indigo-500 focus:bg-white focus:outline-none transition resize-none"></textarea>
-                        </div>
-                        
-                        <button id="save-btn" class="w-full rounded-xl bg-indigo-600 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none transition active:scale-[0.98]">
-                            게시하기
-                        </button>
-                    </div>
+            <section id="view-list" class="space-y-4">
+                <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
+                    🎁 <strong>주문작성 게시판</strong> &nbsp;로그인 없이 접수가능합니다.
                 </div>
-            </div>
 
-            <div class="lg:col-span-2 space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
-                    <h3 class="font-semibold text-slate-900">전체 피드</h3>
-                    <span id="post-count" class="text-sm font-medium text-slate-500">불러오는 중...</span>
+                <table class="w-full text-sm border-t-2 border-gray-400 border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 border-b">
+                            <th class="py-3 w-16 text-center">번호</th>
+                            <th class="py-3 px-4 text-left">제목</th>
+                            <th class="py-3 w-28 text-center">작성자</th>
+                            <th class="py-3 w-24 text-center">작성일</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-body" class="divide-y">
+                        </tbody>
+                </table>
+
+                <div class="text-right">
+                    <button id="go-write-btn" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
                 </div>
+            </section>
+
+            <section id="view-write" class="hidden w-[650px] mx-auto">
+                <h2 class="text-xl font-bold text-blue-600 border-b pb-2 mb-6">🔹 주문작성</h2>
                 
-                <div id="posts-list" class="space-y-4"></div>
+                <table class="w-full text-sm border-t border-b border-gray-200 divide-y">
+                    <tr class="form-row">
+                        <td class="w-28 font-bold text-gray-700 py-3">구입 제품명 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="product-name" class="form-input"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">수량 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="quantity" class="form-input"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="size" class="form-input"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">파일1</td>
+                        <td><input type="file" id="file-1"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">파일2</td>
+                        <td><input type="file" id="file-2"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3 align-top">작업메시지</td>
+                        <td><textarea id="message" rows="4" class="form-input resize-none"></textarea></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="address" class="form-input"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">비밀번호 <span class="text-red-500">*</span></td>
+                        <td class="flex items-center space-x-2 py-2">
+                            <input type="password" id="password" class="form-input w-40" placeholder="숫자 4자리">
+                            <span class="text-xs text-gray-400">(핸드폰번호 뒷 네자리 입력)</span>
+                        </td>
+                    </tr>
+                </table>
 
-                <div id="bottom-control-panel" class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100 hidden">
-                    <div class="w-full sm:w-auto text-left">
-                        <button id="load-more-btn" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-white border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50 transition active:scale-95">
-                            더보기 ▼
-                        </button>
+                <div class="flex justify-between items-center mt-6">
+                    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
+                    <button id="save-btn" class="bg-gray-600 text-white font-semibold px-8 py-1.5 text-sm rounded hover:bg-gray-700">저장하기</button>
+                </div>
+            </section>
+
+            <section id="view-detail" class="hidden w-[750px] mx-auto space-y-5">
+                <div class="bg-sky-600 text-white p-3 font-bold text-center rounded shadow-inner text-base">
+                    🛒 접수가완료되셨습니다. 입금하시면 제작이 시작됩니다.
+                    <div class="text-xs font-normal opacity-90 mt-0.5">농협 : 123-45-67890 | 국민 : 987-65-43210</div>
+                </div>
+
+                <div class="border rounded bg-white shadow-sm overflow-hidden">
+                    <div id="detail-title" class="bg-gray-50 px-4 py-3 font-bold text-lg text-gray-700 border-b"></div>
+                    <div class="flex justify-between text-xs bg-slate-50 border-b text-gray-400 p-2.5 px-4">
+                        <span id="detail-author"></span>
+                        <span id="detail-date"></span>
+                        <span id="detail-views"></span>
                     </div>
-                    
-                    <div class="w-full sm:w-64 relative">
-                        <input type="text" id="search-input" placeholder="제목 또는 작성자 검색..." class="w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-10 py-2.5 text-sm focus:border-indigo-500 focus:outline-none shadow-sm transition">
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                            </svg>
+
+                    <div class="p-4 divide-y divide-gray-100 text-sm space-y-3">
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">수량</span><span id="detail-qty"></span></div>
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">사이즈</span><span id="detail-size"></span></div>
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">접수자핸드폰</span><span id="detail-phone"></span></div>
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">배송지</span><span id="detail-address"></span></div>
+                        <div class="flex flex-col py-2 space-y-2">
+                            <span class="font-semibold text-gray-400">작업메시지</span>
+                            <div id="detail-msg" class="whitespace-pre-wrap text-gray-700 bg-gray-50 p-4 rounded border"></div>
                         </div>
+                        <div class="flex py-2 items-center"><span class="w-28 font-semibold text-gray-400">첨부파일</span><div id="detail-files" class="space-y-1"></div></div>
                     </div>
                 </div>
-            </div>
 
-        </div>
-    </main>
+                <p class="text-red-500 font-semibold text-xs">※ 가격표의 금액을 입금해주세요. / 결제 완료되시면 시안이 등록됩니다.</p>
 
-    <div id="secret-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                <h3 class="font-bold text-slate-900 flex items-center"><span class="mr-1.5">🔒</span> 비밀글 보기</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
-            </div>
-            <div id="modal-meta" class="text-xs text-slate-400 mb-2"></div>
-            <h4 id="modal-title" class="text-lg font-bold text-slate-900 mb-3"></h4>
-            <div id="modal-content" class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-xl border border-slate-100 max-h-96 overflow-y-auto"></div>
+                <div class="bg-gray-50 p-4 rounded border border-dashed flex space-x-3 items-start">
+                    <div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold shrink-0">管</div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs w-[630px]"><span class="font-bold text-gray-700">관리자</span><span class="text-gray-400">시스템 자동 안내</span></div>
+                        <p class="text-sm text-gray-600">안녕하세요. 고객님. 소중한 도안 접수가 정상 완료되었습니다. 기재해주신 사양 검토 후 시안 작업선 업로드 예정입니다.</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-2">
+                    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
+                    <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600">삭제</button>
+                </div>
+            </section>
+
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, increment, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // 🔥 본인의 Firebase 설정을 여기에 복사/붙여넣기 하세요!
-  const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-  };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const boardsCollection = collection(db, "boards");
-
-        // 내부 상태 제어 변수
-        let allDocs = [];        // 전체 오리지널 데이터 캐시
-        let filteredDocs = [];   // 검색어로 필터링된 데이터 배열
-        let showAll = false;     // 펼치기 플래그
-
-        function formatTime(timestamp) {
-            if (!timestamp) return "방금 전";
-            const date = timestamp.toDate();
-            return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        // 1. 서버에서 데이터 전체 다운로드
-        async function fetchPostsFromServer() {
-            try {
-                const q = query(boardsCollection, orderBy("createdAt", "desc"));
-                const querySnapshot = await getDocs(q);
-                
-                allDocs = [];
-                querySnapshot.forEach(doc => {
-                    allDocs.push({ id: doc.id, ...doc.data() });
-                });
-
-                // 처음 가져왔을 땐 전체 데이터가 곧 필터링 데이터
-                filterPosts(); 
-            } catch (error) {
-                console.error(error);
-                document.getElementById("posts-list").innerHTML = `<p class="text-rose-500 text-sm">불러오기 실패: ${error.message}</p>`;
-            }
-        }
-
-        // 2. 실시간 검색 필터링 처리 함수
-        function filterPosts() {
-            const keyword = document.getElementById("search-input").value.trim().toLowerCase();
-
-            if (!keyword) {
-                // 검색어가 없으면 전체 데이터 바인딩
-                filteredDocs = [...allDocs];
-            } else {
-                // 제목(title) 또는 작성자(author)에 검색어가 포함된 것만 추출
-                filteredDocs = allDocs.filter(post => {
-                    const titleMatch = (post.title || "").toLowerCase().includes(keyword);
-                    const authorMatch = (post.author || "").toLowerCase().includes(keyword);
-                    return titleMatch || authorMatch;
-                });
-            }
-
-            document.getElementById("post-count").innerText = keyword ? `검색 결과 ${filteredDocs.length}개` : `총 ${allDocs.length}개의 글`;
-            renderPosts();
-        }
-
-        // 3. 화면에 조건별 최종 렌더링
-        function renderPosts() {
-            const postsList = document.getElementById("posts-list");
-            const panel = document.getElementById("bottom-control-panel");
-            const moreBtn = document.getElementById("load-more-btn");
-            
-            postsList.innerHTML = "";
-
-            // 전체 원본 데이터 유무 확인
-            if (allDocs.length === 0) {
-                postsList.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-slate-200"><p class="text-slate-400 text-sm">첫 번째 주인공이 되어 글을 남겨보세요!</p></div>`;
-                panel.classList.add("hidden");
-                return;
-            }
-
-            // 검색 결과가 없는 경우 방어 코드
-            if (filteredDocs.length === 0) {
-                postsList.innerHTML = `<div class="text-center py-16 bg-white rounded-2xl border border-slate-100"><p class="text-slate-400 text-sm">검색 결과와 일치하는 글이 없습니다.</p></div>`;
-                panel.classList.remove("hidden");
-                moreBtn.classList.add("hidden"); // 더보기 버튼만 숨김
-                return;
-            }
-
-            panel.classList.remove("hidden");
-
-            // 💡 펼치기 여부에 따라 배열 자르기 (검색된 상태에서도 작동)
-            const targetDocs = showAll ? filteredDocs : filteredDocs.slice(0, 10);
-
-            targetDocs.forEach((post) => {
-                const id = post.id;
-                const views = post.views || 0;
-                const author = post.author || "익명";
-                const isPrivate = post.isPrivate || false;
-
-                const displayTitle = isPrivate ? "🔒 비밀글입니다. (작성자와 관리자만 볼 수 있습니다)" : post.title;
-                const displayContent = isPrivate ? "비밀글로 보호된 콘텐츠입니다. 내용을 보려면 클릭하여 비밀번호를 입력하세요." : post.content;
-                const textStyle = isPrivate ? "text-slate-400 italic select-none" : "text-slate-600";
-
-                const postHtml = `
-                    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition duration-200 animate-in fade-in slide-in-from-bottom-2 duration-200" data-id="${id}">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center space-x-2">
-                                <span class="h-7 w-7 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs flex items-center justify-center">${author.substring(0,1)}</span>
-                                <span class="text-sm font-semibold text-slate-700">${author}</span>
-                                <span class="text-xs text-slate-400">•</span>
-                                <span class="text-xs text-slate-400">${formatTime(post.createdAt)}</span>
-                            </div>
-                            <div class="flex items-center space-x-3 text-xs text-slate-400">
-                                <span>👁️ ${views}</span>
-                                <button class="delete-btn text-rose-500 hover:underline font-medium" data-id="${id}" data-pw="${post.password}">삭제</button>
-                            </div>
-                        </div>
-                        <h4 class="text-base font-bold ${isPrivate ? 'text-slate-500' : 'text-slate-900'} mb-2 cursor-pointer hover:text-indigo-600 transition post-title" data-id="${id}" data-private="${isPrivate}">${displayTitle}</h4>
-                        <p class="text-sm ${textStyle} leading-relaxed whitespace-pre-wrap mb-4 cursor-pointer post-title" data-id="${id}" data-private="${isPrivate}">${displayContent}</p>
-                    </div>
-                `;
-                postsList.innerHTML += postHtml;
-            });
-
-            // 현재 보여주는 필터 기준 데이터가 10개보다 많을 때만 더보기 버튼 노출
-            if (filteredDocs.length > 10) {
-                moreBtn.classList.remove("hidden");
-                moreBtn.innerText = showAll ? "접기 ▲" : `더보기 (총 ${filteredDocs.length - 10}개 더 있음) ▼`;
-            } else {
-                moreBtn.classList.add("hidden");
-            }
-
-            bindPostEvents();
-        }
-
-        // 4. 실시간 검색창 이벤트 연결 (글자 타이핑할 때마다 바로 필터링)
-        document.getElementById("search-input").addEventListener("input", () => {
-            showAll = false; // 검색어를 바꿀 땐 편의상 리스트 크기를 상위 10개로 다시 고정
-            filterPosts();
-        });
-
-        // 더보기 / 접기 이벤트
-        document.getElementById("load-more-btn").addEventListener("click", () => {
-            showAll = !showAll;
-            renderPosts();
-        });
-
-        // 5. 이벤트 바인딩 (조회수, 비밀글, 삭제)
-        function bindPostEvents() {
-            document.querySelectorAll(".post-title").forEach(element => {
-                element.addEventListener("click", async (e) => {
-                    const docId = e.target.closest('[data-id]').getAttribute("data-id");
-                    const isPrivate = e.target.getAttribute("data-private") === "true";
-                    
-                    const docRef = doc(db, "boards", docId);
-                    const docSnap = await getDoc(docRef);
-                    
-                    if (!docSnap.exists()) return;
-                    const post = docSnap.data();
-
-                    if (isPrivate) {
-                        const inputPassword = prompt("비밀글입니다. 작성 시 입력한 비밀번호를 입력하세요:");
-                        if (!inputPassword) return;
-
-                        if (inputPassword !== post.password) {
-                            alert("비밀번호가 일치하지 않습니다!");
-                            return;
-                        }
-                    }
-
-                    await updateDoc(docRef, { views: increment(1) });
-                    
-                    document.getElementById("modal-meta").innerText = `작성자: ${post.author || '익명'} | ${formatTime(post.createdAt)}`;
-                    document.getElementById("modal-title").innerText = (isPrivate ? "🔒 " : "") + post.title;
-                    document.getElementById("modal-content").innerText = post.content;
-                    document.getElementById("secret-modal").classList.remove("hidden");
-                    
-                    window.closeModal = () => {
-                        document.getElementById("secret-modal").classList.add("hidden");
-                        fetchPostsFromServer(); // 모달 닫을 때 동기화 리프레시
-                    };
-                });
-            });
-
-            document.querySelectorAll(".delete-btn").forEach(button => {
-                button.addEventListener("click", async (e) => {
-                    e.stopPropagation();
-                    const docId = e.target.getAttribute("data-id");
-                    const realPassword = e.target.getAttribute("data-pw");
-                    
-                    const inputPassword = prompt("글을 삭제하기 위해 비밀번호를 입력하세요:");
-                    if (!inputPassword) return;
-
-                    if (inputPassword === realPassword) {
-                        if (confirm("정말 이 글을 지우시겠습니까?")) {
-                            await deleteDoc(doc(db, "boards", docId));
-                            alert("삭제되었습니다.");
-                            fetchPostsFromServer();
-                        }
-                    } else {
-                        alert("비밀번호가 일치하지 않습니다.");
-                    }
-                });
-            });
-        }
-
-        // 새 게시글 등록
-        document.getElementById("save-btn").addEventListener("click", async () => {
-            const authorInput = document.getElementById("author");
-            const passwordInput = document.getElementById("password");
-            const phoneInput = document.getElementById("phone");
-            const isPrivateInput = document.getElementById("is-private");
-            const titleInput = document.getElementById("title");
-            const contentInput = document.getElementById("content");
-
-            if (!authorInput.value || !passwordInput.value || !titleInput.value || !contentInput.value) {
-                alert("작성자, 비밀번호, 제목, 내용은 필수 입력값입니다.");
-                return;
-            }
-
-            try {
-                await addDoc(boardsCollection, {
-                    author: authorInput.value,
-                    password: passwordInput.value,
-                    phone: phoneInput.value || null,
-                    isPrivate: isPrivateInput.checked,
-                    title: titleInput.value,
-                    content: contentInput.value,
-                    views: 0,
-                    createdAt: new Date()
-                });
-                
-                authorInput.value = "";
-                passwordInput.value = "";
-                phoneInput.value = "";
-                isPrivateInput.checked = false;
-                titleInput.value = "";
-                contentInput.value = "";
-                document.getElementById("search-input").value = ""; // 검색어 초기화
-                
-                showAll = false;
-                await fetchPostsFromServer();
-                alert("게시글이 성공적으로 등록되었습니다!");
-            } catch (error) {
-                alert("등록 실패: " + error.message);
-            }
-        });
-
-        // 초기 화면 구동
-        fetchPostsFromServer();
-    </script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
