@@ -34,7 +34,7 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-// 📁 [수정완료] 파일별 실시간 업로드 퍼센트(%)를 추적하는 XHR 업로드 함수
+// 📁 [버그 수정 완료] 파일별 실시간 업로드 퍼센트(%)를 추적하는 XHR 업로드 함수
 function uploadToGoogleDriveWithProgress(fileInputId, authorName, onProgress) {
     return new Promise((resolve, reject) => {
         const fileInput = document.getElementById(fileInputId);
@@ -89,7 +89,8 @@ function uploadToGoogleDriveWithProgress(fileInputId, authorName, onProgress) {
             xhr.send(body);
         };
 
-        fr.onerror = function() {
+        // 💡 [수정] 변수명이 fr로 잘못되어 멈추던 버그를 reader.onerror로 올바르게 수정했습니다.
+        reader.onerror = function() {
             reject(new Error("파일을 읽는 중 오류가 발생했습니다."));
         };
 
@@ -263,8 +264,8 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     saveBtn.innerText = "업로드 및 저장 중...";
     saveBtn.disabled = true;
     
-    // 퍼센트 초기화 후 로딩창 띄우기
-    if (progressText) progressText.innerText = "0 Grandma%";
+    // 💡 [수정] Grandma 오타를 지우고 순수한 "0%" 텍스트로 안전하게 초기화합니다.
+    if (progressText) progressText.innerText = "0%";
     spinner.classList.remove("hidden");
 
     try {
