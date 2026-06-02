@@ -155,13 +155,13 @@
 
 
 
-    <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+<div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
         <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글 열람</h3>
         <p class="text-xs text-gray-500 mb-4">비밀번호(휴대폰 뒷자리 4자리)를 입력하세요.</p>
         
-        <input type="password" id="modal-password-input" maxlength="4" 
-               class="w-full border rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500" placeholder="••••">
+        <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;"
+               class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500 bg-white text-gray-900" placeholder="••••">
         
         <div class="flex gap-2 text-sm font-medium">
             <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">취소</button>
