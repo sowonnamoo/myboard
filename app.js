@@ -237,26 +237,37 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 
 loadAndRender();
 
-// 저장 버튼 클릭 시 빨간 막대 애니메이션 시작
+let textInterval; // 텍스트 변경 타이머 관리용
+
 document.getElementById("save-btn").addEventListener("click", () => {
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
+    const text = document.getElementById("loading-text");
     
     spinner.classList.remove("hidden");
     bar.style.width = "0%";
-    
-    // 강제로 리플로우 발생 후 애니메이션 시작
+    text.innerText = "파일 접수중...";
+
+    // 1. 막대는 90%까지만 채우기
     setTimeout(() => {
-        bar.style.width = "100%";
+        bar.style.width = "90%";
     }, 50);
+
+    // 2. 3초마다 글자 번갈아 바꾸기
+    let toggle = true;
+    textInterval = setInterval(() => {
+        text.innerText = toggle ? "잠시만 기다려주세요" : "파일 접수중...";
+        toggle = !toggle;
+    }, 3000);
 });
 
-// 접수 완료/취소 시 닫기 (원래 있던 switchView 가로채기)
+// 화면 전환 시 로딩창 닫고 타이머 정리
 const originalSwitchView = window.switchView;
 window.switchView = function(viewName) {
     if (viewName === 'list') {
         document.getElementById("loading-spinner").classList.add("hidden");
         document.getElementById("red-progress-bar").style.width = "0%";
+        clearInterval(textInterval); // 텍스트 타이머 강제 종료
     }
     originalSwitchView(viewName);
 };
