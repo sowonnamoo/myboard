@@ -168,15 +168,22 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
     if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
     
-    document.getElementById("detail-delete-btn").onclick = async () => { 
-        if(confirm("삭제하시겠습니까?")) { 
-            await deleteDoc(doc(db, "boards", currentViewId)); 
-            switchView('list'); 
-        } 
-    };
-    switchView('detail');
-});
-
+document.getElementById("detail-delete-btn").onclick = async () => { 
+    if(confirm("삭제하시겠습니까? 삭제된 글은 30일 후 영구 삭제됩니다.")) { 
+        try {
+            // 실제 삭제 대신 상태값 업데이트
+            await updateDoc(doc(db, "boards", currentViewId), {
+                isDeleted: true,
+                deletedAt: new Date()
+            });
+            alert("삭제되었습니다.");
+            switchView('list');
+        } catch (e) {
+            alert("삭제 실패: " + e.message);
+        }
+    } 
+};
+    
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("password-modal").classList.add("hidden");
     document.getElementById("modal-password-input").value = "";
