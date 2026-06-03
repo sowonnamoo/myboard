@@ -171,26 +171,20 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 });
 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address', 'password'];
+    // 1. 'password'를 배열에서 삭제
+    const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address']; 
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
     
-    // [추가] IP 주소 수집 시도
-    let userIp = "알 수 없음";
-    try {
-        const res = await fetch("https://api.ipify.org?format=json");
-        const json = await res.json();
-        userIp = json.ip;
-    } catch (e) { console.error("IP 수집 실패", e); }
+    // 2. 전화번호에서 하이픈 제거 후 뒷 4자리 자동 추출
+    const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
+    const autoPassword = phoneVal.slice(-4); 
 
-    const saveBtn = document.getElementById("save-btn");
-    saveBtn.innerText = "파일 업로드중..."; 
-    saveBtn.disabled = true;
+    // ... (IP 수집 로직은 그대로 두세요) ...
 
     try {
         const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
         
-        // 파이어베이스에 IP 포함하여 저장
         await addDoc(ordersCollection, { 
             author: document.getElementById('input-author').value, 
             productName: document.getElementById('product-name').value, 
@@ -198,13 +192,13 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             size: document.getElementById('size').value, 
             phone: document.getElementById('phone').value, 
             address: document.getElementById('address').value, 
-            password: document.getElementById('password').value, 
+            password: autoPassword, // <--- 여기서 방금 만든 autoPassword를 저장
             message: document.getElementById('message').value, 
             file1Url, 
             file2Url, 
             views: 0, 
             createdAt: new Date(),
-            ip: userIp // <--- IP가 여기서 저장됩니다
+            ip: userIp 
         });
 
         alert("접수되었습니다."); 
