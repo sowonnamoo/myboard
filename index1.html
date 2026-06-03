@@ -59,7 +59,19 @@
                     <tr class="form-row"><td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td><td><input type="text" id="input-author" class="form-input w-full border p-2" placeholder="이름 또는 회사명"></td></tr>
                     <tr class="form-row"><td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td><td><input type="text" id="phone" class="form-input w-full border p-2" placeholder="010-XXXX-XXXX" maxlength="11" oninput="this.value = this.value.replace(/[^0-9-]/g, '')"></td></tr>
                     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td><td class="space-y-2"><div class="flex items-center space-x-2"><input type="text" id="address" class="form-input w-full border p-2" placeholder="주소" readonly><button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-2 py-2 rounded text-sm">주소찾기</button></div><input type="text" id="address-detail" class="form-input w-full border p-2" placeholder="상세주소 입력"></td></tr>
+                
+
+<tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
+    <td class="p-2">
+        <div class="flex items-center space-x-2 w-full">
+            <input type="text" id="address" class="form-input w-full border p-2" placeholder="주소" readonly>
+            <button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-3 py-2 rounded text-sm whitespace-nowrap shrink-0">주소찾기</button>
+        </div>
+        <input type="text" id="address-detail" class="form-input w-full border p-2 mt-2" placeholder="상세주소 입력">
+    </td>
+</tr>
+
                 </table>
                 <div class="flex justify-between items-center mt-6">
                     <button onclick="window.location.href='index.html'" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록으로</button>
