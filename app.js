@@ -117,12 +117,29 @@ function renderTable() {
 
 window.goToPage = function(pageNum) { currentPage = pageNum; renderTable(); }
 
+let currentViewId = ""; 
+
 window.viewDetail = async function(id) {
-    const snap = await getDoc(doc(db, "orders", id));
-    if (!snap.exists()) return;
+    currentViewId = id;
+    document.getElementById("password-modal").classList.remove("hidden");
+    document.getElementById("modal-password-input").focus();
+};
+
+document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
+    const inputPwd = document.getElementById("modal-password-input").value;
+    const snap = await getDoc(doc(db, "orders", currentViewId));
+    
+    if (!snap.exists() || inputPwd !== snap.data().password) {
+        alert("비밀번호가 다릅니다.");
+        return;
+    }
+
+    document.getElementById("password-modal").classList.add("hidden");
+    document.getElementById("modal-password-input").value = "";
+    
     const data = snap.data();
-    if (prompt("비밀번호를 입력하세요 (핸드폰 뒷자리 4자리):") !== data.password) { alert("비밀번호가 다릅니다."); return; }
-    await updateDoc(doc(db, "orders", id), { views: increment(1) });
+    await updateDoc(doc(db, "orders", currentViewId), { views: increment(1) });
+    
     document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
     const d = data.createdAt.toDate();
@@ -133,12 +150,25 @@ window.viewDetail = async function(id) {
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
-    const filesDiv = document.getElementById("detail-files"); filesDiv.innerHTML = "";
+    
+    const filesDiv = document.getElementById("detail-files"); 
+    filesDiv.innerHTML = "";
     if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
     if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
-    document.getElementById("detail-delete-btn").onclick = async () => { if(confirm("삭제하시겠습니까?")) { await deleteDoc(doc(db, "orders", id)); switchView('list'); } };
+    
+    document.getElementById("detail-delete-btn").onclick = async () => { 
+        if(confirm("삭제하시겠습니까?")) { 
+            await deleteDoc(doc(db, "orders", currentViewId)); 
+            switchView('list'); 
+        } 
+    };
     switchView('detail');
-}
+});
+
+document.getElementById("modal-cancel-btn").addEventListener("click", () => {
+    document.getElementById("password-modal").classList.add("hidden");
+    document.getElementById("modal-password-input").value = "";
+});
 
 document.getElementById("save-btn").addEventListener("click", async () => {
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address', 'password'];
