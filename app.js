@@ -143,14 +143,47 @@ window.viewDetail = async function(id) {
 document.getElementById("save-btn").addEventListener("click", async () => {
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address', 'password'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
+    
+    // [추가] IP 주소 수집 시도
+    let userIp = "알 수 없음";
+    try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const json = await res.json();
+        userIp = json.ip;
+    } catch (e) { console.error("IP 수집 실패", e); }
+
     const saveBtn = document.getElementById("save-btn");
-    saveBtn.innerText = "파일 업로드중..."; saveBtn.disabled = true;
+    saveBtn.innerText = "파일 업로드중..."; 
+    saveBtn.disabled = true;
+
     try {
         const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
-        await addDoc(ordersCollection, { author: document.getElementById('input-author').value, productName: document.getElementById('product-name').value, quantity: document.getElementById('quantity').value, size: document.getElementById('size').value, phone: document.getElementById('phone').value, address: document.getElementById('address').value, password: document.getElementById('password').value, message: document.getElementById('message').value, file1Url, file2Url, views: 0, createdAt: new Date() });
-        alert("접수되었습니다."); switchView('list');
-    } catch (e) { alert("오류: " + e.message); } finally { saveBtn.innerText = "저장하기"; saveBtn.disabled = false; }
+        
+        // 파이어베이스에 IP 포함하여 저장
+        await addDoc(ordersCollection, { 
+            author: document.getElementById('input-author').value, 
+            productName: document.getElementById('product-name').value, 
+            quantity: document.getElementById('quantity').value, 
+            size: document.getElementById('size').value, 
+            phone: document.getElementById('phone').value, 
+            address: document.getElementById('address').value, 
+            password: document.getElementById('password').value, 
+            message: document.getElementById('message').value, 
+            file1Url, 
+            file2Url, 
+            views: 0, 
+            createdAt: new Date(),
+            ip: userIp // <--- IP가 여기서 저장됩니다
+        });
+
+        alert("접수되었습니다."); 
+        switchView('list');
+    } catch (e) { alert("오류: " + e.message); } 
+    finally { 
+        saveBtn.innerText = "저장하기"; 
+        saveBtn.disabled = false; 
+    }
 });
 
 document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
