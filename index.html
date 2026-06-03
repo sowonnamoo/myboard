@@ -96,11 +96,11 @@
 <tr class="form-row">
     <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
     <td class="space-y-2">
-        <div class="flex space-x-2">
+        <div class="flex items-center space-x-2 flex-nowrap">
             <input type="text" id="address" class="form-input flex-grow" placeholder="주소" readonly>
-            <button type="button" onclick="execDaumPostcode()" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">주소찾기</button>
+            <button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-2 py-2 rounded text-sm whitespace-nowrap">주소찾기</button>
         </div>
-        <input type="text" id="address-detail" class="form-input w-full" placeholder="상세주소를 입력해주세요">
+        <input type="text" id="address-detail" class="form-input w-full" placeholder="상세주소 입력">
     </td>
 </tr>
 
