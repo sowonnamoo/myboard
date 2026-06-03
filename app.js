@@ -138,7 +138,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("modal-password-input").value = "";
     
     const data = snap.data();
-    await updateDoc(doc(db, "orders", currentViewId), { views: increment(1) });
+    await updateDoc(doc(db, "boards", currentViewId), { views: increment(1) });
     
     document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
@@ -158,7 +158,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     
     document.getElementById("detail-delete-btn").onclick = async () => { 
         if(confirm("삭제하시겠습니까?")) { 
-            await deleteDoc(doc(db, "orders", currentViewId)); 
+            await deleteDoc(doc(db, "boards", currentViewId)); 
             switchView('list'); 
         } 
     };
