@@ -127,7 +127,7 @@ window.viewDetail = async function(id) {
 
 document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
     const inputPwd = document.getElementById("modal-password-input").value;
-    const snap = await getDoc(doc(db, "orders", currentViewId));
+    const snap = await getDoc(doc(db, "boards", currentViewId));
     
     if (!snap.exists() || inputPwd !== snap.data().password) {
         alert("비밀번호가 다릅니다.");
