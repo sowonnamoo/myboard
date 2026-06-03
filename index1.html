@@ -5,11 +5,13 @@
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .form-input { width: 100%; border: 1px solid #d1d5db; padding: 0.5rem; border-radius: 0.25rem; }
+    </style>
 </head>
 <body class="bg-white">
 
     <div class="w-[744px] mx-auto min-h-screen">
-        
         <header class="w-full flex justify-center pb-4">
             <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
             <map name="Map">
@@ -21,8 +23,7 @@
         </header>
 
         <div class="py-0">
-            
-            <section id="view-list" class="hidden space-y-4">
+            <section id="view-list" class="space-y-4">
                 <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
                     🎁 <strong>주문작성 게시판</strong> &nbsp;로그인 없이 접수가능합니다.
                 </div>
@@ -41,40 +42,35 @@
                     <div class="flex items-center space-x-2">
                         <input type="text" id="search-author" class="border px-3 py-1.5 text-sm rounded bg-white w-48 focus:border-gray-400 focus:outline-none" placeholder="작성자 이름 검색...">
                         <button id="search-btn" class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700">검색</button>
-                        <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
                     </div>
                     <button id="go-write-btn" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
                 </div>
             </section>
 
-            <section id="view-write" class="w-full">
+            <section id="view-write" class="hidden w-full">
                 <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>
                 <table class="w-full text-sm border-collapse">
-                    <tr class="form-row"><td class="w-28 font-bold text-gray-700 py-3">구입 제품명 <span class="text-red-500">*</span></td><td><input type="text" id="product-name" class="form-input w-full border p-2" placeholder="제품명을 입력하세요"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">수량 <span class="text-red-500">*</span></td><td><input type="text" id="quantity" class="form-input w-full border p-2"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td><td><input type="text" id="size" class="form-input w-full border p-2"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">파일1 (필수) <span class="text-red-500">*</span></td><td><input type="file" id="file-1"></td></tr>
+                    <tr class="form-row"><td class="w-28 font-bold text-gray-700 py-3">구입 제품명 *</td><td><input type="text" id="product-name" class="form-input" placeholder="제품명을 입력하세요"></td></tr>
+                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">수량 *</td><td><input type="text" id="quantity" class="form-input"></td></tr>
+                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">사이즈 *</td><td><input type="text" id="size" class="form-input"></td></tr>
+                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">파일1 (필수) *</td><td><input type="file" id="file-1"></td></tr>
                     <tr class="form-row"><td class="font-bold text-gray-700 py-3">파일2</td><td><input type="file" id="file-2"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3 align-top">작업메시지</td><td><textarea id="message" rows="4" class="form-input w-full border p-2 resize-none"></textarea></td></tr>
-                    <tr class="form-row"><td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td><td><input type="text" id="input-author" class="form-input w-full border p-2" placeholder="이름 또는 회사명"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td><td><input type="text" id="phone" class="form-input w-full border p-2" placeholder="010-XXXX-XXXX" maxlength="11" oninput="this.value = this.value.replace(/[^0-9-]/g, '')"></td></tr>
-                    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-                
-
-<tr class="form-row">
-    <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
-    <td class="p-2">
-        <div class="flex items-center space-x-2 w-full">
-            <input type="text" id="address" class="form-input w-full border p-2" placeholder="주소" readonly>
-            <button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-3 py-2 rounded text-sm whitespace-nowrap shrink-0">주소찾기</button>
-        </div>
-        <input type="text" id="address-detail" class="form-input w-full border p-2 mt-2" placeholder="상세주소 입력">
-    </td>
-</tr>
-
+                    <tr class="form-row"><td class="font-bold text-gray-700 py-3 align-top">작업메시지</td><td><textarea id="message" rows="4" class="form-input resize-none"></textarea></td></tr>
+                    <tr class="form-row"><td class="w-28 font-bold text-gray-700 py-3">작성자명 *</td><td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 회사명"></td></tr>
+                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">접수자핸드폰 *</td><td><input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" maxlength="11" oninput="this.value = this.value.replace(/[^0-9-]/g, '')"></td></tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">배송지 *</td>
+                        <td class="space-y-2">
+                            <div class="flex items-center space-x-2 flex-nowrap">
+                                <input type="text" id="address" class="form-input flex-grow" placeholder="주소" readonly>
+                                <button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-2 py-2 rounded text-sm whitespace-nowrap shrink-0">주소찾기</button>
+                            </div>
+                            <input type="text" id="address-detail" class="form-input w-full" placeholder="상세주소 입력">
+                        </td>
+                    </tr>
                 </table>
                 <div class="flex justify-between items-center mt-6">
-                    <button onclick="window.location.href='index.html'" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록으로</button>
+                    <button onclick="document.getElementById('view-list').classList.remove('hidden'); document.getElementById('view-write').classList.add('hidden');" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
                     <button id="save-btn" class="bg-gray-600 text-white font-semibold px-8 py-1.5 text-sm rounded hover:bg-gray-700">접수하기</button>
                 </div>
             </section>
@@ -84,6 +80,22 @@
         </div>
     </div>
 
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script>
+        function execDaumPostcode() {
+            new daum.Postcode({
+                oncomplete: function(data) {
+                    document.getElementById("address").value = data.address;
+                    document.getElementById("address-detail").focus();
+                }
+            }).open();
+        }
+        // 글쓰기 버튼 클릭 시 화면 전환
+        document.getElementById('go-write-btn').addEventListener('click', () => {
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-write').classList.remove('hidden');
+        });
+    </script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
