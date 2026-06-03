@@ -192,23 +192,22 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         return; 
     }
 
-   // [파일 필수 검사 로직 수정]
-const file1 = document.getElementById("file-1");
-const file2 = document.getElementById("file-2");
-
-// 적어도 file1은 비어있으면 안 됨 (최소 1개 필수)
-if (file1.files.length === 0) {
-    alert("최소 1개의 파일을 첨부해주세요.");
-    return;
-}
-
-// 만약 file1과 file2가 모두 선택된 상태라면 중복 이름 체크
-if (file1.files.length > 0 && file2.files.length > 0) {
-    if (file1.files[0].name === file2.files[0].name) {
-        alert("1번과 2번에 동일한 파일을 중복으로 첨부할 수 없습니다.");
+    // 2. 파일 필수 검사 (최소 1개)
+    const file1 = document.getElementById("file-1");
+    const file2 = document.getElementById("file-2");
+    if (file1.files.length === 0) {
+        alert("최소 1개의 파일을 첨부해주세요.");
         return;
     }
-    
+
+    // 3. 파일 이름 중복 검사 (둘 다 있을 때만)
+    if (file1.files.length > 0 && file2.files.length > 0) {
+        if (file1.files[0].name === file2.files[0].name) {
+            alert("1번과 2번에 동일한 파일을 중복으로 첨부할 수 없습니다.");
+            return;
+        }
+    }
+
     // 4. 전화번호 검사
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
     if (phoneVal.length !== 11) {
@@ -216,15 +215,7 @@ if (file1.files.length > 0 && file2.files.length > 0) {
         return; 
     }
 
-    // [추가] 3. 파일 1과 2가 완전히 동일한 경우 차단
-    const file1 = document.getElementById("file-1").files[0];
-    const file2 = document.getElementById("file-2").files[0];
-    if (file1 && file2 && file1.name === file2.name) {
-        alert("동일한 파일을 1번과 2번에 중복으로 첨부할 수 없습니다.");
-        return;
-    }
-
-    // 4. 검사 통과 후 애니메이션 시작
+    // 5. 검사 통과 후 애니메이션 시작
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
     const text = document.getElementById("loading-text");
@@ -232,21 +223,19 @@ if (file1.files.length > 0 && file2.files.length > 0) {
     bar.style.width = "10%"; 
     text.innerText = "파일 접수중...";
     
-// 애니메이션 로직 실행
     let percent = 10;
     barInterval = setInterval(() => { if(percent < 90) { percent += 10; bar.style.width = percent + "%"; } }, 5000);
     
-    // [수정된 부분] 메시지를 순서대로 배열에 담습니다.
-    const messages = ["웹하드 업로드중..", "잠시 기다려주세요", "정상적으로 업로드 중입니다.", "통상10MB용량 기준50~100초가 소요됩니다"];
+    const messages = ["웹하드 업로드중..", "잠시 기다려주세요", "정상적으로 업로드 중입니다.", "통상 10MB 용량 기준 50~100초가 소요됩니다"];
     let msgIndex = 0;
     textInterval = setInterval(() => {
-        msgIndex = (msgIndex + 1) % messages.length; // 다음 메시지로 인덱스 이동
+        msgIndex = (msgIndex + 1) % messages.length;
         text.innerText = messages[msgIndex];
     }, 3000);
 
     const autoPassword = phoneVal.slice(-4); 
 
-    // 5. IP 수집 및 저장
+    // 6. IP 수집
     let userIp = "알 수 없음";
     try {
         const res = await fetch("https://api.ipify.org?format=json");
@@ -268,7 +257,8 @@ if (file1.files.length > 0 && file2.files.length > 0) {
             quantity: document.getElementById('quantity').value, 
             size: document.getElementById('size').value, 
             phone: document.getElementById('phone').value, 
-address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,            password: autoPassword, 
+            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
+            password: autoPassword, 
             message: document.getElementById('message').value, 
             file1Url, 
             file2Url, 
