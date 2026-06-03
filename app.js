@@ -185,14 +185,31 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 let textInterval, barInterval; 
 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    // 1. 필수 항목 검사
+    // 1. 필수 항목 검사 (텍스트 필드)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { 
         alert("필수 항목을 모두 입력해주세요."); 
         return; 
     }
+
+   // [파일 필수 검사 로직 수정]
+const file1 = document.getElementById("file-1");
+const file2 = document.getElementById("file-2");
+
+// 적어도 file1은 비어있으면 안 됨 (최소 1개 필수)
+if (file1.files.length === 0) {
+    alert("최소 1개의 파일을 첨부해주세요.");
+    return;
+}
+
+// 만약 file1과 file2가 모두 선택된 상태라면 중복 이름 체크
+if (file1.files.length > 0 && file2.files.length > 0) {
+    if (file1.files[0].name === file2.files[0].name) {
+        alert("1번과 2번에 동일한 파일을 중복으로 첨부할 수 없습니다.");
+        return;
+    }
     
-    // 2. 전화번호 검사
+    // 4. 전화번호 검사
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
     if (phoneVal.length !== 11) {
         alert("전화번호 11자리를 정확히 입력해주세요.");
