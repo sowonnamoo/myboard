@@ -83,8 +83,13 @@
                         <td><textarea id="message" rows="4" class="form-input resize-none"></textarea></td>
                     </tr>
         <tr class="form-row">
+<tr class="form-row">
     <td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td>
-    <td><input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" maxlength="13"></td>
+    <td>
+        <input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" 
+               maxlength="13" 
+               oninput="this.value = this.value.replace(/[^0-9-]/g, '')">
+    </td>
 </tr>
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
