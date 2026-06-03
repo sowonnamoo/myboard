@@ -157,16 +157,20 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     const inputPwd = document.getElementById("modal-password-input").value;
     const snap = await getDoc(doc(db, "boards", currentViewId));
     
+    // 1. 비밀번호가 틀리면 여기서 함수 종료
     if (!snap.exists() || inputPwd !== snap.data().password) {
         alert("비밀번호가 다릅니다.");
         return;
     }
 
+    // 2. 비밀번호가 맞다면 아래 코드가 이어서 실행됩니다.
     document.getElementById("password-modal").classList.add("hidden");
     document.getElementById("modal-password-input").value = "";
     
     const data = snap.data();
     await updateDoc(doc(db, "boards", currentViewId), { views: increment(1) });
+
+    
     
     document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
