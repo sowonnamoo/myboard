@@ -143,34 +143,42 @@ function renderTable() {
         `;
     });
 
+    // 페이지네이션 부분
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
 
     if (totalPages <= 0) return;
 
-    // [이전] 버튼
+    // [이전] 버튼 디자인
     if (currentPage > 1) {
-        pager.innerHTML += `<span class="cursor-pointer px-2 text-gray-600 font-bold" onclick="goToPage(${currentPage - 1})">[이전]</span>`;
+        pager.innerHTML += `
+            <span class="cursor-pointer px-3 py-1 border border-gray-300 rounded bg-white hover:bg-gray-100 text-sm text-gray-700" 
+                  onclick="goToPage(${currentPage - 1})">이전</span>`;
     }
 
-    // 6개 페이지만 보여주기 (현재 페이지 기준)
+    // 숫자 버튼 디자인
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, startPage + 5);
-    
     if (endPage - startPage < 5 && totalPages > 5) {
         startPage = Math.max(1, endPage - 5);
     }
 
     for (let i = startPage; i <= endPage; i++) {
-        const activeClass = i === currentPage ? "font-bold text-blue-600 underline" : "text-gray-400";
-        pager.innerHTML += `<span class="cursor-pointer px-1.5 ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
+        const activeClass = i === currentPage 
+            ? "bg-blue-600 text-white border-blue-600" 
+            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100";
+            
+        pager.innerHTML += `
+            <span class="cursor-pointer px-3 py-1 border ${activeClass} rounded text-sm mx-0.5" 
+                  onclick="goToPage(${i})">${i}</span>`;
     }
 
-    // [다음] 버튼
+    // [다음] 버튼 디자인
     if (currentPage < totalPages) {
-        pager.innerHTML += `<span class="cursor-pointer px-2 text-gray-600 font-bold" onclick="goToPage(${currentPage + 1})">[다음]</span>`;
+        pager.innerHTML += `
+            <span class="cursor-pointer px-3 py-1 border border-gray-300 rounded bg-white hover:bg-gray-100 text-sm text-gray-700" 
+                  onclick="goToPage(${currentPage + 1})">다음</span>`;
     }
-}
 
 window.goToPage = function(pageNum) {
     currentPage = pageNum;
