@@ -215,10 +215,17 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     bar.style.width = "10%"; 
     text.innerText = "파일 접수중...";
     
-    // 애니메이션 로직 실행
+// 애니메이션 로직 실행
     let percent = 10;
     barInterval = setInterval(() => { if(percent < 90) { percent += 10; bar.style.width = percent + "%"; } }, 5000);
-    textInterval = setInterval(() => { text.innerText = "업로드중입니다..."; }, 3000);
+    
+    // [수정된 부분] 메시지를 순서대로 배열에 담습니다.
+    const messages = ["웹하드 업로드중..", "잠시 기다려주세요", "정상적으로 업로드 중입니다.", "통상10MB용량 기준50~100초가 소요됩니다"];
+    let msgIndex = 0;
+    textInterval = setInterval(() => {
+        msgIndex = (msgIndex + 1) % messages.length; // 다음 메시지로 인덱스 이동
+        text.innerText = messages[msgIndex];
+    }, 3000);
 
     const autoPassword = phoneVal.slice(-4); 
 
