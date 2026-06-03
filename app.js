@@ -16,6 +16,18 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ordersCollection = collection(db, "boards");
 
+// --- 주소 찾기 함수 추가 ---
+window.execDaumPostcode = function() {
+    new daum.Postcode({
+        oncomplete: function(data) {
+            // 도로명 주소 또는 지번 주소 넣기
+            document.getElementById("address").value = data.address;
+            // 상세주소 입력창으로 포커스 이동
+            document.getElementById("address-detail").focus();
+        }
+    }).open();
+}
+
 let allOrders = [];        
 let filteredOrders = [];  
 let currentPage = 1;      
@@ -224,8 +236,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             quantity: document.getElementById('quantity').value, 
             size: document.getElementById('size').value, 
             phone: document.getElementById('phone').value, 
-            address: document.getElementById('address').value, 
-            password: autoPassword, 
+address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,            password: autoPassword, 
             message: document.getElementById('message').value, 
             file1Url, 
             file2Url, 
