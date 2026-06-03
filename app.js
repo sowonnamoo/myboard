@@ -146,9 +146,29 @@ function renderTable() {
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
 
-    for (let i = 1; i <= totalPages; i++) {
-        const activeClass = i === currentPage ? "active-page" : "";
-        pager.innerHTML += `<span class="page-num ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
+    if (totalPages <= 0) return;
+
+    // [이전] 버튼
+    if (currentPage > 1) {
+        pager.innerHTML += `<span class="cursor-pointer px-2 text-gray-600 font-bold" onclick="goToPage(${currentPage - 1})">[이전]</span>`;
+    }
+
+    // 6개 페이지만 보여주기 (현재 페이지 기준)
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 5);
+    
+    if (endPage - startPage < 5 && totalPages > 5) {
+        startPage = Math.max(1, endPage - 5);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const activeClass = i === currentPage ? "font-bold text-blue-600 underline" : "text-gray-400";
+        pager.innerHTML += `<span class="cursor-pointer px-1.5 ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
+    }
+
+    // [다음] 버튼
+    if (currentPage < totalPages) {
+        pager.innerHTML += `<span class="cursor-pointer px-2 text-gray-600 font-bold" onclick="goToPage(${currentPage + 1})">[다음]</span>`;
     }
 }
 
