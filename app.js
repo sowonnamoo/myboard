@@ -1,10 +1,10 @@
-// 🔑 구글 앱스 스크립트 웹 앱 URL (이전 방식 그대로 활용)
+// 🔑 구글 앱스 스크립트 웹 앱 URL
 const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -21,6 +21,22 @@ let filteredOrders = [];
 let currentPage = 1;      
 const POSTS_PER_PAGE = 8; 
 
+// 🔗 [추가] 링크를 무조건 다운로드 가능하게 변환하는 함수
+function createDownloadUrl(url) {
+    if (!url) return null;
+    try {
+        let fileId = "";
+        if (url.includes('/d/')) {
+            fileId = url.split('/d/')[1].split('/')[0];
+        } else if (url.includes('id=')) {
+            fileId = url.split('id=')[1].split('&')[0];
+        }
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    } catch (e) {
+        return url;
+    }
+}
+
 window.switchView = function(viewName) {
     document.getElementById("view-list").classList.add("hidden");
     document.getElementById("view-write").classList.add("hidden");
@@ -34,13 +50,12 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-// 📁 [수정완료] 가짜 링크 대신 구글 앱스 스크립트로 진짜 파일을 하는 함수
 async function uploadToGoogleDrive(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
-    if (!fileInput || fileInput.files.length === 0) return null; // 파일이 없으면 그냥 pass
+    if (!fileInput || fileInput.files.length === 0) return null;
     
     const file = fileInput.files[0];
-    const fileName = `${authorName || "익명"}_${file.name}`; // 파일명 규칙 부여
+    const fileName = `${authorName || "익명"}_${file.name}`;
 
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -53,18 +68,17 @@ async function uploadToGoogleDrive(fileInputId, authorName) {
                     mimetype: file.type
                 });
 
-                // 구글 웹 앱으로 바이너리 전송
                 const res = await fetch(GOOGLE_WEB_APP_URL, { method: 'POST', body });
                 const data = await res.json();
                 
                 if (data && data.url) {
-                    resolve(data.url); // 구글 드라이브에 생성된 진짜 파일 주소 반환
+                    resolve(data.url);
                 } else {
                     resolve(null);
                 }
             } catch (error) {
                 console.error("구글 드라이브 업로드 실패:", error);
-                resolve(null); // 실패하더라도 폼 저장을 방해하지 않기 위해 null 처리
+                resolve(null);
             }
         };
         reader.readAsDataURL(file);
@@ -173,15 +187,15 @@ window.viewDetail = async function(id) {
 
     const filesDiv = document.getElementById("detail-files");
     filesDiv.innerHTML = "";
-if(data.file1Url) {
-    // 구글 드라이브 링크가 .../view 로 끝난다면 .../download 로 변경하고 download 속성 추가
-    const dlUrl1 = data.file1Url.replace(/\/view$/, '/download');
-    filesDiv.innerHTML += `<a href="${dlUrl1}" download class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
-}
-if(data.file2Url) {
-    const dlUrl2 = data.file2Url.replace(/\/view$/, '/download');
-    filesDiv.innerHTML += `<a href="${dlUrl2}" download class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
-}    if(!data.file1Url && !data.file2Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
+
+    // 📁 수정된 다운로드 로직 적용
+    if(data.file1Url) {
+        filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
+    }
+    if(data.file2Url) {
+        filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
+    }
+    if(!data.file1Url && !data.file2Url) filesDiv.innerHTML = `<span class="text-xs text-gray-400">첨부 없음</span>`;
 
     document.getElementById("detail-delete-btn").onclick = async () => {
         if (confirm("정말 삭제하시겠습니까?")) {
@@ -192,7 +206,6 @@ if(data.file2Url) {
     switchView('detail');
 }
 
-// 💾 [수정완료] 저장 처리 및 비동기 업로드 완벽 제어
 document.getElementById("save-btn").addEventListener("click", async () => {
     const authorName = document.getElementById("input-author").value.trim();
     const pName = document.getElementById("product-name").value.trim();
@@ -212,11 +225,9 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     saveBtn.disabled = true;
 
     try {
-        // 구글 드라이브에 작성자 이름을 넘겨 실시간 파일 업로드 실행
         const file1Url = await uploadToGoogleDrive("file-1", authorName);
         const file2Url = await uploadToGoogleDrive("file-2", authorName);
 
-        // 파이어베이스 데이터베이스에 문서 추가
         await addDoc(ordersCollection, {
             author: authorName, productName: pName, quantity: qty, size: size, phone: phone, address: address,
             password: password, message: message, file1Url, file2Url, views: 0, createdAt: new Date()
@@ -251,10 +262,9 @@ document.getElementById("save-btn").addEventListener("click", () => {
     const bar = document.getElementById("red-progress-bar");
     const text = document.getElementById("loading-text");
     
-    // 초기화
     spinner.classList.remove("hidden");
     bar.style.transition = "width 0.5s linear";
-    bar.style.width = "10%"; // 10% 시작
+    bar.style.width = "10%"; 
     text.innerText = "파일 접수중...";
     
     let percent = 10;
@@ -266,7 +276,6 @@ document.getElementById("save-btn").addEventListener("click", () => {
     ];
     let msgIndex = 0;
 
-    // 1. 5초마다 10%씩 증가 (90%에서 멈춤)
     barInterval = setInterval(() => {
         if (percent < 90) {
             percent += 10;
@@ -274,9 +283,8 @@ document.getElementById("save-btn").addEventListener("click", () => {
         } else {
             clearInterval(barInterval);
         }
-    }, 5000); // 5초(5,000ms)로 변경!
+    }, 5000);
 
-    // 2. 3초마다 문구 변경 (마지막 문구 고정)
     textInterval = setInterval(() => {
         if (msgIndex < messages.length - 1) {
             msgIndex++;
@@ -287,7 +295,6 @@ document.getElementById("save-btn").addEventListener("click", () => {
     }, 3000);
 });
 
-// 화면 전환 시 타이머 강제 정리
 const originalSwitchView = window.switchView;
 window.switchView = function(viewName) {
     if (viewName === 'list') {
