@@ -199,7 +199,15 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         return; 
     }
 
-    // 3. 검사 통과 후 애니메이션 시작
+    // [추가] 3. 파일 1과 2가 완전히 동일한 경우 차단
+    const file1 = document.getElementById("file-1").files[0];
+    const file2 = document.getElementById("file-2").files[0];
+    if (file1 && file2 && file1.name === file2.name) {
+        alert("동일한 파일을 1번과 2번에 중복으로 첨부할 수 없습니다.");
+        return;
+    }
+
+    // 4. 검사 통과 후 애니메이션 시작
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
     const text = document.getElementById("loading-text");
@@ -214,7 +222,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     const autoPassword = phoneVal.slice(-4); 
 
-    // 4. IP 수집 및 저장
+    // 5. IP 수집 및 저장
     let userIp = "알 수 없음";
     try {
         const res = await fetch("https://api.ipify.org?format=json");
