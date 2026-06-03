@@ -74,13 +74,29 @@ async function uploadToGoogleDrive(fileInputId, authorName) {
 
 async function loadAndRender() {
     try {
-        const q = query(ordersCollection, orderBy("createdAt", "desc"));
-        const snapshot = await getDocs(q);
+        // isDeleted가 false인 데이터만 가져오기
+        // 주의: 이 쿼리를 쓰려면 파이어베이스 콘솔에서 '인덱스(Index)' 생성이 필요할 수 있습니다.
+        const q = query(
+            ordersCollection, 
+            where("isDeleted", "==", false), 
+            orderBy("createdAt", "desc")
+        );
+        
+        // 만약 인덱스 오류가 난다면, 일단 where 조건 없이 가져와서 
+        // 클라이언트(여기 JS)에서 필터링하는 방식이 가장 빠릅니다.
+        const snapshot = await getDocs(query(ordersCollection, orderBy("createdAt", "desc")));
         allOrders = [];
-        snapshot.forEach(doc => { allOrders.push({ id: doc.id, ...doc.data() }); });
+        snapshot.forEach(doc => { 
+            const data = doc.data();
+            // 삭제되지 않은 글만 리스트에 담음
+            if (!data.isDeleted) {
+                allOrders.push({ id: doc.id, ...data }); 
+            }
+        });
         applyFilter();
     } catch (err) { console.error(err); }
 }
+
 
 function applyFilter() {
     const searchVal = document.getElementById("search-author").value.trim().toLowerCase();
