@@ -72,23 +72,19 @@ async function uploadToGoogleDrive(fileInputId, authorName) {
     });
 }
 
+
+
+
+
+
 async function loadAndRender() {
     try {
-        // isDeleted가 false인 데이터만 가져오기
-        // 주의: 이 쿼리를 쓰려면 파이어베이스 콘솔에서 '인덱스(Index)' 생성이 필요할 수 있습니다.
-        const q = query(
-            ordersCollection, 
-            where("isDeleted", "==", false), 
-            orderBy("createdAt", "desc")
-        );
-        
-        // 만약 인덱스 오류가 난다면, 일단 where 조건 없이 가져와서 
-        // 클라이언트(여기 JS)에서 필터링하는 방식이 가장 빠릅니다.
-        const snapshot = await getDocs(query(ordersCollection, orderBy("createdAt", "desc")));
+        const q = query(ordersCollection, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
         allOrders = [];
+        // [수정된 부분] 삭제되지 않은 데이터만 걸러서 담습니다.
         snapshot.forEach(doc => { 
             const data = doc.data();
-            // 삭제되지 않은 글만 리스트에 담음
             if (!data.isDeleted) {
                 allOrders.push({ id: doc.id, ...data }); 
             }
@@ -96,6 +92,14 @@ async function loadAndRender() {
         applyFilter();
     } catch (err) { console.error(err); }
 }
+
+
+
+
+
+
+
+
 
 
 function applyFilter() {
@@ -157,20 +161,16 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     const inputPwd = document.getElementById("modal-password-input").value;
     const snap = await getDoc(doc(db, "boards", currentViewId));
     
-    // 1. 비밀번호가 틀리면 여기서 함수 종료
     if (!snap.exists() || inputPwd !== snap.data().password) {
         alert("비밀번호가 다릅니다.");
         return;
     }
 
-    // 2. 비밀번호가 맞다면 아래 코드가 이어서 실행됩니다.
     document.getElementById("password-modal").classList.add("hidden");
     document.getElementById("modal-password-input").value = "";
     
     const data = snap.data();
     await updateDoc(doc(db, "boards", currentViewId), { views: increment(1) });
-
-    
     
     document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
@@ -188,10 +188,15 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
     if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
     
+
+    
+    
+    
+    
 document.getElementById("detail-delete-btn").onclick = async () => { 
-    if(confirm("삭제하시겠습니까? 삭제된 글은 30일 후 영구 삭제됩니다.")) { 
+    if(confirm("삭제하시겠습니까? 삭제된 글은 내역에서 보이지 않게 됩니다.")) { 
         try {
-            // 실제 삭제 대신 상태값 업데이트
+            // 실제 삭제 대신 상태값만 업데이트합니다.
             await updateDoc(doc(db, "boards", currentViewId), {
                 isDeleted: true,
                 deletedAt: new Date()
@@ -203,7 +208,17 @@ document.getElementById("detail-delete-btn").onclick = async () => {
         }
     } 
 };
+
+
+
+
+
+
+
     
+    switchView('detail');
+});
+
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("password-modal").classList.add("hidden");
     document.getElementById("modal-password-input").value = "";
@@ -290,8 +305,11 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             file1Url, 
             file2Url, 
             views: 0, 
+  
+            
             createdAt: new Date(),
-            ip: userIp
+            ip: userIp,
+            isDeleted: false // <--- 추가
         });
 
         alert("접수되었습니다."); 
