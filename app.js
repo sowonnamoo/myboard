@@ -170,6 +170,8 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("modal-password-input").value = "";
 });
 
+let textInterval, barInterval; 
+
 document.getElementById("save-btn").addEventListener("click", async () => {
     // 1. 필수 항목 검사
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
@@ -178,18 +180,29 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         return; 
     }
     
-    // 2. 전화번호에서 하이픈 제거 후 뒷 4자리 자동 추출
+    // 2. 전화번호 검사
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
-    
-    // [추가된 부분] 11자리 검사 로직
     if (phoneVal.length !== 11) {
         alert("전화번호 11자리를 정확히 입력해주세요.");
         return; 
     }
 
+    // 3. 검사 통과 후 애니메이션 시작
+    const spinner = document.getElementById("loading-spinner");
+    const bar = document.getElementById("red-progress-bar");
+    const text = document.getElementById("loading-text");
+    spinner.classList.remove("hidden"); 
+    bar.style.width = "10%"; 
+    text.innerText = "파일 접수중...";
+    
+    // 애니메이션 로직 실행
+    let percent = 10;
+    barInterval = setInterval(() => { if(percent < 90) { percent += 10; bar.style.width = percent + "%"; } }, 5000);
+    textInterval = setInterval(() => { text.innerText = "업로드중입니다..."; }, 3000);
+
     const autoPassword = phoneVal.slice(-4); 
 
-    // 3. userIp 변수를 여기서 먼저 선언! (오류 방지)
+    // 4. IP 수집 및 저장
     let userIp = "알 수 없음";
     try {
         const res = await fetch("https://api.ipify.org?format=json");
@@ -205,7 +218,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
         
-        // 4. Firestore 저장 (컬렉션 이름이 boards 인지 확인하세요)
         await addDoc(collection(db, "boards"), { 
             author: document.getElementById('input-author').value, 
             productName: document.getElementById('product-name').value, 
@@ -219,7 +231,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             file2Url, 
             views: 0, 
             createdAt: new Date(),
-            ip: userIp // 이제 여기서 정의된 userIp를 안전하게 사용합니다
+            ip: userIp
         });
 
         alert("접수되었습니다."); 
@@ -237,15 +249,14 @@ document.getElementById("search-btn").addEventListener("click", applyFilter);
 document.getElementById("search-reset-btn").addEventListener("click", () => { document.getElementById("search-author").value = ""; applyFilter(); });
 loadAndRender();
 
-// 애니메이션 로직
-let textInterval, barInterval;
-document.getElementById("save-btn").addEventListener("click", () => {
-    const spinner = document.getElementById("loading-spinner"), bar = document.getElementById("red-progress-bar"), text = document.getElementById("loading-text");
-    spinner.classList.remove("hidden"); bar.style.width = "10%"; text.innerText = "파일 접수중...";
-    let percent = 10;
-    barInterval = setInterval(() => { if(percent < 90) { percent += 10; bar.style.width = percent + "%"; } }, 5000);
-    textInterval = setInterval(() => { text.innerText = "업로드중입니다..."; }, 3000);
-});
+
+
+
+
+
+
+
+
 
 const originalSwitchView = window.switchView;
 window.switchView = function(viewName) {
