@@ -277,6 +277,17 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     const autoPassword = phoneVal.slice(-4); 
 
+
+
+
+
+
+
+
+
+
+
+    
     // 6. IP 수집
     let userIp = "알 수 없음";
     try {
@@ -285,6 +296,24 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         userIp = json.ip;
     } catch (e) { console.error("IP 수집 실패", e); }
 
+
+
+// [여기에 넣으세요!]
+try {
+    const blockedSnap = await getDoc(doc(db, "blocked_ips", userIp));
+    if (blockedSnap.exists()) {
+        alert("접속이 차단된 IP입니다. 글을 작성할 수 없습니다.");
+        return; // 여기서 멈추면 저장이 되지 않습니다.
+    }
+} catch (e) {
+    console.log("차단 목록 조회 확인:", e);
+}
+
+    
+
+
+
+    
     const saveBtn = document.getElementById("save-btn");
     saveBtn.innerText = "파일 업로드중..."; 
     saveBtn.disabled = true;
