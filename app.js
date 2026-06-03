@@ -171,7 +171,7 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 });
 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    // 1. 필수 항목 검사 (password 제거됨)
+    // 1. 필수 항목 검사
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { 
         alert("필수 항목을 모두 입력해주세요."); 
@@ -180,6 +180,13 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     
     // 2. 전화번호에서 하이픈 제거 후 뒷 4자리 자동 추출
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
+    
+    // [추가된 부분] 11자리 검사 로직
+    if (phoneVal.length !== 11) {
+        alert("전화번호 11자리를 정확히 입력해주세요.");
+        return; 
+    }
+
     const autoPassword = phoneVal.slice(-4); 
 
     // 3. userIp 변수를 여기서 먼저 선언! (오류 방지)
