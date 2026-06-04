@@ -5,15 +5,32 @@
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .form-input { width: 100%; border: 1px solid #d1d5db; padding: 0.5rem; border-radius: 0.25rem; }
-    </style>
 </head>
+
+
+
+
+    <script>
+    // 페이지가 완전히 로드되면 실행
+    window.addEventListener('load', () => {
+        // 1. 목록 섹션 숨기기
+        const listSection = document.getElementById('view-list');
+        if (listSection) listSection.classList.add('hidden');
+
+        // 2. 글쓰기 섹션 보이기
+        const writeSection = document.getElementById('view-write');
+        if (writeSection) writeSection.classList.remove('hidden');
+    });
+</script>
+    
+
+
+    
 <body class="bg-white">
 
     <div class="w-[744px] mx-auto min-h-screen">
-        <header class="w-full flex justify-center pb-4">
-            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+        
+<header class="w-full flex justify-center pb-4">           <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
             <map name="Map">
                 <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
                 <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo1005.cafe24.com/front/php/b/board_list.php?board_no=7" target="_self">
@@ -23,10 +40,12 @@
         </header>
 
         <div class="py-0">
+            
             <section id="view-list" class="space-y-4">
                 <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
                     🎁 <strong>주문작성 게시판</strong> &nbsp;로그인 없이 접수가능합니다.
                 </div>
+
                 <table class="w-full text-sm border-t-2 border-gray-400 border-collapse">
                     <thead>
                         <tr class="bg-gray-50 text-gray-600 border-b">
@@ -35,74 +54,162 @@
                             <th class="py-3 w-32 text-center">작성일</th>
                         </tr>
                     </thead>
-                    <tbody id="list-body" class="divide-y"></tbody>
+                    <tbody id="list-body" class="divide-y">
+                        </tbody>
                 </table>
-                <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600"></div>
+
+                <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600">
+                    </div>
+
                 <div class="flex justify-between items-center pt-4 border-t border-gray-200">
                     <div class="flex items-center space-x-2">
                         <input type="text" id="search-author" class="border px-3 py-1.5 text-sm rounded bg-white w-48 focus:border-gray-400 focus:outline-none" placeholder="작성자 이름 검색...">
                         <button id="search-btn" class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700">검색</button>
+                        <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
                     </div>
                     <button id="go-write-btn" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
                 </div>
             </section>
 
             <section id="view-write" class="hidden w-full">
-                <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>
-                <table class="w-full text-sm border-collapse">
-                    <tr class="form-row"><td class="w-28 font-bold text-gray-700 py-3">구입 제품명 *</td><td><input type="text" id="product-name" class="form-input" placeholder="제품명을 입력하세요"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">수량 *</td><td><input type="text" id="quantity" class="form-input"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">사이즈 *</td><td><input type="text" id="size" class="form-input"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">파일1 (필수) *</td><td><input type="file" id="file-1"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">파일2</td><td><input type="file" id="file-2"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3 align-top">작업메시지</td><td><textarea id="message" rows="4" class="form-input resize-none"></textarea></td></tr>
-                    <tr class="form-row"><td class="w-28 font-bold text-gray-700 py-3">작성자명 *</td><td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 회사명"></td></tr>
-                    <tr class="form-row"><td class="font-bold text-gray-700 py-3">접수자핸드폰 *</td><td><input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" maxlength="11" oninput="this.value = this.value.replace(/[^0-9-]/g, '')"></td></tr>
+<h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
+              <table class="w-full text-sm border-collapse">
                     <tr class="form-row">
-          
-                        
-                        
-    <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
-    <td class="p-2">
-        <div class="flex items-center space-x-2 w-full flex-nowrap">
-            <input type="text" id="address" class="form-input flex-grow" placeholder="주소" readonly>
-            <button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-3 py-2 rounded text-sm whitespace-nowrap shrink-0">주소찾기</button>
-        </div>
-        <input type="text" id="address-detail" class="form-input w-full mt-2" placeholder="상세주소 입력">
-
-
-
-                            
-                        </td>
+                        <td class="w-28 font-bold text-gray-700 py-3">구입 제품명 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="product-name" class="form-input" placeholder="제품명을 입력하세요"></td>
                     </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">수량 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="quantity" class="form-input"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="size" class="form-input"></td>
+                    </tr>
+                  <tr class="form-row">
+<td class="font-bold text-gray-700 py-3">파일1 (필수) <span class="text-red-500">*</span></td>
+                      <td><input type="file" id="file-1"></td>
+</tr>
+<tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">파일2</td>
+    <td><input type="file" id="file-2"></td>
+</tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3 align-top">작업메시지</td>
+                        <td><textarea id="message" rows="4" class="form-input resize-none"></textarea></td>
+                    </tr>
+
+                                      <tr class="form-row">
+                        <td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 회사명"></td>
+                    </tr>
+                  
+        <tr class="form-row">
+<tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td>
+    <td>
+        <input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" 
+               maxlength="11" 
+               oninput="this.value = this.value.replace(/[^0-9-]/g, '')">
+    </td>
+</tr>
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+<tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
+    <td class="space-y-2">
+        <div class="flex items-center space-x-2 flex-nowrap">
+            <input type="text" id="address" class="form-input flex-grow" placeholder="주소" readonly>
+            <button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-2 py-2 rounded text-sm whitespace-nowrap">주소찾기</button>
+        </div>
+        <input type="text" id="address-detail" class="form-input w-full" placeholder="상세주소 입력">
+    </td>
+</tr>
+
+
+                  
                 </table>
+
                 <div class="flex justify-between items-center mt-6">
-                    <button onclick="document.getElementById('view-list').classList.remove('hidden'); document.getElementById('view-write').classList.add('hidden');" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
+                    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
                     <button id="save-btn" class="bg-gray-600 text-white font-semibold px-8 py-1.5 text-sm rounded hover:bg-gray-700">접수하기</button>
                 </div>
             </section>
 
             <section id="view-detail" class="hidden w-full space-y-5">
-                </section>
+                <div class="bg-sky-600 text-white p-3 font-bold text-center rounded shadow-inner text-base">
+                    🛒 접수가완료되셨습니다. 입금하시면 제작이 시작됩니다.
+                    <div class="text-xs font-normal opacity-90 mt-0.5">농협 : 123-45-67890 | 국민 : 987-65-43210</div>
+                </div>
+
+                <div class="border border-gray-200 rounded bg-white overflow-hidden">
+                    <div id="detail-title" class="bg-gray-50 px-4 py-3 font-bold text-lg text-gray-700 border-b"></div>
+                    <div class="flex justify-between text-xs bg-slate-50 border-b text-gray-400 p-2.5 px-4">
+                        <span id="detail-author"></span>
+                        <span id="detail-date"></span>
+                        <span id="detail-views"></span>
+                    </div>
+
+                    <div class="p-4 divide-y divide-gray-100 text-sm space-y-3">
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">수량</span><span id="detail-qty"></span></div>
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">사이즈</span><span id="detail-size"></span></div>
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">접수자핸드폰</span><span id="detail-phone"></span></div>
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">배송지</span><span id="detail-address"></span></div>
+                        <div class="flex flex-col py-2 space-y-2">
+                            <span class="font-semibold text-gray-400">작업메시지</span>
+                            <div id="detail-msg" class="whitespace-pre-wrap text-gray-700 bg-gray-50 p-4 rounded border border-gray-200"></div>
+                        </div>
+                        <div class="flex py-2 items-center"><span class="w-28 font-semibold text-gray-400">첨부파일</span><div id="detail-files" class="space-y-1"></div></div>
+                    </div>
+                </div>
+
+                <p class="text-red-500 font-semibold text-xs">※ 가격표의 금액을 입금해주세요. / 결제 완료되시면 시안이 등록됩니다.</p>
+
+                <div class="bg-gray-50 p-4 rounded border border-gray-200 border-dashed flex space-x-3 items-start">
+                    <div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold shrink-0">管</div>
+                    <div class="space-y-1 class-custom-reply">
+                        <div class="flex justify-between text-xs w-[600px]"><span class="font-bold text-gray-700">관리자</span><span class="text-gray-400">시스템 자동 안내</span></div>
+                        <p class="text-sm text-gray-600">안녕하세요. 고객님. 소중한 도안 접수가 정상 완료되었습니다. 기재해주신 사양 검토 후 시안 작업선 업로드 예정입니다.</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-2">
+                    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
+                    <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600">삭제</button>
+                </div>
+            </section>
+
         </div>
     </div>
 
-    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-    <script>
-        function execDaumPostcode() {
-            new daum.Postcode({
-                oncomplete: function(data) {
-                    document.getElementById("address").value = data.address;
-                    document.getElementById("address-detail").focus();
-                }
-            }).open();
-        }
-        // 글쓰기 버튼 클릭 시 화면 전환
-        document.getElementById('go-write-btn').addEventListener('click', () => {
-            document.getElementById('view-list').classList.add('hidden');
-            document.getElementById('view-write').classList.remove('hidden');
-        });
-    </script>
     <script type="module" src="app.js"></script>
+
+    
+
+<div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
+        <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글 열람</h3>
+        <p class="text-xs text-gray-500 mb-4">비밀번호(휴대폰 뒷자리 4자리)를 입력하세요.</p>
+        
+        <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;"
+               class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500 bg-white text-gray-900" placeholder="••••">
+        
+        <div class="flex gap-2 text-sm font-medium">
+            <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">취소</button>
+            <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">확인</button>
+        </div>
+    </div>
+</div>
+
+
+<div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+    <div class="bg-[#f0ece2] p-8 rounded-lg shadow-xl text-center w-80">
+        <p id="loading-text" class="font-bold text-gray-800 text-lg mb-4">파일 접수중...</p>
+        <div class="w-full bg-black h-5 rounded-sm overflow-hidden">
+            <div id="red-progress-bar" class="bg-red-600 h-full w-0" style="transition: width 3s linear;"></div>
+        </div>
+    </div>
+</div>
+    
 </body>
 </html>
