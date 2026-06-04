@@ -393,4 +393,51 @@ document.getElementById('input-author').addEventListener('input', (e) => {
 
 
 
+import { writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+document.getElementById("mask-info-btn").addEventListener("click", async () => {
+    if (!confirm("30일 지난 모든 글의 개인정보를 마스킹하시겠습니까? 되돌릴 수 없습니다.")) return;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const q = query(ordersCollection);
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db); // 여러 개를 한 번에 수정하기 위한 배치 작업
+    let count = 0;
+
+    snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const createdAt = data.createdAt.toDate();
+
+        // 30일 지난 글인지 확인
+        if (createdAt < thirtyDaysAgo) {
+            let updateData = {};
+            
+            // 전화번호 앞 5자리 마스킹 (예: 010-12 -> [개인정보보호]12...)
+            if (data.phone && !data.phone.includes("[개인정보보호]")) {
+                updateData.phone = "[개인정보보호]" + data.phone.substring(5);
+            }
+            
+            // 주소 뒷 6자리 마스킹
+            if (data.address && !data.address.includes("[개인정보보호]")) {
+                const addr = data.address;
+                updateData.address = addr.substring(0, Math.max(0, addr.length - 6)) + "[개인정보보호]";
+            }
+
+            if (Object.keys(updateData).length > 0) {
+                batch.update(docSnap.ref, updateData);
+                count++;
+            }
+        }
+    });
+
+    if (count > 0) {
+        await batch.commit();
+        alert(`${count}개의 글이 마스킹되었습니다.`);
+    } else {
+        alert("수정할 대상이 없습니다.");
+    }
+});
+
 
