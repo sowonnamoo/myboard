@@ -3,12 +3,12 @@ import { getFirestore, collection, getDocs, query, writeBatch, doc } from "https
 
 // 기존 index.html에서 쓰던 firebaseConfig와 동일하게 넣으세요
 const firebaseConfig = {
-    apiKey: "AIzaSynRd2aA",
-    authDomain: "board-pp.com",
-    projectId: "be3",
-    storageBucket: "board-2orage.app",
-    messagingSenderId: "2586316",
-    appId: "1:2588176633fff11b209"
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    authDomain: "board-291e3.firebaseapp.com",
+    projectId: "board-291e3",
+    storageBucket: "board-291e3.firebasestorage.app",
+    messagingSenderId: "25881766316",
+    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
 };
 
 const app = initializeApp(firebaseConfig);
