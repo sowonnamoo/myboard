@@ -173,7 +173,22 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+<script type="module" src="app.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const saveBtn = document.getElementById('save-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    document.getElementById('view-write').classList.add('hidden'); // 글쓰기창 숨김
+                    document.getElementById('view-list').classList.add('hidden');  // 목록창 숨김
+                    document.getElementById('view-detail').classList.remove('hidden'); // 상세창 노출
+                }, 500);
+            });
+        }
+    });
+</script>
 
     
 
