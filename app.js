@@ -132,7 +132,7 @@ function renderTable() {
         // --- [수정된 제목 표시 로직] ---
         let displayTitle = data.title || data.productName;
         if (displayTitle.length > 5) {
-            displayTitle = displayTitle.substring(0, 5) + "*****";
+            displayTitle = displayTitle.substring(0, 10) + "***";
         }
         // ------------------------------
 
