@@ -7,13 +7,6 @@
     <link rel="stylesheet" href="style.css">
 
 
-<script>
-    window.addEventListener('load', () => {
-        document.getElementById('view-list').classList.add('hidden');
-        document.getElementById('view-write').classList.remove('hidden');
-    });
-</script>
-
     
     
 </head>
@@ -32,8 +25,8 @@
 
         <div class="py-0">
             
-            <section id="view-list" class="space-y-4">
-                <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
+<section id="view-list" class="hidden space-y-4">
+    <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
                     🎁 <strong>주문작성 게시판</strong> &nbsp;로그인 없이 접수가능합니다.
                 </div>
 
@@ -62,7 +55,7 @@
                 </div>
             </section>
 
-            <section id="view-write" class="hidden w-full">
+            <section id="view-write" class="w-full">
 <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
               <table class="w-full text-sm border-collapse">
                     <tr class="form-row">
