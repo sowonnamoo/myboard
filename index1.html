@@ -5,27 +5,18 @@
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
-</head>
 
 
-
-
-    <script>
-    // 페이지가 완전히 로드되면 실행
+<script>
     window.addEventListener('load', () => {
-        // 1. 목록 섹션 숨기기
-        const listSection = document.getElementById('view-list');
-        if (listSection) listSection.classList.add('hidden');
-
-        // 2. 글쓰기 섹션 보이기
-        const writeSection = document.getElementById('view-write');
-        if (writeSection) writeSection.classList.remove('hidden');
+        document.getElementById('view-list').classList.add('hidden');
+        document.getElementById('view-write').classList.remove('hidden');
     });
 </script>
-    
-
 
     
+    
+</head>
 <body class="bg-white">
 
     <div class="w-[744px] mx-auto min-h-screen">
@@ -71,21 +62,13 @@
                 </div>
             </section>
 
-
-
-    </header>
-
-<div class="py-0">
-    <section id="view-list" class="hidden">
-    </section>
-
-    <section id="view-write" class="w-full">
-        <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>               
-        <table class="w-full text-sm border-collapse">
-            <tr class="form-row">
-                <td class="w-28 font-bold text-gray-700 py-3">구입 제품명 <span class="text-red-500">*</span></td>
-                <td><input type="text" id="product-name" class="form-input" placeholder="제품명을 입력하세요"></td>
-           
+            <section id="view-write" class="hidden w-full">
+<h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
+              <table class="w-full text-sm border-collapse">
+                    <tr class="form-row">
+                        <td class="w-28 font-bold text-gray-700 py-3">구입 제품명 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="product-name" class="form-input" placeholder="제품명을 입력하세요"></td>
+                    </tr>
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">수량 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="quantity" class="form-input"></td>
