@@ -4,12 +4,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    apiKey: "AIzaSynRd2aA",
+    authDomain: "board-pp.com",
+    projectId: "be3",
+    storageBucket: "board-2orage.app",
+    messagingSenderId: "2586316",
+    appId: "1:2588176633fff11b209"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -125,12 +125,20 @@ function renderTable() {
     }
     const totalPages = Math.ceil(filteredOrders.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-    filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+  filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        
+        // --- [수정된 제목 표시 로직] ---
+        let displayTitle = data.title || data.productName;
+        if (displayTitle.length > 5) {
+            displayTitle = displayTitle.substring(0, 5) + "*****";
+        }
+        // ------------------------------
+
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
-<td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${data.title || data.productName} (접수완료)</td>
-<td class="py-3 text-sm text-gray-600">${data.author || "익명"}</td>
+            <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료)</td>
+            <td class="py-3 text-sm text-gray-600">${data.author || "익명"}</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
     });
 
@@ -370,3 +378,19 @@ window.switchView = function(viewName) {
     if (viewName === 'list') { document.getElementById("loading-spinner").classList.add("hidden"); document.getElementById("red-progress-bar").style.width = "0%"; clearInterval(barInterval); clearInterval(textInterval); }
     originalSwitchView(viewName);
 };
+
+
+
+
+// 구입 제품명 13글자, 작성자명 5글자 제한
+document.getElementById('product-name').addEventListener('input', (e) => {
+    if (e.target.value.length > 13) e.target.value = e.target.value.slice(0, 13);
+});
+document.getElementById('input-author').addEventListener('input', (e) => {
+    if (e.target.value.length > 5) e.target.value = e.target.value.slice(0, 5);
+});
+
+
+
+
+
