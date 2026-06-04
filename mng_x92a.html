@@ -54,25 +54,26 @@
     };
 
     // 영구 삭제 기능
-    window.permanentDeleteOldPosts = async function() {
-        if (!confirm("30일이 경과한 '삭제된 글'을 데이터베이스에서 영구 삭제하시겠습니까?")) return;
+window.permanentDeleteOldPosts = async function() {
+    if (!confirm("30일이 경과한 '삭제된 글'을 데이터베이스에서 영구 삭제하시겠습니까?")) return;
 
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const q = query(collection(db, "boards"));
-        const snapshot = await getDocs(q);
-        
-        let count = 0;
-        for (const docSnapshot of snapshot.docs) {
-            const data = docSnapshot.data();
-            if (data.isDeleted === true && data.deletedAt && data.deletedAt.toDate() < thirtyDaysAgo) {
-                await deleteDoc(doc(db, "boards", docSnapshot.id));
-                count++;
-            }
+    const q = query(collection(db, "boards"));
+    const snapshot = await getDocs(q);
+    
+    let count = 0;
+    for (const docSnapshot of snapshot.docs) {
+        const data = docSnapshot.data();
+        // [수정된 부분] deletedAt이 없어도 createdAt이 30일 지났고, isDeleted가 true인 경우 삭제
+        if (data.isDeleted === true && data.createdAt && data.createdAt.toDate() < thirtyDaysAgo) {
+            await deleteDoc(doc(db, "boards", docSnapshot.id));
+            count++;
         }
-        alert(count > 0 ? `${count}개의 글이 영구 삭제되었습니다.` : "30일 지난 삭제 건이 없습니다.");
-    };
+    }
+    alert(count > 0 ? `${count}개의 글이 영구 삭제되었습니다.` : "30일 지난 삭제 건이 없습니다.");
+};
 </script>
 </body>
 </html>
