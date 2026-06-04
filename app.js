@@ -384,7 +384,7 @@ window.switchView = function(viewName) {
 
 // 구입 제품명 13글자, 작성자명 5글자 제한
 document.getElementById('product-name').addEventListener('input', (e) => {
-    if (e.target.value.length > 13) e.target.value = e.target.value.slice(0, 13);
+    if (e.target.value.length > 20) e.target.value = e.target.value.slice(0, 13);
 });
 document.getElementById('input-author').addEventListener('input', (e) => {
     if (e.target.value.length > 5) e.target.value = e.target.value.slice(0, 5);
