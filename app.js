@@ -119,18 +119,23 @@ function renderTable() {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
     
-    // ... (이전 코드 생략)
+    if (filteredOrders.length === 0) {
+        listBody.innerHTML = `<tr><td colspan="3" class="py-8 text-gray-400 text-center text-sm">내역이 존재하지 않습니다.</td></tr>`;
+        document.getElementById("pagination").innerHTML = "";
+        return;
+    }
 
-    const now = new Date(); // 현재 시간
+    const totalPages = Math.ceil(filteredOrders.length / POSTS_PER_PAGE);
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    const now = new Date(); // 현재 시간 객체 생성
 
     filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         
-        // --- [NEW 배지 추가 로직] ---
+        // [NEW 배지 로직] 24시간 이내인 경우에만 생성
         const diffInHours = (now - d) / (1000 * 60 * 60);
         const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
-        // --------------------------
 
         let displayTitle = data.title || data.productName;
         if (displayTitle.length > 5) {
@@ -145,17 +150,21 @@ function renderTable() {
             <td class="py-3 text-xs text-gray-400">${dateStr}</td>
         </tr>`;
     });
-    
+
+    // 페이지네이션 렌더링
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage-1})">이전</span>`;
+    
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, startPage + 5);
     if (endPage - startPage < 5 && totalPages > 5) startPage = Math.max(1, endPage - 5);
+    
     for (let i = startPage; i <= endPage; i++) {
         const activeClass = i === currentPage ? "bg-blue-600 text-white" : "bg-white hover:bg-gray-100";
         pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded text-sm mx-0.5 ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
     }
+    
     if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage+1})">다음</span>`;
 }
 
