@@ -2,53 +2,38 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>시안 확인 및 댓글 게시판</title>
+    <title>시안 확인 게시판</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-white">
-
     <div class="w-[744px] mx-auto min-h-screen">
         <header class="w-full flex justify-center pb-4">
-            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" class="object-cover">
+            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68">
         </header>
 
         <section id="view-list" class="space-y-4">
-            <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
-                🎁 <strong>시안 확인 게시판</strong> &nbsp;고객님의 시안을 확인하고 댓글을 남겨주세요.
-            </div>
-
-            <table class="w-full text-sm border-t-2 border-gray-400 border-collapse">
-                <thead>
-                    <tr class="bg-gray-50 text-gray-600 border-b">
-                        <th class="py-3 px-4 text-left">제목</th>
-                        <th class="py-3 w-28 text-center">작성자</th>
-                        <th class="py-3 w-32 text-center">작성일</th>
-                    </tr>
-                </thead>
-                <tbody id="list-body" class="divide-y"></tbody>
+            <table class="w-full text-sm">
+                <tbody id="list-body"></tbody>
             </table>
-
-            <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600"></div>
+            <div id="pagination" class="flex justify-center items-center space-x-2 py-4"></div>
         </section>
 
-        <section id="view-detail" class="hidden w-full space-y-5">
-            <div id="detail-title" class="bg-gray-50 px-4 py-3 font-bold text-lg text-gray-700 border-b"></div>
-            <div id="detail-image" class="p-4 border-b text-center"></div>
+        <section id="view-detail" class="hidden w-full space-y-4">
+            <div id="detail-header" class="bg-gray-100 p-4 rounded font-bold text-gray-700"></div>
+            <div id="detail-image" class="p-4 border text-center"></div>
             
-            <div class="p-4 border rounded bg-gray-50">
-                <h3 class="font-bold text-sm mb-3">💬 시안 피드백 댓글</h3>
-                <div id="comments-list" class="space-y-3 mb-4 text-sm"></div>
+            <div class="p-4 bg-gray-50 border rounded">
+                <h3 class="font-bold text-sm mb-2">💬 댓글</h3>
+                <div id="comments-list" class="space-y-2 mb-4 text-sm"></div>
                 <div class="flex gap-2">
-                    <input type="text" id="comment-input" class="flex-grow border p-2 rounded text-sm" placeholder="댓글을 입력하세요">
-                    <button id="save-comment-btn" class="bg-gray-600 text-white px-6 py-2 text-sm rounded hover:bg-gray-700">등록</button>
+                    <input type="text" id="comment-input" class="flex-grow border p-2 rounded text-sm">
+                    <button id="save-comment-btn" class="bg-gray-600 text-white px-4 py-2 rounded text-sm">등록</button>
                 </div>
             </div>
-            
-            <button onclick="location.reload()" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록으로 돌아가기</button>
+            <button onclick="location.reload()" class="border px-4 py-1.5 rounded text-sm">목록으로</button>
         </section>
     </div>
-
     <script type="module" src="app2.js"></script>
 </body>
 </html>
