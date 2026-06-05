@@ -48,12 +48,27 @@ listBody.innerHTML += `
     </tr>`;
     });
 
+// 페이징 로직 부분 (기존 코드 삭제 후 교체)
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white" onclick="goToPage(${currentPage-1})">이전</span>`;
-    for (let i = 1; i <= totalPages; i++) {
+    
+    // 5개씩 끊어서 보여주기 위한 범위 계산
+    const range = 5;
+    const startPage = Math.floor((currentPage - 1) / range) * range + 1;
+    const endPage = Math.min(startPage + range - 1, totalPages);
+
+    if (currentPage > 1) {
+        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white" onclick="goToPage(${currentPage - 1})">이전</span>`;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
         const active = i === currentPage ? "bg-blue-600 text-white" : "bg-white";
         pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded mx-0.5 ${active}" onclick="goToPage(${i})">${i}</span>`;
+    }
+
+    if (currentPage < totalPages) {
+        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white" onclick="goToPage(${currentPage + 1})">다음</span>`;
+    
     }
     if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white" onclick="goToPage(${currentPage+1})">다음</span>`;
 }
