@@ -29,23 +29,31 @@ async function loadData() {
     renderTable();
 }
 
-function renderTable() {
+function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    const totalPages = Math.ceil(allOrders.length / POSTS_PER_PAGE);
+    const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
-    allOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
-        const title = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-        const dateStr = data.createdAt.toDate().toLocaleDateString();
+    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+        // [목록용] 제목 구성: 작성자님 + 상태 버튼
+        const status = data.status || "시안 확인중"; // 데이터에 status 필드가 없으면 기본값 표시
+        const titleDisplay = `${data.author}님`;
+        
+        const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
+        
         listBody.innerHTML += `
     <tr class="hover:bg-gray-50 cursor-pointer border-b border-gray-100" onclick="viewDetail('${data.id}')"> 
-        <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">🔒 ${title}</td>
+        <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
+            <span class="mr-2">🔒 ${titleDisplay}</span>
+            <span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-sm">${status}</span>
+        </td>
         <td class="py-3 text-sm text-gray-600">관리자</td>
         <td class="py-3 text-xs text-gray-400">${dateStr}</td>
     </tr>`;
     });
 
+    // ... 페이징 로직 동일 ...
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     const range = 5;
