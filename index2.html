@@ -1,59 +1,109 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>시안 확인 및 댓글 게시판</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    authDomain: "board-291e3.firebaseapp.com",
+    projectId: "board-291e3",
+    storageBucket: "board-291e3.firebasestorage.app",
+    messagingSenderId: "25881766316",
+    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let allOrders = [];
+let currentPage = 1;
+const POSTS_PER_PAGE = 8;
+let currentViewId = "";
+
+async function loadData() {
+    const q = query(collection(db, "boards"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+    allOrders = [];
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        if (!data.isDeleted) allOrders.push({ id: doc.id, ...data });
+    });
+    renderTable();
+}
+
+function renderTable() {
+    const listBody = document.getElementById("list-body");
+    listBody.innerHTML = "";
+    const totalPages = Math.ceil(allOrders.length / POSTS_PER_PAGE);
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+
+    allOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+        const title = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+        const dateStr = data.createdAt.toDate().toLocaleDateString();
+        listBody.innerHTML += `
+    <tr class="hover:bg-gray-50 cursor-pointer border-b border-gray-100" onclick="viewDetail('${data.id}')"> 
+        <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">🔒 ${title}</td>
+        <td class="py-3 text-sm text-gray-600">관리자</td>
+        <td class="py-3 text-xs text-gray-400">${dateStr}</td>
+    </tr>`;
+    });
+
+    const pager = document.getElementById("pagination");
+    pager.innerHTML = "";
+    const range = 5;
+    const startPage = Math.floor((currentPage - 1) / range) * range + 1;
+    const endPage = Math.min(startPage + range - 1, totalPages);
+
+    if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white" onclick="goToPage(${currentPage - 1})">이전</span>`;
+    for (let i = startPage; i <= endPage; i++) {
+        const active = i === currentPage ? "bg-blue-600 text-white" : "bg-white";
+        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded mx-0.5 ${active}" onclick="goToPage(${i})">${i}</span>`;
+    }
+    if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white" onclick="goToPage(${currentPage + 1})">다음</span>`;
+}
+
+window.goToPage = (p) => { currentPage = p; renderTable(); };
+
+// 비밀번호 모달 로직 연동
+window.viewDetail = async function(id) {
+    const snap = await getDoc(doc(db, "boards", id));
+    const data = snap.data();
+    const storedPass = String(data.password || "");
     
-</head>
-<body class="bg-white">
+    const modal = document.getElementById("password-modal");
+    const input = document.getElementById("modal-password-input");
+    const confirmBtn = document.getElementById("modal-confirm-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
 
-    <div class="w-[744px] mx-auto min-h-screen">
-        
-<header class="w-full flex justify-center pb-4">           <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
-            <map name="Map">
-                <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
-                <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo.github.io/myboard/index2" target="_self">
-                <area shape="rect" coords="383,-1,572,58" href="https://isecogr.cafe24.com/front/php/b/board_list.php?board_no=1002" target="_self">
-                <area shape="rect" coords="572,-3,742,58" href="https://sowonnamoo1004.cafe24.com/front/php/b/board_list.php?board_no=1" target="_self">
-            </map>
-        </header>
+    modal.classList.remove("hidden");
+    input.value = "";
+    input.focus();
 
-        <section id="view-list" class="space-y-4">
-            <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
-                🎁 <strong>시안 확인 게시판</strong> &nbsp;고객님의 시안을 확인하고 댓글을 남겨주세요.
-            </div>
+    confirmBtn.onclick = () => {
+        const inputVal = input.value;
+        // 로직: 숫자만 있으면 뒷 4자리, 아니면 전체 비교
+        const isNumeric = /^\d+$/.test(storedPass);
+        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
-        <table class="w-full text-sm border-t-2 border-gray-400 table-fixed">
-    <thead>
-        <tr class="bg-gray-50 text-gray-600 border-b">
-            <th class="py-3 px-4 text-left w-[450px]">제목</th> <th class="py-3 w-[150px] text-center">작성자</th>
-            <th class="py-3 w-[144px] text-center">작성일</th>
-        </tr>
-    </thead>
-<tbody id="list-body" class="text-center"></tbody></table>
+        if (inputVal === passToCompare) {
+            modal.classList.add("hidden");
+            currentViewId = id;
+            document.getElementById("detail-title").innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+            document.getElementById("detail-image").innerHTML = `<img src="${data.file1Url}" class="max-w-full mx-auto">`;
+            document.getElementById("view-list").classList.add("hidden");
+            document.getElementById("view-detail").classList.remove("hidden");
+        } else {
+            alert("비밀번호가 일치하지 않습니다.");
+        }
+    };
 
-            <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600"></div>
-        </section>
+    cancelBtn.onclick = () => modal.classList.add("hidden");
+};
 
-        <section id="view-detail" class="hidden w-full space-y-5">
-            <div id="detail-title" class="bg-gray-50 px-4 py-3 font-bold text-lg text-gray-700 border-b"></div>
-            <div id="detail-image" class="p-4 border-b text-center"></div>
-            
-            <div class="p-4 border rounded bg-gray-50">
-                <h3 class="font-bold text-sm mb-3">💬 시안 피드백 댓글</h3>
-                <div id="comments-list" class="space-y-3 mb-4 text-sm"></div>
-                <div class="flex gap-2">
-                    <input type="text" id="comment-input" class="flex-grow border p-2 rounded text-sm" placeholder="댓글을 입력하세요">
-                    <button id="save-comment-btn" class="bg-gray-600 text-white px-6 py-2 text-sm rounded hover:bg-gray-700">등록</button>
-                </div>
-            </div>
-            
-            <button onclick="location.reload()" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록으로 돌아가기</button>
-        </section>
-    </div>
+document.getElementById("save-comment-btn").addEventListener("click", async () => {
+    const input = document.getElementById("comment-input");
+    if (!input.value) return;
+    await addDoc(collection(db, "boards", currentViewId, "comments"), { text: input.value, createdAt: new Date() });
+    input.value = "";
+    alert("댓글이 등록되었습니다.");
+});
 
-    <script type="module" src="app2.js"></script>
-</body>
-</html>
+loadData();
