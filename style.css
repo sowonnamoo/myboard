@@ -61,3 +61,23 @@ input[type="file"] {
 .form-input:focus {
     border-color: #9ca3af; /* 클릭 시 테두리 색상 */
 }
+
+
+CSS
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.new-badge {
+  display: inline-block;
+  background-color: #fb923c; /* 주황색 */
+  color: white;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: bold;
+  animation: blink 1s infinite;
+  margin-left: 5px;
+  vertical-align: middle;
+}
