@@ -33,14 +33,15 @@ function renderTable() {
     listBody.innerHTML = "";
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
     
-    allOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
-        // 제목: 작성자님 (확인하기)
-        listBody.innerHTML += `
-            <tr class="cursor-pointer hover:bg-gray-50" onclick="viewDetail('${data.id}')">
-                <td class="py-3 px-2">${data.author}님 (확인하기)</td>
-                <td class="py-3 text-right text-xs text-gray-400">${data.createdAt.toDate().toLocaleDateString()}</td>
-            </tr>`;
-    });
+allOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    const title = `${data.author}님 (확인하기)`; // 요청하신 제목 형식
+    
+    listBody.innerHTML += `
+        <tr class="hover:bg-gray-50 border-b cursor-pointer text-center" onclick="viewDetail('${data.id}')">
+            <td class="py-3 px-4 text-left font-medium text-gray-900">${title}</td>
+            <td class="py-3 text-sm text-gray-600 font-bold">관리자</td> <td class="py-3 text-xs text-gray-400">${data.createdAt.toDate().toLocaleDateString()}</td>
+        </tr>`;
+});
 
     // 페이징: 최대 5개 노출
     const totalPages = Math.ceil(allOrders.length / POSTS_PER_PAGE);
