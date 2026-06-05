@@ -1,7 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firestore.js";
 
-const firebaseConfig = { /* 기존 index1과 동일 */ };
+const firebaseConfig = {
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    authDomain: "board-291e3.firebaseapp.com",
+    projectId: "board-291e3",
+    storageBucket: "board-291e3.firebasestorage.app",
+    messagingSenderId: "25881766316",
+    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
