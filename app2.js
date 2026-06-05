@@ -51,7 +51,7 @@ function renderTable(dataToRender = allOrders) {
             <span class="text-xs text-gray-500">${displayInfo}</span>
 
         </td>
-        <td class="py-3 text-sm text-gray-600">관리자</td>
+        <td class="py-3 text-sm text-gray-600">에코그래픽스</td>
         <td class="py-3 text-xs text-gray-400">${dateStr}</td>
     </tr>`;
     });
