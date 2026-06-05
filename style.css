@@ -74,12 +74,13 @@ CSS
   display: inline-block;
   background-color: #fb923c; 
   color: white;
-  font-size: 8px;
-  padding: 0 4px;
-  border-radius: 4px;
+  font-size: 8px;        /* 글자 크기 유지 */
+  padding: 0px 2px;      /* 위아래 패딩 제거, 좌우만 최소한으로 */
+  line-height: 1;        /* 줄 높이를 1로 해서 텍스트 박스 높이 최소화 */
+  border-radius: 2px;    /* 둥근 정도를 좀 더 작게 */
   font-weight: bold;
   animation: blink 1s infinite;
-  margin-left: 5px;
+  margin-left: 4px;
   vertical-align: middle;
 }
 </style>
