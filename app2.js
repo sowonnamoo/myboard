@@ -84,9 +84,10 @@ window.goToPage = (p) => {
     }
 };
 
-// 비밀번호 모달 로직 연동
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
+    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
+    
     const data = snap.data();
     const storedPass = String(data.password || "");
     
@@ -99,19 +100,28 @@ window.viewDetail = async function(id) {
     input.value = "";
     input.focus();
 
+    // 기존 이벤트 초기화 후 새로 등록
+    confirmBtn.onclick = null; 
     confirmBtn.onclick = () => {
         const inputVal = input.value;
-        // 로직: 숫자만 있으면 뒷 4자리, 아니면 전체 비교
         const isNumeric = /^\d+$/.test(storedPass);
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id;
-            document.getElementById("detail-title").innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-            document.getElementById("detail-image").innerHTML = `<img src="${data.file1Url}" class="max-w-full mx-auto">`;
-            document.getElementById("view-list").classList.add("hidden");
-            document.getElementById("view-detail").classList.remove("hidden");
+
+            // 상세 페이지 요소 안전하게 찾기
+            const dTitle = document.getElementById("detail-title");
+            const dImage = document.getElementById("detail-image");
+            const vList = document.getElementById("view-list");
+            const vDetail = document.getElementById("view-detail");
+
+            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+            if (dImage) dImage.innerHTML = `<img src="${data.file1Url}" class="max-w-full mx-auto">`;
+            
+            if (vList) vList.classList.add("hidden");
+            if (vDetail) vDetail.classList.remove("hidden");
         } else {
             alert("비밀번호가 일치하지 않습니다.");
         }
