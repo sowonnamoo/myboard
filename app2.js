@@ -29,15 +29,15 @@ async function loadData() {
     renderTable();
 }
 
-function renderTable(dataToRender = allOrders) {
+function renderTable() {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
+    const totalPages = Math.ceil(allOrders.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
-    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    allOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
         const title = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-        const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
+        const dateStr = data.createdAt.toDate().toLocaleDateString();
         listBody.innerHTML += `
     <tr class="hover:bg-gray-50 cursor-pointer border-b border-gray-100" onclick="viewDetail('${data.id}')"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">🔒 ${title}</td>
@@ -62,24 +62,7 @@ function renderTable(dataToRender = allOrders) {
 
 window.goToPage = (p) => { currentPage = p; renderTable(); };
 
-// 검색 기능
-document.getElementById("search-btn").addEventListener("click", () => {
-    const keyword = document.getElementById("search-author").value.trim();
-    if (!keyword) return alert("작성자를 입력하세요.");
-    const filtered = allOrders.filter(o => o.author.includes(keyword));
-    currentPage = 1;
-    renderTable(filtered);
-    document.getElementById("search-reset-btn").classList.remove("hidden");
-});
-
-document.getElementById("search-reset-btn").addEventListener("click", () => {
-    document.getElementById("search-author").value = "";
-    document.getElementById("search-reset-btn").classList.add("hidden");
-    currentPage = 1;
-    renderTable();
-});
-
-// 비밀번호 모달 및 상세 보기
+// 비밀번호 모달 로직 연동
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
     const data = snap.data();
@@ -87,13 +70,16 @@ window.viewDetail = async function(id) {
     
     const modal = document.getElementById("password-modal");
     const input = document.getElementById("modal-password-input");
-    
+    const confirmBtn = document.getElementById("modal-confirm-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
+
     modal.classList.remove("hidden");
     input.value = "";
     input.focus();
 
-    document.getElementById("modal-confirm-btn").onclick = () => {
+    confirmBtn.onclick = () => {
         const inputVal = input.value;
+        // 로직: 숫자만 있으면 뒷 4자리, 아니면 전체 비교
         const isNumeric = /^\d+$/.test(storedPass);
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
@@ -108,7 +94,8 @@ window.viewDetail = async function(id) {
             alert("비밀번호가 일치하지 않습니다.");
         }
     };
-    document.getElementById("modal-cancel-btn").onclick = () => modal.classList.add("hidden");
+
+    cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
 document.getElementById("save-comment-btn").addEventListener("click", async () => {
@@ -120,3 +107,33 @@ document.getElementById("save-comment-btn").addEventListener("click", async () =
 });
 
 loadData();
+
+
+// 검색 기능 구현
+document.getElementById("search-btn").addEventListener("click", () => {
+    const keyword = document.getElementById("search-author").value.trim();
+    if (!keyword) {
+        alert("작성자 이름을 입력하세요.");
+        return;
+    }
+    // allOrders에서 작성자 이름이 포함된 데이터만 필터링
+    const filteredOrders = allOrders.filter(order => order.author.includes(keyword));
+    
+    // 화면 갱신을 위해 데이터 임시 교체
+    const originalOrders = [...allOrders]; // 원본 보관
+    allOrders = filteredOrders;
+    currentPage = 1; // 1페이지부터 다시 시작
+    renderTable();
+    allOrders = originalOrders; // 다시 원본으로 복구 (다음 검색을 위해)
+    
+    // 초기화 버튼 보이기
+    document.getElementById("search-reset-btn").classList.remove("hidden");
+});
+
+// 초기화 기능 구현
+document.getElementById("search-reset-btn").addEventListener("click", () => {
+    document.getElementById("search-author").value = "";
+    document.getElementById("search-reset-btn").classList.add("hidden");
+    currentPage = 1;
+    renderTable();
+});
