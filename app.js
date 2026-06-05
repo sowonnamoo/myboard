@@ -56,7 +56,7 @@ async function uploadToGoogleDrive(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null;
     const file = fileInput.files[0];
-    const fileName = `${authorName || "익명"}_${file.name}`;
+    const fileName = `${authorName || ""}_${file.name}`;
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = async function(e) {
@@ -138,7 +138,7 @@ function renderTable() {
 
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
             <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료)</td>
-            <td class="py-3 text-sm text-gray-600">${data.author || "익명"}</td>
+            <td class="py-3 text-sm text-gray-600">${data.author || "김준혁"}</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
     });
 
