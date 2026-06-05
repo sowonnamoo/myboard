@@ -72,7 +72,17 @@ function renderTable(dataToRender = allOrders) {
     if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100" onclick="goToPage(${currentPage + 1})">다음</span>`;
 }
 
-window.goToPage = (p) => { currentPage = p; renderTable(); };
+window.goToPage = (p) => { 
+    currentPage = p; 
+    // 검색 중일 때는 검색 결과로, 아니면 전체 데이터로 렌더링하도록 수정
+    const keyword = document.getElementById("search-author").value.trim();
+    if (keyword) {
+        const filtered = allOrders.filter(o => o.author.includes(keyword));
+        renderTable(filtered);
+    } else {
+        renderTable(); 
+    }
+};
 
 // 비밀번호 모달 로직 연동
 window.viewDetail = async function(id) {
