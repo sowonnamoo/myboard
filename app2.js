@@ -40,7 +40,7 @@ function renderTable() {
         const title = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
         const dateStr = data.createdAt.toDate().toLocaleDateString();
         
-  listBody.innerHTML += `
+listBody.innerHTML += `
     <tr class="hover:bg-gray-50 cursor-pointer" onclick="viewDetail('${data.id}')"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">🔒 ${title}</td>
         <td class="py-3 text-sm text-gray-600">관리자</td>
