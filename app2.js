@@ -107,3 +107,33 @@ document.getElementById("save-comment-btn").addEventListener("click", async () =
 });
 
 loadData();
+
+
+// 검색 기능 구현
+document.getElementById("search-btn").addEventListener("click", () => {
+    const keyword = document.getElementById("search-author").value.trim();
+    if (!keyword) {
+        alert("작성자 이름을 입력하세요.");
+        return;
+    }
+    // allOrders에서 작성자 이름이 포함된 데이터만 필터링
+    const filteredOrders = allOrders.filter(order => order.author.includes(keyword));
+    
+    // 화면 갱신을 위해 데이터 임시 교체
+    const originalOrders = [...allOrders]; // 원본 보관
+    allOrders = filteredOrders;
+    currentPage = 1; // 1페이지부터 다시 시작
+    renderTable();
+    allOrders = originalOrders; // 다시 원본으로 복구 (다음 검색을 위해)
+    
+    // 초기화 버튼 보이기
+    document.getElementById("search-reset-btn").classList.remove("hidden");
+});
+
+// 초기화 기능 구현
+document.getElementById("search-reset-btn").addEventListener("click", () => {
+    document.getElementById("search-author").value = "";
+    document.getElementById("search-reset-btn").classList.add("hidden");
+    currentPage = 1;
+    renderTable();
+});
