@@ -54,6 +54,8 @@ function renderTable(dataToRender = allOrders) {
     </tr>`;
     });
 
+    // ... 페이징 로직 (동일하게 유지)
+}
 
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
