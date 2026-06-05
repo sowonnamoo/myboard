@@ -118,30 +118,34 @@ function applyFilter() {
 function renderTable() {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    if (filteredOrders.length === 0) {
-        listBody.innerHTML = `<tr><td colspan="3" class="py-8 text-gray-400 text-center text-sm">내역이 존재하지 않습니다.</td></tr>`;
-        document.getElementById("pagination").innerHTML = "";
-        return;
-    }
-    const totalPages = Math.ceil(filteredOrders.length / POSTS_PER_PAGE);
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-  filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    
+    // ... (이전 코드 생략)
+
+    const now = new Date(); // 현재 시간
+
+    filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         
-        // --- [수정된 제목 표시 로직] ---
+        // --- [NEW 배지 추가 로직] ---
+        const diffInHours = (now - d) / (1000 * 60 * 60);
+        const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
+        // --------------------------
+
         let displayTitle = data.title || data.productName;
         if (displayTitle.length > 5) {
             displayTitle = displayTitle.substring(0, 10) + "***";
         }
-        // ------------------------------
 
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
-            <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료)</td>
+            <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">
+                🔒 ${displayTitle} (접수완료) ${newBadge}
+            </td>
             <td class="py-3 text-sm text-gray-600">${data.author || "김준혁"}</td>
-            <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
+            <td class="py-3 text-xs text-gray-400">${dateStr}</td>
+        </tr>`;
     });
-
+    
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage-1})">이전</span>`;
