@@ -129,28 +129,38 @@ window.viewDetail = async function(id) {
             if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
             
             if (dImage) {
-                // 1. 번호 앞자리 처리 및 랜덤 영문 조합
-                const rawPhone = data.phone || "";
-                const phonePrefix = rawPhone.slice(0, -3); 
-                const randomCode = getRandomChars();
-                const finalCode = phonePrefix + randomCode; // 예: 01055565 + eeg
-                
-                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
-                const timestamp = new Date().getTime();
+    // 1. 파이어베이스 데이터에서 시간(createdAt)과 전화번호 가져오기
+    const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+    
+    // 날짜 포맷팅 (2606051559 형식: 년(2)월(2)일(2)시(2)분(2))
+    const yy = String(createdAt.getFullYear()).slice(-2);
+    const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
+    const dd = String(createdAt.getDate()).padStart(2, '0');
+    const hh = String(createdAt.getHours()).padStart(2, '0');
+    const mi = String(createdAt.getMinutes()).padStart(2, '0');
+    
+    const timeCode = `${yy}${mm}${dd}${hh}${mi}`; // 예: 2606051559
+    
+    // 2. 전화번호 앞자리(뒷 2자리 제외)와 시간 조합
+    const rawPhone = data.phone || "00000000000";
+    const phonePrefix = rawPhone.slice(0, -2); // 뒷 2자리 자르기
+    const finalCode = phonePrefix + timeCode;  // 예: 010555655+2606051559
+    
+    const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+    const timestamp = new Date().getTime(); 
 
-                // 2. HTML 구성 (이미지 아래 우측 텍스트 포함)
-                dImage.innerHTML = `
-                    <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link">
-                        <img src="${imgUrl}?t=${timestamp}" 
-                             class="auto-refresh-img" 
-                             alt="시안 이미지" 
-                             style="width: 744px; height: auto; display: block; margin: 0 auto; cursor: pointer;">
-                    </a>
-                    <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black;">
-                        재구입 이미지번호 : ${finalCode}
-                    </div>
-                `;
-            }
+    dImage.innerHTML = `
+        <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link">
+            <img src="${imgUrl}?t=${timestamp}" 
+                 class="auto-refresh-img" 
+                 alt="시안 이미지" 
+                 style="width: 744px; height: auto; display: block; margin: 0 auto; cursor: pointer;">
+        </a>
+        <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-right: 20px;">
+            재구입 이미지번호 : ${finalCode}
+        </div>
+    `;
+}
             
             if (vList) vList.classList.add("hidden");
             if (vDetail) vDetail.classList.remove("hidden");
