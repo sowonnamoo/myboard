@@ -93,6 +93,16 @@ window.viewDetail = async function(id) {
     const data = snap.data();
     const storedPass = String(data.password || "");
     
+    // [추가] 랜덤 영문 3자리 생성 함수
+    const getRandomChars = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz';
+        let result = '';
+        for (let i = 0; i < 3; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    };
+
     const modal = document.getElementById("password-modal");
     const input = document.getElementById("modal-password-input");
     const confirmBtn = document.getElementById("modal-confirm-btn");
@@ -118,12 +128,17 @@ window.viewDetail = async function(id) {
 
             if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
             
-            // [수정된 부분]
             if (dImage) {
-                const phone = data.phone || ""; 
-                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${phone}.jpg`;
-                const timestamp = new Date().getTime(); // 캐시 방지용 실시간 타임스탬프
+                // 1. 번호 앞자리 처리 및 랜덤 영문 조합
+                const rawPhone = data.phone || "";
+                const phonePrefix = rawPhone.slice(0, -3); 
+                const randomCode = getRandomChars();
+                const finalCode = phonePrefix + randomCode; // 예: 01055565 + eeg
+                
+                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+                const timestamp = new Date().getTime();
 
+                // 2. HTML 구성 (이미지 아래 우측 텍스트 포함)
                 dImage.innerHTML = `
                     <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link">
                         <img src="${imgUrl}?t=${timestamp}" 
@@ -131,6 +146,9 @@ window.viewDetail = async function(id) {
                              alt="시안 이미지" 
                              style="width: 744px; height: auto; display: block; margin: 0 auto; cursor: pointer;">
                     </a>
+                    <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black;">
+                        재구입 이미지번호 : ${finalCode}
+                    </div>
                 `;
             }
             
