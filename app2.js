@@ -102,8 +102,6 @@ window.viewDetail = async function(id) {
     input.value = "";
     input.focus();
 
-    // 기존 이벤트 초기화 후 새로 등록
-    confirmBtn.onclick = null; 
     confirmBtn.onclick = () => {
         const inputVal = input.value;
         const isNumeric = /^\d+$/.test(storedPass);
@@ -113,14 +111,28 @@ window.viewDetail = async function(id) {
             modal.classList.add("hidden");
             currentViewId = id;
 
-            // 상세 페이지 요소 안전하게 찾기
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
             const vList = document.getElementById("view-list");
             const vDetail = document.getElementById("view-detail");
 
             if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-            if (dImage) dImage.innerHTML = `<img src="${data.file1Url}" class="max-w-full mx-auto">`;
+            
+            // [수정된 부분]
+            if (dImage) {
+                const phone = data.phone || ""; 
+                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${phone}.jpg`;
+                const timestamp = new Date().getTime(); // 캐시 방지용 실시간 타임스탬프
+
+                dImage.innerHTML = `
+                    <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link">
+                        <img src="${imgUrl}?t=${timestamp}" 
+                             class="auto-refresh-img" 
+                             alt="시안 이미지" 
+                             style="width: 744px; height: auto; display: block; margin: 0 auto; cursor: pointer;">
+                    </a>
+                `;
+            }
             
             if (vList) vList.classList.add("hidden");
             if (vDetail) vDetail.classList.remove("hidden");
@@ -173,60 +185,4 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 });
 
 
-window.viewDetail = async function(id) {
-    const snap = await getDoc(doc(db, "boards", id));
-    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
-    
-    const data = snap.data();
-    const storedPass = String(data.password || "");
-    
-    const modal = document.getElementById("password-modal");
-    const input = document.getElementById("modal-password-input");
-    const confirmBtn = document.getElementById("modal-confirm-btn");
-    const cancelBtn = document.getElementById("modal-cancel-btn");
 
-    modal.classList.remove("hidden");
-    input.value = "";
-    input.focus();
-
-    confirmBtn.onclick = () => {
-        const inputVal = input.value;
-        const isNumeric = /^\d+$/.test(storedPass);
-        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
-
-        if (inputVal === passToCompare) {
-            modal.classList.add("hidden");
-            currentViewId = id;
-
-            const dTitle = document.getElementById("detail-title");
-            const dImage = document.getElementById("detail-image");
-            const vList = document.getElementById("view-list");
-            const vDetail = document.getElementById("view-detail");
-
-            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-            
-            // [수정된 부분]
-            if (dImage) {
-                const phone = data.phone || ""; 
-                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${phone}.jpg`;
-                const timestamp = new Date().getTime(); // 캐시 방지용 실시간 타임스탬프
-
-                dImage.innerHTML = `
-                    <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link">
-                        <img src="${imgUrl}?t=${timestamp}" 
-                             class="auto-refresh-img" 
-                             alt="시안 이미지" 
-                             style="width: 744px; height: auto; display: block; margin: 0 auto; cursor: pointer;">
-                    </a>
-                `;
-            }
-            
-            if (vList) vList.classList.add("hidden");
-            if (vDetail) vDetail.classList.remove("hidden");
-        } else {
-            alert("비밀번호가 일치하지 않습니다.");
-        }
-    };
-
-    cancelBtn.onclick = () => modal.classList.add("hidden");
-};
