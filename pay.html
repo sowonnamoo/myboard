@@ -10,17 +10,39 @@
         const IMP = window.IMP;
         IMP.init("imp00024386");
 
-        document.getElementById("payBtn").addEventListener("click", () => {
-            IMP.request_pay({
-                pg: "kcp.IP801",
-                pay_method: "card",
-                merchant_uid: "test_" + new Date().getTime(),
-                name: "테스트 결제",
-                amount: 100
-            }, (rsp) => {
-                if (rsp.success) alert("성공");
-                else alert("실패: " + rsp.error_msg);
-            });
+        document.getElementById("payBtn").addEventListener("click", async () => {
+            try {
+                console.log("서버에 주문번호 요청 중...");
+                
+                // 1. 서버 통신
+                const response = await fetch("https://proud-math-2d41.ecogr.workers.dev/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                
+                const data = await response.json();
+                console.log("서버 응답 데이터:", data); // 여기서 데이터가 나오는지 확인!
+
+                if (!data.merchant_uid) {
+                    alert("서버에서 주문번호를 받지 못했습니다.");
+                    return;
+                }
+
+                // 2. 결제창 실행
+                IMP.request_pay({
+                    pg: "kcp.IP801",
+                    pay_method: "card",
+                    merchant_uid: data.merchant_uid,
+                    name: "테스트 결제",
+                    amount: 100
+                }, (rsp) => {
+                    if (rsp.success) alert("결제 성공!");
+                    else alert("결제 실패: " + rsp.error_msg);
+                });
+            } catch (err) {
+                console.error("통신 에러:", err);
+                alert("통신 중 오류 발생. 콘솔을 확인하세요.");
+            }
         });
     </script>
 </body>
