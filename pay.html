@@ -5,7 +5,7 @@
 
 <script>
   const IMP = window.IMP;
-  IMP.init("imp00024386"); // 포트원 관리자 페이지에서 복사한 '가맹점 식별코드' 입력
+  IMP.init("imp00024386"); // 포트원 가맹점 식별코드
 
   async function requestPay() {
     const amount = document.getElementById("amountInput").value;
@@ -18,9 +18,10 @@
     });
     const { merchant_uid } = await response.json();
 
-    // 2. 포트원 결제창 띄우기
+    // 2. 포트원 결제창 띄우기 (v2 방식 적용)
     IMP.request_pay({
       pg: "kcp",
+      channelKey: "channel-key-405af0b4-8d71-42f6-b777-9b10e4399cfe", // 여기에 포트원 콘솔에서 복사한 '채널 키'를 입력하세요
       pay_method: "card",
       merchant_uid: merchant_uid,
       name: "상품 결제",
