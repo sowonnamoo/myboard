@@ -144,15 +144,21 @@
                 </div>
 
 
-       <div style="display: flex; justify-content: flex-start; gap: 2px; flex-wrap: wrap; padding: 10px 0;">
+ <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; flex-wrap: wrap; gap: 10px;">
     
-    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">목록</button>
-    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">세금계산서</button>
-    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">간이영수증</button>
-    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
-    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">카드전표</button>
-    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">견적서</button>
-    <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600 transition-colors">거래명세서</button>
+    <div style="display: flex; gap: 2px;">
+        <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">목록</button>
+        <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">세금계산서</button>
+        <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">간이영수증</button>
+        <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
+        <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">카드전표</button>
+        <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 transition-colors">견적서</button>
+    </div>
+
+    <div style="display: flex; gap: 2px;">
+        <button id="detail-edit-btn" class="border px-4 py-1.5 text-sm rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">주문수정</button>
+        <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600 transition-colors">거래명세서</button>
+    </div>
 
 </div>
                 </div>
