@@ -11,7 +11,7 @@
     const amount = document.getElementById("amountInput").value;
     
     // 1. 서버(Cloudflare Worker) 호출
-    const response = await fetch("https://proud-math-2d41.ecogr.workers.dev", {
+    const response = await fetch("https://proud-math-2d41.ecogr.workers.dev/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount: parseInt(amount) })
