@@ -1,38 +1,39 @@
-<script src="https://cdn.iamport.kr/v1/iamport.js"></script>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>결제 테스트 (V1)</title>
+    <script src="https://cdn.iamport.kr/v1/iamport.js"></script>
+</head>
+<body>
 
-<input type="number" id="amountInput" placeholder="결제 금액 입력">
-<button onclick="requestPay()">구입하기</button>
+    <h1>100원 결제 테스트</h1>
+    <button onclick="requestPay()">100원 결제하기</button>
 
-<script>
-  const IMP = window.IMP;
-  IMP.init("imp00024386"); // 포트원 가맹점 식별코드
+    <script>
+        // 1. 포트원 초기화
+        const IMP = window.IMP;
+        IMP.init("imp00024386"); // 본인의 포트원 가맹점 식별코드
 
-  async function requestPay() {
-    const amount = document.getElementById("amountInput").value;
-    
-    // 1. 서버(Cloudflare Worker) 호출
-    const response = await fetch("https://proud-math-2d41.ecogr.workers.dev/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: parseInt(amount) })
-    });
-    const { merchant_uid } = await response.json();
-
-    // 2. 포트원 결제창 띄우기 (v2 방식 적용)
-    IMP.request_pay({
-      pg: "kcp",
-      channelKey: "channel-key-405af0b4-8d71-42f6-b777-9b10e4399cfe", // 여기에 포트원 콘솔에서 복사한 '채널 키'를 입력하세요
-      pay_method: "card",
-      merchant_uid: merchant_uid,
-      name: "상품 결제",
-      amount: amount,
-      buyer_email: "test@example.com",
-    }, (rsp) => {
-      if (rsp.success) {
-        alert("결제가 완료되었습니다.");
-      } else {
-        alert("결제 실패: " + rsp.error_msg);
-      }
-    });
-  }
-</script>
+        function requestPay() {
+            // 2. 결제 요청
+            IMP.request_pay({
+                pg: "kcp", // KCP PG사 지정
+                pay_method: "card",
+                merchant_uid: "test_" + new Date().getTime(), // 주문번호는 매번 달라야 함
+                name: "100원 테스트 결제",
+                amount: 100, // 고정 100원
+                buyer_email: "test@example.com",
+                buyer_name: "테스터",
+                buyer_tel: "010-1234-5678"
+            }, (rsp) => {
+                if (rsp.success) {
+                    alert("결제 성공! 주문번호: " + rsp.merchant_uid);
+                } else {
+                    alert("결제 실패: " + rsp.error_msg);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
