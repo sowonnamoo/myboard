@@ -1,26 +1,44 @@
-<script src="https://cdn.iamport.kr/v1/iamport.js"></script>
-<button onclick="requestPay()">100원 결제하기</button>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- 포트원 SDK -->
+    <script src="https://cdn.iamport.kr/v1/iamport.js"></script>
+</head>
+<body>
+    <button onclick="requestPay()">100원 결제하기</button>
 
-<script>
-  const IMP = window.IMP;
-  IMP.init("imp00024386"); // 가맹점 식별코드
+    <script>
+        // 1. 여기서 딱 한 번만 초기화합니다.
+        const IMP = window.IMP;
+        IMP.init("imp00024386"); 
 
-  async function requestPay() {
-    // 1. Worker(서버)에게 주문번호 요청
-    const response = await fetch("https://proud-math-2d41.ecogr.workers.dev/", {
-      method: "POST"
-    });
-    const { merchant_uid } = await response.json();
+        async function requestPay() {
+            try {
+                // 2. 서버(Worker)에서 주문번호 받아오기
+                const response = await fetch("https://proud-math-2d41.ecogr.workers.dev/", {
+                    method: "POST"
+                });
+                const { merchant_uid } = await response.json();
 
-    // 2. 포트원 결제창 띄우기
-    IMP.request_pay({
-      pg: "kcp.IP801", // KCP 상점아이디
-      merchant_uid: merchant_uid, // 서버에서 받아온 주문번호
-      name: "100원 결제",
-      amount: 100
-    }, (rsp) => {
-      if (rsp.success) alert("성공");
-      else alert("실패: " + rsp.error_msg);
-    });
-  }
-</script>
+                // 3. 결제창 띄우기
+                IMP.request_pay({
+                    pg: "kcp.IP801",
+                    merchant_uid: merchant_uid,
+                    name: "테스트 결제",
+                    amount: 100
+                }, (rsp) => {
+                    if (rsp.success) {
+                        alert("결제 성공!");
+                    } else {
+                        alert("결제 실패: " + rsp.error_msg);
+                    }
+                });
+            } catch (error) {
+                console.error("오류 발생:", error);
+                alert("결제 요청 중 오류가 발생했습니다.");
+            }
+        }
+    </script>
+</body>
+</html>
