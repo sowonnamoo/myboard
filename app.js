@@ -284,17 +284,20 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
 
 JavaScript
+// 카드결제 버튼 클릭 이벤트
 document.getElementById("pay-card-btn").addEventListener("click", () => {
-    // 1. 상세보기 화면에서 현재 가격 가져오기
+    // 1. 상세보기 화면에서 현재 가격 가져오기 (문자열에서 숫자만 추출)
     const priceText = document.getElementById("detail-price").innerText;
     const priceValue = priceText.replace(/[^0-9]/g, ''); 
 
+    // 2. 가격 유효성 검사 (0원이면 결제 진행 안 함)
     if (!priceValue || parseInt(priceValue) === 0) {
         alert("결제할 금액이 없습니다.");
         return;
     }
 
-    // 2. 팝업 옵션 없이 새 창(또는 새 탭)으로 열기
+    // 3. 지정된 URL로 가격 파라미터를 붙여서 새 창으로 열기
+    // 팝업 옵션을 주지 않으면 브라우저 설정에 따라 새 탭 또는 새 창으로 열립니다.
     const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
     window.open(targetUrl, '_blank'); 
 });
