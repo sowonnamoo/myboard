@@ -253,24 +253,27 @@ document.getElementById("search-reset-btn").addEventListener("click", () => { do
 loadAndRender();
 
 
-// 상세보기 시 장바구니 담기 버튼 동작
-document.getElementById("add-cart-btn").onclick = () => {
+// 장바구니 담기 + 팝업 열기 통합 코드
+document.getElementById("add-cart-btn").addEventListener("click", () => {
+    // 상세 페이지에서 현재 정보 가져오기
+    const titleText = document.getElementById("detail-title").innerText;
+    const qtyText = document.getElementById("detail-qty").innerText;
+    const sizeText = document.getElementById("detail-size").innerText;
+    const priceText = document.getElementById("detail-price").innerText.replace(/[^0-9]/g, '');
+
     const item = {
-        name: document.getElementById("detail-title").innerText,
-        qty: document.getElementById("detail-qty").innerText,
-        size: document.getElementById("detail-size").innerText,
-        price: document.getElementById("detail-price").innerText.replace(/[^0-9]/g, '')
+        name: titleText,
+        qty: qtyText,
+        size: sizeText,
+        price: priceText
     };
+
+    // 장바구니에 저장
     let cart = JSON.parse(localStorage.getItem('myCart') || '[]');
     cart.push(item);
     localStorage.setItem('myCart', JSON.stringify(cart));
-    alert("장바구니에 담겼습니다.");
-};
-// 담기 + 팝업 열기 동시에 하고 싶을 때
-document.getElementById("add-cart-btn").onclick = () => {
-    // 위 담기 로직 실행...
-    
-    // 팝업 열기
-    window.open('cart1.html', 'cartWindow', 'width=320,height=450');
-};
 
+    // 알림 후 팝업 열기
+    alert("장바구니에 담겼습니다.");
+    window.open('cart1.html', 'cartWindow', 'width=320,height=450');
+});
