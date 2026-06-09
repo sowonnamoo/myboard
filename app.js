@@ -453,7 +453,8 @@ document.getElementById("mask-info-btn").addEventListener("click", async () => {
     }
 });
 
-document.getElementById("detail-edit-btn").onclick = async () => {
+
+window.openOrderEdit = async function () {
     try {
         const snap = await getDoc(doc(db, "boards", currentViewId));
 
@@ -479,6 +480,6 @@ document.getElementById("detail-edit-btn").onclick = async () => {
 
     } catch (e) {
         console.error(e);
-        alert("수정창을 열 수 없습니다.");
+        alert("수정창 열기 실패");
     }
 };
