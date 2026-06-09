@@ -198,17 +198,27 @@ const fields = ['input-author', 'product-name', 'quantity', 'size', 'price', 'ph
     if (phoneVal.length !== 11) { alert("전화번호 11자리를 정확히 입력해주세요."); return; }
    const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
-    spinner.classList.remove("hidden");
-    bar.style.width = "5%"; // 시작을 5%로 설정
+    const text = document.getElementById("loading-text"); // 텍스트 요소 가져오기
     
+    spinner.classList.remove("hidden");
+    bar.style.width = "5%";
+    
+    const messages = ["파일 접수중..", "정상 업로드 중입니다.", "잠시 기다려주세요.", "10mb기준 50~100초 소요 "];
+    let msgIndex = 0;
     let percent = 5;
+
     const interval = setInterval(() => {
+        // 로딩바 진행
         if (percent < 90) {
-            percent += 5; // 5%씩 증가
+            percent += 5;
             bar.style.width = percent + "%";
-            console.log("로딩 진행 중:", percent + "%");
         }
-    }, 3000); // 3초마다 실행
+        
+        // 텍스트 변경 (3초마다 순환)
+        msgIndex = (msgIndex + 1) % messages.length;
+        text.innerText = messages[msgIndex];
+        
+    }, 3000); // 3초 간격
 
     try {
         // 3. 파일 업로드 (이 부분이 실행되는 동안 위 interval이 동작)
