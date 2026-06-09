@@ -278,5 +278,5 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
     // 알림 후 팝업 열기
     alert("장바구니에 담겼습니다.");
-    window.open('cart1.html', 'cartWindow', 'width=370,height=450');
+    window.open('cart1.html', 'cartWindow', 'width=470,height=450');
 });
