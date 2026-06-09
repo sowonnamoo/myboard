@@ -453,65 +453,76 @@ document.getElementById("mask-info-btn").addEventListener("click", async () => {
     }
 });
 
-// --- [주문 수정 기능 추가] ---
+// --- 주문 수정 기능 안전하게 추가 (기존 코드 하단에 붙여넣기) ---
 
-// 1. 상세 보기에서 수정 버튼 클릭 시 폼에 데이터 채우기
+// 1. 주문 수정 버튼 클릭 시 폼 채우기
 document.getElementById("detail-edit-btn").addEventListener("click", async () => {
     const snap = await getDoc(doc(db, "boards", currentViewId));
     if (!snap.exists()) return;
     const data = snap.data();
 
-    // 폼에 값 입력
     document.getElementById('input-author').value = data.author;
     document.getElementById('product-name').value = data.productName;
     document.getElementById('quantity').value = data.quantity;
     document.getElementById('size').value = data.size;
     document.getElementById('phone').value = data.phone;
-    document.getElementById('address').value = data.address.split(' ')[0];
-    document.getElementById('address-detail').value = data.address.split(' ').slice(1).join(' ') || "";
+    
+    // 주소 분리
+    const addrParts = data.address.split(' ');
+    document.getElementById('address').value = addrParts[0]; 
+    document.getElementById('address-detail').value = addrParts.slice(1).join(' ');
+    
     document.getElementById('message').value = data.message || "";
 
-    // 저장 버튼을 '수정완료' 모드로 변경
+    // 저장 버튼을 수정 모드로 변경
     const saveBtn = document.getElementById("save-btn");
+    saveBtn.dataset.editId = currentViewId; // 수정할 ID 심기
     saveBtn.innerText = "수정완료";
-    saveBtn.dataset.editId = currentViewId; // 수정할 ID를 버튼에 임시 저장
 
     switchView('write');
 });
 
-// 2. 글쓰기 버튼 클릭 시 '접수하기' 모드로 초기화
+// 2. 글쓰기 버튼 클릭 시 수정 모드 해제
 document.getElementById("go-write-btn").addEventListener("click", () => {
     const saveBtn = document.getElementById("save-btn");
-    saveBtn.innerText = "접수하기";
     saveBtn.removeAttribute("data-edit-id");
-    document.getElementById("view-write").querySelectorAll("input, textarea").forEach(el => el.value = "");
+    saveBtn.innerText = "접수하기";
+    // 폼 초기화 추가
+    document.querySelectorAll('#view-write input, #view-write textarea').forEach(el => {
+        if(el.type !== 'file') el.value = '';
+    });
     switchView('write');
 });
 
-// 3. 기존 save-btn 클릭 시 수정 모드인지 확인하여 분기하는 인터셉터
-const originalSaveBtn = document.getElementById("save-btn");
-// 기존 리스너가 작동한 뒤, 수정 모드일 때만 따로 동작하도록 분기 로직 추가
-originalSaveBtn.addEventListener("click", async (e) => {
-    const editId = originalSaveBtn.dataset.editId;
-    if (!editId) return; // 수정 모드가 아니면 기존 로직 실행(이미 리스너에 등록됨)
+// 3. 저장 버튼 클릭 시 수정인지 신규인지 판단
+// 기존 리스너보다 먼저 동작하도록 캡처링 단계에서 수정 로직 실행
+document.getElementById("save-btn").addEventListener("click", async (e) => {
+    const saveBtn = document.getElementById("save-btn");
+    const editId = saveBtn.dataset.editId;
 
-    // 수정 모드일 때 실행될 로직
-    try {
-        await updateDoc(doc(db, "boards", editId), {
-            author: document.getElementById('input-author').value,
-            productName: document.getElementById('product-name').value,
-            quantity: document.getElementById('quantity').value,
-            size: document.getElementById('size').value,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
-            message: document.getElementById('message').value,
-            updatedAt: new Date()
-        });
-        alert("수정되었습니다.");
-        originalSaveBtn.removeAttribute('data-edit-id');
-        originalSaveBtn.innerText = "접수하기";
-        switchView('list');
-    } catch (e) {
-        alert("수정 실패: " + e.message);
+    if (editId) {
+        // 수정 모드일 때만 동작
+        e.stopImmediatePropagation(); // 기존의 신규 작성 로직이 실행되는 것을 방지
+        
+        try {
+            saveBtn.innerText = "수정 중...";
+            await updateDoc(doc(db, "boards", editId), {
+                author: document.getElementById('input-author').value,
+                productName: document.getElementById('product-name').value,
+                quantity: document.getElementById('quantity').value,
+                size: document.getElementById('size').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
+                message: document.getElementById('message').value,
+                updatedAt: new Date()
+            });
+            alert("수정되었습니다.");
+            saveBtn.removeAttribute('data-edit-id');
+            saveBtn.innerText = "접수하기";
+            switchView('list');
+        } catch (err) {
+            alert("수정 실패: " + err.message);
+            saveBtn.innerText = "수정완료";
+        }
     }
-}, true); // useCapture: true를 사용하여 기존 로직보다 먼저(혹은 후속으로) 제어
+}, true);
