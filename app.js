@@ -283,25 +283,22 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
 
 
-JavaScript
-/ --- 카드 결제 로직 (app.js 맨 아래에 붙여넣으세요) ---
-document.addEventListener("click", (e) => {
-    if (e.target && e.target.id === "pay-card-btn") {
-        
-        const priceEl = document.getElementById("detail-price");
-        if (!priceEl) {
-            alert("결제 정보를 찾을 수 없습니다.");
-            return;
-        }
 
-        const priceValue = priceEl.innerText.replace(/[^0-9]/g, ''); 
-
-        if (!priceValue || parseInt(priceValue) === 0) {
-            alert("결제할 금액이 없습니다.");
-            return;
-        }
-
-        const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
-        window.open(targetUrl, '_blank');
+// window 객체에 함수를 등록하면 HTML에서 직접 호출 가능합니다.
+window.handleCardPay = function() {
+    const priceEl = document.getElementById("detail-price");
+    if (!priceEl) {
+        alert("결제 정보를 찾을 수 없습니다.");
+        return;
     }
-});
+
+    const priceValue = priceEl.innerText.replace(/[^0-9]/g, ''); 
+
+    if (!priceValue || parseInt(priceValue) === 0) {
+        alert("결제할 금액이 없습니다.");
+        return;
+    }
+
+    const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
+    window.open(targetUrl, '_blank');
+};
