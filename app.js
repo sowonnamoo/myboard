@@ -453,3 +453,24 @@ document.getElementById("mask-info-btn").addEventListener("click", async () => {
     }
 });
 
+
+document.getElementById("detail-edit-btn").onclick = async () => {
+    const snap = await getDoc(doc(db, "boards", currentViewId));
+    if (!snap.exists()) return;
+
+    const data = snap.data();
+
+    const params = new URLSearchParams({
+        id: currentViewId,
+        author: data.author || "",
+        phone: data.phone || "",
+        address: data.address || ""
+    });
+
+    window.open(
+        `edit.html?${params.toString()}`,
+        "orderEdit",
+        "width=500,height=300,resizable=no,scrollbars=no"
+    );
+};
+
