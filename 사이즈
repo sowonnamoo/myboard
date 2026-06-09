@@ -65,7 +65,13 @@
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="size" class="form-input"></td>
-                    </tr>
+
+</tr>
+<tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">결제금액 <span class="text-red-500">*</span></td>
+    <td><input type="text" id="price" class="form-input" placeholder="숫자만 입력하세요" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></td>
+</tr>
+
                   <tr class="form-row">
 <td class="font-bold text-gray-700 py-3">파일1 (필수) <span class="text-red-500">*</span></td>
                       <td><input type="file" id="file-1"></td>
@@ -145,6 +151,7 @@
                     <div class="p-4 divide-y divide-gray-100 text-sm space-y-3">
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">수량</span><span id="detail-qty"></span></div>
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">사이즈</span><span id="detail-size"></span></div>
+                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">결제금액</span><span id="detail-price"></span></div>
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">접수자핸드폰</span><span id="detail-phone"></span></div>
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">배송지</span><span id="detail-address"></span></div>
                         <div class="flex flex-col py-2 space-y-2">
