@@ -163,15 +163,25 @@
                         <p class="text-sm text-gray-600">안녕하세요. 고객님. 소중한 도안 접수가 정상 완료되었습니다. 기재해주신 사양 검토 후 시안 작업선 업로드 예정입니다.</p>
                     </div>
                 </div>
-
-                <div class="flex justify-between items-center pt-2">
-                    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
-                    <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600">삭제</button>
-                </div>
-            </section>
-
-        </div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; flex-wrap: wrap; gap: 10px;">
+    
+    <div style="display: flex; gap: 2px;">
+        <button onclick="switchView('list')" class="border px-1 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">목록</button>
+        <button onclick="switchView('list')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">세금계산서</button>
+        <button onclick="switchView('list')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">간이영수증</button>
+        <button onclick="switchView('list')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
+        <button onclick="switchView('list')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">카드전표</button>
+        <button onclick="switchView('list')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">견적서</button>
     </div>
+
+    <div style="display: flex; gap: 2px;">
+        <button id="detail-edit-btn" class="border px-4 py-1.5 text-sm rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">주문수정</button>
+        <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600 transition-colors">거래명세서</button>
+    </div>
+
+</div>
+
+</div>
 
     <script type="module" src="app.js"></script>
 
