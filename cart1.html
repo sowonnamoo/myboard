@@ -16,8 +16,8 @@
         </div>
         
         <div class="mt-4 flex gap-2">
-            <button class="flex-1 bg-green-700 text-white py-2 rounded text-sm">무통장입금</button>
-            <button class="flex-1 bg-blue-900 text-white py-2 rounded text-sm">카드결제</button>
+            <button onclick="pay('bank')" class="flex-1 bg-green-700 text-white py-2 rounded text-sm">무통장입금</button>
+            <button onclick="pay('card')" class="flex-1 bg-blue-900 text-white py-2 rounded text-sm">카드결제</button>
         </div>
         
         <button onclick="window.close()" class="w-full mt-2 text-gray-400 text-xs py-2">창 닫기</button>
@@ -52,6 +52,25 @@
             cart.splice(index, 1);
             localStorage.setItem('myCart', JSON.stringify(cart));
             loadCart();
+        }
+
+        // 결제 로직 통합 함수
+        function pay(type) {
+            const totalText = document.getElementById('total-price').innerText;
+            const totalAmount = totalText.replace(/[^0-9]/g, '');
+
+            if (!totalAmount || parseInt(totalAmount) === 0) {
+                alert("결제할 금액이 없습니다.");
+                return;
+            }
+
+            if (type === 'bank') {
+                const url = `https://sowonnamoo.github.io/myboard/mooto?price=${totalAmount}`;
+                window.open(url, 'bankPaymentWindow', 'width=494,height=639,scrollbars=yes,resizable=yes');
+            } else {
+                const url = `https://sowonnamoo.github.io/myjs/payment?price=${totalAmount}`;
+                window.open(url, 'paymentWindow', 'width=811,height=649,scrollbars=yes,resizable=yes');
+            }
         }
         
         loadCart();
