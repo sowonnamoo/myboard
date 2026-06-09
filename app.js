@@ -305,3 +305,25 @@ window.handleCardPay = function() {
     
     window.open(url, 'paymentWindow', options);
 };
+
+
+window.handleBankPay = function() {
+    const priceEl = document.getElementById("detail-price");
+    if (!priceEl) {
+        alert("결제 정보를 찾을 수 없습니다.");
+        return;
+    }
+
+    const priceValue = priceEl.innerText.replace(/[^0-9]/g, ''); 
+
+    if (!priceValue || parseInt(priceValue) === 0) {
+        alert("결제할 금액이 없습니다.");
+        return;
+    }
+
+    // 무통장입금 안내 페이지로 이동 (494x639 크기)
+    const url = `https://sowonnamoo.github.io/myboard/mooto?price=${priceValue}`;
+    const options = "width=494,height=639,scrollbars=yes,resizable=yes";
+    
+    window.open(url, 'bankPaymentWindow', options);
+};
