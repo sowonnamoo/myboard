@@ -285,16 +285,17 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
 JavaScript
 document.getElementById("pay-card-btn").addEventListener("click", () => {
+    // 1. 상세보기 화면에서 현재 가격 가져오기
     const priceText = document.getElementById("detail-price").innerText;
     const priceValue = priceText.replace(/[^0-9]/g, ''); 
 
+    // 2. 가격 유효성 검사
     if (!priceValue || parseInt(priceValue) === 0) {
         alert("결제할 금액이 없습니다.");
         return;
     }
 
-    // 다른 폴더 경로로 지정 (예: ../payment/payment.html 또는 /pay/payment.html)
-    // 서버 환경에 맞게 경로를 수정하세요.
-    const url = `/pay/payment.html?price=${priceValue}`; 
-    window.open(url, 'paymentWindow', 'width=400,height=400,scrollbars=yes'); 
+    // 3. 지정된 외부 링크에 가격 파라미터를 붙여서 400x400 팝업으로 열기
+    const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
+    window.open(targetUrl, 'paymentWindow', 'width=400,height=400,scrollbars=yes'); 
 });
