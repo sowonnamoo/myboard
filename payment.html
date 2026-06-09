@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>카드 결제</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+
+    <div class="w-[400px] bg-white p-8 rounded-2xl shadow-lg text-center">
+        <h2 class="text-xl font-bold text-gray-800 mb-6">💳 결제 진행</h2>
+        
+        <div class="py-6 border-y border-gray-100 mb-6">
+            <p class="text-sm text-gray-500 mb-2">결제하실 금액</p>
+            <div id="total-price" class="text-3xl font-bold text-blue-600">0원</div>
+        </div>
+
+        <button onclick="goCard()" class="w-full py-4 bg-blue-900 text-white font-bold rounded-xl hover:bg-blue-800 transition">
+            결제하기
+        </button>
+        
+        <button onclick="window.history.back()" class="w-full mt-3 py-2 text-gray-400 text-sm hover:text-gray-600">
+            뒤로가기
+        </button>
+    </div>
+
+    <script>
+        // 1. 보안을 위한 워커 주소 (본인의 실제 주소로 설정하세요)
+        const WORKER_URL = "https://proud-math-2d41.ecogr.workers.dev/"; 
+        
+        // 2. 전달받은 금액 불러오기
+        const total = Number(localStorage.getItem("totalAmount")) || 0;
+        document.getElementById("total-price").innerText = total.toLocaleString() + "원";
+
+        // 3. 결제 함수
+        async function goCard(){
+            if(total <= 0) {
+                alert("결제할 금액이 없습니다.");
+                return;
+            }
+
+            try {
+                // 서버에서 키값 가져오기
+                const res = await fetch(WORKER_URL);
+                const data = await res.json();
+                
+                const paymentId = "PAY_" + Date.now();
+
+                // 포트원 결제창 호출
+                const response = await PortOne.requestPayment({
+                    storeId: data.STORE_ID,
+                    channelKey: data.CHANNEL_KEY_CARD,
+                    paymentId: paymentId,
+                    orderName: "주문상품 결제",
+                    totalAmount: total,
+                    currency: "KRW",
+                    payMethod: "CARD"
+                });
+
+                // 결제 결과 처리
+                if(response.code != null){
+                    alert("결제 실패: " + response.message);
+                    return;
+                }
+
+                // 성공 시 메시지 출력 후 완료 페이지 이동
+                alert(total.toLocaleString() + "원이 결제되었습니다.\n확인 후 시안이 등록됩니다.");
+                location.href = "success.html";
+
+            } catch(error) {
+                console.error(error);
+                alert("결제창 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+            }
+        }
+    </script>
+</body>
+</html>
