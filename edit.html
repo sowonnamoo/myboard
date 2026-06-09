@@ -19,8 +19,10 @@ button{ width:100%; height:40px; cursor:pointer; margin-bottom:5px; }
 
 <input id="author" placeholder="성함">
 <input id="phone" placeholder="연락처">
+
 <button type="button" class="addr-btn" onclick="execDaumPostcode()">우편번호 찾기</button>
 <input id="address" placeholder="주소">
+<input id="address-detail" placeholder="상세주소">
 
 <button id="saveBtn">수정완료</button>
 
@@ -40,11 +42,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 전역 함수로 주소 찾기 할당
+// 주소 찾기 함수
 window.execDaumPostcode = function() {
     new daum.Postcode({
         oncomplete: function(data) {
             document.getElementById("address").value = data.address;
+            document.getElementById("address-detail").focus(); // 상세주소로 포커스 이동
         }
     }).open();
 }
@@ -54,14 +57,20 @@ const id = params.get("id");
 
 document.getElementById("author").value = decodeURIComponent(params.get("author") || "");
 document.getElementById("phone").value = decodeURIComponent(params.get("phone") || "");
-document.getElementById("address").value = decodeURIComponent(params.get("address") || "");
+
+// 저장된 주소값이 "주소 + 상세주소" 형태이므로 분리 로직 필요 (필요 시)
+const fullAddress = decodeURIComponent(params.get("address") || "");
+// 간단하게 띄어쓰기 기준으로 나누거나, 상세주소를 직접 수정하게 설계
+document.getElementById("address").value = fullAddress; 
 
 document.getElementById("saveBtn").onclick = async () => {
     try {
+        const fullAddr = document.getElementById("address").value.trim() + " " + document.getElementById("address-detail").value.trim();
+        
         await updateDoc(doc(db, "boards", id), {
             author: document.getElementById("author").value.trim(),
             phone: document.getElementById("phone").value.trim(),
-            address: document.getElementById("address").value.trim()
+            address: fullAddr
         });
         alert("수정 완료");
         if (window.opener) { window.opener.location.reload(); }
