@@ -20,9 +20,7 @@ const ordersCollection = collection(db, "boards");
 window.execDaumPostcode = function() {
     new daum.Postcode({
         oncomplete: function(data) {
-            // 도로명 주소 또는 지번 주소 넣기
             document.getElementById("address").value = data.address;
-            // 상세주소 입력창으로 포커스 이동
             document.getElementById("address-detail").focus();
         }
     }).open();
@@ -72,17 +70,11 @@ async function uploadToGoogleDrive(fileInputId, authorName) {
     });
 }
 
-
-
-
-
-
 async function loadAndRender() {
     try {
         const q = query(ordersCollection, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
         allOrders = [];
-        // [수정된 부분] 삭제되지 않은 데이터만 걸러서 담습니다.
         snapshot.forEach(doc => { 
             const data = doc.data();
             if (!data.isDeleted) {
@@ -92,15 +84,6 @@ async function loadAndRender() {
         applyFilter();
     } catch (err) { console.error(err); }
 }
-
-
-
-
-
-
-
-
-
 
 function applyFilter() {
     const searchVal = document.getElementById("search-author").value.trim().toLowerCase();
@@ -127,13 +110,12 @@ function renderTable() {
 
     const totalPages = Math.ceil(filteredOrders.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-    const now = new Date(); // 현재 시간 객체 생성
+    const now = new Date();
 
     filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         
-        // [NEW 배지 로직] 24시간 이내인 경우에만 생성
         const diffInHours = (now - d) / (1000 * 60 * 60);
         const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
 
@@ -151,7 +133,6 @@ function renderTable() {
         </tr>`;
     });
 
-    // 페이지네이션 렌더링
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage-1})">이전</span>`;
@@ -204,38 +185,31 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
     
+    // [수정된 부분] 정보 세팅 직후 수정 버튼 이벤트 연결
+    document.getElementById("detail-edit-btn").onclick = () => {
+        const url = `edit.html?id=${currentViewId}&author=${encodeURIComponent(data.author)}&phone=${encodeURIComponent(data.phone)}&address=${encodeURIComponent(data.address)}`;
+        window.open(url, "editWindow", "width=400,height=500");
+    };
+    
     const filesDiv = document.getElementById("detail-files"); 
     filesDiv.innerHTML = "";
     if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
     if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
     
-
-    
-    
-    
-    
-document.getElementById("detail-delete-btn").onclick = async () => { 
-    if(confirm("삭제하시겠습니까? 삭제된 글은 내역에서 보이지 않게 됩니다.")) { 
-        try {
-            // 실제 삭제 대신 상태값만 업데이트합니다.
-            await updateDoc(doc(db, "boards", currentViewId), {
-                isDeleted: true,
-                deletedAt: new Date()
-            });
-            alert("삭제되었습니다.");
-            switchView('list');
-        } catch (e) {
-            alert("삭제 실패: " + e.message);
-        }
-    } 
-};
-
-
-
-
-
-
-
+    document.getElementById("detail-delete-btn").onclick = async () => { 
+        if(confirm("삭제하시겠습니까? 삭제된 글은 내역에서 보이지 않게 됩니다.")) { 
+            try {
+                await updateDoc(doc(db, "boards", currentViewId), {
+                    isDeleted: true,
+                    deletedAt: new Date()
+                });
+                alert("삭제되었습니다.");
+                switchView('list');
+            } catch (e) {
+                alert("삭제 실패: " + e.message);
+            }
+        } 
+    };
     
     switchView('detail');
 });
@@ -248,14 +222,12 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 let textInterval, barInterval; 
 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    // 1. 필수 항목 검사 (텍스트 필드)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { 
         alert("필수 항목을 모두 입력해주세요."); 
         return; 
     }
 
-    // 2. 파일 필수 검사 (최소 1개)
     const file1 = document.getElementById("file-1");
     const file2 = document.getElementById("file-2");
     if (file1.files.length === 0) {
@@ -263,7 +235,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         return;
     }
 
-    // 3. 파일 이름 중복 검사 (둘 다 있을 때만)
     if (file1.files.length > 0 && file2.files.length > 0) {
         if (file1.files[0].name === file2.files[0].name) {
             alert("1번과 2번에 동일한 파일을 중복으로 첨부할 수 없습니다.");
@@ -271,14 +242,12 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         }
     }
 
-    // 4. 전화번호 검사
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
     if (phoneVal.length !== 11) {
         alert("전화번호 11자리를 정확히 입력해주세요.");
         return; 
     }
 
-    // 5. 검사 통과 후 애니메이션 시작
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
     const text = document.getElementById("loading-text");
@@ -298,18 +267,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     const autoPassword = phoneVal.slice(-4); 
 
-
-
-
-
-
-
-
-
-
-
-    
-    // 6. IP 수집
     let userIp = "알 수 없음";
     try {
         const res = await fetch("https://api.ipify.org?format=json");
@@ -317,24 +274,16 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         userIp = json.ip;
     } catch (e) { console.error("IP 수집 실패", e); }
 
-
-
-// [여기에 넣으세요!]
-try {
-    const blockedSnap = await getDoc(doc(db, "blocked_ips", userIp));
-    if (blockedSnap.exists()) {
-        alert("접속이 차단된 IP입니다. 글을 작성할 수 없습니다.");
-        return; // 여기서 멈추면 저장이 되지 않습니다.
+    try {
+        const blockedSnap = await getDoc(doc(db, "blocked_ips", userIp));
+        if (blockedSnap.exists()) {
+            alert("접속이 차단된 IP입니다. 글을 작성할 수 없습니다.");
+            return; 
+        }
+    } catch (e) {
+        console.log("차단 목록 조회 확인:", e);
     }
-} catch (e) {
-    console.log("차단 목록 조회 확인:", e);
-}
 
-    
-
-
-
-    
     const saveBtn = document.getElementById("save-btn");
     saveBtn.innerText = "파일 업로드중..."; 
     saveBtn.disabled = true;
@@ -345,111 +294,4 @@ try {
         
         await addDoc(collection(db, "boards"), { 
             author: document.getElementById('input-author').value, 
-            productName: document.getElementById('product-name').value, 
-            quantity: document.getElementById('quantity').value, 
-            size: document.getElementById('size').value, 
-            phone: document.getElementById('phone').value, 
-            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
-            password: autoPassword, 
-            message: document.getElementById('message').value, 
-            file1Url, 
-            file2Url, 
-            views: 0, 
-  
-            
-            createdAt: new Date(),
-            ip: userIp,
-            isDeleted: false // <--- 추가
-        });
-
-        alert("접수되었습니다."); 
-        switchView('list');
-    } catch (e) { 
-        alert("오류: " + e.message); 
-    } finally { 
-        saveBtn.innerText = "저장하기"; 
-        saveBtn.disabled = false; 
-    }
-});
-
-document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
-document.getElementById("search-btn").addEventListener("click", applyFilter);
-document.getElementById("search-reset-btn").addEventListener("click", () => { document.getElementById("search-author").value = ""; applyFilter(); });
-loadAndRender();
-
-
-
-
-
-
-
-
-
-
-const originalSwitchView = window.switchView;
-window.switchView = function(viewName) {
-    if (viewName === 'list') { document.getElementById("loading-spinner").classList.add("hidden"); document.getElementById("red-progress-bar").style.width = "0%"; clearInterval(barInterval); clearInterval(textInterval); }
-    originalSwitchView(viewName);
-};
-
-
-
-
-// 구입 제품명 20글자, 작성자명 5글자 제한
-document.getElementById('product-name').addEventListener('input', (e) => {
-    if (e.target.value.length > 20) e.target.value = e.target.value.slice(0, 20);
-});
-document.getElementById('input-author').addEventListener('input', (e) => {
-    if (e.target.value.length > 5) e.target.value = e.target.value.slice(0, 5);
-});
-
-
-
-
-import { writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-document.getElementById("mask-info-btn").addEventListener("click", async () => {
-    if (!confirm("30일 지난 모든 글의 개인정보를 마스킹하시겠습니까? 되돌릴 수 없습니다.")) return;
-
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const q = query(ordersCollection);
-    const snapshot = await getDocs(q);
-    const batch = writeBatch(db); // 여러 개를 한 번에 수정하기 위한 배치 작업
-    let count = 0;
-
-    snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        const createdAt = data.createdAt.toDate();
-
-        // 30일 지난 글인지 확인
-        if (createdAt < thirtyDaysAgo) {
-            let updateData = {};
-            
-            // 전화번호 앞 5자리 마스킹 (예: 010-12 -> [개인정보보호]12...)
-            if (data.phone && !data.phone.includes("[개인정보보호]")) {
-                updateData.phone = "[개인정보보호]" + data.phone.substring(5);
-            }
-            
-            // 주소 뒷 6자리 마스킹
-            if (data.address && !data.address.includes("[개인정보보호]")) {
-                const addr = data.address;
-                updateData.address = addr.substring(0, Math.max(0, addr.length - 6)) + "[개인정보보호]";
-            }
-
-            if (Object.keys(updateData).length > 0) {
-                batch.update(docSnap.ref, updateData);
-                count++;
-            }
-        }
-    });
-
-    if (count > 0) {
-        await batch.commit();
-        alert(`${count}개의 글이 마스킹되었습니다.`);
-    } else {
-        alert("수정할 대상이 없습니다.");
-    }
-});
-
+            product
