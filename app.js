@@ -294,4 +294,89 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         
         await addDoc(collection(db, "boards"), { 
             author: document.getElementById('input-author').value, 
-            product
+            productName: document.getElementById('product-name').value, 
+            quantity: document.getElementById('quantity').value, 
+            size: document.getElementById('size').value, 
+            phone: document.getElementById('phone').value, 
+            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
+            password: autoPassword, 
+            message: document.getElementById('message').value, 
+            file1Url, 
+            file2Url, 
+            views: 0, 
+            createdAt: new Date(),
+            ip: userIp,
+            isDeleted: false
+        });
+
+        alert("접수되었습니다."); 
+        switchView('list');
+    } catch (e) { 
+        alert("오류: " + e.message); 
+    } finally { 
+        saveBtn.innerText = "저장하기"; 
+        saveBtn.disabled = false; 
+    }
+});
+
+document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
+document.getElementById("search-btn").addEventListener("click", applyFilter);
+document.getElementById("search-reset-btn").addEventListener("click", () => { document.getElementById("search-author").value = ""; applyFilter(); });
+loadAndRender();
+
+const originalSwitchView = window.switchView;
+window.switchView = function(viewName) {
+    if (viewName === 'list') { document.getElementById("loading-spinner").classList.add("hidden"); document.getElementById("red-progress-bar").style.width = "0%"; clearInterval(barInterval); clearInterval(textInterval); }
+    originalSwitchView(viewName);
+};
+
+document.getElementById('product-name').addEventListener('input', (e) => {
+    if (e.target.value.length > 20) e.target.value = e.target.value.slice(0, 20);
+});
+document.getElementById('input-author').addEventListener('input', (e) => {
+    if (e.target.value.length > 5) e.target.value = e.target.value.slice(0, 5);
+});
+
+import { writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+document.getElementById("mask-info-btn").addEventListener("click", async () => {
+    if (!confirm("30일 지난 모든 글의 개인정보를 마스킹하시겠습니까? 되돌릴 수 없습니다.")) return;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const q = query(ordersCollection);
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    let count = 0;
+
+    snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const createdAt = data.createdAt.toDate();
+
+        if (createdAt < thirtyDaysAgo) {
+            let updateData = {};
+            
+            if (data.phone && !data.phone.includes("[개인정보보호]")) {
+                updateData.phone = "[개인정보보호]" + data.phone.substring(5);
+            }
+            
+            if (data.address && !data.address.includes("[개인정보보호]")) {
+                const addr = data.address;
+                updateData.address = addr.substring(0, Math.max(0, addr.length - 6)) + "[개인정보보호]";
+            }
+
+            if (Object.keys(updateData).length > 0) {
+                batch.update(docSnap.ref, updateData);
+                count++;
+            }
+        }
+    });
+
+    if (count > 0) {
+        await batch.commit();
+        alert(`${count}개의 글이 마스킹되었습니다.`);
+    } else {
+        alert("수정할 대상이 없습니다.");
+    }
+});
