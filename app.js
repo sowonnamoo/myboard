@@ -280,3 +280,24 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
     alert("장바구니에 담겼습니다.");
     window.open('cart1.html', 'cartWindow', 'width=470,height=460');
 });
+
+
+
+// --- 결제 버튼 로직 (기존 코드 맨 아래에 추가) ---
+document.getElementById("pay-card-btn").addEventListener("click", () => {
+    // 1. 상세보기 화면에서 현재 가격 가져오기 (문자열에서 숫자만 추출)
+    const priceText = document.getElementById("detail-price").innerText;
+    const priceValue = priceText.replace(/[^0-9]/g, ''); 
+
+    // 2. 가격이 0원이면 결제할 필요 없음 (안전장치)
+    if (!priceValue || parseInt(priceValue) === 0) {
+        alert("결제할 금액이 없습니다.");
+        return;
+    }
+
+    // 3. 결제 페이지로 전달하기 위해 localStorage에 저장
+    localStorage.setItem("totalAmount", priceValue);
+    
+    // 4. 결제 페이지로 이동 (같은 폴더에 payment.html이 있어야 합니다)
+    location.href = "payment.html"; 
+});
