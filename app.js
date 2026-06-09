@@ -284,20 +284,23 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
 
 JavaScript
-// 카드결제 버튼 클릭 이벤트
-document.getElementById("pay-card-btn").addEventListener("click", () => {
-    // 1. 상세보기 화면에서 현재 가격 가져오기 (문자열에서 숫자만 추출)
-    const priceText = document.getElementById("detail-price").innerText;
-    const priceValue = priceText.replace(/[^0-9]/g, ''); 
+// 버튼에 직접 걸지 않고, 문서 전체(document)에 이벤트를 걸어서 클릭을 가로챕니다.
+document.addEventListener("click", (e) => {
+    // 클릭된 대상이 'pay-card-btn'인지 확인
+    if (e.target && e.target.id === "pay-card-btn") {
+        
+        // 1. 상세보기 화면에서 현재 가격 가져오기
+        const priceText = document.getElementById("detail-price").innerText;
+        const priceValue = priceText.replace(/[^0-9]/g, ''); 
 
-    // 2. 가격 유효성 검사 (0원이면 결제 진행 안 함)
-    if (!priceValue || parseInt(priceValue) === 0) {
-        alert("결제할 금액이 없습니다.");
-        return;
+        // 2. 가격 검사
+        if (!priceValue || parseInt(priceValue) === 0) {
+            alert("결제할 금액이 없습니다.");
+            return;
+        }
+
+        // 3. 새 창으로 열기
+        const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
+        window.open(targetUrl, '_blank');
     }
-
-    // 3. 지정된 URL로 가격 파라미터를 붙여서 새 창으로 열기
-    // 팝업 옵션을 주지 않으면 브라우저 설정에 따라 새 탭 또는 새 창으로 열립니다.
-    const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
-    window.open(targetUrl, '_blank'); 
 });
