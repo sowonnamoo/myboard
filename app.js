@@ -156,6 +156,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-views").innerText = `조회: ${data.views + 1}`;
     document.getElementById("detail-qty").innerText = data.quantity;
     document.getElementById("detail-size").innerText = data.size;
+
     document.getElementById("detail-price").innerText = data.price ? data.price.toLocaleString() + '원' : '0원';
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
