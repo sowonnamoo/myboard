@@ -156,6 +156,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-views").innerText = `조회: ${data.views + 1}`;
     document.getElementById("detail-qty").innerText = data.quantity;
     document.getElementById("detail-size").innerText = data.size;
+    document.getElementById("detail-price").innerText = (data.price || "0") + " 원"; // 추가
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
@@ -189,7 +190,7 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 
 let textInterval, barInterval; 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
+const fields = ['input-author', 'product-name', 'quantity', 'size', 'price', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
     const file1 = document.getElementById("file-1");
     if (file1.files.length === 0) { alert("최소 1개의 파일을 첨부해주세요."); return; }
@@ -201,15 +202,20 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
         await addDoc(collection(db, "boards"), { 
-            author: document.getElementById('input-author').value, 
-            productName: document.getElementById('product-name').value, 
-            quantity: document.getElementById('quantity').value, 
-            size: document.getElementById('size').value, 
-            phone: document.getElementById('phone').value, 
-            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
-            password: phoneVal.slice(-4), 
-            message: document.getElementById('message').value, 
-            file1Url, file2Url, views: 0, createdAt: new Date(), isDeleted: false
+        author: document.getElementById('input-author').value, 
+        productName: document.getElementById('product-name').value, 
+        quantity: document.getElementById('quantity').value, 
+        size: document.getElementById('size').value, 
+        price: document.getElementById('price').value, // 추가
+        phone: document.getElementById('phone').value, 
+        address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
+        password: phoneVal.slice(-4), 
+        message: document.getElementById('message').value, 
+        file1Url, 
+        file2Url, 
+        views: 0, 
+        createdAt: new Date(),
+        isDeleted: false
         });
         alert("접수되었습니다."); 
         switchView('list');
