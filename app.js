@@ -156,7 +156,6 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-views").innerText = `조회: ${data.views + 1}`;
     document.getElementById("detail-qty").innerText = data.quantity;
     document.getElementById("detail-size").innerText = data.size;
-    document.getElementById("detail-price").innerText = (data.price || "0") + " 원"; // 추가
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
@@ -190,59 +189,31 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 
 let textInterval, barInterval; 
 document.getElementById("save-btn").addEventListener("click", async () => {
-const fields = ['input-author', 'product-name', 'quantity', 'size', 'price', 'phone', 'address'];
+    const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
     const file1 = document.getElementById("file-1");
     if (file1.files.length === 0) { alert("최소 1개의 파일을 첨부해주세요."); return; }
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
     if (phoneVal.length !== 11) { alert("전화번호 11자리를 정확히 입력해주세요."); return; }
-   const spinner = document.getElementById("loading-spinner");
-    const bar = document.getElementById("red-progress-bar");
-    const text = document.getElementById("loading-text"); // 텍스트 요소 가져오기
-    
-    spinner.classList.remove("hidden");
-    bar.style.width = "5%";
-    
-    const messages = ["파일 접수중..", "정상 업로드 중입니다.", "잠시 기다려주세요.", "10mb기준 50~100초 소요 "];
-    let msgIndex = 0;
-    let percent = 5;
-
-    const interval = setInterval(() => {
-        // 로딩바 진행
-        if (percent < 90) {
-            percent += 5;
-            bar.style.width = percent + "%";
-        }
-        
-        // 텍스트 변경 (3초마다 순환)
-        msgIndex = (msgIndex + 1) % messages.length;
-        text.innerText = messages[msgIndex];
-        
-    }, 3000); // 3초 간격
-
+    const spinner = document.getElementById("loading-spinner");
+    spinner.classList.remove("hidden"); 
     try {
-        // 3. 파일 업로드 (이 부분이 실행되는 동안 위 interval이 동작)
         const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
-        
-        // 4. 데이터 저장
-        bar.style.width = "100%"; // 저장 직전 100%
         await addDoc(collection(db, "boards"), { 
-            // ... (기존 저장 데이터 필드들)
-            price: document.getElementById('price').value, // 추가된 부분
-            // ...
+            author: document.getElementById('input-author').value, 
+            productName: document.getElementById('product-name').value, 
+            quantity: document.getElementById('quantity').value, 
+            size: document.getElementById('size').value, 
+            phone: document.getElementById('phone').value, 
+            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
+            password: phoneVal.slice(-4), 
+            message: document.getElementById('message').value, 
+            file1Url, file2Url, views: 0, createdAt: new Date(), isDeleted: false
         });
-
-        alert("접수되었습니다.");
+        alert("접수되었습니다."); 
         switchView('list');
-    } catch (e) {
-        alert("오류: " + e.message);
-    } finally {
-        // 5. 로딩바 종료
-        clearInterval(interval);
-        spinner.classList.add("hidden");
-        bar.style.width = "0%";
-    }
+    } catch (e) { alert("오류: " + e.message); } finally { spinner.classList.add("hidden"); }
 });
 
 document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
