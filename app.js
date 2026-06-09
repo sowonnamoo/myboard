@@ -208,7 +208,7 @@ const fields = ['input-author', 'product-name', 'quantity', 'size', 'price', 'ph
             percent += 10;
             bar.style.width = percent + "%";
         }
-    }, 500); // 0.5초마다 빠르게 증가
+    }, 3000); // 3초마다 빠르게 증가
 
     try {
         // 3. 파일 업로드 (이 부분이 실행되는 동안 위 interval이 동작)
