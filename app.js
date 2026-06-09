@@ -266,5 +266,11 @@ document.getElementById("add-cart-btn").onclick = () => {
     localStorage.setItem('myCart', JSON.stringify(cart));
     alert("장바구니에 담겼습니다.");
 };
-
+// 담기 + 팝업 열기 동시에 하고 싶을 때
+document.getElementById("add-cart-btn").onclick = () => {
+    // 위 담기 로직 실행...
+    
+    // 팝업 열기
+    window.open('cart1.html', 'cartWindow', 'width=320,height=450');
+};
 
