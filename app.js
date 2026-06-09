@@ -284,7 +284,7 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
 
 
-// window 객체에 함수를 등록하면 HTML에서 직접 호출 가능합니다.
+// window 객체에 함수를 등록하면 HTML에서 직접 호출 가능합니다. 카드
 window.handleCardPay = function() {
     const priceEl = document.getElementById("detail-price");
     if (!priceEl) {
@@ -299,22 +299,9 @@ window.handleCardPay = function() {
         return;
     }
 
-    // 팝업 차단 해제 주의사항 안내
-    const message = "카드결제창을 띄우기 위해 팝업 허용이 필요합니다.\n\n" +
-                    "만약 창이 뜨지 않는다면,\n" +
-                    "1. 브라우저 주소창 오른쪽의 '팝업 차단됨' 아이콘을 클릭하세요.\n" +
-                    "2. '항상 허용'을 선택 후 다시 버튼을 눌러주세요.\n\n" +
-                    "결제창을 여시겠습니까?";
-
-    if (confirm(message)) {
-        const url = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
-        const options = "width=811,height=649,scrollbars=yes,resizable=yes";
-        
-        const popup = window.open(url, 'paymentWindow', options);
-        
-        // 팝업이 차단되었는지 확인하는 로직 (선택 사항)
-        if (!popup || popup.closed || typeof popup.closed == 'undefined') {
-            alert("팝업이 차단되었습니다. 브라우저 상단 주소창 근처의 팝업 차단 아이콘을 확인해주세요.");
-        }
-    }
+    // 811x649 크기의 새 창으로 열기 (top, left는 화면 중앙 근처에 띄우는 옵션입니다)
+    const url = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
+    const options = "width=811,height=649,scrollbars=yes,resizable=yes";
+    
+    window.open(url, 'paymentWindow', options);
 };
