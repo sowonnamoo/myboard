@@ -284,22 +284,23 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
 
 JavaScript
-// 버튼에 직접 걸지 않고, 문서 전체(document)에 이벤트를 걸어서 클릭을 가로챕니다.
+/ --- 카드 결제 로직 (app.js 맨 아래에 붙여넣으세요) ---
 document.addEventListener("click", (e) => {
-    // 클릭된 대상이 'pay-card-btn'인지 확인
     if (e.target && e.target.id === "pay-card-btn") {
         
-        // 1. 상세보기 화면에서 현재 가격 가져오기
-        const priceText = document.getElementById("detail-price").innerText;
-        const priceValue = priceText.replace(/[^0-9]/g, ''); 
+        const priceEl = document.getElementById("detail-price");
+        if (!priceEl) {
+            alert("결제 정보를 찾을 수 없습니다.");
+            return;
+        }
 
-        // 2. 가격 검사
+        const priceValue = priceEl.innerText.replace(/[^0-9]/g, ''); 
+
         if (!priceValue || parseInt(priceValue) === 0) {
             alert("결제할 금액이 없습니다.");
             return;
         }
 
-        // 3. 새 창으로 열기
         const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
         window.open(targetUrl, '_blank');
     }
