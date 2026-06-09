@@ -230,6 +230,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             quantity: document.getElementById('quantity').value, 
             size: document.getElementById('size').value, 
             phone: document.getElementById('phone').value, 
+            price: document.getElementById('price').value,
             address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
             password: phoneVal.slice(-4), 
             message: document.getElementById('message').value, 
