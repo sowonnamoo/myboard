@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>주문정보 수정</title>
+<style>
+body{font-family:sans-serif;padding:15px}
+input{width:100%;padding:8px;margin-bottom:8px;box-sizing:border-box}
+button{padding:10px 15px}
+</style>
+</head>
+<body>
+
+<h3>주문정보 수정</h3>
+
+<input type="text" id="author" placeholder="성함">
+<input type="text" id="phone" placeholder="연락처">
+<input type="text" id="address" placeholder="주소">
+
+<button id="saveBtn">수정완료</button>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import {
+  getFirestore,
+  doc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "네거 그대로",
+    authDomain: "네거 그대로",
+    projectId: "네거 그대로",
+    storageBucket: "네거 그대로",
+    messagingSenderId: "네거 그대로",
+    appId: "네거 그대로"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(location.search);
+
+document.getElementById("author").value =
+    params.get("author") || "";
+
+document.getElementById("phone").value =
+    params.get("phone") || "";
+
+document.getElementById("address").value =
+    params.get("address") || "";
+
+document.getElementById("saveBtn").onclick = async () => {
+
+    const id = params.get("id");
+
+    await updateDoc(
+        doc(db, "boards", id),
+        {
+            author: document.getElementById("author").value,
+            phone: document.getElementById("phone").value,
+            address: document.getElementById("address").value,
+            updatedAt: new Date()
+        }
+    );
+
+    alert("수정 완료");
+
+    if(window.opener){
+        window.opener.loadAndRender?.();
+    }
+
+    window.close();
+};
+
+</script>
+
+</body>
+</html>
