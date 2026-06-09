@@ -247,7 +247,7 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 
 let textInterval, barInterval; 
 
-document.getElementById("save-btn").addEventListener("click", async () => {
+btn").addEventListener("click", async () => {
     // 1. 필수 항목 검사 (텍스트 필드)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { 
@@ -335,7 +335,7 @@ try {
 
 
     
-    const saveBtn = document.getElementById("save-btn");
+    const saveBtn = btn");
     saveBtn.innerText = "파일 업로드중..."; 
     saveBtn.disabled = true;
 
@@ -475,7 +475,7 @@ document.getElementById("detail-edit-btn").addEventListener("click", async () =>
     document.getElementById('message').value = data.message || "";
 
     // 저장 버튼을 수정 모드로 변경
-    const saveBtn = document.getElementById("save-btn");
+    const saveBtn = btn");
     saveBtn.dataset.editId = currentViewId; // 수정할 ID 심기
     saveBtn.innerText = "수정완료";
 
@@ -484,7 +484,7 @@ document.getElementById("detail-edit-btn").addEventListener("click", async () =>
 
 // 2. 글쓰기 버튼 클릭 시 수정 모드 해제
 document.getElementById("go-write-btn").addEventListener("click", () => {
-    const saveBtn = document.getElementById("save-btn");
+    const saveBtn = btn");
     saveBtn.removeAttribute("data-edit-id");
     saveBtn.innerText = "접수하기";
     // 폼 초기화 추가
@@ -494,28 +494,31 @@ document.getElementById("go-write-btn").addEventListener("click", () => {
     switchView('write');
 });
 
-// 3. 저장 버튼 클릭 시 수정인지 신규인지 판단
-// 기존 리스너보다 먼저 동작하도록 캡처링 단계에서 수정 로직 실행
-document.getElementById("save-btn").addEventListener("click", async (e) => {
+// 페이지가 완전히 로드된 후 실행
+document.addEventListener("DOMContentLoaded", () => {
+    
     const saveBtn = document.getElementById("save-btn");
-    const editId = saveBtn.dataset.editId;
+    if (!saveBtn) return;
 
-    if (editId) {
-        // 수정 모드일 때만 동작
-        e.stopImmediatePropagation(); // 기존의 신규 작성 로직이 실행되는 것을 방지
-        
-        try {
-            saveBtn.innerText = "수정 중...";
-            await updateDoc(doc(db, "boards", editId), {
-                author: document.getElementById('input-author').value,
-                productName: document.getElementById('product-name').value,
-                quantity: document.getElementById('quantity').value,
-                size: document.getElementById('size').value,
-                phone: document.getElementById('phone').value,
-                address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
-                message: document.getElementById('message').value,
-                updatedAt: new Date()
-            });
+    // 하나의 리스너 안에서 신규/수정을 완벽하게 처리
+    saveBtn.addEventListener("click", async () => {
+        const editId = saveBtn.dataset.editId;
+
+        // [1] 수정 모드 로직
+        if (editId) {
+            try {
+                saveBtn.disabled = true;
+                saveBtn.innerText = "수정 중...";
+                await updateDoc(doc(db, "boards", editId), {
+                    author: document.getElementById('input-author').value,
+                    productName: document.getElementById('product-name').value,
+                    quantity: document.getElementById('quantity').value,
+                    size: document.getElementById('size').value,
+                    phone: document.getElementById('phone').value,
+                    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
+                    message: document.getElementById('message').value,
+                    updatedAt: new Date()
+                });
             alert("수정되었습니다.");
             saveBtn.removeAttribute('data-edit-id');
             saveBtn.innerText = "접수하기";
