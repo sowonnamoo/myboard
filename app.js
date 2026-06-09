@@ -251,3 +251,20 @@ document.getElementById("go-write-btn").addEventListener("click", () => switchVi
 document.getElementById("search-btn").addEventListener("click", applyFilter);
 document.getElementById("search-reset-btn").addEventListener("click", () => { document.getElementById("search-author").value = ""; applyFilter(); });
 loadAndRender();
+
+
+// 상세보기 시 장바구니 담기 버튼 동작
+document.getElementById("add-cart-btn").onclick = () => {
+    const item = {
+        name: document.getElementById("detail-title").innerText,
+        qty: document.getElementById("detail-qty").innerText,
+        size: document.getElementById("detail-size").innerText,
+        price: document.getElementById("detail-price").innerText.replace(/[^0-9]/g, '')
+    };
+    let cart = JSON.parse(localStorage.getItem('myCart') || '[]');
+    cart.push(item);
+    localStorage.setItem('myCart', JSON.stringify(cart));
+    alert("장바구니에 담겼습니다.");
+};
+
+
