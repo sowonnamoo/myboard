@@ -453,33 +453,3 @@ document.getElementById("mask-info-btn").addEventListener("click", async () => {
     }
 });
 
-
-window.openOrderEdit = async function () {
-    try {
-        const snap = await getDoc(doc(db, "boards", currentViewId));
-
-        if (!snap.exists()) {
-            alert("주문 정보를 찾을 수 없습니다.");
-            return;
-        }
-
-        const data = snap.data();
-
-        const params = new URLSearchParams({
-            id: currentViewId,
-            author: data.author || "",
-            phone: data.phone || "",
-            address: data.address || ""
-        });
-
-        window.open(
-            "edit.html?" + params.toString(),
-            "orderEdit",
-            "width=500,height=300,resizable=no,scrollbars=no"
-        );
-
-    } catch (e) {
-        console.error(e);
-        alert("수정창 열기 실패");
-    }
-};
