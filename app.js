@@ -299,6 +299,9 @@ window.handleCardPay = function() {
         return;
     }
 
-    const targetUrl = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
-    window.open(targetUrl, '_blank');
+    // 811x649 크기의 새 창으로 열기 (top, left는 화면 중앙 근처에 띄우는 옵션입니다)
+    const url = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
+    const options = "width=811,height=649,scrollbars=yes,resizable=yes";
+    
+    window.open(url, 'paymentWindow', options);
 };
