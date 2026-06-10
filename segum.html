@@ -126,21 +126,28 @@
     };
 
     window.editData = (id, data) => {
-        document.getElementById('docId').value = id;
-        document.getElementById('name').value = data.name;
-        document.getElementById('phone').value = data.phone;
-        document.getElementById('type').value = data.type;
-        toggleFields();
-        document.getElementById('cashNumber').value = data.cashNumber || '';
-        document.getElementById('bizNum').value = data.bizNum || '';
-        document.getElementById('bizType').value = data.bizType || '';
-        document.getElementById('bizItem').value = data.bizItem || '';
-        document.getElementById('bizName').value = data.bizName || '';
+    document.getElementById('docId').value = id;
+    document.getElementById('name').value = data.name;
+    document.getElementById('phone').value = data.phone;
+    document.getElementById('type').value = data.type;
+    toggleFields();
+
+    // 타입에 따라 알맞은 이메일 칸에 데이터 채우기
+    if (data.type === 'tax') {
         document.getElementById('email').value = data.email || '';
-        document.getElementById('manager').value = data.manager || '';
-        document.getElementById('managerPhone').value = data.managerPhone || '';
-        window.scrollTo(0,0);
-    };
+    } else {
+        document.getElementById('cashEmail').value = data.email || '';
+    }
+    
+    document.getElementById('cashNumber').value = data.cashNumber || '';
+    document.getElementById('bizNum').value = data.bizNum || '';
+    document.getElementById('bizType').value = data.bizType || '';
+    document.getElementById('bizItem').value = data.bizItem || '';
+    document.getElementById('bizName').value = data.bizName || '';
+    document.getElementById('manager').value = data.manager || '';
+    document.getElementById('managerPhone').value = data.managerPhone || '';
+    window.scrollTo(0,0);
+};
 
     window.deleteData = async (id) => {
         if(confirm('정말 삭제하시겠습니까?')) {
