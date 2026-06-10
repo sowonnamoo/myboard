@@ -76,31 +76,34 @@
         document.getElementById('cashFields').classList.toggle('hidden', type !== 'cash');
     };
 
-    window.saveData = async () => {
-        const id = document.getElementById('docId').value;
-        const data = {
-            name: document.getElementById('name').value,
-            phone: document.getElementById('phone').value,
-            type: document.getElementById('type').value,
-            cashNumber: document.getElementById('cashNumber').value,
-            bizNum: document.getElementById('bizNum').value,
-            bizType: document.getElementById('bizType').value,
-            bizItem: document.getElementById('bizItem').value,
-            bizName: document.getElementById('bizName').value,
-            email: document.getElementById('email').value,
-            manager: document.getElementById('manager').value,
-            managerPhone: document.getElementById('managerPhone').value
-        };
+   window.saveData = async () => {
+    const id = document.getElementById('docId').value;
+    const type = document.getElementById('type').value;
 
-        if (id) {
-            await updateDoc(doc(db, COLLECTION_NAME, id), data);
-            alert('수정 완료!');
-        } else {
-            await addDoc(collection(db, COLLECTION_NAME), data);
-            alert('저장 완료!');
-        }
-        location.reload();
+    const data = {
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        type: type,
+        cashNumber: document.getElementById('cashNumber').value,
+        bizNum: document.getElementById('bizNum').value,
+        bizType: document.getElementById('bizType').value,
+        bizItem: document.getElementById('bizItem').value,
+        bizName: document.getElementById('bizName').value,
+        manager: document.getElementById('manager').value,
+        managerPhone: document.getElementById('managerPhone').value,
+        // 조건부 이메일 저장
+        email: type === 'tax' ? document.getElementById('email').value : document.getElementById('cashEmail').value
     };
+
+    if (id) {
+        await updateDoc(doc(db, COLLECTION_NAME, id), data);
+        alert('수정 완료!');
+    } else {
+        await addDoc(collection(db, COLLECTION_NAME), data);
+        alert('저장 완료!');
+    }
+    location.reload();
+};
 
     window.searchData = async () => {
         const phone = document.getElementById('searchPhone').value;
