@@ -18,51 +18,53 @@
 
 <div class="box">
     <h3>정보 조회</h3>
-    <input type="text" id="searchPhone" placeholder="전화번호(접수자) 입력">
+    <input type="text" id="searchPhone" placeholder="전화번호(접수자) 입력" required>
     <button class="btn-search" onclick="searchData()">조회하기</button>
     <div id="resultList" style="margin-bottom: 20px;"></div>
 
     <hr style="margin: 30px 0;">
 
     <h3>세무 정보 신규 등록/수정</h3>
-    <input type="hidden" id="docId">
-    <input type="text" id="name" placeholder="상품구입시 접수자성함">
-    <input type="text" id="phone" placeholder="접수자 핸드폰번호">
-    
-    <select id="type" onchange="toggleFields()">
-        <option value="tax" selected>세금계산서</option>
-        <option value="cash">현금영수증</option>
-    </select>
+    <form id="taxForm">
+        <input type="hidden" id="docId">
+        <input type="text" id="name" placeholder="상품구입시 접수자성함" required>
+        <input type="text" id="phone" placeholder="접수자 핸드폰번호" required>
+        
+        <select id="type" onchange="toggleFields()">
+            <option value="tax" selected>세금계산서</option>
+            <option value="cash">현금영수증</option>
+        </select>
 
-    <div id="taxFields">
-        <input type="text" id="bizNum" placeholder="사업자 등록번호">
-        <input type="text" id="bizType" placeholder="업태">
-        <input type="text" id="bizItem" placeholder="종목">
-        <input type="text" id="bizName" placeholder="상호명">
-        <input type="email" id="email" placeholder="발행받을 이메일">
-        <input type="text" id="manager" placeholder="담당자 성함">
-        <input type="text" id="managerPhone" placeholder="담당자 연락처">
-    </div>
+        <div id="taxFields">
+            <input type="text" id="bizNum" placeholder="사업자 등록번호" required>
+            <input type="text" id="bizType" placeholder="업태" required>
+            <input type="text" id="bizItem" placeholder="종목" required>
+            <input type="text" id="bizName" placeholder="상호명" required>
+            <input type="email" id="email" placeholder="발행받을 이메일" required>
+            <input type="text" id="manager" placeholder="담당자 성함" required>
+            <input type="text" id="managerPhone" placeholder="담당자 연락처" required>
+        </div>
 
-    <div id="cashFields" class="hidden">
-        <input type="text" id="cashNumber" placeholder="현금영수증 발생희망(사업자번호or전화번호중 1개 입력)">
-    </div>
+        <div id="cashFields" class="hidden">
+            <input type="text" id="cashNumber" placeholder="현금영수증 발생희망(사업자번호or전화번호)">
+        </div>
 
-    <button onclick="saveData()">저장 / 수정하기</button>
+        <button type="submit">저장 / 수정하기</button>
+    </form>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -70,24 +72,34 @@ const firebaseConfig = {
 
     window.toggleFields = () => {
         const type = document.getElementById('type').value;
-        document.getElementById('taxFields').classList.toggle('hidden', type !== 'tax');
-        document.getElementById('cashFields').classList.toggle('hidden', type !== 'cash');
+        const taxFields = document.getElementById('taxFields');
+        const cashFields = document.getElementById('cashFields');
+        
+        taxFields.classList.toggle('hidden', type !== 'tax');
+        cashFields.classList.toggle('hidden', type !== 'cash');
+        
+        // 필수 속성 토글
+        [...taxFields.querySelectorAll('input')].forEach(input => input.required = (type === 'tax'));
+        document.getElementById('cashNumber').required = (type === 'cash');
     };
 
-    window.saveData = async () => {
+    document.getElementById('taxForm').onsubmit = async (e) => {
+        e.preventDefault();
         const id = document.getElementById('docId').value;
+        const type = document.getElementById('type').value;
+        
         const data = {
             name: document.getElementById('name').value,
             phone: document.getElementById('phone').value,
-            type: document.getElementById('type').value,
-            cashNumber: document.getElementById('cashNumber').value,
-            bizNum: document.getElementById('bizNum').value,
-            bizType: document.getElementById('bizType').value,
-            bizItem: document.getElementById('bizItem').value,
-            bizName: document.getElementById('bizName').value,
-            email: document.getElementById('email').value,
-            manager: document.getElementById('manager').value,
-            managerPhone: document.getElementById('managerPhone').value
+            type: type,
+            cashNumber: type === 'cash' ? document.getElementById('cashNumber').value : '',
+            bizNum: type === 'tax' ? document.getElementById('bizNum').value : '',
+            bizType: type === 'tax' ? document.getElementById('bizType').value : '',
+            bizItem: type === 'tax' ? document.getElementById('bizItem').value : '',
+            bizName: type === 'tax' ? document.getElementById('bizName').value : '',
+            email: type === 'tax' ? document.getElementById('email').value : '',
+            manager: type === 'tax' ? document.getElementById('manager').value : '',
+            managerPhone: type === 'tax' ? document.getElementById('managerPhone').value : ''
         };
 
         if (id) {
@@ -102,19 +114,19 @@ const firebaseConfig = {
 
     window.searchData = async () => {
         const phone = document.getElementById('searchPhone').value;
+        if(!phone) return alert("전화번호를 입력하세요.");
         const q = query(collection(db, COLLECTION_NAME), where("phone", "==", phone));
         const snapshot = await getDocs(q);
         const list = document.getElementById('resultList');
         list.innerHTML = '';
         snapshot.forEach(d => {
             const data = d.data();
-            // 수정 시 데이터 전달을 위해 작은따옴표로 변환된 문자열 생성
             const dataStr = JSON.stringify(data).replace(/"/g, "'");
             list.innerHTML += `<div class="item">
                 ${data.name} (${data.type === 'tax' ? '세금' : '현금'})
                 <div class="btn-group">
-                    <button onclick="editData('${d.id}', ${dataStr})">수정</button>
-                    <button onclick="deleteData('${d.id}')">삭제</button>
+                    <button type="button" onclick="editData('${d.id}', ${dataStr})">수정</button>
+                    <button type="button" onclick="deleteData('${d.id}')">삭제</button>
                 </div>
             </div>`;
         });
