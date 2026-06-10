@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>세무 관리 시스템</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+        .box { max-width: 450px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 12px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .hidden { display: none; }
+        button { width: 100%; padding: 12px; margin-top: 10px; background: #03c75a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-search { background: #007bff; }
+        .item { border-bottom: 1px solid #eee; padding: 15px 0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-group button { width: auto; padding: 5px 10px; margin-left: 5px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h3>정보 조회</h3>
+    <input type="text" id="searchPhone" placeholder="전화번호(접수자) 입력">
+    <button class="btn-search" onclick="searchData()">조회하기</button>
+    <div id="resultList" style="margin-bottom: 20px;"></div>
+
+    <hr style="margin: 30px 0;">
+
+    <h3>세무 정보 신규 등록/수정</h3>
+    <input type="hidden" id="docId">
+    <input type="text" id="name" placeholder="상품구입시 접수자성함">
+    <input type="text" id="phone" placeholder="접수자 핸드폰번호">
+    
+    <select id="type" onchange="toggleFields()">
+        <option value="tax" selected>세금계산서</option>
+        <option value="cash">현금영수증</option>
+    </select>
+
+    <div id="taxFields">
+        <input type="text" id="bizNum" placeholder="사업자 등록번호">
+        <input type="text" id="bizType" placeholder="업태">
+        <input type="text" id="bizItem" placeholder="종목">
+        <input type="text" id="bizName" placeholder="상호명">
+        <input type="email" id="email" placeholder="발행받을 이메일">
+        <input type="text" id="manager" placeholder="담당자 성함">
+        <input type="text" id="managerPhone" placeholder="담당자 연락처">
+    </div>
+
+    <div id="cashFields" class="hidden">
+        <input type="text" id="cashNumber" placeholder="현금영수증 발생희망(사업자번호or전화번호중 1개 입력)">
+    </div>
+
+    <button onclick="saveData()">저장 / 수정하기</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    authDomain: "board-291e3.firebaseapp.com",
+    projectId: "board-291e3",
+    storageBucket: "board-291e3.firebasestorage.app",
+    messagingSenderId: "25881766316",
+    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const COLLECTION_NAME = "segum1";
+
+    window.toggleFields = () => {
+        const type = document.getElementById('type').value;
+        document.getElementById('taxFields').classList.toggle('hidden', type !== 'tax');
+        document.getElementById('cashFields').classList.toggle('hidden', type !== 'cash');
+    };
+
+    window.saveData = async () => {
+        const id = document.getElementById('docId').value;
+        const data = {
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value,
+            type: document.getElementById('type').value,
+            cashNumber: document.getElementById('cashNumber').value,
+            bizNum: document.getElementById('bizNum').value,
+            bizType: document.getElementById('bizType').value,
+            bizItem: document.getElementById('bizItem').value,
+            bizName: document.getElementById('bizName').value,
+            email: document.getElementById('email').value,
+            manager: document.getElementById('manager').value,
+            managerPhone: document.getElementById('managerPhone').value
+        };
+
+        if (id) {
+            await updateDoc(doc(db, COLLECTION_NAME, id), data);
+            alert('수정 완료!');
+        } else {
+            await addDoc(collection(db, COLLECTION_NAME), data);
+            alert('저장 완료!');
+        }
+        location.reload();
+    };
+
+    window.searchData = async () => {
+        const phone = document.getElementById('searchPhone').value;
+        const q = query(collection(db, COLLECTION_NAME), where("phone", "==", phone));
+        const snapshot = await getDocs(q);
+        const list = document.getElementById('resultList');
+        list.innerHTML = '';
+        snapshot.forEach(d => {
+            const data = d.data();
+            // 수정 시 데이터 전달을 위해 작은따옴표로 변환된 문자열 생성
+            const dataStr = JSON.stringify(data).replace(/"/g, "'");
+            list.innerHTML += `<div class="item">
+                ${data.name} (${data.type === 'tax' ? '세금' : '현금'})
+                <div class="btn-group">
+                    <button onclick="editData('${d.id}', ${dataStr})">수정</button>
+                    <button onclick="deleteData('${d.id}')">삭제</button>
+                </div>
+            </div>`;
+        });
+    };
+
+    window.editData = (id, data) => {
+        document.getElementById('docId').value = id;
+        document.getElementById('name').value = data.name;
+        document.getElementById('phone').value = data.phone;
+        document.getElementById('type').value = data.type;
+        toggleFields();
+        document.getElementById('cashNumber').value = data.cashNumber || '';
+        document.getElementById('bizNum').value = data.bizNum || '';
+        document.getElementById('bizType').value = data.bizType || '';
+        document.getElementById('bizItem').value = data.bizItem || '';
+        document.getElementById('bizName').value = data.bizName || '';
+        document.getElementById('email').value = data.email || '';
+        document.getElementById('manager').value = data.manager || '';
+        document.getElementById('managerPhone').value = data.managerPhone || '';
+        window.scrollTo(0,0);
+    };
+
+    window.deleteData = async (id) => {
+        if(confirm('정말 삭제하시겠습니까?')) {
+            await deleteDoc(doc(db, COLLECTION_NAME, id));
+            searchData();
+        }
+    };
+</script>
+</body>
+</html>
