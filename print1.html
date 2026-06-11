@@ -68,22 +68,27 @@
             header.className = "text-center py-8 mb-12 border-2 border-black bg-white transition-all";
         }
 
-        // 3. 테이블 데이터 주입
-        const tbody = document.getElementById('print-tbody');
-        tbody.innerHTML = `
-            <tr class="h-12 text-center">
-                <td class="border border-black">${product}</td>
-                <td class="border border-black">${size}</td>
-                <td class="border border-black">${qty}</td>
-                <td class="border border-black">${price}</td>
-                <td class="border border-black">0</td>
-                <td class="border border-black">${price}</td>
-            </tr>
-        `;
-        // 나머지 빈 행 채우기 (5개)
-        for(let i=0; i<5; i++) {
-            tbody.innerHTML += `<tr class="h-12"><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td></tr>`;
-        }
+       // 3. 테이블 데이터 주입 (계산 로직 추가)
+const totalAmount = parseInt(price) || 0; // 결제액 (합계)
+const supplyPrice = Math.floor(totalAmount / 1.1); // 공급가액
+const tax = totalAmount - supplyPrice; // 부가세
+
+const tbody = document.getElementById('print-tbody');
+tbody.innerHTML = `
+    <tr class="h-12 text-center">
+        <td class="border border-black">${product}</td>
+        <td class="border border-black">${size}</td>
+        <td class="border border-black">${qty}</td>
+        <td class="border border-black">${supplyPrice.toLocaleString()}</td>
+        <td class="border border-black">${tax.toLocaleString()}</td>
+        <td class="border border-black">${totalAmount.toLocaleString()}</td>
+    </tr>
+`;
+
+// 나머지 빈 행 채우기 (5개)
+for(let i=0; i<5; i++) {
+    tbody.innerHTML += `<tr class="h-12"><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black"></td></tr>`;
+}
 
         document.getElementById('print-date').innerText = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
