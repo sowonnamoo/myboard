@@ -79,29 +79,59 @@
     const id = document.getElementById('docId').value;
     const type = document.getElementById('type').value;
 
-    const data = {
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value,
-        type: type,
-        cashNumber: document.getElementById('cashNumber').value,
-        bizNum: document.getElementById('bizNum').value,
-        bizType: document.getElementById('bizType').value,
-        bizItem: document.getElementById('bizItem').value,
-        bizName: document.getElementById('bizName').value,
-        manager: document.getElementById('manager').value,
-        managerPhone: document.getElementById('managerPhone').value,
-        // 조건부 이메일 저장
-        email: type === 'tax' ? document.getElementById('email').value : document.getElementById('cashEmail').value
-    };
+    // 1. 공통 필수 입력값 가져오기
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
 
-    if (id) {
-        await updateDoc(doc(db, COLLECTION_NAME, id), data);
-        alert('수정 완료!');
-    } else {
-        await addDoc(collection(db, COLLECTION_NAME), data);
-        alert('저장 완료!');
+    if (!name || !phone) {
+        alert('이름과 접수자 핸드폰번호는 필수입니다.');
+        return;
     }
-    location.reload();
+
+    // 2. 타입별 데이터 및 필수 입력 체크
+    let data = { name, phone, type };
+
+    if (type === 'tax') {
+        data.bizNum = document.getElementById('bizNum').value.trim();
+        data.bizType = document.getElementById('bizType').value.trim();
+        data.bizItem = document.getElementById('bizItem').value.trim();
+        data.bizName = document.getElementById('bizName').value.trim();
+        data.email = document.getElementById('email').value.trim();
+        data.manager = document.getElementById('manager').value.trim();
+        data.managerPhone = document.getElementById('managerPhone').value.trim();
+        data.cashNumber = ""; // 세금계산서일 땐 비움
+
+        // 세금계산서 필수 체크
+        if (!data.bizNum || !data.bizType || !data.bizItem || !data.bizName || !data.email || !data.manager || !data.managerPhone) {
+            alert('세금계산서 발행을 위한 모든 정보를 빠짐없이 입력해주세요.');
+            return;
+        }
+    } else {
+        data.cashNumber = document.getElementById('cashNumber').value.trim();
+        data.email = document.getElementById('cashEmail').value.trim();
+        // 현금영수증일 땐 세금계산서 관련 필드 비움
+        data.bizNum = data.bizType = data.bizItem = data.bizName = data.manager = data.managerPhone = "";
+
+        // 현금영수증 필수 체크
+        if (!data.cashNumber || !data.email) {
+            alert('현금영수증 발행을 위한 정보를 모두 입력해주세요.');
+            return;
+        }
+    }
+
+    // 3. Firebase 저장/수정
+    try {
+        if (id) {
+            await updateDoc(doc(db, COLLECTION_NAME, id), data);
+            alert('수정 완료!');
+        } else {
+            await addDoc(collection(db, COLLECTION_NAME), data);
+            alert('저장 완료!');
+        }
+        location.reload();
+    } catch (e) {
+        alert('저장 중 오류가 발생했습니다: ' + e.message);
+    }
 };
 
     window.searchData = async () => {
