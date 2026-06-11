@@ -79,7 +79,6 @@
     const id = document.getElementById('docId').value;
     const type = document.getElementById('type').value;
 
-    // 1. 공통 필수 입력값 가져오기
     const name = document.getElementById('name').value.trim();
     const phone = document.getElementById('phone').value.trim();
 
@@ -88,9 +87,9 @@
         return;
     }
 
-    // 2. 타입별 데이터 및 필수 입력 체크
     let data = { name, phone, type };
 
+    // 타입별 데이터 세팅 및 필수 입력 체크
     if (type === 'tax') {
         data.bizNum = document.getElementById('bizNum').value.trim();
         data.bizType = document.getElementById('bizType').value.trim();
@@ -99,9 +98,8 @@
         data.email = document.getElementById('email').value.trim();
         data.manager = document.getElementById('manager').value.trim();
         data.managerPhone = document.getElementById('managerPhone').value.trim();
-        data.cashNumber = ""; // 세금계산서일 땐 비움
+        data.cashNumber = "";
 
-        // 세금계산서 필수 체크
         if (!data.bizNum || !data.bizType || !data.bizItem || !data.bizName || !data.email || !data.manager || !data.managerPhone) {
             alert('세금계산서 발행을 위한 모든 정보를 빠짐없이 입력해주세요.');
             return;
@@ -109,22 +107,29 @@
     } else {
         data.cashNumber = document.getElementById('cashNumber').value.trim();
         data.email = document.getElementById('cashEmail').value.trim();
-        // 현금영수증일 땐 세금계산서 관련 필드 비움
         data.bizNum = data.bizType = data.bizItem = data.bizName = data.manager = data.managerPhone = "";
 
-        // 현금영수증 필수 체크
         if (!data.cashNumber || !data.email) {
             alert('현금영수증 발행을 위한 정보를 모두 입력해주세요.');
             return;
         }
     }
 
-    // 3. Firebase 저장/수정
     try {
         if (id) {
+            // 수정 모드
             await updateDoc(doc(db, COLLECTION_NAME, id), data);
             alert('수정 완료!');
         } else {
+            // 신규 등록 모드: 중복 확인 로직 추가
+            const q = query(collection(db, COLLECTION_NAME), where("phone", "==", phone));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                alert('이미 등록된 핸드폰번호입니다. 조회 기능을 통해 수정해주세요.');
+                return;
+            }
+
             await addDoc(collection(db, COLLECTION_NAME), data);
             alert('저장 완료!');
         }
