@@ -34,44 +34,48 @@
         const total = Number(localStorage.getItem("totalAmount")) || 0;
         document.getElementById("total-price").innerText = total.toLocaleString() + "원";
 
-        // 3. 결제 함수
-        async function goCard(){
-            if(total <= 0) {
-                alert("결제할 금액이 없습니다.");
-                return;
-            }
+       async function goCard() {
+    if(total <= 0) {
+        alert("결제할 금액이 없습니다.");
+        return;
+    }
 
-            try {
-                // 서버에서 키값 가져오기
-                const res = await fetch(WORKER_URL);
-                const data = await res.json();
-                
-                const paymentId = "PAY_" + Date.now();
+    try {
+        // 서버에서 키값 가져오기
+        const res = await fetch(WORKER_URL);
+        const data = await res.json();
+        
+        const paymentId = "PAY_" + Date.now();
 
-                // 포트원 결제창 호출
-                const response = await PortOne.requestPayment({
-                    storeId: data.STORE_ID,
-                    channelKey: data.CHANNEL_KEY_CARD,
-                    paymentId: paymentId,
-                    orderName: "주문상품 결제",
-                    totalAmount: total,
-                    currency: "KRW",
-                    payMethod: "CARD"
-                });
+        // SDK 호출 방식을 명시적으로 바꿔줍니다.
+        const response = await PortOne.requestPayment({
+            storeId: data.STORE_ID,
+            channelKey: data.CHANNEL_KEY_CARD,
+            paymentId: paymentId,
+            orderName: "주문상품 결제",
+            totalAmount: total,
+            currency: "KRW",
+            payMethod: "CARD"
+        });
 
-// 성공 시 결제 정보를 가져와서 완료 페이지로 이동
-                const successPaymentId = response.paymentId || response.imp_uid;
-                
-                alert(total.toLocaleString() + "원이 결제되었습니다.\n확인 후 시안이 등록됩니다.");
-                
-                // paymentId를 URL에 포함해서 success.html로 전달
-                location.href = `success.html?paymentId=${successPaymentId}`;
+        // 여기서 response를 찍어보세요 (콘솔 확인 필수!)
+        console.log("결제 결과:", response);
 
-            } catch(error) {
-                console.error(error);
-                alert("결제창 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-            }
+        if(response.code != null){
+            alert("결제 실패: " + response.message);
+            return;
         }
+
+        // 성공 시 페이지 이동
+        const successPaymentId = response.paymentId || response.imp_uid;
+        alert(total.toLocaleString() + "원이 결제되었습니다.");
+        location.href = "success.html?paymentId=" + successPaymentId;
+
+    } catch(error) {
+        console.error("오류 발생:", error);
+        alert("결제창 실행 중 오류가 발생했습니다.");
+    }
+}
     </script>
 </body>
 </html>
