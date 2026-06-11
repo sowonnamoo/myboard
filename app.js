@@ -327,3 +327,23 @@ window.handleBankPay = function() {
     
     window.open(url, 'bankPaymentWindow', options);
 };
+
+
+// 견적서 및 거래명세서 출력 호출 함수
+window.openDoc = function(filename, type) {
+    // 1. 상세 화면의 데이터를 가져옵니다. 
+    // (id 값들은 현재 사용 중인 상세 보기 HTML의 id와 일치해야 합니다.)
+    const product = document.getElementById('detail-title')?.innerText || '';
+    const size = document.getElementById('detail-size')?.innerText || '';
+    const qty = document.getElementById('detail-qty')?.innerText || '0';
+    const priceText = document.getElementById('detail-price')?.innerText || '0';
+    
+    // 가격에서 숫자만 추출 (예: 50,000원 -> 50000)
+    const price = priceText.replace(/[^0-9]/g, '');
+
+    // 2. URL 파라미터로 데이터를 넘깁니다.
+    const url = `${filename}?product=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${encodeURIComponent(qty)}&price=${encodeURIComponent(price)}`;
+    
+    // 3. 새 창으로 열기 (인쇄용 페이지)
+    window.open(url, '_blank', 'width=850,height=950');
+};
