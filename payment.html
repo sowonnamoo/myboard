@@ -8,21 +8,14 @@
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 </head>
 <body class="bg-gray-50 flex items-center justify-center min-h-screen">
-
     <div class="w-[400px] bg-white p-8 rounded-2xl shadow-lg text-center">
         <h2 class="text-xl font-bold text-gray-800 mb-6">💳 결제 진행</h2>
-        
         <div class="py-6 border-y border-gray-100 mb-6">
             <p class="text-sm text-gray-500 mb-2">결제하실 금액</p>
             <div id="total-price" class="text-3xl font-bold text-blue-600">0원</div>
         </div>
-
         <button onclick="goCard()" class="w-full py-4 bg-blue-900 text-white font-bold rounded-xl hover:bg-blue-800 transition">
             결제하기
-        </button>
-        
-        <button onclick="window.history.back()" class="w-full mt-3 py-2 text-gray-400 text-sm hover:text-gray-600">
-            뒤로가기
         </button>
     </div>
 
@@ -32,18 +25,11 @@
         document.getElementById("total-price").innerText = total.toLocaleString() + "원";
 
         async function goCard(){
-            if(total <= 0) {
-                alert("결제할 금액이 없습니다.");
-                return;
-            }
-
             try {
-                // 1. 서버에서 키값 가져오기
                 const res = await fetch(WORKER_URL);
                 const data = await res.json();
                 const paymentId = "PAY_" + Date.now();
 
-                // 2. 결제창 호출
                 const response = await PortOne.requestPayment({
                     storeId: data.STORE_ID,
                     channelKey: data.CHANNEL_KEY_CARD,
@@ -54,24 +40,19 @@
                     payMethod: "CARD"
                 });
 
-                // 3. 결제 결과가 response에 담겨옵니다.
-                // 결제 성공 시 response.code가 없거나 null입니다.
                 if(response.code != null){
                     alert("결제 실패: " + response.message);
                     return;
                 }
 
-                // 4. 성공 시 결제ID를 확보하고 페이지 이동
-                const successPaymentId = response.paymentId || paymentId;
+                // 성공 데이터를 로컬스토리지에 저장
+                localStorage.setItem("lastPaymentResult", JSON.stringify(response));
                 
-                alert(total.toLocaleString() + "원이 결제되었습니다.\n확인 후 시안이 등록됩니다.");
-                
-                // 페이지 이동 (강제적으로 이동 수행)
-                window.location.href = "success.html?paymentId=" + successPaymentId;
-
+                alert("결제가 완료되었습니다.");
+                window.location.href = "success.html?paymentId=" + (response.paymentId || paymentId);
             } catch(error) {
                 console.error("결제 에러:", error);
-                alert("결제 처리 중 문제가 발생했습니다. 관리자에게 문의하세요.");
+                alert("결제 처리 중 문제가 발생했습니다.");
             }
         }
     </script>
