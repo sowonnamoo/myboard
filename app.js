@@ -382,3 +382,14 @@ window.openReceipt = function() {
     // 9cm x 20cm 비율에 맞춘 팝업 크기 설정
     window.open(url, '_blank', 'width=400,height=800,scrollbars=yes');
 };
+
+    // 7. 세금계산서
+window.openLink = function(url) {
+    const width = 501;
+    const height = 765;
+    // 화면 중앙에 위치하도록 계산
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    
+    window.open(url, '_blank', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
+};
