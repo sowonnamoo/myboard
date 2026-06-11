@@ -106,10 +106,22 @@
 
     window.searchData = async () => {
         const phone = document.getElementById('searchPhone').value;
+        if (!phone) {
+            alert('전화번호를 입력해주세요.');
+            return;
+        }
+
         const q = query(collection(db, COLLECTION_NAME), where("phone", "==", phone));
         const snapshot = await getDocs(q);
         const list = document.getElementById('resultList');
         list.innerHTML = '';
+
+        // 검색 결과가 없을 때의 처리
+        if (snapshot.empty) {
+            list.innerHTML = '<p style="color: red; text-align: center; font-size: 13px;">등록정보가 없습니다. 아래 작성해주세요.</p>';
+            return;
+        }
+
         snapshot.forEach(d => {
             const data = d.data();
             // 수정 시 데이터 전달을 위해 작은따옴표로 변환된 문자열 생성
