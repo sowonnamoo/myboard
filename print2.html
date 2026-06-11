@@ -48,38 +48,40 @@
         </div>
     </div>
 
-    <script>
-        // 1. URL 데이터 파싱
-        const params = new URLSearchParams(window.location.search);
-        const type = params.get('type') || 'estimate';
-        const product = params.get('product') || '-';
-        const size = params.get('size') || '-';
-        const qty = params.get('qty') || '0';
-        const price = params.get('price') || '0';
+  <script>
+    // 1. URL 데이터 파싱
+    const params = new URLSearchParams(window.location.search);
+    
+    // 데이터 가져오기 (데이터가 없을 경우의 기본값 설정)
+    const product = params.get('product') || '-';
+    const size = params.get('size') || '-';
+    const qty = params.get('qty') || '0';
+    
+    // 가격 파싱 강화: URL에서 price를 찾지 못하면 0으로 처리
+    const rawPrice = params.get('price');
+    const price = rawPrice ? parseInt(rawPrice) : 0;
 
-       // 2. 제목/디자인 고정 설정
-const header = document.getElementById('doc-header');
-const title = document.getElementById('doc-title');
+    // 2. 제목/디자인 고정 설정 (거래명세서 전용)
+    const header = document.getElementById('doc-header');
+    const title = document.getElementById('doc-title');
+    title.innerText = "거 래 명 세 서";
+    header.className = "text-center py-8 mb-12 border-2 border-black bg-white transition-all";
 
-// 거래명세서 전용 고정 설정
-title.innerText = "거 래 명 세 서";
-header.className = "text-center py-8 mb-12 border-2 border-black bg-white transition-all";
-        }
+    // 3. 테이블 데이터 주입 (계산 로직)
+    const totalAmount = price; 
+    const supplyPrice = Math.floor(totalAmount / 1.1);
+    const tax = totalAmount - supplyPrice;
 
-     // 3. 테이블 데이터 주입 (계산 로직 및 굵은 글씨/단위 추가)
-const totalAmount = parseInt(price) || 0; 
-const supplyPrice = Math.floor(totalAmount / 1.1);
-const tax = totalAmount - supplyPrice;
+    const tbody = document.getElementById('print-tbody');
+    tbody.innerHTML = `
+        <tr class="h-12 text-center">
+            <td class="border border-black">${product}</td>
+            <td class="border border-black">${size}</td>
+            <td class="border border-black">${qty}</td>
+            <td class="border border-black">${supplyPrice.toLocaleString()}</td>
+            <td class="border border-black">${tax.toLocaleString()}</td>
+            <td class="border border-black font-bold">${totalAmount.toLocaleString()}원</td>
 
-const tbody = document.getElementById('print-tbody');
-tbody.innerHTML = `
-    <tr class="h-12 text-center">
-        <td class="border border-black">${product}</td>
-        <td class="border border-black">${size}</td>
-        <td class="border border-black">${qty}</td>
-        <td class="border border-black">${supplyPrice.toLocaleString()}</td>
-        <td class="border border-black">${tax.toLocaleString()}</td>
-        <td class="border border-black font-bold">${totalAmount.toLocaleString()}원</td>
     </tr>
 `;
 
