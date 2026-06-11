@@ -16,9 +16,9 @@
 
     <div class="a4-page" id="printable">
         <div class="flex-grow">
-            <div id="doc-header" class="text-center py-8 mb-12 border-2 border-black transition-all bg-gray-200">
-                <h1 id="doc-title" class="text-5xl font-bold tracking-widest">[ 거래명세서 ]</h1>
-            </div>
+          <div id="doc-header" class="text-center py-8 mb-12 border-2 border-black bg-white transition-all">
+    <h1 id="doc-title" class="text-5xl font-bold tracking-widest">거 래 명 세 서</h1>
+</div>
 
             <table class="w-full border-collapse border border-black mb-10 table-fixed">
                 <thead class="bg-gray-100">
@@ -57,15 +57,13 @@
         const qty = params.get('qty') || '0';
         const price = params.get('price') || '0';
 
-        // 2. 제목/디자인 설정
-        const header = document.getElementById('doc-header');
-        const title = document.getElementById('doc-title');
-        if(type === 'estimate') {
-            title.innerText = "견 적 서";
-            header.className = "text-center py-8 mb-12 border-2 border-black bg-gray-200 transition-all";
-        } else {
-            title.innerText = "거 래 명 세 서";
-            header.className = "text-center py-8 mb-12 border-2 border-black bg-white transition-all";
+       // 2. 제목/디자인 고정 설정
+const header = document.getElementById('doc-header');
+const title = document.getElementById('doc-title');
+
+// 거래명세서 전용 고정 설정
+title.innerText = "거 래 명 세 서";
+header.className = "text-center py-8 mb-12 border-2 border-black bg-white transition-all";
         }
 
      // 3. 테이블 데이터 주입 (계산 로직 및 굵은 글씨/단위 추가)
