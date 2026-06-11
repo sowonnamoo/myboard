@@ -2,51 +2,16 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>결제 처리 중</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <title>결제 완료</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-50">
     <div class="p-8 bg-white rounded-xl shadow-lg text-center">
-        <h2 id="msg" class="text-lg font-bold text-gray-800">전표를 자동 발행 중입니다...</h2>
+        <h2 class="text-2xl font-bold text-green-600">결제 및 전표 발행 완료!</h2>
+        <p class="text-gray-500 mt-2">잠시 후 자동으로 창이 닫힙니다.</p>
     </div>
-
     <script>
-        // [필수] 사장님의 파이어베이스 설정값으로 교체하세요
-const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-};
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        async function saveResult() {
-            const dataRaw = localStorage.getItem("lastPaymentResult");
-            if (!dataRaw) {
-                document.getElementById("msg").innerText = "결제 데이터를 찾을 수 없습니다.";
-                return;
-            }
-
-            try {
-                const paymentData = JSON.parse(dataRaw);
-                // card2 컬렉션에 데이터 저장
-                await db.collection("card2").add({
-                    ...paymentData,
-                    savedAt: new Date(),
-                    userPhone: localStorage.getItem("userPhone") || "입력없음"
-                });
-
-                document.getElementById("msg").innerText = "전표 발행 완료! 잠시 후 창이 닫힙니다.";
-                setTimeout(() => { window.close(); }, 2000);
-            } catch (e) {
-                document.getElementById("msg").innerText = "저장 실패: 관리자 문의";
-            }
-        }
-        saveResult();
+        setTimeout(() => { window.close(); }, 2000);
     </script>
 </body>
 </html>
