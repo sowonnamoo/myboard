@@ -59,15 +59,13 @@
                     payMethod: "CARD"
                 });
 
-                // 결제 결과 처리
-                if(response.code != null){
-                    alert("결제 실패: " + response.message);
-                    return;
-                }
-
-                // 성공 시 메시지 출력 후 완료 페이지 이동
+// 성공 시 결제 정보를 가져와서 완료 페이지로 이동
+                const successPaymentId = response.paymentId || response.imp_uid;
+                
                 alert(total.toLocaleString() + "원이 결제되었습니다.\n확인 후 시안이 등록됩니다.");
-                location.href = "success.html";
+                
+                // paymentId를 URL에 포함해서 success.html로 전달
+                location.href = `success.html?paymentId=${successPaymentId}`;
 
             } catch(error) {
                 console.error(error);
