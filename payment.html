@@ -37,12 +37,10 @@
 
         window.goCard = async function() {
             try {
-                // 1. 보안 키 가져오기
                 const res = await fetch(WORKER_URL);
                 const data = await res.json();
                 const paymentId = "PAY_" + Date.now();
 
-                // 2. 결제 호출
                 const response = await PortOne.requestPayment({
                     storeId: data.STORE_ID,
                     channelKey: data.CHANNEL_KEY_CARD,
@@ -55,20 +53,22 @@
 
                 if(response.code != null) return alert("결제 실패: " + response.message);
 
-                // 3. 결제 성공 시 Firebase에 즉시 데이터 저장 (card2 컬렉션)
+                // Firebase 'card2' 폴더에 전표 데이터 저장
                 await addDoc(collection(window.db, "card2"), {
-                    paymentId: paymentId,
+                    orderId: paymentId,
                     amount: total,
+                    approvalNumber: response.approvalNumber || "없음",
+                    cardCompany: response.cardName || "정보없음",
+                    cardNumber: response.cardNumber || "마스킹됨",
                     status: "결제완료",
                     createdAt: new Date().toISOString(),
-                    portoneResponse: response
+                    fullData: response
                 });
 
-                // 4. 완료 후 성공 페이지로 리다이렉트
                 window.location.href = "success.html";
             } catch(e) {
                 console.error(e);
-                alert("결제 처리 중 문제가 발생했습니다.");
+                alert("결제 처리 중 오류 발생.");
             }
         }
     </script>
