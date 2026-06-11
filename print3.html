@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>간이영수증</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @page { size: 90mm 200mm; margin: 0; }
+        body { margin: 0; padding: 5px; font-family: sans-serif; }
+        
+        .receipt-box { 
+            width: 85mm; height: 195mm; 
+            border: 3px solid #1e40af; 
+            padding: 10px; display: flex; flex-direction: column;
+        }
+        
+        .receipt-table { border-collapse: collapse; width: 100%; border: 2px solid #1e40af; }
+        .receipt-table th, .receipt-table td { border: 1px solid #1e40af; padding: 8px 4px; text-align: center; font-size: 11px; }
+        .header-bg { background-color: #eff6ff; }
+    </style>
+</head>
+<body>
+
+    <div class="receipt-box">
+        <div class="text-center mb-4">
+            <h1 class="text-3xl font-bold text-blue-900 border-b-2 border-blue-900 pb-2">간이영수증</h1>
+        </div>
+
+    <table class="receipt-table mb-4">
+            <tr>
+                <th class="header-bg w-1/4">사업자번호</th>
+                <td colspan="3">411-12-76734</td>
+            </tr>
+            <tr>
+                <th class="header-bg w-1/4">상호</th>
+                <td class="w-1/4">$$$$$$$$$$$$4$$</td>
+                <th class="header-bg w-1/4">성명</th>
+                <td class="w-1/4">222222</td>
+            </tr>
+            <tr>
+                <th class="header-bg">업태</th>
+                <td>기술서비스</td>
+                <th class="header-bg">종목</th>
+                <td>광고, 대행</td>
+            </tr>
+        </table>
+
+        <table class="receipt-table mb-4 flex-grow">
+            <thead class="header-bg font-bold">
+                <tr>
+                    <th class="w-[20%]">월일</th> <th class="w-[30%]">품명</th>
+                    <th class="w-[15%]">규격</th>
+                    <th class="w-[15%]">수량</th>
+                    <th class="w-[20%]">금액</th>
+                </tr>
+            </thead>
+            <tbody id="print-tbody">
+                </tbody>
+        </table>
+
+        <div class="mt-auto">
+            <div class="text-right text-lg font-bold border-t-2 border-blue-900 pt-3">
+                합계 ₩ <span id="total-price">0</span>원
+            </div>
+            <p class="text-[10px] text-center mt-4">발행일: <span id="print-date"></span></p>
+        </div>
+    </div>
+
+  <script>
+        const params = new URLSearchParams(window.location.search);
+        const product = params.get('product') || '-';
+        const size = params.get('size') || '-';
+        const qty = params.get('qty') || '1';
+        const price = parseInt(params.get('price')) || 0;
+        
+        // URL에서 날짜 정보 가져오기 (없으면 오늘 날짜 사용)
+        const dateStr = params.get('date') || `${new Date().getFullYear()}년 ${new Date().getMonth() + 1}월 ${new Date().getDate()}일`;
+
+        // 발행일 및 테이블 날짜 적용
+        document.getElementById('print-date').innerText = dateStr;
+        document.getElementById('total-price').innerText = price.toLocaleString();
+        
+        const tbody = document.getElementById('print-tbody');
+        tbody.innerHTML = `
+            <tr class="h-10">
+                <td>${dateStr}</td> 
+                <td class="font-bold">${product}</td>
+                <td>${size}</td>
+                <td>${qty}</td>
+                <td class="font-bold">${price.toLocaleString()}</td>
+            </tr>
+        `;
+
+        for(let i=0; i<8; i++) {
+            tbody.innerHTML += `<tr class="h-10"><td></td><td></td><td></td><td></td><td></td></tr>`;
+        }
+
+        window.onload = () => { setTimeout(window.print, 500); };
+    </script>
+</body>
+</html>
