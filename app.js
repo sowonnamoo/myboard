@@ -347,3 +347,38 @@ window.openDoc = function(filename, type) {
     // 3. 새 창으로 열기 (인쇄용 페이지)
     window.open(url, '_blank', 'width=850,height=950');
 };
+
+
+/**
+ * 간이영수증 팝업 호출 함수
+ * 이 함수를 app.js 하단에 추가하세요.
+ */
+window.openReceipt = function() {
+    // 1. 게시판 상세 영역에서 데이터 가져오기 (ID 확인 필요)
+    const product = document.getElementById('detail-title')?.innerText || '';
+    const size = document.getElementById('detail-size')?.innerText || '';
+    const qty = document.getElementById('detail-qty')?.innerText || '1';
+    
+    // 금액에서 숫자만 추출 (콤마 등 제거)
+    const priceRaw = document.getElementById('detail-price')?.innerText || '0';
+    const price = priceRaw.replace(/[^0-9]/g, ''); 
+    
+    // 작성일 가져오기
+    const date = document.getElementById('detail-date')?.innerText || ''; 
+
+    // 2. 업태 및 종목 데이터 (고정값이면 아래와 같이 직접 입력, 아니면 위처럼 id에서 가져오기)
+    const bizType = '기술서비스'; 
+    const bizItem = '광고, 대행';
+
+    // 3. URL 생성 및 팝업창 띄우기
+    const url = `print3.html?product=${encodeURIComponent(product)}` +
+                `&size=${encodeURIComponent(size)}` +
+                `&qty=${encodeURIComponent(qty)}` +
+                `&price=${encodeURIComponent(price)}` +
+                `&date=${encodeURIComponent(date)}` +
+                `&bizType=${encodeURIComponent(bizType)}` +
+                `&bizItem=${encodeURIComponent(bizItem)}`;
+
+    // 9cm x 20cm 비율에 맞춘 팝업 크기 설정
+    window.open(url, '_blank', 'width=400,height=800,scrollbars=yes');
+};
