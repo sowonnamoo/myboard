@@ -27,26 +27,24 @@
     </div>
 
     <script>
-        // 1. 보안을 위한 워커 주소 (본인의 실제 주소로 설정하세요)
         const WORKER_URL = "https://proud-math-2d41.ecogr.workers.dev/"; 
-        
-        // 2. 전달받은 금액 불러오기
         const total = Number(localStorage.getItem("totalAmount")) || 0;
         document.getElementById("total-price").innerText = total.toLocaleString() + "원";
 
-      async function goCard() {
+        async function goCard(){
             if(total <= 0) {
                 alert("결제할 금액이 없습니다.");
                 return;
             }
 
             try {
+                // 1. 서버에서 키값 가져오기
                 const res = await fetch(WORKER_URL);
                 const data = await res.json();
                 const paymentId = "PAY_" + Date.now();
 
-                // 1. requestPayment를 직접 await 하지 않고, callback으로 처리합니다.
-                PortOne.requestPayment({
+                // 2. 결제창 호출
+                const response = await PortOne.requestPayment({
                     storeId: data.STORE_ID,
                     channelKey: data.CHANNEL_KEY_CARD,
                     paymentId: paymentId,
@@ -54,24 +52,26 @@
                     totalAmount: total,
                     currency: "KRW",
                     payMethod: "CARD"
-                }).then((response) => {
-                    // 2. 결제창이 닫히고 결과가 돌아오면 여기서 실행됩니다.
-                    console.log("결제 결과:", response);
-
-                    if(response.code != null){
-                        alert("결제 실패: " + response.message);
-                        return;
-                    }
-
-                    // 3. 페이지 이동
-                    const successPaymentId = response.paymentId || response.imp_uid;
-                    alert("결제가 완료되었습니다.");
-                    location.href = "success.html?paymentId=" + successPaymentId;
                 });
 
+                // 3. 결제 결과가 response에 담겨옵니다.
+                // 결제 성공 시 response.code가 없거나 null입니다.
+                if(response.code != null){
+                    alert("결제 실패: " + response.message);
+                    return;
+                }
+
+                // 4. 성공 시 결제ID를 확보하고 페이지 이동
+                const successPaymentId = response.paymentId || paymentId;
+                
+                alert(total.toLocaleString() + "원이 결제되었습니다.\n확인 후 시안이 등록됩니다.");
+                
+                // 페이지 이동 (강제적으로 이동 수행)
+                window.location.href = "success.html?paymentId=" + successPaymentId;
+
             } catch(error) {
-                console.error("오류 발생:", error);
-                alert("결제창 실행 중 오류가 발생했습니다.");
+                console.error("결제 에러:", error);
+                alert("결제 처리 중 문제가 발생했습니다. 관리자에게 문의하세요.");
             }
         }
     </script>
