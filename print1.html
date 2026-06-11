@@ -68,10 +68,10 @@
             header.className = "text-center py-8 mb-12 border-2 border-black bg-white transition-all";
         }
 
-       // 3. 테이블 데이터 주입 (계산 로직 추가)
-const totalAmount = parseInt(price) || 0; // 결제액 (합계)
-const supplyPrice = Math.floor(totalAmount / 1.1); // 공급가액
-const tax = totalAmount - supplyPrice; // 부가세
+      // 3. 테이블 데이터 주입 (계산 로직 및 굵은 글씨/단위 추가)
+const totalAmount = parseInt(price) || 0; 
+const supplyPrice = Math.floor(totalAmount / 1.1);
+const tax = totalAmount - supplyPrice;
 
 const tbody = document.getElementById('print-tbody');
 tbody.innerHTML = `
@@ -81,7 +81,7 @@ tbody.innerHTML = `
         <td class="border border-black">${qty}</td>
         <td class="border border-black">${supplyPrice.toLocaleString()}</td>
         <td class="border border-black">${tax.toLocaleString()}</td>
-        <td class="border border-black">${totalAmount.toLocaleString()}</td>
+        <td class="border border-black font-bold">${totalAmount.toLocaleString()}원</td>
     </tr>
 `;
 
