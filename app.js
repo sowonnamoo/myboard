@@ -506,9 +506,14 @@ window.syncStatusOverlay = function(status) {
         if (rect.top === 0 && rect.left === 0) return false;
 
         // 2. 좌표 계산이 완료된 후에만 스타일 적용 및 표시
+        img.style.position = 'absolute';
         img.style.top = (rect.top + window.scrollY + dy) + 'px';
         img.style.left = (rect.left + window.scrollX + dx) + 'px';
         img.style.display = 'block'; 
+        
+        // [추가] 클릭이 이미지를 통과하여 아래 버튼으로 전달되도록 설정
+        img.style.pointerEvents = 'none'; 
+        img.style.zIndex = '9999';
         
         return true;
     };
@@ -517,7 +522,6 @@ window.syncStatusOverlay = function(status) {
         // 1. 상태별 배치를 시도하고, 성공하면 이미지 보이기
         if (isWaiting) {
             positionImage('segum-btn-id', 'img-3', -8, -10);
-            // 안 쓰는 이미지는 숨김
             ['img-1', 'img-2'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
         } else if (isCard || isBank) {
             positionImage('anchor-text', 'img-1', -25, -25);
