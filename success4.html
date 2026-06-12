@@ -2,72 +2,65 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>결제 완료</title>
+    <title>결제 처리 중...</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700&display=swap');
-        body { font-family: 'Pretendard', sans-serif; }
-    </style>
 </head>
-<body class="bg-blue-900 min-h-screen flex items-center justify-center">
-
-    <div class="text-center text-white">
-        <div class="mb-6 animate-bounce">
-            <svg class="w-20 h-20 mx-auto text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-            </svg>
-        </div>
-        <h1 class="text-3xl font-bold">결제가 완료되었습니다</h1>
-        <p class="mt-4 text-blue-200">데이터를 처리 중입니다. 잠시만 기다려주세요...</p>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+        <h2 id="status-message" class="text-lg font-bold text-gray-800">결제 정보를 처리하고 있습니다...</h2>
+        <p class="text-sm text-gray-500 mt-2">잠시만 기다려주세요.</p>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // [본인의 파이어베이스 설정값을 여기에 넣으세요]
-     const firebaseConfig = {
-        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-        authDomain: "board-291e3.firebaseapp.com",
-        projectId: "board-291e3",
-        storageBucket: "board-291e3.firebasestorage.app",
-        messagingSenderId: "25881766316",
-        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-    };
+        // 1. 파이어베이스 초기화 (app.js와 동일한 설정값 사용)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // URL에서 order_no 파라미터 가져오기
+        // 2. URL 파라미터 가져오기
         const urlParams = new URLSearchParams(window.location.search);
-        const orderNo = urlParams.get('order_no');
+        const orderNo = urlParams.get('order_no'); // app.js에서 넘긴 order_no
+        const statusMsg = document.getElementById('status-message');
 
-        if (orderNo) {
-            const orderRef = doc(db, "orders", orderNo);
-            
-            // 1. 파이어베이스 상태 업데이트
-            updateDoc(orderRef, {
-                status: "카드결제"
-            }).then(() => {
-                console.log("결제 상태 업데이트 완료");
+        async function processPayment() {
+            if (!orderNo) {
+                statusMsg.innerText = "오류: 주문 정보를 찾을 수 없습니다.";
+                return;
+            }
+
+            try {
+                // 3. 파이어베이스 boards 컬렉션의 해당 주문 문서를 바로 업데이트
+                const docRef = doc(db, "boards", orderNo);
+                await updateDoc(docRef, { status: "카드결제" });
+
+                statusMsg.innerText = "결제가 성공적으로 완료되었습니다!";
                 
-                // 2. 부모창(게시판) 새로고침
+                // 4. 부모창(게시판) 새로고침 후 1초 뒤 창 닫기
                 if (window.opener) {
                     window.opener.location.reload();
                 }
-                
-                // 3. 창 닫기 (업데이트 완료 후 1초 뒤에 닫힘)
                 setTimeout(() => {
                     window.close();
                 }, 1000);
-            }).catch((err) => {
-                console.error("업데이트 실패:", err);
-                alert("결제 처리에 오류가 발생했습니다. 고객센터에 문의하세요.");
-            });
-        } else {
-            console.error("주문번호를 찾을 수 없습니다.");
+
+            } catch (err) {
+                statusMsg.innerText = "상태 변경 실패: " + err.message;
+                console.error(err);
+            }
         }
+
+        processPayment();
     </script>
 </body>
 </html>
