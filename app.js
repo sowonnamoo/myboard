@@ -503,29 +503,26 @@ window.syncStatusOverlay = function(status) {
     const positionImage = (btnId, imgId, dx, dy) => {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
-        
         if (!img) return false;
 
-        // 버튼 위치 계산
         if (btn) {
             const rect = btn.getBoundingClientRect();
-            // rect가 모두 0이면 아직 렌더링 전이므로 안전하게 무시
+            // 버튼이 화면에 보이지 않을 때(좌표 0) 무시
             if (rect.top === 0 && rect.left === 0) return false;
 
             img.classList.remove('hidden');
-            img.style.display = 'block'; 
+            img.style.display = 'block';
             img.style.position = 'absolute';
             img.style.top = (rect.top + window.scrollY + dy) + 'px';
             img.style.left = (rect.left + window.scrollX + dx) + 'px';
             img.style.zIndex = '9999';
-            img.style.pointerEvents = 'auto'; 
+            img.style.pointerEvents = 'auto';
             return true;
         }
         return false;
     };
 
     const updatePositions = () => {
-        // 1. 초기화
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
             if (img) {
@@ -534,7 +531,6 @@ window.syncStatusOverlay = function(status) {
             }
         });
 
-        // 2. 배치 시도
         if (isWaiting) {
             positionImage('segum-btn-id', 'img-3', -1, -10);
         } else if (isCard || isBank) {
@@ -544,13 +540,17 @@ window.syncStatusOverlay = function(status) {
         }
     };
 
-    // [핵심] 브라우저가 화면을 그릴 준비가 되었을 때 즉시 실행
-    requestAnimationFrame(updatePositions);
-    
-    // 혹시라도 렌더링이 조금 더 걸릴 경우를 대비한 보조 타이머
-    setTimeout(updatePositions, 100);
-    setTimeout(updatePositions, 500);
+    // [중요] 디바운스(Debounce): 창 크기 조절이 완전히 끝난 후 실행
+    let resizeTimer;
+    const handleResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(updatePositions, 150); // 0.15초 뒤에 실행
+    };
 
-    window.removeEventListener('resize', updatePositions);
-    window.addEventListener('resize', updatePositions);
+    // 실행 및 리스너
+    updatePositions();
+    setTimeout(updatePositions, 300); // 첫 로딩 보정
+    
+    window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize);
 };
