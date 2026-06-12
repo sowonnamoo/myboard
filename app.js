@@ -506,18 +506,19 @@ window.syncStatusOverlay = function(status) {
         
         if (!img) return false;
 
+        // 이미지 표시 및 스타일 적용
         img.classList.remove('hidden');
         img.style.display = 'block'; 
+        img.style.position = 'absolute';
+        img.style.zIndex = '9999';
+        img.style.pointerEvents = 'auto'; 
 
         if (btn) {
             const rect = btn.getBoundingClientRect();
+            // 버튼 위치가 확인되면 해당 위치로 이동
             if (rect.top !== 0 || rect.left !== 0) {
-                img.style.position = 'absolute';
                 img.style.top = (rect.top + window.scrollY + dy) + 'px';
-                // 기존 dx 값에 +7을 더하여 우측으로 7px 이동
-                img.style.left = (rect.left + window.scrollX + dx + 7) + 'px';
-                img.style.zIndex = '9999';
-                img.style.pointerEvents = 'auto';
+                img.style.left = (rect.left + window.scrollX + dx) + 'px';
                 return true;
             }
         }
@@ -525,6 +526,7 @@ window.syncStatusOverlay = function(status) {
     };
 
     const updatePositions = () => {
+        // 1. 기존 이미지들 모두 숨김 처리 (초기화)
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
             if (img) {
@@ -533,20 +535,29 @@ window.syncStatusOverlay = function(status) {
             }
         });
 
+        // 2. 상태별 이미지 위치 배치 (dx값에 기존값+7 적용 완료)
         if (isWaiting) {
-            positionImage('segum-btn-id', 'img-3', -8, -10);
+            // 대기 모드: img-3 표시 (-8 + 7 = -1)
+            positionImage('segum-btn-id', 'img-3', -1, -10);
         } else if (isCard || isBank) {
-            positionImage('anchor-text', 'img-1', -25, -25);
-            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
-            positionImage('detail-edit-btn', 'img-3', -8, -10);
+            // 결제 완료 모드: 3개 모두 표시
+            // img-1: -25 + 7 = -18
+            positionImage('anchor-text', 'img-1', -18, -25);
+            // img-2: -8 + 7 = -1
+            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -1, -10);
+            // img-3: -8 + 7 = -1
+            positionImage('detail-edit-btn', 'img-3', -1, -10);
         }
     };
 
+    // 1. 즉시 실행
     updatePositions();
 
+    // 2. 렌더링 지연 대비 반복 체크
     let checkTimes = [100, 500, 1000, 2000];
     checkTimes.forEach(time => setTimeout(updatePositions, time));
 
+    // 3. 창 크기 변경 시 재계산 (버벅임 방지를 위해 transition 사용)
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
