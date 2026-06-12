@@ -505,13 +505,19 @@ window.syncStatusOverlay = function(status) {
         const img = document.getElementById(imgId);
         if (btn && img) {
             const rect = btn.getBoundingClientRect();
-            // rect.top/left가 0인지 확인 (아직 렌더링 전인 경우 대비)
             if (rect.top === 0 && rect.left === 0) return false; 
             
             img.style.position = 'absolute';
             img.style.top = (rect.top + window.scrollY + dy) + 'px';
             img.style.left = (rect.left + window.scrollX + dx) + 'px';
             img.style.zIndex = '9999';
+            
+            // 핵심: 이미지가 마우스 클릭을 가로채도록 설정
+            img.style.pointerEvents = 'auto'; 
+            
+            // 만약 이미지 자체도 클릭 안 되게 하고 싶다면 'none'으로 설정
+            // 지금은 '가리는 용도'이므로 'auto'여야 아래 버튼이 안 눌립니다.
+            
             img.classList.remove('hidden');
             return true;
         }
@@ -521,7 +527,11 @@ window.syncStatusOverlay = function(status) {
     const updatePositions = () => {
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
-            if (img) img.classList.add('hidden');
+            if (img) {
+                img.classList.add('hidden');
+                // 혹시 모르니 숨길 때도 클릭 방지 초기화
+                img.style.pointerEvents = 'none'; 
+            }
         });
 
         if (isWaiting) {
@@ -533,16 +543,11 @@ window.syncStatusOverlay = function(status) {
         }
     };
 
-    // 1. 즉시 실행 (창 열자마자)
-    // 2. 0.3초 뒤에 한 번 더 실행 (렌더링 딜레이 보완)
-    // 3. 0.8초 뒤에 마지막으로 한 번 더 실행 (이미지 로딩 완료 시점 대비)
     updatePositions();
     setTimeout(updatePositions, 300);
     setTimeout(updatePositions, 800);
 
-    // 4. 창 크기 변경 시에도 실행
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
-
 
