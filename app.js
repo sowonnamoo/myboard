@@ -465,10 +465,18 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // 1번 PNG: 기존 -5, -5에서 20px씩 더 이동하여 -25, -25 설정
+    // 무통장결제일 때는 img-2의 위치를 카드전표 버튼(card-receipt-btn)으로 잡습니다.
+    const isBank = (status === '무통장결제');
+    const isCard = (status === '카드결제');
+
     const targets = [
         { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
-        { btnId: 'segum-btn-id',   imgId: 'img-2', dx: -8, dy: -10 },
+        { 
+            btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', 
+            imgId: 'img-2', 
+            dx: -8, 
+            dy: -10 
+        },
         { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
     ];
 
@@ -477,7 +485,8 @@ window.syncStatusOverlay = function(status) {
         if (img) img.classList.add('hidden');
     });
 
-    if (status === '카드결제') {
+    // 카드결제 또는 무통장결제일 때만 실행
+    if (isCard || isBank) {
         setTimeout(() => {
             targets.forEach(t => {
                 const btn = document.getElementById(t.btnId);
@@ -490,7 +499,7 @@ window.syncStatusOverlay = function(status) {
                     img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
                     img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
                     img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto'; // 클릭 차단
+                    img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
                     
                     img.classList.remove('hidden');
                 }
