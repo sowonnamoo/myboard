@@ -463,47 +463,37 @@ window.syncStatusOverlay = function(status) {
     }
 };
 
-
-
-
-
-/**
- * 1. 카드결제 상태일 때 이미지를 띄우고 링크 클릭은 통과시키는 핵심 함수 앙카박아 png로 이미지 가리는 소스
- */
+// 앙카 png
 window.syncStatusOverlay = function(status) {
-    // 앙카 박스와 이미지 ID 매칭
     const targets = [
         { anchorId: 'anchor-1', imgId: 'img-1' },
         { anchorId: 'anchor-2', imgId: 'img-2' },
         { anchorId: 'anchor-3', imgId: 'img-3' }
     ];
 
-    // [초기화] 일단 모든 이미지를 숨김 처리
+    // 1. 초기화: 모든 이미지를 숨김 처리
     targets.forEach(t => {
         const img = document.getElementById(t.imgId);
         if (img) img.classList.add('hidden');
     });
 
-    // 상태가 정확히 '카드결제'일 때만 수행
+    // 2. 상태값이 '카드결제'일 때만 이미지 띄우고 클릭 차단
     if (status === '카드결제') {
         targets.forEach(t => {
             const anchor = document.getElementById(t.anchorId);
             const img = document.getElementById(t.imgId);
             
             if (anchor && img) {
-                // 앙카 박스의 현재 위치(좌표) 계산
                 const rect = anchor.getBoundingClientRect();
                 
-                // 이미지를 절대 좌표로 배치 (스크롤 포함)
                 img.style.position = 'absolute';
                 img.style.top = (rect.top + window.scrollY) + 'px';
                 img.style.left = (rect.left + window.scrollX) + 'px';
                 img.style.zIndex = '9999';
                 
-                // [클릭 방지 핵심] 마우스 클릭이 이미지를 통과하여 아래 버튼을 누름
-                img.style.pointerEvents = 'none';
+                // [핵심] 이미지가 클릭을 가로채서 아무 동작도 안 하게 함 (클릭 차단)
+                img.style.pointerEvents = 'auto'; 
                 
-                // 화면 표시
                 img.classList.remove('hidden');
             }
         });
@@ -511,16 +501,12 @@ window.syncStatusOverlay = function(status) {
 };
 
 /**
- * 2. 상세 페이지 로드 시 데이터 뿌려주는 함수 (예시)
- * 이 함수 끝부분에 위 syncStatusOverlay를 호출해야 합니다.
+ * 데이터 로드 함수 (예시)
+ * 데이터 로드 후 syncStatusOverlay를 호출해야 이미지가 배치됩니다.
  */
 function viewDetail(data) {
-    // ... 데이터 바인딩 로직 ...
-    document.getElementById("detail-price").innerText = data.price ? data.price.toLocaleString() + '원' : '0원';
-    document.getElementById("detail-phone").innerText = data.phone;
-    document.getElementById("detail-address").innerText = data.address;
-    document.getElementById("detail-msg").innerText = data.message || "내용 없음";
-    
-    // [최종 연결] 데이터 로드 직후 이미지 동기화 실행!
+    // ... (기존 데이터 로드 로직) ...
+
+    // 데이터 표시 후 상태값에 따라 이미지 배치 및 클릭 차단 실행
     window.syncStatusOverlay(data.status);
 }
