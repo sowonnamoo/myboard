@@ -465,13 +465,14 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // 무통장결제일 때는 img-2의 위치를 카드전표 버튼(card-receipt-btn)으로 잡습니다.
-    const isBank = (status === '무통장결제');
+    // 이제 무통장 상태값을 정확히 매칭합니다.
+    const isBank = (status === '무통장');
     const isCard = (status === '카드결제');
 
     const targets = [
         { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
         { 
+            // 무통장일 때는 card-receipt-btn, 카드일 때는 segum-btn-id를 타겟팅
             btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', 
             imgId: 'img-2', 
             dx: -8, 
@@ -485,7 +486,7 @@ window.syncStatusOverlay = function(status) {
         if (img) img.classList.add('hidden');
     });
 
-    // 카드결제 또는 무통장결제일 때만 실행
+    // 이제 '무통장' 또는 '카드결제'일 때 동작합니다.
     if (isCard || isBank) {
         setTimeout(() => {
             targets.forEach(t => {
