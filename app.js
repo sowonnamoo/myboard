@@ -397,19 +397,30 @@ window.openLink = function(url) {
 
     // 8. 카드영수증
 window.openCardPage = () => {
-    // 1. 상세 페이지의 HTML에서 현재 글자들을 직접 가져옵니다.
-    const dateText = document.getElementById("detail-date").innerText; // "작성일: 2026년 6월 12일"
-    const product = document.getElementById("detail-title").innerText; // "OOO 스티커 / 도안 접수"
+    // 1. 상세 페이지의 날짜 텍스트를 가져옵니다 (예: "작성일: 2026년 6월 12일")
+    const dateText = document.getElementById("detail-date").innerText;
+    
+    // 2. 텍스트에서 모든 숫자를 찾아 배열로 만듭니다 (결과: ["2026", "6", "12"])
+    // 텍스트에 "작성일:" 같은 글자가 있어도 숫자만 골라냅니다.
+    const matches = dateText.match(/\d+/g);
+    
+    let targetDate = '2026-01-01'; // 기본값
+    if (matches && matches.length >= 3) {
+        // 배열의 0, 1, 2번째 숫자를 사용 (년, 월, 일)
+        const y = matches[0];
+        const m = matches[1].padStart(2, '0');
+        const d = matches[2].padStart(2, '0');
+        targetDate = `${y}-${m}-${d}`;
+    }
+
+    // 나머지 데이터 가져오기
+    const product = document.getElementById("detail-title").innerText;
     const qty = document.getElementById("detail-qty").innerText;
     const size = document.getElementById("detail-size").innerText;
-    const price = document.getElementById("detail-price").innerText.replace(/[^0-9]/g, ''); // 숫자만
+    const price = document.getElementById("detail-price").innerText.replace(/[^0-9]/g, '');
 
-    // 2. 날짜만 깔끔하게 추출 (2026년 6월 12일 -> 2026-06-12)
-    const date = dateText.replace(/[^0-9]/g, '-').substring(0, 10);
-
-    // 3. URL 생성
-    const url = `cardf.html?date=${date}&name=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${qty}&price=${price}`;
+    // 3. URL 생성 (작성일이 반영됨)
+    const url = `cardf.html?date=${targetDate}&name=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${qty}&price=${price}`;
     
-    // 4. 창 열기
     window.open(url, '_blank', 'width=500,height=700');
 };
