@@ -24,7 +24,9 @@
         }
     </style>
 </head>
-<body onload="window.print()"> <div class="receipt">
+<body onload="initReceipt()"> 
+
+<div class="receipt">
     <h1>카드결제내역서</h1>
     
     <table class="biz-table">
@@ -35,17 +37,44 @@
 
     <table>
         <tr><th>월일</th><th>품명</th><th>규격</th><th>수량</th><th>금액</th></tr>
-        <tr class="row-height"><td>2026-06-11</td><td>22222 스티커/도안</td><td>4444</td><td>3333</td><td>100</td></tr>
-        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
-        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
-        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
-        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
-        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
-    </table>
+        <tr class="row-height">
+            <td id="pDate"></td>
+            <td id="pName"></td>
+            <td id="pSize"></td>
+            <td id="pQty"></td>
+            <td id="pPrice"></td>
+ </tr>
+    <tr class="row-height"><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></tr>
+    <tr class="row-height"><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></tr>
+    <tr class="row-height"><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></tr>
+    <tr class="row-height"><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></tr>
+    <tr class="row-height"><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></tr>
+</table>
 
-    <div class="total-section">합계 ₩ 100원</div>
-    <div class="footer">발행/ 작성일: 2026년 6월 11일</div>
+    <div class="total-section">합계 ₩ <span id="totalPrice"></span>원</div>
+    <div class="footer">발행/ 작성일: <span id="footerDate"></span></div>
 </div>
+
+<script>
+    function initReceipt() {
+        // URL 파라미터 가져오기
+        const params = new URLSearchParams(window.location.search);
+        
+        // 데이터 매핑
+        document.getElementById('pDate').innerText = params.get('date') || '';
+        document.getElementById('pName').innerText = params.get('name') || '';
+        document.getElementById('pSize').innerText = params.get('size') || '';
+        document.getElementById('pQty').innerText = params.get('qty') || '';
+        document.getElementById('pPrice').innerText = params.get('price') || '';
+        document.getElementById('totalPrice').innerText = params.get('price') || '0';
+        document.getElementById('footerDate').innerText = params.get('date') || '';
+
+        // 0.5초 대기 후 인쇄 (데이터 로딩 시간 확보)
+        setTimeout(() => {
+            window.print();
+        }, 500);
+    }
+</script>
 
 </body>
 </html>
