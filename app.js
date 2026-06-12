@@ -226,7 +226,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
         
-        await addDoc(collection(db, "boards"), { 
+       await addDoc(collection(db, "boards"), { 
             author: document.getElementById('input-author').value, 
             productName: document.getElementById('product-name').value, 
             quantity: document.getElementById('quantity').value, 
@@ -236,7 +236,13 @@ document.getElementById("save-btn").addEventListener("click", async () => {
             address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
             password: phoneVal.slice(-4), 
             message: document.getElementById('message').value, 
-            file1Url, file2Url, views: 0, createdAt: new Date(), isDeleted: false
+            file1Url, 
+            file2Url, 
+            views: 0, 
+            createdAt: new Date(), 
+            isDeleted: false,
+            // [추가할 코드]
+            status: "대기" 
         });
         
         alert("접수되었습니다."); 
