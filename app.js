@@ -227,17 +227,22 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
         
         await addDoc(collection(db, "boards"), { 
-            author: document.getElementById('input-author').value, 
-            productName: document.getElementById('product-name').value, 
-            quantity: document.getElementById('quantity').value, 
-            size: document.getElementById('size').value, 
-            phone: document.getElementById('phone').value, 
-            price: document.getElementById('price').value,
-            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
-            password: phoneVal.slice(-4), 
-            message: document.getElementById('message').value, 
-            file1Url, file2Url, views: 0, createdAt: new Date(), isDeleted: false
-        });
+    author: document.getElementById('input-author').value, 
+    productName: document.getElementById('product-name').value, 
+    quantity: document.getElementById('quantity').value, 
+    size: document.getElementById('size').value, 
+    phone: document.getElementById('phone').value, 
+    price: document.getElementById('price').value,
+    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
+    password: phoneVal.slice(-4), 
+    message: document.getElementById('message').value, 
+    file1Url, 
+    file2Url, 
+    views: 0, 
+    createdAt: new Date(), 
+    isDeleted: false,
+    status: '대기' // <--- 이 한 줄을 반드시 추가해야 합니다!
+});
         
         alert("접수되었습니다."); 
         switchView('list');
