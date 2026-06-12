@@ -465,46 +465,41 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // 이제 무통장 상태값을 정확히 매칭합니다.
     const isBank = (status === '무통장');
     const isCard = (status === '카드결제');
 
+    // 1. 모든 이미지를 일단 화면에 박아둡니다 (상시 노출)
     const targets = [
         { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
-        { 
-            // 무통장일 때는 card-receipt-btn, 카드일 때는 segum-btn-id를 타겟팅
-            btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', 
-            imgId: 'img-2', 
-            dx: -8, 
-            dy: -10 
-        },
+        { btnId: 'segum-btn-id',   imgId: 'img-2', dx: -8, dy: -10 }, // 평소엔 여기에 고정
         { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
     ];
 
-    targets.forEach(t => {
-        const img = document.getElementById(t.imgId);
-        if (img) img.classList.add('hidden');
-    });
+    // 2. 이미지가 결제 중일 때만 숨겨지도록 설정
+    // 카드나 무통장이면 '결제완료 상태'이므로 이미지를 숨기고, 아니면 보여줍니다.
+    const isPaid = (isCard || isBank);
 
-    // 이제 '무통장' 또는 '카드결제'일 때 동작합니다.
-    if (isCard || isBank) {
-        setTimeout(() => {
-            targets.forEach(t => {
-                const btn = document.getElementById(t.btnId);
-                const img = document.getElementById(t.imgId);
+    setTimeout(() => {
+        targets.forEach(t => {
+            const btn = document.getElementById(t.btnId);
+            const img = document.getElementById(t.imgId);
+            
+            if (btn && img) {
+                const rect = btn.getBoundingClientRect();
                 
-                if (btn && img) {
-                    const rect = btn.getBoundingClientRect();
-                    
-                    img.style.position = 'absolute';
-                    img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
-                    img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
-                    img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
-                    
+                img.style.position = 'absolute';
+                img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
+                img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
+                img.style.zIndex = '9999';
+                img.style.pointerEvents = 'auto'; // 항상 클릭 차단
+                
+                // [핵심] 결제완료 상태면 숨기고, 아니면 보이게 함
+                if (isPaid) {
+                    img.classList.add('hidden');
+                } else {
                     img.classList.remove('hidden');
                 }
-            });
-        }, 150);
-    }
+            }
+        });
+    }, 150);
 };
