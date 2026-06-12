@@ -504,15 +504,15 @@ window.syncStatusOverlay = function(status) {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
         
-        if (!img) return false; // 이미지가 없으면 종료
+        if (!img) return false;
 
-        // 이미지가 존재하면 무조건 보여줌 (hidden 클래스 제거)
+        // 이미지 표시
         img.classList.remove('hidden');
         img.style.display = 'block'; 
 
         if (btn) {
             const rect = btn.getBoundingClientRect();
-            // 버튼 위치가 잡히면 해당 위치로 이동
+            // 버튼 위치가 확인될 때만 좌표 이동
             if (rect.top !== 0 || rect.left !== 0) {
                 img.style.position = 'absolute';
                 img.style.top = (rect.top + window.scrollY + dy) + 'px';
@@ -526,23 +526,35 @@ window.syncStatusOverlay = function(status) {
     };
 
     const updatePositions = () => {
+        // 1. 기존 이미지들 모두 숨김 처리 (초기화)
+        ['img-1', 'img-2', 'img-3'].forEach(id => {
+            const img = document.getElementById(id);
+            if (img) {
+                img.classList.add('hidden');
+                img.style.display = 'none';
+            }
+        });
+
+        // 2. 상태별 이미지 위치 배치
         if (isWaiting) {
-            positionImage('segum-btn-id', 'img-2', -8, -10);
+            // 대기 모드: img-3만 표시
+            positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
+            // 결제 완료 모드: 3개 모두 표시
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
             positionImage('detail-edit-btn', 'img-3', -8, -10);
         }
     };
 
-    // 1. 즉시 시도
+    // 1. 즉시 실행
     updatePositions();
 
-    // 2. 100ms, 500ms, 1초, 2초 뒤에 반복 체크하여 위치 고정
+    // 2. 반복 체크 (렌더링 지연 대비)
     let checkTimes = [100, 500, 1000, 2000];
     checkTimes.forEach(time => setTimeout(updatePositions, time));
 
-    // 3. 창 크기 변경 시에도 즉시 재계산
+    // 3. 창 크기 변경 시 재계산
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
