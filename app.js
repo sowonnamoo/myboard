@@ -496,14 +496,14 @@ window.onfocus = () => {
 
 // 앙카 png 주문내용 강제 링크 막음소스
 window.syncStatusOverlay = function(status) {
-    // 이제 무통장 상태값을 정확히 매칭합니다.
     const isBank = (status === '무통장');
     const isCard = (status === '카드결제');
+    const isWaiting = (status === '대기'); // 대기 상태 확인
 
     const targets = [
         { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
         { 
-            // 무통장일 때는 card-receipt-btn, 카드일 때는 segum-btn-id를 타겟팅
+            // 무통장: 카드영수증 버튼 / 카드: 세금계산서 버튼 / 대기: 세금계산서 버튼
             btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', 
             imgId: 'img-2', 
             dx: -8, 
@@ -512,13 +512,14 @@ window.syncStatusOverlay = function(status) {
         { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
     ];
 
+    // 1. 초기화: 일단 다 숨김
     targets.forEach(t => {
         const img = document.getElementById(t.imgId);
         if (img) img.classList.add('hidden');
     });
 
-    // 이제 '무통장' 또는 '카드결제'일 때 동작합니다.
-    if (isCard || isBank) {
+    // 2. 동작 조건: '카드결제', '무통장', '대기' 상태일 때 모두 동작
+    if (isCard || isBank || isWaiting) {
         setTimeout(() => {
             targets.forEach(t => {
                 const btn = document.getElementById(t.btnId);
