@@ -504,27 +504,27 @@ window.syncStatusOverlay = function(status) {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
         
-        if (!btn || !img) return false;
-
-        // 1. 버튼의 위치를 부모 기준(Relative)으로 가져옴
-        // 이렇게 하면 창 크기가 변해도 버튼 내부 위치는 고정됨
-        const parent = btn.offsetParent;
-        if (!parent) return false;
+        if (!img) return false;
 
         img.classList.remove('hidden');
-        img.style.display = 'block';
+        img.style.display = 'block'; 
         img.style.position = 'absolute';
         img.style.zIndex = '9999';
-        img.style.pointerEvents = 'auto';
+        img.style.pointerEvents = 'auto'; // 버튼 클릭 방지
 
-        // 2. 부모 기준 좌표 계산 (창 크기 영향 X)
-        img.style.top = (btn.offsetTop + dy) + 'px';
-        img.style.left = (btn.offsetLeft + dx) + 'px';
-        
-        return true;
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            if (rect.top !== 0 || rect.left !== 0) {
+                img.style.top = (rect.top + window.scrollY + dy) + 'px';
+                img.style.left = (rect.left + window.scrollX + dx) + 'px';
+                return true;
+            }
+        }
+        return false;
     };
 
     const updatePositions = () => {
+        // 이미지 초기화
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
             if (img) {
@@ -533,14 +533,13 @@ window.syncStatusOverlay = function(status) {
             }
         });
 
-        // 3. dx 값: 기존 값에 7px을 더하여 우측으로 고정 이동
-        // 계산식: (원래 값) + 7
+        // 상태별 이미지 위치 배치 (기존값으로 복구)
         if (isWaiting) {
-            positionImage('segum-btn-id', 'img-3', -1, -10); // -8 + 7 = -1
+            positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
-            positionImage('anchor-text', 'img-1', -18, -25); // -25 + 7 = -18
-            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -1, -10); // -8 + 7 = -1
-            positionImage('detail-edit-btn', 'img-3', -1, -10); // -8 + 7 = -1
+            positionImage('anchor-text', 'img-1', -25, -25);
+            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
+            positionImage('detail-edit-btn', 'img-3', -8, -10);
         }
     };
 
