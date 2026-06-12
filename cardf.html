@@ -4,21 +4,47 @@
     <meta charset="UTF-8">
     <title>카드전표 신청 시스템</title>
 <style>
-    /* height: 700px를 제거하고 min-height로 변경하여 내용이 늘어나도 잘리지 않게 했습니다 */
-    .box { width: 550px; min-height: 750px; margin: 10px auto; padding: 20px; background: white; box-sizing: border-box; display: flex; flex-direction: column; }
+    /* 1. 박스 전체 설정: border-box로 설정하여 패딩이 너비를 밀어내지 않게 함 */
+    .box { 
+        width: 550px;           /* 요청하신 대로 50px 증가 */
+        min-height: 750px;      /* 요청하신 대로 50px 증가 */
+        margin: 20px auto; 
+        padding: 30px; 
+        background: white; 
+        display: flex; 
+        flex-direction: column; 
+        box-sizing: border-box; /* 핵심: 패딩을 포함한 너비 계산 */
+        overflow: hidden;       /* 삐져나오는 것 방지 */
+    }
+
+    /* 2. 입력창 및 버튼 너비 100% 보장 */
+    input, .btn-main, .save-btn { 
+        width: 100%; 
+        box-sizing: border-box; /* 핵심: 요소가 박스 밖으로 튀어나가지 않게 함 */
+    }
+
+    /* 3. 버튼 그룹 정렬: 버튼이 꽉 차게 정렬 */
+    .btn-group { 
+        display: flex; 
+        gap: 10px; 
+        margin: 20px 0; 
+        width: 100%; 
+        box-sizing: border-box; 
+    }
     
-    /* 상단 여백이 신경 쓰이신다면 margin-top을 줄이거나 0으로 설정 가능합니다 */
-    body { margin: 0; padding: 0; }
-    
-    input { width: 100%; padding: 12px; margin: 3px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-    .btn-main { width: 100%; padding: 12px; margin-top: 5px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; }
-    .btn-search { background: #007bff; }
-    .btn-group { display: flex; gap: 10px; margin: 20px 0; }
-    .btn-tab { flex: 1; padding: 15px 5px; border: 1px solid #333; background: #333; color: white; border-radius: 6px; cursor: pointer; font-size: 13px; text-align: center; font-weight: bold; }
-    .btn-tab.right { background: #4a4a4a; border-color: #4a4a4a; }
-    .hidden { display: none; }
-    .item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-    .save-btn { background: #9acd32; color: #000; width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .btn-tab { 
+        flex: 1; 
+        padding: 15px 5px; 
+        border: 1px solid #333; 
+        background: #333; 
+        color: white; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        font-size: 13px; 
+        text-align: center; 
+        font-weight: bold; 
+        white-space: nowrap; /* 글자가 넘치면 강제로 줄바꿈 방지 */
+    }
 </style>
 </head>
 <body>
