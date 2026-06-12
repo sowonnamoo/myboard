@@ -498,49 +498,53 @@ window.onfocus = () => {
 window.syncStatusOverlay = function(status) {
     const isBank = (status === '무통장');
     const isCard = (status === '카드결제');
-    const isWaiting = (status === '대기'); // 대기 상태 확인
+    const isWaiting = (status === '대기');
 
-    const targets = [
-        { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
-        { 
-            // 무통장: 카드영수증 버튼 / 카드: 세금계산서 버튼 / 대기: 세금계산서 버튼
-            btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', 
-            imgId: 'img-2', 
-            dx: -8, 
-            dy: -10 
-        },
-        { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
-    ];
-
-    // 1. 초기화: 일단 다 숨김
-    targets.forEach(t => {
-        const img = document.getElementById(t.imgId);
+    // 모든 이미지 초기화 (일단 다 숨김)
+    ['img-1', 'img-2', 'img-3'].forEach(id => {
+        const img = document.getElementById(id);
         if (img) img.classList.add('hidden');
     });
 
-    // 2. 동작 조건: '카드결제', '무통장', '대기' 상태일 때 모두 동작
-    if (isCard || isBank || isWaiting) {
-        setTimeout(() => {
+    setTimeout(() => {
+        // 1. 대기 상태일 때: img-2만 세금계산서 버튼 위에 띄움
+        if (isWaiting) {
+            const btn = document.getElementById('segum-btn-id');
+            const img = document.getElementById('img-2');
+            if (btn && img) {
+                const rect = btn.getBoundingClientRect();
+                img.style.position = 'absolute';
+                img.style.top = (rect.top + window.scrollY - 10) + 'px';
+                img.style.left = (rect.left + window.scrollX - 8) + 'px';
+                img.style.zIndex = '9999';
+                img.style.pointerEvents = 'auto';
+                img.classList.remove('hidden');
+            }
+        } 
+        // 2. 결제 완료(카드/무통장)일 때: 기존처럼 3개 다 띄움
+        else if (isCard || isBank) {
+            const targets = [
+                { btnId: 'anchor-text', imgId: 'img-1', dx: -25, dy: -25 }, 
+                { btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', imgId: 'img-2', dx: -8, dy: -10 },
+                { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
+            ];
+
             targets.forEach(t => {
                 const btn = document.getElementById(t.btnId);
                 const img = document.getElementById(t.imgId);
-                
                 if (btn && img) {
                     const rect = btn.getBoundingClientRect();
-                    
                     img.style.position = 'absolute';
                     img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
                     img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
                     img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
-                    
+                    img.style.pointerEvents = 'auto';
                     img.classList.remove('hidden');
                 }
             });
-        }, 150);
-    }
+        }
+    }, 150);
 };
-
 
 
 
