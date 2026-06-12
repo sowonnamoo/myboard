@@ -465,48 +465,36 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
+    // 버튼의 ID와 매칭될 이미지 ID를 설정
     const targets = [
-        { anchorId: 'anchor-1', imgId: 'img-1' },
-        { anchorId: 'anchor-2', imgId: 'img-2' },
-        { anchorId: 'anchor-3', imgId: 'img-3' }
+        { btnId: 'target-box-notice', imgId: 'img-1' }, // div박스
+        { btnId: 'segum-btn-id',      imgId: 'img-2' }, // 세금계산서 버튼에 id 추가 필요
+        { btnId: 'detail-edit-btn',   imgId: 'img-3' }  // 배송지 수정 버튼
     ];
 
-    // 1. 초기화: 모든 이미지를 숨김 처리
     targets.forEach(t => {
         const img = document.getElementById(t.imgId);
         if (img) img.classList.add('hidden');
     });
 
-    // 2. 상태값이 '카드결제'일 때만 이미지 띄우고 클릭 차단
     if (status === '카드결제') {
-        targets.forEach(t => {
-            const anchor = document.getElementById(t.anchorId);
-            const img = document.getElementById(t.imgId);
-            
-            if (anchor && img) {
-                const rect = anchor.getBoundingClientRect();
+        setTimeout(() => {
+            targets.forEach(t => {
+                const btn = document.getElementById(t.btnId);
+                const img = document.getElementById(t.imgId);
                 
-                img.style.position = 'absolute';
-                img.style.top = (rect.top + window.scrollY) + 'px';
-                img.style.left = (rect.left + window.scrollX) + 'px';
-                img.style.zIndex = '9999';
-                
-                // [핵심] 이미지가 클릭을 가로채서 아무 동작도 안 하게 함 (클릭 차단)
-                img.style.pointerEvents = 'auto'; 
-                
-                img.classList.remove('hidden');
-            }
-        });
+                if (btn && img) {
+                    const rect = btn.getBoundingClientRect(); // 버튼의 실제 위치 획득
+                    
+                    img.style.position = 'absolute';
+                    img.style.top = (rect.top + window.scrollY) + 'px';
+                    img.style.left = (rect.left + window.scrollX) + 'px';
+                    img.style.zIndex = '9999';
+                    img.style.pointerEvents = 'auto'; // 클릭 차단
+                    
+                    img.classList.remove('hidden');
+                }
+            });
+        }, 100);
     }
 };
-
-/**
- * 데이터 로드 함수 (예시)
- * 데이터 로드 후 syncStatusOverlay를 호출해야 이미지가 배치됩니다.
- */
-function viewDetail(data) {
-    // ... (기존 데이터 로드 로직) ...
-
-    // 데이터 표시 후 상태값에 따라 이미지 배치 및 클릭 차단 실행
-    window.syncStatusOverlay(data.status);
-}
