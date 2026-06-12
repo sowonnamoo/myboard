@@ -1,66 +1,62 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>결제 처리 중...</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-    <div class="bg-white p-8 rounded-lg shadow-xl text-center">
-        <h2 id="status-message" class="text-lg font-bold text-gray-800">결제 정보를 처리하고 있습니다...</h2>
-        <p class="text-sm text-gray-500 mt-2">잠시만 기다려주세요.</p>
-    </div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
 
-        // 1. 파이어베이스 초기화 (app.js와 동일한 설정값 사용)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-            authDomain: "board-291e3.firebaseapp.com",
-            projectId: "board-291e3",
-            storageBucket: "board-291e3.firebasestorage.app",
-            messagingSenderId: "25881766316",
-            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-        };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    const urlParams = new URLSearchParams(window.location.search);
+    const paidPrice = urlParams.get('price'); // URL에서 가격(100) 가져옴
+    const statusMsg = document.getElementById('status-message');
 
-        // 2. URL 파라미터 가져오기
-        const urlParams = new URLSearchParams(window.location.search);
-        const orderNo = urlParams.get('order_no'); // app.js에서 넘긴 order_no
-        const statusMsg = document.getElementById('status-message');
+    async function processPayment() {
+        if (!paidPrice) {
+            statusMsg.innerText = "오류: 결제 금액 정보가 없습니다.";
+            return;
+        }
 
-        async function processPayment() {
-            if (!orderNo) {
-                statusMsg.innerText = "오류: 주문 정보를 찾을 수 없습니다.";
+        try {
+            // 1. 상태가 '대기'인 모든 주문을 가져옴 (문서 ID를 모르니까 전체에서 조건으로 찾기)
+            const q = query(collection(db, "boards"), where("status", "==", "대기"));
+            const querySnapshot = await getDocs(q);
+
+            let foundDoc = null;
+
+            // 2. 받아온 가격(paidPrice)과 게시글의 가격을 비교
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                // 데이터의 price가 숫자일 수도, 문자열일 수도 있으므로 String()으로 맞춰서 비교
+                if (String(data.price) === String(paidPrice)) {
+                    foundDoc = doc;
+                }
+            });
+
+            if (!foundDoc) {
+                statusMsg.innerText = `주문을 찾을 수 없습니다. (가격: ${paidPrice}원 일치하는 대기 주문 없음)`;
                 return;
             }
 
-            try {
-                // 3. 파이어베이스 boards 컬렉션의 해당 주문 문서를 바로 업데이트
-                const docRef = doc(db, "boards", orderNo);
-                await updateDoc(docRef, { status: "카드결제" });
+            // 3. 찾은 주문을 '카드결제'로 업데이트
+            await updateDoc(foundDoc.ref, { status: "카드결제" });
 
-                statusMsg.innerText = "결제가 성공적으로 완료되었습니다!";
-                
-                // 4. 부모창(게시판) 새로고침 후 1초 뒤 창 닫기
-                if (window.opener) {
-                    window.opener.location.reload();
-                }
-                setTimeout(() => {
-                    window.close();
-                }, 1000);
+            statusMsg.innerText = "결제가 완료되셨습니다.";
+            
+            if (window.opener) window.opener.location.reload();
+            setTimeout(() => window.close(), 1000);
 
-            } catch (err) {
-                statusMsg.innerText = "상태 변경 실패: " + err.message;
-                console.error(err);
-            }
+        } catch (err) {
+            statusMsg.innerText = "상태 변경 실패: " + err.message;
         }
+    }
 
-        processPayment();
-    </script>
-</body>
-</html>
+    processPayment();
+</script>
