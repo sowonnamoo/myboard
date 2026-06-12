@@ -1,62 +1,85 @@
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>결제 처리 중</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-        authDomain: "board-291e3.firebaseapp.com",
-        projectId: "board-291e3",
-        storageBucket: "board-291e3.firebasestorage.app",
-        messagingSenderId: "25881766316",
-        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-    };
+    <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+        <h2 id="status-message" class="text-xl font-bold text-gray-800">결제 정보를 확인 중입니다...</h2>
+    </div>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const paidPrice = urlParams.get('price'); // URL에서 가격(100) 가져옴
-    const statusMsg = document.getElementById('status-message');
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
 
-    async function processPayment() {
-        if (!paidPrice) {
-            statusMsg.innerText = "오류: 결제 금액 정보가 없습니다.";
-            return;
-        }
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        try {
-            // 1. 상태가 '대기'인 모든 주문을 가져옴 (문서 ID를 모르니까 전체에서 조건으로 찾기)
-            const q = query(collection(db, "boards"), where("status", "==", "대기"));
-            const querySnapshot = await getDocs(q);
+        // URL 파라미터 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const paidPrice = urlParams.get('price'); 
+        const statusMsg = document.getElementById('status-message');
 
-            let foundDoc = null;
+        async function processPayment() {
+            if (!statusMsg) return; // 요소가 없으면 종료
 
-            // 2. 받아온 가격(paidPrice)과 게시글의 가격을 비교
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                // 데이터의 price가 숫자일 수도, 문자열일 수도 있으므로 String()으로 맞춰서 비교
-                if (String(data.price) === String(paidPrice)) {
-                    foundDoc = doc;
-                }
-            });
-
-            if (!foundDoc) {
-                statusMsg.innerText = `주문을 찾을 수 없습니다. (가격: ${paidPrice}원 일치하는 대기 주문 없음)`;
+            if (!paidPrice) {
+                statusMsg.innerText = "오류: 결제 금액 정보가 전달되지 않았습니다.";
                 return;
             }
 
-            // 3. 찾은 주문을 '카드결제'로 업데이트
-            await updateDoc(foundDoc.ref, { status: "카드결제" });
+            try {
+                // '대기' 상태인 모든 문서 가져오기
+                const q = query(collection(db, "boards"), where("status", "==", "대기"));
+                const querySnapshot = await getDocs(q);
 
-            statusMsg.innerText = "결제가 완료되셨습니다.";
-            
-            if (window.opener) window.opener.location.reload();
-            setTimeout(() => window.close(), 1000);
+                let foundDoc = null;
 
-        } catch (err) {
-            statusMsg.innerText = "상태 변경 실패: " + err.message;
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // price 값 비교 (문자열 변환 후 비교)
+                    if (String(data.price) === String(paidPrice)) {
+                        foundDoc = doc;
+                    }
+                });
+
+                if (!foundDoc) {
+                    statusMsg.innerText = `주문을 찾을 수 없습니다. (가격: ${paidPrice}원 일치하는 대기 건 없음)`;
+                    return;
+                }
+
+                // 상태 업데이트
+                await updateDoc(foundDoc.ref, { status: "카드결제" });
+
+                statusMsg.innerText = "결제가 완료되었습니다.";
+                
+                // 부모창 새로고침 및 창 닫기
+                if (window.opener) {
+                    window.opener.location.reload();
+                }
+                setTimeout(() => window.close(), 1000);
+
+            } catch (err) {
+                statusMsg.innerText = "상태 변경 실패: " + err.message;
+                console.error(err);
+            }
         }
-    }
 
-    processPayment();
-</script>
+        // 페이지 로드 시 실행
+        processPayment();
+    </script>
+</body>
+</html>
