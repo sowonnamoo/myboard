@@ -500,22 +500,19 @@ window.syncStatusOverlay = function(status) {
         
         if (!img) return false;
 
-        // 이미지 표시
         img.classList.remove('hidden');
         img.style.display = 'block'; 
 
         if (btn) {
-            // 핵심: 호출할 때마다 매번 정확한 위치를 다시 가져옴
             const rect = btn.getBoundingClientRect();
-            
             // 버튼 위치가 확인될 때만 좌표 이동
             if (rect.top !== 0 || rect.left !== 0) {
                 img.style.position = 'absolute';
-                // window.scrollY/X를 사용해 스크롤 위치도 정확히 반영
+                // 부드러운 움직임을 위해 CSS transition이 적용된 top, left 사용
                 img.style.top = (rect.top + window.scrollY + dy) + 'px';
                 img.style.left = (rect.left + window.scrollX + dx) + 'px';
                 img.style.zIndex = '9999';
-                img.style.pointerEvents = 'auto'; // 클릭 방지
+                img.style.pointerEvents = 'auto';
                 return true;
             }
         }
@@ -523,16 +520,8 @@ window.syncStatusOverlay = function(status) {
     };
 
     const updatePositions = () => {
-        // 1. 기존 이미지들 모두 숨김 처리 (위치 갱신을 위해 먼저 초기화)
-        ['img-1', 'img-2', 'img-3'].forEach(id => {
-            const img = document.getElementById(id);
-            if (img) {
-                img.classList.add('hidden');
-                img.style.display = 'none';
-            }
-        });
-
-        // 2. 상태별 이미지 위치 배치
+        // 이미지를 완전히 숨기지 않고 visibility 등을 조절하면 더 부드럽지만,
+        // 현재 로직을 유지하면서 부드러움을 극대화하기 위해 위치만 재계산합니다.
         if (isWaiting) {
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
@@ -542,13 +531,11 @@ window.syncStatusOverlay = function(status) {
         }
     };
 
-    // 1. 실행 및 반복 체크 (렌더링 지연 대비)
+    // 1. 초기 실행
     updatePositions();
-    let checkTimes = [100, 300, 600, 1000];
-    checkTimes.forEach(time => setTimeout(updatePositions, time));
 
-    // 2. 창 크기 변경 시 즉시 재계산 (최대화/최소화 대응)
-    // resize 이벤트가 발생하면 즉시 updatePositions를 호출하여 좌표를 다시 찍음
+    // 2. 창 크기 변경 시 부드럽게 위치 갱신
+    // transition이 적용되어 있으므로 함수 호출 시 알아서 부드럽게 이동합니다.
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
