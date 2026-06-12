@@ -393,3 +393,29 @@ window.openLink = function(url) {
     
     window.open(url, '_blank', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
 };
+
+    // 8. 카드영수증신청
+window.openCardPage = () => {
+    // 1. 현재 상세 보기 화면에 로드된 데이터 가져오기 (이 변수명은 app.js 내 데이터 구조에 맞게 수정 필요)
+    // 보통 상세보기를 띄울 때 변수에 저장해두셨을 겁니다.
+    const data = window.currentDocData; 
+    
+    if (!data) {
+        alert("데이터를 불러오는 중입니다.");
+        return;
+    }
+
+    // 2. 파라미터 구성 (작성일, 품명, 사이즈, 수량, 금액 순)
+    // 데이터 필드명은 실제 Firebase에 저장된 이름과 맞춰주세요 (예: createdAt, productName 등)
+    const date = data.createdAt || '2026-06-12';
+    const name = data.productName || '주문 상품';
+    const size = data.size || '-';
+    const qty = data.quantity || '0';
+    const price = data.price || '0';
+
+    // 3. URL 생성
+    const url = `cardf.html?date=${date}&name=${encodeURIComponent(name)}&size=${size}&qty=${qty}&price=${price}`;
+    
+    // 4. 창 열기
+    window.open(url, '_blank', 'width=500,height=700');
+};
