@@ -506,27 +506,26 @@ window.syncStatusOverlay = function(status) {
         
         if (!img) return false;
 
-        // 이미지 표시 및 스타일 적용
-        img.classList.remove('hidden');
-        img.style.display = 'block'; 
-        img.style.position = 'absolute';
-        img.style.zIndex = '9999';
-        img.style.pointerEvents = 'auto'; 
-
+        // 버튼 위치 계산
         if (btn) {
             const rect = btn.getBoundingClientRect();
-            // 버튼 위치가 확인되면 해당 위치로 이동
-            if (rect.top !== 0 || rect.left !== 0) {
-                img.style.top = (rect.top + window.scrollY + dy) + 'px';
-                img.style.left = (rect.left + window.scrollX + dx) + 'px';
-                return true;
-            }
+            // rect가 모두 0이면 아직 렌더링 전이므로 안전하게 무시
+            if (rect.top === 0 && rect.left === 0) return false;
+
+            img.classList.remove('hidden');
+            img.style.display = 'block'; 
+            img.style.position = 'absolute';
+            img.style.top = (rect.top + window.scrollY + dy) + 'px';
+            img.style.left = (rect.left + window.scrollX + dx) + 'px';
+            img.style.zIndex = '9999';
+            img.style.pointerEvents = 'auto'; 
+            return true;
         }
         return false;
     };
 
     const updatePositions = () => {
-        // 1. 기존 이미지들 모두 숨김 처리 (초기화)
+        // 1. 초기화
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
             if (img) {
@@ -535,29 +534,23 @@ window.syncStatusOverlay = function(status) {
             }
         });
 
-        // 2. 상태별 이미지 위치 배치 (dx값에 기존값+7 적용 완료)
+        // 2. 배치 시도
         if (isWaiting) {
-            // 대기 모드: img-3 표시 (-8 + 7 = -1)
             positionImage('segum-btn-id', 'img-3', -1, -10);
         } else if (isCard || isBank) {
-            // 결제 완료 모드: 3개 모두 표시
-            // img-1: -25 + 7 = -18
             positionImage('anchor-text', 'img-1', -18, -25);
-            // img-2: -8 + 7 = -1
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -1, -10);
-            // img-3: -8 + 7 = -1
             positionImage('detail-edit-btn', 'img-3', -1, -10);
         }
     };
 
-    // 1. 즉시 실행
-    updatePositions();
+    // [핵심] 브라우저가 화면을 그릴 준비가 되었을 때 즉시 실행
+    requestAnimationFrame(updatePositions);
+    
+    // 혹시라도 렌더링이 조금 더 걸릴 경우를 대비한 보조 타이머
+    setTimeout(updatePositions, 100);
+    setTimeout(updatePositions, 500);
 
-    // 2. 렌더링 지연 대비 반복 체크
-    let checkTimes = [100, 500, 1000, 2000];
-    checkTimes.forEach(time => setTimeout(updatePositions, time));
-
-    // 3. 창 크기 변경 시 재계산 (버벅임 방지를 위해 transition 사용)
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
