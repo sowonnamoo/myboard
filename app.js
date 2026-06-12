@@ -490,50 +490,68 @@ window.onfocus = () => {
 
 // 앙카 png 주문내용 강제 링크 막음소스
 window.syncStatusOverlay = function(status) {
-    // 이제 무통장 상태값을 정확히 매칭합니다.
     const isBank = (status === '무통장');
     const isCard = (status === '카드결제');
+    const isWaiting = (status === '대기');
 
-    const targets = [
-        { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
-        { 
-            // 무통장일 때는 card-receipt-btn, 카드일 때는 segum-btn-id를 타겟팅
-            btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', 
-            imgId: 'img-2', 
-            dx: -8, 
-            dy: -10 
-        },
-        { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
-    ];
+    const positionImage = (btnId, imgId, dx, dy) => {
+        const btn = document.getElementById(btnId);
+        const img = document.getElementById(imgId);
+        
+        if (!img) return false;
 
-    targets.forEach(t => {
-        const img = document.getElementById(t.imgId);
-        if (img) img.classList.add('hidden');
-    });
+        // 이미지 표시
+        img.classList.remove('hidden');
+        img.style.display = 'block'; 
 
-    // 이제 '무통장' 또는 '카드결제'일 때 동작합니다.
-    if (isCard || isBank) {
-        setTimeout(() => {
-            targets.forEach(t => {
-                const btn = document.getElementById(t.btnId);
-                const img = document.getElementById(t.imgId);
-                
-                if (btn && img) {
-                    const rect = btn.getBoundingClientRect();
-                    
-                    img.style.position = 'absolute';
-                    img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
-                    img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
-                    img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
-                    
-                    img.classList.remove('hidden');
-                }
-            });
-        }, 150);
-    }
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            // 버튼 위치가 확인될 때만 좌표 이동
+            if (rect.top !== 0 || rect.left !== 0) {
+                img.style.position = 'absolute';
+                img.style.top = (rect.top + window.scrollY + dy) + 'px';
+                img.style.left = (rect.left + window.scrollX + dx) + 'px';
+                img.style.zIndex = '9999';
+                img.style.pointerEvents = 'auto'; // 클릭 방지
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const updatePositions = () => {
+        // 1. 기존 이미지들 모두 숨김 처리 (초기화)
+        ['img-1', 'img-2', 'img-3'].forEach(id => {
+            const img = document.getElementById(id);
+            if (img) {
+                img.classList.add('hidden');
+                img.style.display = 'none';
+            }
+        });
+
+        // 2. 상태별 이미지 위치 배치
+        if (isWaiting) {
+            // 대기 모드: img-3만 표시
+            positionImage('segum-btn-id', 'img-3', -8, -10);
+        } else if (isCard || isBank) {
+            // 결제 완료 모드: 3개 모두 표시
+            positionImage('anchor-text', 'img-1', -25, -25);
+            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
+            positionImage('detail-edit-btn', 'img-3', -8, -10);
+        }
+    };
+
+    // 1. 즉시 실행
+    updatePositions();
+
+    // 2. 반복 체크 (렌더링 지연 대비)
+    let checkTimes = [100, 500, 1000, 2000];
+    checkTimes.forEach(time => setTimeout(updatePositions, time));
+
+    // 3. 창 크기 변경 시 재계산
+    window.removeEventListener('resize', updatePositions);
+    window.addEventListener('resize', updatePositions);
 };
-
 
 
 
