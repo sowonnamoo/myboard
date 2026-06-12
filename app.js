@@ -500,7 +500,24 @@ window.syncStatusOverlay = function(status) {
     const isCard = (status === '카드결제');
     const isWaiting = (status === '대기');
 
-    // 위치 업데이트 로직을 별도 함수로 분리
+    const positionImage = (btnId, imgId, dx, dy) => {
+        const btn = document.getElementById(btnId);
+        const img = document.getElementById(imgId);
+        if (btn && img) {
+            const rect = btn.getBoundingClientRect();
+            // rect.top/left가 0인지 확인 (아직 렌더링 전인 경우 대비)
+            if (rect.top === 0 && rect.left === 0) return false; 
+            
+            img.style.position = 'absolute';
+            img.style.top = (rect.top + window.scrollY + dy) + 'px';
+            img.style.left = (rect.left + window.scrollX + dx) + 'px';
+            img.style.zIndex = '9999';
+            img.classList.remove('hidden');
+            return true;
+        }
+        return false;
+    };
+
     const updatePositions = () => {
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
@@ -516,25 +533,15 @@ window.syncStatusOverlay = function(status) {
         }
     };
 
-    // 실제 위치 계산 및 적용 함수
-    const positionImage = (btnId, imgId, dx, dy) => {
-        const btn = document.getElementById(btnId);
-        const img = document.getElementById(imgId);
-        if (btn && img) {
-            const rect = btn.getBoundingClientRect();
-            img.style.position = 'absolute';
-            img.style.top = (rect.top + window.scrollY + dy) + 'px';
-            img.style.left = (rect.left + window.scrollX + dx) + 'px';
-            img.style.zIndex = '9999';
-            img.classList.remove('hidden');
-        }
-    };
-
-    // 처음 실행
+    // 1. 즉시 실행 (창 열자마자)
+    // 2. 0.3초 뒤에 한 번 더 실행 (렌더링 딜레이 보완)
+    // 3. 0.8초 뒤에 마지막으로 한 번 더 실행 (이미지 로딩 완료 시점 대비)
     updatePositions();
+    setTimeout(updatePositions, 300);
+    setTimeout(updatePositions, 800);
 
-    // 화면 크기 변경 시마다 재실행 (중요!)
-    window.removeEventListener('resize', updatePositions); // 중복 방지
+    // 4. 창 크기 변경 시에도 실행
+    window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
 
