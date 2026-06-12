@@ -504,47 +504,49 @@ window.syncStatusOverlay = function(status) {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
         
-        if (btn && img) {
-            const rect = btn.getBoundingClientRect();
-            // rect가 모두 0이면 아직 렌더링 전이므로 함수 종료
-            if (rect.top === 0 && rect.left === 0 && rect.width === 0) return false;
-            
-            img.style.position = 'absolute';
-            img.style.top = (rect.top + window.scrollY + dy) + 'px';
-            img.style.left = (rect.left + window.scrollX + dx) + 'px';
-            img.style.zIndex = '9999';
-            img.style.pointerEvents = 'auto'; // 핵심: 클릭 차단
-            img.classList.remove('hidden');
-            return true;
-        }
-        return false;
+        if (!btn || !img) return false;
+
+        const rect = btn.getBoundingClientRect();
+        
+        // 버튼이 화면에 보이지 않는 상태(0,0)면 적용하지 않음
+        if (rect.top === 0 && rect.left === 0 && rect.width === 0) return false;
+        
+        img.style.position = 'absolute';
+        img.style.top = (rect.top + window.scrollY + dy) + 'px';
+        img.style.left = (rect.left + window.scrollX + dx) + 'px';
+        img.style.zIndex = '9999';
+        img.style.pointerEvents = 'auto'; // 버튼 클릭 방지
+        img.classList.remove('hidden');
+        return true;
     };
 
     const updatePositions = () => {
+        // 적용 시도
+        let success = false;
         if (isWaiting) {
-            positionImage('segum-btn-id', 'img-2', -8, -10);
+            success = positionImage('segum-btn-id', 'img-2', -8, -10);
         } else if (isCard || isBank) {
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
             positionImage('detail-edit-btn', 'img-3', -8, -10);
+            success = true;
         }
+        return success;
     };
 
-    // 1. 즉시 실행
-    updatePositions();
+    // 1. 초기 실행
+    if (!updatePositions()) {
+        // 2. 만약 첫 실행에 실패했다면(아직 렌더링 전), 200ms 단위로 5번 재시도
+        let retryCount = 0;
+        const interval = setInterval(() => {
+            if (updatePositions() || retryCount > 5) {
+                clearInterval(interval);
+            }
+            retryCount++;
+        }, 200);
+    }
 
-    // 2. 창 크기 변경 감지
+    // 3. 창 크기 변경 시 즉시 재계산
     window.addEventListener('resize', updatePositions);
-
-    // 3. (중요) 화면의 구조 변화를 감지하여 위치 재조정 (0,0 문제 해결)
-    const observer = new MutationObserver(() => {
-        updatePositions();
-    });
-    
-    // body 전체의 변화를 감시 (이미지나 버튼이 늦게 뜨더라도 감지)
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
-
-    // 2초 뒤에는 감시를 멈춰서 브라우저 성능 최적화
-    setTimeout(() => observer.disconnect(), 2000);
 };
 
