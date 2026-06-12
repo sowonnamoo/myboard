@@ -505,10 +505,13 @@ window.syncStatusOverlay = function(status) {
         img.style.display = 'block'; 
 
         if (btn) {
+            // 핵심: 호출할 때마다 매번 정확한 위치를 다시 가져옴
             const rect = btn.getBoundingClientRect();
+            
             // 버튼 위치가 확인될 때만 좌표 이동
             if (rect.top !== 0 || rect.left !== 0) {
                 img.style.position = 'absolute';
+                // window.scrollY/X를 사용해 스크롤 위치도 정확히 반영
                 img.style.top = (rect.top + window.scrollY + dy) + 'px';
                 img.style.left = (rect.left + window.scrollX + dx) + 'px';
                 img.style.zIndex = '9999';
@@ -520,7 +523,7 @@ window.syncStatusOverlay = function(status) {
     };
 
     const updatePositions = () => {
-        // 1. 기존 이미지들 모두 숨김 처리 (초기화)
+        // 1. 기존 이미지들 모두 숨김 처리 (위치 갱신을 위해 먼저 초기화)
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
             if (img) {
@@ -531,27 +534,21 @@ window.syncStatusOverlay = function(status) {
 
         // 2. 상태별 이미지 위치 배치
         if (isWaiting) {
-            // 대기 모드: img-3만 표시
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
-            // 결제 완료 모드: 3개 모두 표시
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
             positionImage('detail-edit-btn', 'img-3', -8, -10);
         }
     };
 
-    // 1. 즉시 실행
+    // 1. 실행 및 반복 체크 (렌더링 지연 대비)
     updatePositions();
-
-    // 2. 반복 체크 (렌더링 지연 대비)
-    let checkTimes = [100, 500, 1000, 2000];
+    let checkTimes = [100, 300, 600, 1000];
     checkTimes.forEach(time => setTimeout(updatePositions, time));
 
-    // 3. 창 크기 변경 시 재계산
+    // 2. 창 크기 변경 시 즉시 재계산 (최대화/최소화 대응)
+    // resize 이벤트가 발생하면 즉시 updatePositions를 호출하여 좌표를 다시 찍음
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
-
-
-
