@@ -503,23 +503,25 @@ window.syncStatusOverlay = function(status) {
     const positionImage = (btnId, imgId, dx, dy) => {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
-        if (!img) return false;
+        
+        if (!btn || !img) return false;
 
-        if (btn) {
-            const rect = btn.getBoundingClientRect();
-            // 버튼이 화면에 보이지 않을 때(좌표 0) 무시
-            if (rect.top === 0 && rect.left === 0) return false;
+        // 1. 버튼의 위치를 부모 기준(Relative)으로 가져옴
+        // 이렇게 하면 창 크기가 변해도 버튼 내부 위치는 고정됨
+        const parent = btn.offsetParent;
+        if (!parent) return false;
 
-            img.classList.remove('hidden');
-            img.style.display = 'block';
-            img.style.position = 'absolute';
-            img.style.top = (rect.top + window.scrollY + dy) + 'px';
-            img.style.left = (rect.left + window.scrollX + dx) + 'px';
-            img.style.zIndex = '9999';
-            img.style.pointerEvents = 'auto';
-            return true;
-        }
-        return false;
+        img.classList.remove('hidden');
+        img.style.display = 'block';
+        img.style.position = 'absolute';
+        img.style.zIndex = '9999';
+        img.style.pointerEvents = 'auto';
+
+        // 2. 부모 기준 좌표 계산 (창 크기 영향 X)
+        img.style.top = (btn.offsetTop + dy) + 'px';
+        img.style.left = (btn.offsetLeft + dx) + 'px';
+        
+        return true;
     };
 
     const updatePositions = () => {
@@ -531,26 +533,21 @@ window.syncStatusOverlay = function(status) {
             }
         });
 
+        // 3. dx 값: 기존 값에 7px을 더하여 우측으로 고정 이동
+        // 계산식: (원래 값) + 7
         if (isWaiting) {
-            positionImage('segum-btn-id', 'img-3', -1, -10);
+            positionImage('segum-btn-id', 'img-3', -1, -10); // -8 + 7 = -1
         } else if (isCard || isBank) {
-            positionImage('anchor-text', 'img-1', -18, -25);
-            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -1, -10);
-            positionImage('detail-edit-btn', 'img-3', -1, -10);
+            positionImage('anchor-text', 'img-1', -18, -25); // -25 + 7 = -18
+            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -1, -10); // -8 + 7 = -1
+            positionImage('detail-edit-btn', 'img-3', -1, -10); // -8 + 7 = -1
         }
     };
 
-    // [중요] 디바운스(Debounce): 창 크기 조절이 완전히 끝난 후 실행
-    let resizeTimer;
-    const handleResize = () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(updatePositions, 150); // 0.15초 뒤에 실행
-    };
-
-    // 실행 및 리스너
+    // 실행
     updatePositions();
-    setTimeout(updatePositions, 300); // 첫 로딩 보정
     
-    window.removeEventListener('resize', handleResize);
-    window.addEventListener('resize', handleResize);
+    // 리사이즈 시 즉시 재배치
+    window.removeEventListener('resize', updatePositions);
+    window.addEventListener('resize', updatePositions);
 };
