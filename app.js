@@ -424,3 +424,39 @@ window.openCardPage = () => {
     
     window.open(url, '_blank', 'width=500,height=700');
 };
+
+
+
+// 상태에 따라 png오버레이를 제어하는 함수
+window.syncStatusOverlay = function(price) {
+    const targets = [
+        { id: 'target-box-notice', imgId: 'img-1' }, // 접수완료 박스
+        { id: 'target-btn-tax',    imgId: 'img-2' }, // 세금계산서 버튼
+        { id: 'detail-edit-btn',   imgId: 'img-3' }  // 배송지 수정 버튼
+    ];
+
+    // 1. 모든 PNG를 일단 숨깁니다 (취소 기능)
+    targets.forEach(t => {
+        const img = document.getElementById(t.imgId);
+        if (img) img.classList.add('hidden');
+    });
+
+    // 2. 만약 상태가 '카드결제'라면 3군데에 이미지를 배치합니다
+    if (price === '카드결제') {
+        targets.forEach(t => {
+            const targetEl = document.getElementById(t.id);
+            const imgEl = document.getElementById(t.imgId);
+            
+            if (targetEl && imgEl) {
+                const rect = targetEl.getBoundingClientRect();
+                
+                // 해당 버튼/박스의 좌측 상단 좌표(스크롤 포함) 계산
+                imgEl.style.top = (rect.top + window.scrollY) + 'px';
+                imgEl.style.left = (rect.left + window.scrollX) + 'px';
+                
+                // 화면에 표시
+                imgEl.classList.remove('hidden');
+            }
+        });
+    }
+};
