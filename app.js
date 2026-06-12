@@ -498,30 +498,38 @@ window.syncStatusOverlay = function(status) {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
         
-        if (!img) return false;
+        if (!btn || !img) return false;
+
+        // 1. 버튼의 부모(Relative) 기준 좌표를 가져옴
+        const parent = btn.offsetParent;
+        if (!parent) return false;
 
         img.classList.remove('hidden');
-        img.style.display = 'block'; 
+        img.style.display = 'block';
+        img.style.position = 'absolute'; // 중요: 부모 기준 absolute
+        img.style.zIndex = '9999';
+        img.style.pointerEvents = 'auto'; // 버튼 클릭 방지
 
-        if (btn) {
-            const rect = btn.getBoundingClientRect();
-            // 버튼 위치가 확인될 때만 좌표 이동
-            if (rect.top !== 0 || rect.left !== 0) {
-                img.style.position = 'absolute';
-                // 부드러운 움직임을 위해 CSS transition이 적용된 top, left 사용
-                img.style.top = (rect.top + window.scrollY + dy) + 'px';
-                img.style.left = (rect.left + window.scrollX + dx) + 'px';
-                img.style.zIndex = '9999';
-                img.style.pointerEvents = 'auto';
-                return true;
-            }
-        }
-        return false;
+        // 2. 부모 기준 좌표 계산 (창 크기 오차 X)
+        // dx, dy 오프셋 값을 그대로 더해줍니다.
+        img.style.top = (btn.offsetTop + dy) + 'px';
+        img.style.left = (btn.offsetLeft + dx) + 'px';
+        
+        return true;
     };
 
     const updatePositions = () => {
-        // 이미지를 완전히 숨기지 않고 visibility 등을 조절하면 더 부드럽지만,
-        // 현재 로직을 유지하면서 부드러움을 극대화하기 위해 위치만 재계산합니다.
+        // 이미지 초기화
+        ['img-1', 'img-2', 'img-3'].forEach(id => {
+            const img = document.getElementById(id);
+            if (img) {
+                img.classList.add('hidden');
+                img.style.display = 'none';
+            }
+        });
+
+        // 3. 상태별 이미지 위치 배치 (원래 좌표로 복구)
+        // dx 값을 원래대로 복구하여 뒤집힘 현상을 방지합니다.
         if (isWaiting) {
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
@@ -531,11 +539,10 @@ window.syncStatusOverlay = function(status) {
         }
     };
 
-    // 1. 초기 실행
+    // 실행
     updatePositions();
-
-    // 2. 창 크기 변경 시 부드럽게 위치 갱신
-    // transition이 적용되어 있으므로 함수 호출 시 알아서 부드럽게 이동합니다.
+    
+    // 리사이즈 시 즉시 재배치
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
