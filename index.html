@@ -124,9 +124,10 @@
             </section>
 
 <section id="view-detail" class="hidden w-full space-y-5">
-<div id="target-box-notice" class="bg-white border border-gray-200 p-4 font-bold text-center text-gray-800 text-base">
+<div id="target-box-notice" class="bg-white border border-gray-200 p-4 font-bold text-center text-gray-800 text-base" style="position: relative;">
     "주문서 접수완료" 이제 "결제" 를 완료해주세요.
-    </div>
+    <span id="anchor-1" style="position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none;"></span>
+</div>
 
 <div class="flex gap-3">
 <a href="https://sowonnamoo.github.io/myboard/index2" class="flex-1">
@@ -172,8 +173,13 @@
 <button onclick="openDoc('print2.html', 'statement')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">거래명세서</button>
 
 
-<button id="target-btn-tax" onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">세금계산서
-</button><button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
+<span style="position: relative; display: inline-block;">
+    <button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" 
+            class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">
+        세금계산서
+    </button>
+    <span id="anchor-2" style="position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none;"></span>
+</span><button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
 <button onclick="openReceipt()" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">간이영수증출력</button>
 <button onclick="openCardPage()" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">카드전표</button>
         
@@ -184,8 +190,12 @@
     </div>
 
     <div style="display: flex; gap: 2px;">
-        <button id="detail-edit-btn" class="bg-yellow-500 text-white px-4 py-2 rounded">배송지 수정하기</button>
-        <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600 transition-colors">주문삭제</button>
+<span style="position: relative; display: inline-block;">
+    <button id="detail-edit-btn" class="bg-yellow-500 text-white px-4 py-2 rounded">
+        배송지 수정하기
+    </button>
+    <span id="anchor-3" style="position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none;"></span>
+</span>        <button id="detail-delete-btn" class="bg-rose-500 text-white text-sm px-5 py-1.5 rounded hover:bg-rose-600 transition-colors">주문삭제</button>
     </div>
 
 </div>
@@ -220,12 +230,10 @@
         </div>
     </div>
 </div>
-    <div id="overlay-container">
-    <img id="img-1" src="https://sowonnamoo1005.cafe24.com/web/upload/2025/1.png" class="hidden" style="position: absolute; z-index: 9999; pointer-events: none;">
-    <img id="img-2" src="https://sowonnamoo1005.cafe24.com/web/upload/2025/2.png" class="hidden" style="position: absolute; z-index: 9999; pointer-events: none;">
-    <img id="img-3" src="https://sowonnamoo1005.cafe24.com/web/upload/2025/3.png" class="hidden" style="position: absolute; z-index: 9999; pointer-events: none;">
+    <div id="overlay-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 0; pointer-events: none; z-index: 9999;">
+    <img id="img-1" src="이미지주소1.png" class="hidden" style="position: absolute; pointer-events: none;">
+    <img id="img-2" src="이미지주소2.png" class="hidden" style="position: absolute; pointer-events: none;">
+    <img id="img-3" src="이미지주소3.png" class="hidden" style="position: absolute; pointer-events: none;">
 </div>
-
-<script type="module" src="app.js"></script>
 </body>
 </html>
