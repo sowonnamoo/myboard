@@ -465,12 +465,11 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // anchor-1 (접수완료 박스): 글자 상단으로 맞추기 위해 dy 조정
-    // anchor-2, 3: 버튼 보정값 적용
+    // dx/dy 값을 조정하여 1번 이미지를 글자 좌측 상단에 정밀 타겟팅
     const targets = [
-        { btnId: 'target-box-notice', imgId: 'img-1', dx: 0, dy: 15 }, // dy: 15로 글자 상단 보정
-        { btnId: 'segum-btn-id',      imgId: 'img-2', dx: -8, dy: -10 },
-        { btnId: 'detail-edit-btn',   imgId: 'img-3', dx: -8, dy: -10 }
+        { btnId: 'anchor-text',    imgId: 'img-1', dx: -5, dy: -5 }, // 글자 좌측 상단 시작점
+        { btnId: 'segum-btn-id',   imgId: 'img-2', dx: -8, dy: -10 },
+        { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
     ];
 
     targets.forEach(t => {
@@ -488,10 +487,11 @@ window.syncStatusOverlay = function(status) {
                     const rect = btn.getBoundingClientRect();
                     
                     img.style.position = 'absolute';
+                    // 버튼(글자) 좌표 + 보정값 적용
                     img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
                     img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
                     img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
+                    img.style.pointerEvents = 'auto'; // 클릭 차단
                     
                     img.classList.remove('hidden');
                 }
