@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>카드결제내역서</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; display: flex; justify-content: center; }
+        .receipt { width: 400px; border: 2px solid #000080; padding: 20px; }
+        h1 { text-align: center; color: #000080; border-bottom: 2px solid #000080; padding-bottom: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #000080; padding: 10px; text-align: center; font-size: 14px; }
+        th { background-color: #f0f4ff; }
+        
+        .biz-table { margin-bottom: 20px; }
+        .row-height { height: 30px; }
+        
+        .total-section { text-align: right; font-weight: bold; font-size: 18px; margin-top: 20px; }
+        .footer { text-align: center; margin-top: 30px; font-size: 14px; }
+
+        @media print {
+            body { padding: 0; }
+            .receipt { border: none; }
+        }
+    </style>
+</head>
+<body onload="window.print()"> <div class="receipt">
+    <h1>카드결제내역서</h1>
+    
+    <table class="biz-table">
+        <tr><th width="30%">사업자번호</th><td colspan="3">411-13-76734</td></tr>
+        <tr><th>상호</th><td>에코그래픽스</td><th>대표</th><td>최대한</td></tr>
+        <tr><th>업태</th><td>기술서비스</td><th>종목</th><td>인쇄대행</td></tr>
+    </table>
+
+    <table>
+        <tr><th>월일</th><th>품명</th><th>규격</th><th>수량</th><th>금액</th></tr>
+        <tr class="row-height"><td>2026-06-11</td><td>22222 스티커/도안</td><td>4444</td><td>3333</td><td>100</td></tr>
+        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="row-height"><td></td><td></td><td></td><td></td><td></td></tr>
+    </table>
+
+    <div class="total-section">합계 ₩ 100원</div>
+    <div class="footer">발행/ 작성일: 2026년 6월 11일</div>
+</div>
+
+</body>
+</html>

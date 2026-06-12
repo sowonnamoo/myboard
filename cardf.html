@@ -1,0 +1,62 @@
+<style>
+    /* 500x700px 고정 박스 설정 */
+    .box { 
+        width: 500px; 
+        height: 700px; 
+        margin: 20px auto; 
+        padding: 30px; 
+        border: 1px solid #ddd; 
+        border-radius: 12px; 
+        background: white; 
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    h3 { margin: 10px 0; color: #333; }
+
+    /* 입력창 및 기본 스타일 */
+    input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    
+    /* 버튼 공통 스타일 */
+    .btn-main { width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; }
+    .btn-search { background: #007bff; }
+    
+    /* 상단 두 버튼 배치 */
+    .btn-group { display: flex; gap: 10px; margin: 20px 0; }
+    .btn-tab { flex: 1; padding: 15px 5px; border: 1px solid #333; background: #333; color: white; border-radius: 6px; cursor: pointer; font-size: 13px; text-align: center; font-weight: bold; }
+    .btn-tab.right { background: #4a4a4a; border-color: #4a4a4a; }
+
+    .hidden { display: none; }
+    .guide-text { font-size: 13px; color: #666; line-height: 1.6; margin: 15px 0; }
+    .save-btn { background: #9acd32; color: #000; width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+</style>
+
+<div class="box">
+    <h3>저장된 내 정보 조회</h3>
+    <input type="text" id="searchPhone" placeholder="전화번호(접수자) 입력">
+    <button class="btn-main btn-search" onclick="searchData()">조회하기</button>
+
+    <div class="btn-group">
+        <button class="btn-tab" onclick="printReceipt()">카드결제내역서<br>(즉시발급)</button>
+        <button class="btn-tab right" onclick="toggleApplyForm()">카드전표 영수증<br>신청</button>
+    </div>
+
+    <div class="guide-text">
+        * 카드결제 내역서는 당사에서 카드결제한 확인 보증서 입니다. (지출증빙용X)<br>
+        * 카드전표는 실제 지출증빙용 영수증 입니다. (매주 금요일 일괄 발행)
+    </div>
+
+    <div id="applyForm" class="hidden">
+        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">카드전표 자동발급 신청</h3>
+        <input type="text" id="applyName" placeholder="제품 결제시 작성한 성함">
+        <input type="text" id="applyPhone" placeholder="제품 결제시 작성한 전화번호">
+        <input type="email" id="applyEmail" placeholder="영수증 수령 이메일주소 입력">
+        
+        <p style="font-size: 12px; color: #444; margin: 15px 0; line-height: 1.4;">
+            최초 1회 입력후 저장하면 차후 카드 결제시 매번 신청하실 필요 없으며, 매주 금요일 이메일로 자동 발행 발송 됩니다.
+        </p>
+        
+        <button class="save-btn" onclick="saveCardData()">저장 / 수정</button>
+    </div>
+</div>
