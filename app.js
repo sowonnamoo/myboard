@@ -464,18 +464,6 @@ window.syncStatusOverlay = function(status) {
 };
 
 // 앙카 png
-window.syncStatusOverlay = function(status) {
-    const isBank = (status === '무통장');
-    const isCard = (status === '카드결제');
-
-    // 1. 모든 이미지를 일단 화면에 박아둡니다 (상시 노출)
-    const targets = [
-        { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
-        { btnId: 'segum-btn-id',   imgId: 'img-2', dx: -8, dy: -10 }, // 평소엔 여기에 고정
-        { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
-    ];
-
-    // 카드나 무통장이면 '결제완료 상태'이므로 이미지를 숨기고, 아니면 보여줍니다.
  window.syncStatusOverlay = function(status) {
     // status가 '카드결제'나 '무통장'이 아니면 무조건 결제 전 상태로 간주
     const isPaid = (status === '카드결제' || status === '무통장');
