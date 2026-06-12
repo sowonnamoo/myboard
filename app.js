@@ -465,9 +465,9 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // dx/dy 값을 조정하여 1번 이미지를 글자 좌측 상단에 정밀 타겟팅
+    // 1번 PNG: 기존 -5, -5에서 20px씩 더 이동하여 -25, -25 설정
     const targets = [
-        { btnId: 'anchor-text',    imgId: 'img-1', dx: -5, dy: -5 }, // 글자 좌측 상단 시작점
+        { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
         { btnId: 'segum-btn-id',   imgId: 'img-2', dx: -8, dy: -10 },
         { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
     ];
@@ -487,7 +487,6 @@ window.syncStatusOverlay = function(status) {
                     const rect = btn.getBoundingClientRect();
                     
                     img.style.position = 'absolute';
-                    // 버튼(글자) 좌표 + 보정값 적용
                     img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
                     img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
                     img.style.zIndex = '9999';
