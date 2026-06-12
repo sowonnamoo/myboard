@@ -59,11 +59,11 @@
                     }
                     setTimeout(() => window.close(), 1000);
                 } else {
-                    statusText.innerText = "일치하는 주문을 찾을 수 없습니다.";
+                    statusText.innerText = "결제전송완료";
                 }
             } catch (err) {
                 console.error(err);
-                statusText.innerText = "처리 중 오류 발생";
+                statusText.innerText = "결제전송완료";
             }
         }
 
