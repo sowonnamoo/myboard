@@ -1,66 +1,49 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>결제 처리 중</title>
-</head>
 <body>
-    <h2 id="status-message">결제 확인 중...</h2>
+    <h2 id="status-message">결제 처리 중입니다...</h2>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-            authDomain: "board-291e3.firebaseapp.com",
-            projectId: "board-291e3",
-            storageBucket: "board-291e3.firebasestorage.app",
-            messagingSenderId: "25881766316",
-            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // URL에서 price만 가져옴
-        const urlParams = new URLSearchParams(window.location.search);
-        const paidPrice = urlParams.get('price'); 
-        const statusMsg = document.getElementById('status-message');
-
-        async function updateStatus() {
-            if (!paidPrice) {
-                statusMsg.innerText = "금액 정보 없음";
-                return;
-            }
-
+        const price = new URLSearchParams(window.location.search).get('price');
+        
+        async function updateBoardStatus() {
+            if (!price) return;
             try {
-                // 1. '대기' 상태인 주문들만 가져옴
+                // 가격이 일치하는 '대기' 상태 게시글 찾기
                 const q = query(collection(db, "boards"), where("status", "==", "대기"));
                 const querySnapshot = await getDocs(q);
-
-                let targetDoc = null;
-                querySnapshot.forEach((doc) => {
-                    // 2. 금액만 비교해서 찾음
-                    if (String(doc.data().price) === String(paidPrice)) {
-                        targetDoc = doc;
+                
+                let found = false;
+                for (const doc of querySnapshot.docs) {
+                    if (String(doc.data().price) === String(price)) {
+                        await updateDoc(doc.ref, { status: "카드결제" });
+                        found = true;
+                        break;
                     }
-                });
-
-                if (targetDoc) {
-                    // 3. 상태만 바꿈
-                    await updateDoc(targetDoc.ref, { status: "카드결제" });
-                    statusMsg.innerText = "결제 완료되었습니다.";
-                    setTimeout(() => window.close(), 1000);
-                } else {
-                    statusMsg.innerText = "일치하는 주문을 찾지 못했습니다.";
                 }
+                
+                document.getElementById("status-message").innerText = found ? "결제 완료되었습니다!" : "해당 주문을 찾을 수 없습니다.";
+                if(found) setTimeout(() => window.close(), 1000);
             } catch (e) {
-                statusMsg.innerText = "오류: " + e.message;
+                document.getElementById("status-message").innerText = "오류 발생: " + e.message;
             }
         }
-
-        updateStatus();
+        updateBoardStatus();
     </script>
 </body>
 </html>
