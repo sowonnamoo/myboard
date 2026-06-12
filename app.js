@@ -427,22 +427,22 @@ window.openCardPage = () => {
 
 
 
-// 상태에 따라 png오버레이를 제어하는 함수
-window.syncStatusOverlay = function(price) {
+// 상태에 따라 PNG 오버레이 접수완료로직를 제어하는 함수 (status 기반으로 수정)
+window.syncStatusOverlay = function(status) {
     const targets = [
         { id: 'target-box-notice', imgId: 'img-1' }, // 접수완료 박스
         { id: 'target-btn-tax',    imgId: 'img-2' }, // 세금계산서 버튼
         { id: 'detail-edit-btn',   imgId: 'img-3' }  // 배송지 수정 버튼
     ];
 
-    // 1. 모든 PNG를 일단 숨깁니다 (취소 기능)
+    // 1. 모든 PNG를 일단 숨깁니다 (초기화)
     targets.forEach(t => {
         const img = document.getElementById(t.imgId);
         if (img) img.classList.add('hidden');
     });
 
     // 2. 만약 상태가 '카드결제'라면 3군데에 이미지를 배치합니다
-    if (price === '카드결제') {
+    if (status === '카드결제') {
         targets.forEach(t => {
             const targetEl = document.getElementById(t.id);
             const imgEl = document.getElementById(t.imgId);
@@ -450,9 +450,11 @@ window.syncStatusOverlay = function(price) {
             if (targetEl && imgEl) {
                 const rect = targetEl.getBoundingClientRect();
                 
-                // 해당 버튼/박스의 좌측 상단 좌표(스크롤 포함) 계산
+                // 해당 요소의 좌측 상단 좌표(스크롤 포함) 계산
+                imgEl.style.position = 'absolute';
                 imgEl.style.top = (rect.top + window.scrollY) + 'px';
                 imgEl.style.left = (rect.left + window.scrollX) + 'px';
+                imgEl.style.zIndex = '9999';
                 
                 // 화면에 표시
                 imgEl.classList.remove('hidden');
@@ -460,3 +462,24 @@ window.syncStatusOverlay = function(price) {
         });
     }
 };
+
+/**
+ * [상세 페이지 데이터 로드 로직 예시]
+ * 서버에서 데이터를 가져온 후 아래와 같이 syncStatusOverlay를 호출하세요.
+ */
+function renderDetail(data) {
+    // ... (기존 상세 내용 표시 로직들)
+
+    // 상태값(status)을 기반으로 오버레이 동기화 실행!
+    // Firebase에서 가져온 data.status를 넘겨줍니다.
+    syncStatusOverlay(data.status); 
+}
+
+// 윈도우 리사이즈 시에도 좌표가 어긋나지 않게 재계산 (선택 사항)
+window.addEventListener('resize', () => {
+    // 상세 페이지가 떠 있을 때만 다시 실행
+    if (document.getElementById('view-detail').classList.contains('hidden') === false) {
+        // 현재 상태를 알 수 있다면(예: 전역변수) 다시 실행
+        // syncStatusOverlay(currentStatus); 
+    }
+});
