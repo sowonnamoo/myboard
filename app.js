@@ -475,9 +475,12 @@ window.syncStatusOverlay = function(status) {
         { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
     ];
 
-    // 2. 이미지가 결제 중일 때만 숨겨지도록 설정
     // 카드나 무통장이면 '결제완료 상태'이므로 이미지를 숨기고, 아니면 보여줍니다.
-    const isPaid = (isCard || isBank);
+ window.syncStatusOverlay = function(status) {
+    // status가 '카드결제'나 '무통장'이 아니면 무조건 결제 전 상태로 간주
+    const isPaid = (status === '카드결제' || status === '무통장');
+    
+    // ... targets 배열은 이전과 동일 ...
 
     setTimeout(() => {
         targets.forEach(t => {
@@ -490,10 +493,8 @@ window.syncStatusOverlay = function(status) {
                 img.style.position = 'absolute';
                 img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
                 img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
-                img.style.zIndex = '9999';
-                img.style.pointerEvents = 'auto'; // 항상 클릭 차단
                 
-                // [핵심] 결제완료 상태면 숨기고, 아니면 보이게 함
+                // 결제 완료(isPaid) 상태가 아니면 무조건 hidden 클래스 제거(이미지 노출)
                 if (isPaid) {
                     img.classList.add('hidden');
                 } else {
