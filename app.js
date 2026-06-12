@@ -465,11 +465,11 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // 좌표 보정값 (필요시 숫자를 조금씩 수정해서 위치를 딱 맞추세요)
+    // dx: 좌우 이동 (-8은 좌측), dy: 상하 이동 (-10은 상단)
     const targets = [
         { btnId: 'target-box-notice', imgId: 'img-1', dx: 0, dy: 0 },
-        { btnId: 'segum-btn-id',      imgId: 'img-2', dx: 0, dy: 0 }, // 텍스트가 너무 위로 뜬다면 dy 값을 5~10 늘리세요
-        { btnId: 'detail-edit-btn',   imgId: 'img-3', dx: 0, dy: 0 }
+        { btnId: 'segum-btn-id',      imgId: 'img-2', dx: -8, dy: -10 }, // 보정값 적용
+        { btnId: 'detail-edit-btn',   imgId: 'img-3', dx: -8, dy: -10 }  // 보정값 적용
     ];
 
     targets.forEach(t => {
@@ -487,18 +487,15 @@ window.syncStatusOverlay = function(status) {
                     const rect = btn.getBoundingClientRect();
                     
                     img.style.position = 'absolute';
-                    // 버튼의 위치 + 보정값 적용
+                    // 버튼 좌표에 보정값(t.dx, t.dy)을 더함
                     img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
                     img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
                     img.style.zIndex = '9999';
                     img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
                     
                     img.classList.remove('hidden');
-                    
-                    // 디버깅: 이미지가 어디에 찍히는지 확인 (개발자 도구 F12 콘솔 확인)
-                    console.log(t.btnId, "위치:", img.style.top, img.style.left);
                 }
             });
-        }, 150); // 여유 있게 150ms 대기
+        }, 150);
     }
 };
