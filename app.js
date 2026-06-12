@@ -465,11 +465,11 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // 버튼의 ID와 매칭될 이미지 ID를 설정
+    // 좌표 보정값 (필요시 숫자를 조금씩 수정해서 위치를 딱 맞추세요)
     const targets = [
-        { btnId: 'target-box-notice', imgId: 'img-1' }, // div박스
-        { btnId: 'segum-btn-id',      imgId: 'img-2' }, // 세금계산서 버튼에 id 추가 필요
-        { btnId: 'detail-edit-btn',   imgId: 'img-3' }  // 배송지 수정 버튼
+        { btnId: 'target-box-notice', imgId: 'img-1', dx: 0, dy: 0 },
+        { btnId: 'segum-btn-id',      imgId: 'img-2', dx: 0, dy: 0 }, // 텍스트가 너무 위로 뜬다면 dy 값을 5~10 늘리세요
+        { btnId: 'detail-edit-btn',   imgId: 'img-3', dx: 0, dy: 0 }
     ];
 
     targets.forEach(t => {
@@ -484,17 +484,21 @@ window.syncStatusOverlay = function(status) {
                 const img = document.getElementById(t.imgId);
                 
                 if (btn && img) {
-                    const rect = btn.getBoundingClientRect(); // 버튼의 실제 위치 획득
+                    const rect = btn.getBoundingClientRect();
                     
                     img.style.position = 'absolute';
-                    img.style.top = (rect.top + window.scrollY) + 'px';
-                    img.style.left = (rect.left + window.scrollX) + 'px';
+                    // 버튼의 위치 + 보정값 적용
+                    img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
+                    img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
                     img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto'; // 클릭 차단
+                    img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
                     
                     img.classList.remove('hidden');
+                    
+                    // 디버깅: 이미지가 어디에 찍히는지 확인 (개발자 도구 F12 콘솔 확인)
+                    console.log(t.btnId, "위치:", img.style.top, img.style.left);
                 }
             });
-        }, 100);
+        }, 150); // 여유 있게 150ms 대기
     }
 };
