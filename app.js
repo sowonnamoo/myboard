@@ -161,6 +161,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
+    window.syncStatusOverlay(data.status);
     
     // 수정 버튼 안전하게 연결
     const editBtn = document.getElementById("detail-edit-btn");
@@ -425,39 +426,39 @@ window.openCardPage = () => {
     window.open(url, '_blank', 'width=500,height=700');
 };
 
-// 상태에 따라 PNG 오버레이를 제어하는 함수
+// 기존 syncStatusOverlay 함수를 이 코드로 덮어쓰세요 (타이밍 보완)
 window.syncStatusOverlay = function(status) {
     const targets = [
-        { id: 'target-box-notice', imgId: 'img-1' }, // 접수완료 박스
-        { id: 'target-btn-tax',    imgId: 'img-2' }, // 세금계산서 버튼
-        { id: 'detail-edit-btn',   imgId: 'img-3' }  // 배송지 수정 버튼
+        { id: 'target-box-notice', imgId: 'img-1' },
+        { id: 'target-btn-tax',    imgId: 'img-2' },
+        { id: 'detail-edit-btn',   imgId: 'img-3' }
     ];
 
-    // 1. 초기화: 일단 모든 이미지를 숨김
+    // 1. 초기화: 일단 다 숨김
     targets.forEach(t => {
         const img = document.getElementById(t.imgId);
         if (img) img.classList.add('hidden');
     });
 
-    // 2. 상태가 '카드결제'인 경우에만 위치 계산 후 표시
+    // 2. 상태가 '카드결제'일 때만 실행
     if (status === '카드결제') {
-        targets.forEach(t => {
-            const targetEl = document.getElementById(t.id);
-            const imgEl = document.getElementById(t.imgId);
-            
-            if (targetEl && imgEl) {
-                // targetEl이 화면에 보일 때만 좌표 계산
-                const rect = targetEl.getBoundingClientRect();
+        // 화면 렌더링 후 좌표를 잡기 위해 약간의 지연시간을 둠
+        setTimeout(() => {
+            targets.forEach(t => {
+                const targetEl = document.getElementById(t.id);
+                const imgEl = document.getElementById(t.imgId);
                 
-                imgEl.style.position = 'absolute';
-                imgEl.style.top = (rect.top + window.scrollY) + 'px';
-                imgEl.style.left = (rect.left + window.scrollX) + 'px';
-                imgEl.style.width = rect.width + 'px';
-                imgEl.style.height = rect.height + 'px';
-                imgEl.style.zIndex = '9999';
-
-                imgEl.classList.remove('hidden');
-            }
-        });
+                if (targetEl && imgEl) {
+                    const rect = targetEl.getBoundingClientRect();
+                    imgEl.style.position = 'absolute';
+                    imgEl.style.top = (rect.top + window.scrollY) + 'px';
+                    imgEl.style.left = (rect.left + window.scrollX) + 'px';
+                    imgEl.style.width = rect.width + 'px';
+                    imgEl.style.height = rect.height + 'px';
+                    imgEl.style.zIndex = '9999';
+                    imgEl.classList.remove('hidden');
+                }
+            });
+        }, 100); 
     }
 };
