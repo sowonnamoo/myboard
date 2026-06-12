@@ -394,3 +394,22 @@ window.openLink = function(url) {
     window.open(url, '_blank', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
 };
 
+
+    // 8. 카드영수증
+window.openCardPage = () => {
+    // 1. 상세 페이지의 HTML에서 현재 글자들을 직접 가져옵니다.
+    const dateText = document.getElementById("detail-date").innerText; // "작성일: 2026년 6월 12일"
+    const product = document.getElementById("detail-title").innerText; // "OOO 스티커 / 도안 접수"
+    const qty = document.getElementById("detail-qty").innerText;
+    const size = document.getElementById("detail-size").innerText;
+    const price = document.getElementById("detail-price").innerText.replace(/[^0-9]/g, ''); // 숫자만
+
+    // 2. 날짜만 깔끔하게 추출 (2026년 6월 12일 -> 2026-06-12)
+    const date = dateText.replace(/[^0-9]/g, '-').substring(0, 10);
+
+    // 3. URL 생성
+    const url = `cardf.html?date=${date}&name=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${qty}&price=${price}`;
+    
+    // 4. 창 열기
+    window.open(url, '_blank', 'width=500,height=700');
+};
