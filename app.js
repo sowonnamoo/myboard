@@ -433,39 +433,31 @@ window.syncStatusOverlay = function(status) {
         { id: 'detail-edit-btn',   imgId: 'img-3' }  // 배송지 수정 버튼
     ];
 
-    // 1. 모든 PNG를 일단 숨깁니다 (초기화)
+    // 1. 초기화: 일단 모든 이미지를 숨김
     targets.forEach(t => {
         const img = document.getElementById(t.imgId);
         if (img) img.classList.add('hidden');
     });
 
-    // 2. 상태가 '카드결제'일 때만 이미지를 배치합니다
+    // 2. 상태가 '카드결제'인 경우에만 위치 계산 후 표시
     if (status === '카드결제') {
         targets.forEach(t => {
             const targetEl = document.getElementById(t.id);
             const imgEl = document.getElementById(t.imgId);
             
             if (targetEl && imgEl) {
+                // targetEl이 화면에 보일 때만 좌표 계산
                 const rect = targetEl.getBoundingClientRect();
                 
-                // 좌표 계산 및 이미지 표시
                 imgEl.style.position = 'absolute';
                 imgEl.style.top = (rect.top + window.scrollY) + 'px';
                 imgEl.style.left = (rect.left + window.scrollX) + 'px';
+                imgEl.style.width = rect.width + 'px';
+                imgEl.style.height = rect.height + 'px';
                 imgEl.style.zIndex = '9999';
-                
+
                 imgEl.classList.remove('hidden');
             }
         });
     }
 };
-
-// 3. 브라우저 창 크기가 변할 때 이미지 위치 재계산
-window.addEventListener('resize', () => {
-    // 현재 상세 페이지가 열려있는 상태라면(예: detail-title이 화면에 존재할 때)
-    const detailTitle = document.getElementById('detail-title');
-    if (detailTitle && detailTitle.offsetParent !== null) {
-        // 현재 주문의 상태값을 알아내어 재실행 (상태값을 별도 변수로 저장해두셨다면 그 변수를 사용하세요)
-        // syncStatusOverlay(현재상태값);
-    }
-});
