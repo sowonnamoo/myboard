@@ -500,30 +500,26 @@ window.syncStatusOverlay = function(status) {
         
         if (!img) return false;
 
-        // 이미지 표시
-        img.classList.remove('hidden');
-        img.style.display = 'block'; 
-
         if (btn) {
-            // 핵심: 호출할 때마다 매번 정확한 위치를 다시 가져옴
             const rect = btn.getBoundingClientRect();
-            
-            // 버튼 위치가 확인될 때만 좌표 이동
-            if (rect.top !== 0 || rect.left !== 0) {
-                img.style.position = 'absolute';
-                // window.scrollY/X를 사용해 스크롤 위치도 정확히 반영
-                img.style.top = (rect.top + window.scrollY + dy) + 'px';
-                img.style.left = (rect.left + window.scrollX + dx) + 'px';
-                img.style.zIndex = '9999';
-                img.style.pointerEvents = 'auto'; // 클릭 방지
-                return true;
-            }
+            // 버튼이 아직 렌더링 되지 않았다면 함수 종료 (이게 핵심입니다)
+            if (rect.top === 0 && rect.left === 0) return false;
+
+            // 좌표 계산이 끝난 후에만 이미지 표시
+            img.style.position = 'absolute';
+            img.style.top = (rect.top + window.scrollY + dy) + 'px';
+            img.style.left = (rect.left + window.scrollX + dx) + 'px';
+            img.style.zIndex = '9999';
+            img.style.pointerEvents = 'auto';
+            img.classList.remove('hidden');
+            img.style.display = 'block'; // 이때 비로소 나타남
+            return true;
         }
         return false;
     };
 
     const updatePositions = () => {
-        // 1. 기존 이미지들 모두 숨김 처리 (위치 갱신을 위해 먼저 초기화)
+        // 일단 모두 숨김 처리
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const img = document.getElementById(id);
             if (img) {
@@ -532,7 +528,7 @@ window.syncStatusOverlay = function(status) {
             }
         });
 
-        // 2. 상태별 이미지 위치 배치
+        // 위치 배치 (성공하면 true 반환)
         if (isWaiting) {
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
@@ -542,13 +538,13 @@ window.syncStatusOverlay = function(status) {
         }
     };
 
-    // 1. 실행 및 반복 체크 (렌더링 지연 대비)
+    // 1. 초기 실행
     updatePositions();
+
+    // 2. 반복 체크: 레이아웃이 잡히지 않았을 땐 표시하지 않다가, 좌표가 잡히는 순간 나타남
     let checkTimes = [100, 300, 600, 1000];
     checkTimes.forEach(time => setTimeout(updatePositions, time));
 
-    // 2. 창 크기 변경 시 즉시 재계산 (최대화/최소화 대응)
-    // resize 이벤트가 발생하면 즉시 updatePositions를 호출하여 좌표를 다시 찍음
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
