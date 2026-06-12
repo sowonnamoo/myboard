@@ -502,38 +502,41 @@ window.syncStatusOverlay = function(status) {
 
         const rect = btn.getBoundingClientRect();
         
-        // 1. 렌더링 확인
+        // 1. 버튼이 렌더링 되지 않았을 경우 대기
         if (rect.top === 0 && rect.left === 0) return false;
 
         // 2. 위치 설정
         img.style.position = 'absolute';
         img.style.top = (rect.top + window.scrollY + dy) + 'px';
         img.style.left = (rect.left + window.scrollX + dx) + 'px';
-        img.style.display = 'block'; 
+        img.style.display = 'block'; // 이미지 표시
         img.style.zIndex = '9999';
         
-        // [수정] 아래는 버튼 클릭을 막기 위한 핵심입니다.
-        // 이미지가 클릭을 '흡수'해야 하므로 auto를 사용합니다.
+        // [확실한 링크 차단] 이미지가 클릭을 흡수함
         img.style.pointerEvents = 'auto'; 
         
         return true;
     };
 
     const updatePositions = () => {
+        // 모든 이미지를 숨긴 뒤 상태에 맞춰 다시 띄움
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.style.display = 'none';
         });
 
         if (isWaiting) {
+            // 대기일 때 img-3만 표시
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
+            // 결제 완료일 때 3개 다 표시
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
             positionImage('detail-edit-btn', 'img-3', -8, -10);
         }
     };
 
+    // 실행
     updatePositions();
     let checkTimes = [100, 300, 600, 1000];
     checkTimes.forEach(time => setTimeout(updatePositions, time));
