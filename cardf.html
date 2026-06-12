@@ -66,21 +66,33 @@ const firebaseConfig = {
     window.toggleApplyForm = () => document.getElementById('applyForm').classList.toggle('hidden');
 
     window.saveCardData = async () => {
-        const id = document.getElementById('docId').value;
-        const data = {
-            name: document.getElementById('applyName').value,
-            phone: document.getElementById('applyPhone').value,
-            email: document.getElementById('applyEmail').value
-        };
+    // 입력값 가져오기
+    const name = document.getElementById('applyName').value.trim();
+    const phone = document.getElementById('applyPhone').value.trim();
+    const email = document.getElementById('applyEmail').value.trim();
+    const id = document.getElementById('docId').value;
 
+    // 필수 입력 체크
+    if (!name || !phone || !email) {
+        alert('성함, 전화번호, 이메일은 필수 입력 항목입니다.');
+        return; // 저장 중단
+    }
+
+    const data = { name, phone, email };
+
+    try {
         if (id) {
             await updateDoc(doc(db, COLLECTION, id), data);
+            alert('수정 완료!');
         } else {
             await addDoc(collection(db, COLLECTION), data);
+            alert('저장 완료!');
         }
-        alert('저장 완료');
         location.reload();
-    };
+    } catch (e) {
+        alert('저장 중 오류 발생: ' + e.message);
+    }
+};
 
     window.searchData = async () => {
         const phone = document.getElementById('searchPhone').value;
