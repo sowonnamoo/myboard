@@ -463,7 +463,32 @@ window.syncStatusOverlay = function(status) {
     }
 };
 
-// 앙카 png
+
+
+// 카결창 끝나면 자동 부모값이전
+window.addEventListener('load', () => {
+    // 1. 현재 로드된 주문 데이터에서 status를 가져옵니다 (예: 전역변수나 DOM에서 추출)
+    // 예시: const currentStatus = document.getElementById('status-hidden').value;
+    
+    // 2. 만약 데이터를 불러온 상태라면 즉시 갱신
+    if (typeof currentStatus !== 'undefined') {
+        syncStatusOverlay(currentStatus);
+    }
+});
+
+// 혹시 모를 상황 대비: 창 활성화 시에도 체크
+window.onfocus = () => {
+    // 상세 페이지라면 데이터를 다시 불러오는 함수를 여기에 넣으세요
+    // 예: fetchAndRenderDetail(); 
+    console.log("창 복귀 - 데이터 재확인 중");
+};
+
+
+
+
+
+
+// 앙카 png 주문내용 강제 링크 막음소스
 window.syncStatusOverlay = function(status) {
     // 이제 무통장 상태값을 정확히 매칭합니다.
     const isBank = (status === '무통장');
@@ -508,3 +533,7 @@ window.syncStatusOverlay = function(status) {
         }, 150);
     }
 };
+
+
+
+
