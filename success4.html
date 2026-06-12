@@ -19,14 +19,55 @@
             </svg>
         </div>
         <h1 class="text-3xl font-bold">결제가 완료되었습니다</h1>
-        <p class="mt-4 text-blue-200">잠시 후 자동으로 창이 닫힙니다.</p>
+        <p class="mt-4 text-blue-200">데이터를 처리 중입니다. 잠시만 기다려주세요...</p>
     </div>
 
-    <script>
-        // 3초(3000ms) 뒤에 자동으로 창 닫기
-        setTimeout(() => {
-            window.close();
-        }, 3000);
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // [본인의 파이어베이스 설정값을 여기에 넣으세요]
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // URL에서 order_no 파라미터 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderNo = urlParams.get('order_no');
+
+        if (orderNo) {
+            const orderRef = doc(db, "orders", orderNo);
+            
+            // 1. 파이어베이스 상태 업데이트
+            updateDoc(orderRef, {
+                status: "카드결제"
+            }).then(() => {
+                console.log("결제 상태 업데이트 완료");
+                
+                // 2. 부모창(게시판) 새로고침
+                if (window.opener) {
+                    window.opener.location.reload();
+                }
+                
+                // 3. 창 닫기 (업데이트 완료 후 1초 뒤에 닫힘)
+                setTimeout(() => {
+                    window.close();
+                }, 1000);
+            }).catch((err) => {
+                console.error("업데이트 실패:", err);
+                alert("결제 처리에 오류가 발생했습니다. 고객센터에 문의하세요.");
+            });
+        } else {
+            console.error("주문번호를 찾을 수 없습니다.");
+        }
     </script>
 </body>
 </html>
