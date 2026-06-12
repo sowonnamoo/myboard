@@ -500,51 +500,42 @@ window.syncStatusOverlay = function(status) {
     const isCard = (status === '카드결제');
     const isWaiting = (status === '대기');
 
-    // 모든 이미지 초기화 (일단 다 숨김)
-    ['img-1', 'img-2', 'img-3'].forEach(id => {
-        const img = document.getElementById(id);
-        if (img) img.classList.add('hidden');
-    });
+    // 위치 업데이트 로직을 별도 함수로 분리
+    const updatePositions = () => {
+        ['img-1', 'img-2', 'img-3'].forEach(id => {
+            const img = document.getElementById(id);
+            if (img) img.classList.add('hidden');
+        });
 
-    setTimeout(() => {
-        // 1. 대기 상태일 때: img-2만 세금계산서 버튼 위에 띄움
         if (isWaiting) {
-            const btn = document.getElementById('segum-btn-id');
-            const img = document.getElementById('img-2');
-            if (btn && img) {
-                const rect = btn.getBoundingClientRect();
-                img.style.position = 'absolute';
-                img.style.top = (rect.top + window.scrollY - 10) + 'px';
-                img.style.left = (rect.left + window.scrollX - 8) + 'px';
-                img.style.zIndex = '9999';
-                img.style.pointerEvents = 'auto';
-                img.classList.remove('hidden');
-            }
-        } 
-        // 2. 결제 완료(카드/무통장)일 때: 기존처럼 3개 다 띄움
-        else if (isCard || isBank) {
-            const targets = [
-                { btnId: 'anchor-text', imgId: 'img-1', dx: -25, dy: -25 }, 
-                { btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', imgId: 'img-2', dx: -8, dy: -10 },
-                { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
-            ];
-
-            targets.forEach(t => {
-                const btn = document.getElementById(t.btnId);
-                const img = document.getElementById(t.imgId);
-                if (btn && img) {
-                    const rect = btn.getBoundingClientRect();
-                    img.style.position = 'absolute';
-                    img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
-                    img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
-                    img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto';
-                    img.classList.remove('hidden');
-                }
-            });
+            positionImage('segum-btn-id', 'img-2', -8, -10);
+        } else if (isCard || isBank) {
+            positionImage('anchor-text', 'img-1', -25, -25);
+            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
+            positionImage('detail-edit-btn', 'img-3', -8, -10);
         }
-    }, 150);
-};
+    };
 
+    // 실제 위치 계산 및 적용 함수
+    const positionImage = (btnId, imgId, dx, dy) => {
+        const btn = document.getElementById(btnId);
+        const img = document.getElementById(imgId);
+        if (btn && img) {
+            const rect = btn.getBoundingClientRect();
+            img.style.position = 'absolute';
+            img.style.top = (rect.top + window.scrollY + dy) + 'px';
+            img.style.left = (rect.left + window.scrollX + dx) + 'px';
+            img.style.zIndex = '9999';
+            img.classList.remove('hidden');
+        }
+    };
+
+    // 처음 실행
+    updatePositions();
+
+    // 화면 크기 변경 시마다 재실행 (중요!)
+    window.removeEventListener('resize', updatePositions); // 중복 방지
+    window.addEventListener('resize', updatePositions);
+};
 
 
