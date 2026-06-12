@@ -124,8 +124,8 @@
             </section>
 
 <section id="view-detail" class="hidden w-full space-y-5">
-    <div class="bg-white border border-gray-200 p-4 font-bold text-center text-gray-800 text-base">
-        "주문서 접수완료" 이제 "결제" 를 완료해주세요.
+<div id="target-box-notice" class="bg-white border border-gray-200 p-4 font-bold text-center text-gray-800 text-base">
+    "주문서 접수완료" 이제 "결제" 를 완료해주세요.
     </div>
 
 <div class="flex gap-3">
@@ -172,8 +172,8 @@
 <button onclick="openDoc('print2.html', 'statement')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">거래명세서</button>
 
 
-<button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">세금계산서</button>
-<button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
+<button id="target-btn-tax" onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">세금계산서
+</button><button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
 <button onclick="openReceipt()" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">간이영수증출력</button>
 <button onclick="openCardPage()" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">카드전표</button>
         
@@ -220,6 +220,12 @@
         </div>
     </div>
 </div>
-    
+    <div id="overlay-container">
+    <img id="img-1" src="https://sowonnamoo1005.cafe24.com/web/upload/2025/1.png" class="hidden" style="position: absolute; z-index: 9999; pointer-events: none;">
+    <img id="img-2" src="https://sowonnamoo1005.cafe24.com/web/upload/2025/2.png" class="hidden" style="position: absolute; z-index: 9999; pointer-events: none;">
+    <img id="img-3" src="https://sowonnamoo1005.cafe24.com/web/upload/2025/3.png" class="hidden" style="position: absolute; z-index: 9999; pointer-events: none;">
+</div>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>
