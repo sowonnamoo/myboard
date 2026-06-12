@@ -30,10 +30,15 @@
     </div>
 
   <div id="applyForm" class="hidden">
+    <input type="hidden" id="docId"> 
+    
     <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">카드전표 자동발급 신청</h3>
     <input type="text" id="applyName" placeholder="제품 결제시 작성한 성함">
     <input type="text" id="applyPhone" placeholder="제품 결제시 작성한 전화번호">
     <input type="email" id="applyEmail" placeholder="영수증 수령 이메일주소 입력">
+    
+    <button class="save-btn" onclick="saveCardData()">저장 / 수정</button>
+</div>
     
     <p style="font-size: 12px; color: #000080; margin: 15px 0; line-height: 1.5; text-align: center;">
         최초 1회 입력후 저장하면 차후 카드 결제시<br>
@@ -65,17 +70,18 @@ const firebaseConfig = {
 
     window.toggleApplyForm = () => document.getElementById('applyForm').classList.toggle('hidden');
 
-    window.saveCardData = async () => {
-    // 입력값 가져오기
+window.saveCardData = async () => {
     const name = document.getElementById('applyName').value.trim();
     const phone = document.getElementById('applyPhone').value.trim();
     const email = document.getElementById('applyEmail').value.trim();
-    const id = document.getElementById('docId').value;
+    
+    // docId 요소 확인 및 값 가져오기
+    const docIdEl = document.getElementById('docId');
+    const id = docIdEl ? docIdEl.value : ""; 
 
-    // 필수 입력 체크
     if (!name || !phone || !email) {
         alert('성함, 전화번호, 이메일은 필수 입력 항목입니다.');
-        return; // 저장 중단
+        return;
     }
 
     const data = { name, phone, email };
