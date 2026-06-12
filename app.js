@@ -465,11 +465,12 @@ window.syncStatusOverlay = function(status) {
 
 // 앙카 png
 window.syncStatusOverlay = function(status) {
-    // dx: 좌우 이동 (-8은 좌측), dy: 상하 이동 (-10은 상단)
+    // anchor-1 (접수완료 박스): 글자 상단으로 맞추기 위해 dy 조정
+    // anchor-2, 3: 버튼 보정값 적용
     const targets = [
-        { btnId: 'target-box-notice', imgId: 'img-1', dx: 0, dy: 0 },
-        { btnId: 'segum-btn-id',      imgId: 'img-2', dx: -8, dy: -10 }, // 보정값 적용
-        { btnId: 'detail-edit-btn',   imgId: 'img-3', dx: -8, dy: -10 }  // 보정값 적용
+        { btnId: 'target-box-notice', imgId: 'img-1', dx: 0, dy: 15 }, // dy: 15로 글자 상단 보정
+        { btnId: 'segum-btn-id',      imgId: 'img-2', dx: -8, dy: -10 },
+        { btnId: 'detail-edit-btn',   imgId: 'img-3', dx: -8, dy: -10 }
     ];
 
     targets.forEach(t => {
@@ -487,7 +488,6 @@ window.syncStatusOverlay = function(status) {
                     const rect = btn.getBoundingClientRect();
                     
                     img.style.position = 'absolute';
-                    // 버튼 좌표에 보정값(t.dx, t.dy)을 더함
                     img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
                     img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
                     img.style.zIndex = '9999';
