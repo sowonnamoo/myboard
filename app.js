@@ -501,43 +501,40 @@ window.syncStatusOverlay = function(status) {
         if (!btn || !img) return false;
 
         const rect = btn.getBoundingClientRect();
-        
-        // 1. 버튼이 렌더링 되지 않았을 경우 대기
         if (rect.top === 0 && rect.left === 0) return false;
 
-        // 2. 위치 설정
         img.style.position = 'absolute';
         img.style.top = (rect.top + window.scrollY + dy) + 'px';
         img.style.left = (rect.left + window.scrollX + dx) + 'px';
-        img.style.display = 'block'; // 이미지 표시
+        img.style.display = 'block'; 
         img.style.zIndex = '9999';
-        
-        // [확실한 링크 차단] 이미지가 클릭을 흡수함
-        img.style.pointerEvents = 'auto'; 
+        img.style.pointerEvents = 'auto'; // 버튼 클릭 차단 (링크 막음)
         
         return true;
     };
 
     const updatePositions = () => {
-        // 모든 이미지를 숨긴 뒤 상태에 맞춰 다시 띄움
+        // 1. 모든 이미지 숨김
         ['img-1', 'img-2', 'img-3'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.style.display = 'none';
         });
 
+        // 2. 상태별 배치
         if (isWaiting) {
-            // 대기일 때 img-3만 표시
+            // 대기일 때는 '세금계산서 버튼(segum-btn-id)' 위에 'img-3'을 띄움
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
-            // 결제 완료일 때 3개 다 표시
+            // 결제 완료일 때는 3개 이미지 모두 표시
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
             positionImage('detail-edit-btn', 'img-3', -8, -10);
         }
     };
 
-    // 실행
     updatePositions();
+    
+    // 렌더링 지연 대비 반복 체크
     let checkTimes = [100, 300, 600, 1000];
     checkTimes.forEach(time => setTimeout(updatePositions, time));
 
