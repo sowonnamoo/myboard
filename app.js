@@ -498,39 +498,27 @@ window.syncStatusOverlay = function(status) {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
         
-        if (!img) return false;
+        if (!btn || !img) return false;
 
-        if (btn) {
-            const rect = btn.getBoundingClientRect();
-            // 버튼이 아직 렌더링 되지 않았다면 함수 종료 (이게 핵심입니다)
-            if (rect.top === 0 && rect.left === 0) return false;
+        const rect = btn.getBoundingClientRect();
+        
+        // 1. 버튼이 렌더링 되지 않았거나 좌표가 0이면 실행하지 않음
+        if (rect.top === 0 && rect.left === 0) return false;
 
-            // 좌표 계산이 끝난 후에만 이미지 표시
-            img.style.position = 'absolute';
-            img.style.top = (rect.top + window.scrollY + dy) + 'px';
-            img.style.left = (rect.left + window.scrollX + dx) + 'px';
-            img.style.zIndex = '9999';
-            img.style.pointerEvents = 'auto';
-            img.classList.remove('hidden');
-            img.style.display = 'block'; // 이때 비로소 나타남
-            return true;
-        }
-        return false;
+        // 2. 좌표 계산이 완료된 후에만 스타일 적용 및 표시
+        img.style.top = (rect.top + window.scrollY + dy) + 'px';
+        img.style.left = (rect.left + window.scrollX + dx) + 'px';
+        img.style.display = 'block'; 
+        
+        return true;
     };
 
     const updatePositions = () => {
-        // 일단 모두 숨김 처리
-        ['img-1', 'img-2', 'img-3'].forEach(id => {
-            const img = document.getElementById(id);
-            if (img) {
-                img.classList.add('hidden');
-                img.style.display = 'none';
-            }
-        });
-
-        // 위치 배치 (성공하면 true 반환)
+        // 1. 상태별 배치를 시도하고, 성공하면 이미지 보이기
         if (isWaiting) {
             positionImage('segum-btn-id', 'img-3', -8, -10);
+            // 안 쓰는 이미지는 숨김
+            ['img-1', 'img-2'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
         } else if (isCard || isBank) {
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
@@ -541,10 +529,11 @@ window.syncStatusOverlay = function(status) {
     // 1. 초기 실행
     updatePositions();
 
-    // 2. 반복 체크: 레이아웃이 잡히지 않았을 땐 표시하지 않다가, 좌표가 잡히는 순간 나타남
+    // 2. 타이밍 보정 (렌더링 속도 차이 극복)
     let checkTimes = [100, 300, 600, 1000];
     checkTimes.forEach(time => setTimeout(updatePositions, time));
 
+    // 3. 창 크기 변경 시 재계산
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
