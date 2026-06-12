@@ -504,49 +504,45 @@ window.syncStatusOverlay = function(status) {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
         
-        if (!btn || !img) return false;
+        if (!img) return false; // 이미지가 없으면 종료
 
-        const rect = btn.getBoundingClientRect();
-        
-        // 버튼이 화면에 보이지 않는 상태(0,0)면 적용하지 않음
-        if (rect.top === 0 && rect.left === 0 && rect.width === 0) return false;
-        
-        img.style.position = 'absolute';
-        img.style.top = (rect.top + window.scrollY + dy) + 'px';
-        img.style.left = (rect.left + window.scrollX + dx) + 'px';
-        img.style.zIndex = '9999';
-        img.style.pointerEvents = 'auto'; // 버튼 클릭 방지
+        // 이미지가 존재하면 무조건 보여줌 (hidden 클래스 제거)
         img.classList.remove('hidden');
-        return true;
+        img.style.display = 'block'; 
+
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            // 버튼 위치가 잡히면 해당 위치로 이동
+            if (rect.top !== 0 || rect.left !== 0) {
+                img.style.position = 'absolute';
+                img.style.top = (rect.top + window.scrollY + dy) + 'px';
+                img.style.left = (rect.left + window.scrollX + dx) + 'px';
+                img.style.zIndex = '9999';
+                img.style.pointerEvents = 'auto'; // 클릭 방지
+                return true;
+            }
+        }
+        return false;
     };
 
     const updatePositions = () => {
-        // 적용 시도
-        let success = false;
         if (isWaiting) {
-            success = positionImage('segum-btn-id', 'img-2', -8, -10);
+            positionImage('segum-btn-id', 'img-2', -8, -10);
         } else if (isCard || isBank) {
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
             positionImage('detail-edit-btn', 'img-3', -8, -10);
-            success = true;
         }
-        return success;
     };
 
-    // 1. 초기 실행
-    if (!updatePositions()) {
-        // 2. 만약 첫 실행에 실패했다면(아직 렌더링 전), 200ms 단위로 5번 재시도
-        let retryCount = 0;
-        const interval = setInterval(() => {
-            if (updatePositions() || retryCount > 5) {
-                clearInterval(interval);
-            }
-            retryCount++;
-        }, 200);
-    }
+    // 1. 즉시 시도
+    updatePositions();
 
-    // 3. 창 크기 변경 시 즉시 재계산
+    // 2. 100ms, 500ms, 1초, 2초 뒤에 반복 체크하여 위치 고정
+    let checkTimes = [100, 500, 1000, 2000];
+    checkTimes.forEach(time => setTimeout(updatePositions, time));
+
+    // 3. 창 크기 변경 시에도 즉시 재계산
+    window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
-
