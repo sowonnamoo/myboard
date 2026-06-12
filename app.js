@@ -503,21 +503,17 @@ window.syncStatusOverlay = function(status) {
     const positionImage = (btnId, imgId, dx, dy) => {
         const btn = document.getElementById(btnId);
         const img = document.getElementById(imgId);
+        
         if (btn && img) {
             const rect = btn.getBoundingClientRect();
-            if (rect.top === 0 && rect.left === 0) return false; 
+            // rect가 모두 0이면 아직 렌더링 전이므로 함수 종료
+            if (rect.top === 0 && rect.left === 0 && rect.width === 0) return false;
             
             img.style.position = 'absolute';
             img.style.top = (rect.top + window.scrollY + dy) + 'px';
             img.style.left = (rect.left + window.scrollX + dx) + 'px';
             img.style.zIndex = '9999';
-            
-            // 핵심: 이미지가 마우스 클릭을 가로채도록 설정
-            img.style.pointerEvents = 'auto'; 
-            
-            // 만약 이미지 자체도 클릭 안 되게 하고 싶다면 'none'으로 설정
-            // 지금은 '가리는 용도'이므로 'auto'여야 아래 버튼이 안 눌립니다.
-            
+            img.style.pointerEvents = 'auto'; // 핵심: 클릭 차단
             img.classList.remove('hidden');
             return true;
         }
@@ -525,15 +521,6 @@ window.syncStatusOverlay = function(status) {
     };
 
     const updatePositions = () => {
-        ['img-1', 'img-2', 'img-3'].forEach(id => {
-            const img = document.getElementById(id);
-            if (img) {
-                img.classList.add('hidden');
-                // 혹시 모르니 숨길 때도 클릭 방지 초기화
-                img.style.pointerEvents = 'none'; 
-            }
-        });
-
         if (isWaiting) {
             positionImage('segum-btn-id', 'img-2', -8, -10);
         } else if (isCard || isBank) {
@@ -543,11 +530,21 @@ window.syncStatusOverlay = function(status) {
         }
     };
 
+    // 1. 즉시 실행
     updatePositions();
-    setTimeout(updatePositions, 300);
-    setTimeout(updatePositions, 800);
 
-    window.removeEventListener('resize', updatePositions);
+    // 2. 창 크기 변경 감지
     window.addEventListener('resize', updatePositions);
+
+    // 3. (중요) 화면의 구조 변화를 감지하여 위치 재조정 (0,0 문제 해결)
+    const observer = new MutationObserver(() => {
+        updatePositions();
+    });
+    
+    // body 전체의 변화를 감시 (이미지나 버튼이 늦게 뜨더라도 감지)
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+    // 2초 뒤에는 감시를 멈춰서 브라우저 성능 최적화
+    setTimeout(() => observer.disconnect(), 2000);
 };
 
