@@ -221,3 +221,33 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 });
 
 
+
+// app2.js 파일 하단에 추가 댓글기능
+async function loadComments(boardId) {
+    const commentsList = document.getElementById("comments-list");
+    commentsList.innerHTML = "댓글을 불러오는 중...";
+
+    // 작성일 순서대로 댓글 가져오기
+    const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
+    const snapshot = await getDocs(q);
+    
+    commentsList.innerHTML = ""; // 초기화
+    
+    if (snapshot.empty) {
+        commentsList.innerHTML = '<p class="text-gray-400">등록된 댓글이 없습니다.</p>';
+        return;
+    }
+
+    snapshot.forEach(doc => {
+        const comment = doc.data();
+        const date = comment.createdAt ? comment.createdAt.toDate().toLocaleString() : "";
+        commentsList.innerHTML += `
+            <div class="border-b py-2 flex justify-between">
+                <span>${comment.text}</span>
+                <span class="text-xs text-gray-400">${date}</span>
+            </div>
+        `;
+    });
+}
+
+
