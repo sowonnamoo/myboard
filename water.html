@@ -5,10 +5,24 @@
     <title>상세 이미지 뷰어</title>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        /* 배경을 흰색으로 변경 */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: white; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+        }
         
         /* 뷰어 컨테이너 */
-        #viewer { position: relative; cursor: grab; }
+        #viewer { 
+            position: relative; 
+            cursor: grab; 
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); /* 약간의 그림자로 이미지 구분 */
+        }
         #viewer:active { cursor: grabbing; }
 
         /* 워터마크 타일 처리 (대각선 도배) */
@@ -17,13 +31,26 @@
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             background-image: url('https://sowonnamoo1005.cafe24.com/web/1new/watermark.png');
-            background-size: 200px; /* 워터마크 크기 조절 */
+            background-size: 200px;
             opacity: 0.3;
             z-index: 10;
         }
 
-        #main-img { display: block; max-width: 90vw; }
-        #loading-msg { position: absolute; color: white; top: 50%; width: 100%; text-align: center; }
+        /* 이미지 스타일 (가로 744px 고정 요구사항 반영) */
+        #main-img { 
+            display: block; 
+            width: 744px; /* 가로 744px 고정 */
+            height: auto; /* 세로는 비율에 맞게 자동 */
+        }
+        
+        #loading-msg { 
+            position: absolute; 
+            color: #999; 
+            top: 50%; 
+            width: 100%; 
+            text-align: center; 
+            z-index: 5;
+        }
     </style>
 </head>
 <body>
@@ -37,13 +64,21 @@
     <script>
         const params = new URLSearchParams(window.location.search);
         const img = document.getElementById('main-img');
-        img.src = params.get('url');
+        const imgUrl = params.get('url');
+        
+        if (imgUrl) img.src = imgUrl;
 
         img.onload = () => {
             document.getElementById('loading-msg').style.display = 'none';
-            // Panzoom 적용
+            
+            // Panzoom 적용 (흰색 배경에서 잘 보이도록)
             const elem = document.getElementById('viewer');
-            const panzoom = Panzoom(elem, { maxScale: 5 });
+            const panzoom = Panzoom(elem, { 
+                maxScale: 3,
+                contain: 'outside' 
+            });
+            
+            // 휠 이벤트 연결
             elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel);
         };
     </script>
