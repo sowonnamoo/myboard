@@ -19,6 +19,10 @@
             <button onclick="pay('bank')" class="flex-1 bg-green-700 text-white py-2 rounded text-sm">무통장입금</button>
             <button onclick="pay('card')" class="flex-1 bg-blue-900 text-white py-2 rounded text-sm">카드결제</button>
         </div>
+
+        <button onclick="printEstimate()" class="w-full mt-2 bg-gray-200 text-gray-700 py-1.5 rounded text-xs hover:bg-gray-300">
+            📄 견적서 출력
+        </button>
         
         <button onclick="window.close()" class="w-full mt-2 text-gray-400 text-xs py-2">창 닫기</button>
     </div>
@@ -71,6 +75,28 @@
                 const url = `https://sowonnamoo.github.io/myjs/payment?price=${totalAmount}`;
                 window.open(url, 'paymentWindow', 'width=811,height=649,scrollbars=yes,resizable=yes');
             }
+        }
+
+        // 견적서 출력 함수 (별도 파일 없이 팝업 생성)
+        function printEstimate() {
+            const cart = JSON.parse(localStorage.getItem('myCart') || '[]');
+            if (cart.length === 0) return alert("출력할 상품이 없습니다.");
+            
+            const cartHtml = document.getElementById('cart-list').innerHTML;
+            const total = document.getElementById('total-price').innerText;
+            
+            const win = window.open('', 'estimateWindow', 'width=500,height=600,scrollbars=yes');
+            win.document.write(`
+                <html>
+                    <head><title>견적서</title></head>
+                    <body style="font-family: sans-serif; padding: 20px;">
+                        <h2 style="border-bottom: 2px solid #333; padding-bottom: 10px;">📋 견적서</h2>
+                        <div style="margin: 20px 0;">${cartHtml}</div>
+                        <div style="text-align: right; font-weight: bold; font-size: 1.2em; border-top: 1px solid #ccc; padding-top: 10px;">합계: ${total}원</div>
+                        <button onclick="window.print()" style="margin-top: 30px; width: 100%; padding: 10px; cursor: pointer;">인쇄하기</button>
+                    </body>
+                </html>
+            `);
         }
         
         loadCart();
