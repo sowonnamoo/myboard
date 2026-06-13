@@ -152,7 +152,7 @@ loadComments(id);
 
     // 1. 이미지가 없을 때를 대비한 스타일 및 로직 추가
 dImage.innerHTML = `
-    <div id="image-container" style="position: relative; width: 744px; height: 500px; margin: 0 auto; border: 1px solid black; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9;">
+    <div id="image-container" style="position: relative; width: 744px; height: 500px; margin: 0 auto; border: none; display: flex; align-items: center; justify-content: flex-start; background-color: #f9f9f9;">
         <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none;">
         
         <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
@@ -161,9 +161,13 @@ dImage.innerHTML = `
                  alt="시안 이미지" 
                  onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
                  onload="document.getElementById('loading-msg').style.display='none';"
-                 style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;">
+                 style="width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block;">
         </a>
     </div>
+    <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-right: 20px;">
+        재구입 이미지번호 : ${finalCode}
+    </div>
+`;
         <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-right: 20px;">
             재구입 이미지번호 : ${finalCode}
         </div>
