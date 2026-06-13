@@ -1,27 +1,30 @@
+HTML
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>상세 이미지 보기</title>
+    <title>상세 이미지 확인</title>
     <style>
         body { margin: 0; display: flex; justify-content: center; align-items: center; background: #f9f9f9; min-height: 100vh; }
-        .container { position: relative; width: 800px; }
-        img { width: 100%; display: block; }
-        .watermark { position: absolute; top: 0; left: 0; width: 100%; opacity: 0.5; pointer-events: none; }
+        .wrapper { position: relative; width: 800px; }
+        .main-img { width: 100%; display: block; }
+        .watermark { position: absolute; top: 0; left: 0; width: 100%; opacity: 0.5; pointer-events: none; z-index: 2; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <img id="main-img" src="" alt="이미지">
+    <div class="wrapper">
+        <img id="view-img" class="main-img" src="" alt="이미지">
         <img class="watermark" src="https://sowonnamoo1005.cafe24.com/web/1new/watermark.png">
     </div>
 
     <script>
-        // URL에서 이미지 경로 파라미터 가져오기
+        // URL에서 전달받은 이미지 경로를 추출
         const params = new URLSearchParams(window.location.search);
         const imgUrl = params.get('url');
         if (imgUrl) {
-            document.getElementById('main-img').src = imgUrl;
+            document.getElementById('view-img').src = imgUrl;
+        } else {
+            alert("이미지를 불러올 수 없습니다.");
         }
     </script>
 </body>
