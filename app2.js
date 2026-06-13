@@ -19,13 +19,16 @@ const POSTS_PER_PAGE = 8;
 let currentViewId = "";
 
 async function loadData() {
-    const q = query(collection(db, "boards"), orderBy("createdAt", "desc"));
+    // 1. 전체가 아닌 최신 20개만 불러오도록 쿼리 수정
+    const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(20));
+    
     const snapshot = await getDocs(q);
     allOrders = [];
     snapshot.forEach(doc => {
         const data = doc.data();
         if (!data.isDeleted) allOrders.push({ id: doc.id, ...data });
     });
+    
     renderTable();
 }
 
