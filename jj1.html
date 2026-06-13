@@ -1,9 +1,52 @@
-<button onclick="goToWrite('스티커 A세트', '100', '50x50mm', '15000')">구입하기</button>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>상품 선택</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-10">
+    <div class="w-[744px] mx-auto">
+        <h2 class="text-2xl font-bold mb-6">상품 선택</h2>
+        <table class="w-full border-collapse border border-gray-300">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="border p-2">제품명</th>
+                    <th class="border p-2">수량</th>
+                    <th class="border p-2">사이즈</th>
+                    <th class="border p-2">금액</th>
+                    <th class="border p-2">선택</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="border p-2">스티커 A세트</td>
+                    <td class="border p-2">100</td>
+                    <td class="border p-2">50x50mm</td>
+                    <td class="border p-2">15,000원</td>
+                    <td class="border p-2 text-center">
+                        <button onclick="goToWrite('스티커 A세트', '100', '50x50mm', '15000')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">구입하기</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="border p-2">명함 B세트</td>
+                    <td class="border p-2">500</td>
+                    <td class="border p-2">90x50mm</td>
+                    <td class="border p-2">30,000원</td>
+                    <td class="border p-2 text-center">
+                        <button onclick="goToWrite('명함 B세트', '500', '90x50mm', '30000')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">구입하기</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-<script>
-function goToWrite(product, qty, size, price) {
-    // 메인 글쓰기 페이지로 정보를 쿼리스트링으로 전달
-    const url = `index.html?product=${encodeURIComponent(product)}&qty=${encodeURIComponent(qty)}&size=${encodeURIComponent(size)}&price=${encodeURIComponent(price)}`;
-    window.location.href = url;
-}
-</script>
+    <script>
+        function goToWrite(product, qty, size, price) {
+            // index.html로 페이지 이동하면서 데이터 전달
+            const url = `index.html?product=${encodeURIComponent(product)}&qty=${encodeURIComponent(qty)}&size=${encodeURIComponent(size)}&price=${encodeURIComponent(price)}`;
+            window.location.href = url;
+        }
+    </script>
+</body>
+</html>
