@@ -110,6 +110,13 @@
         const snapshot = await getDocs(q);
         const list = document.getElementById('resultList');
         list.innerHTML = '';
+        
+        // 정보가 없는 경우 메시지 출력
+        if (snapshot.empty) {
+            list.innerHTML = '<div style="color:red; text-align:center; padding:10px; font-size:13px;">등록되지 않은 정보입니다.<br>카드전표 영수증 신청 클릭후 저장해주세요.</div>';
+            return;
+        }
+
         snapshot.forEach(d => {
             const data = d.data();
             const dataStr = JSON.stringify(data).replace(/"/g, "&quot;");
