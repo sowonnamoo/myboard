@@ -152,7 +152,7 @@ loadComments(id);
 
     // 아래 코드로 완전히 교체하세요 (중복 제거 및 테두리/정렬 수정 완료)
     dImage.innerHTML = `
-    <div id="image-container" style="position: relative; width: 744px; height: 500px; margin: 0 auto; border: none; display: flex; align-items: center; justify-content: flex-start; background-color: #f9f9f9;">
+    <div id="image-container" style="position: relative; width: 744px; height: 500px; margin: 0; border: none; display: flex; align-items: center; justify-content: flex-start; background-color: #f9f9f9;">
         <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none;">
         
         <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
@@ -164,7 +164,7 @@ loadComments(id);
                  style="width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block;">
         </a>
     </div>
-    <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-right: 20px;">
+    <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
         재구입 이미지번호 : ${finalCode}
     </div>`;
 }
