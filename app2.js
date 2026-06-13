@@ -124,15 +124,17 @@ window.viewDetail = async function(id) {
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
         if (inputVal === passToCompare) {
-            modal.classList.add("hidden");
-            currentViewId = id;
-loadComments(id);
-            const dTitle = document.getElementById("detail-title");
-            const dImage = document.getElementById("detail-image");
-            const vList = document.getElementById("view-list");
-            const vDetail = document.getElementById("view-detail");
+    modal.classList.add("hidden");
+    currentViewId = id;
+    loadComments(id);
+    
+    const dTitle = document.getElementById("detail-title");
+    const dImage = document.getElementById("detail-image");
+    const dCode = document.getElementById("image-code"); // 추가됨
+    const vList = document.getElementById("view-list");
+    const vDetail = document.getElementById("view-detail");
 
-            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
             
         if (dImage) {
     const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
