@@ -126,7 +126,7 @@ window.viewDetail = async function(id) {
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id;
-
+loadComments(id);
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
             const vList = document.getElementById("view-list");
@@ -185,6 +185,7 @@ document.getElementById("save-comment-btn").addEventListener("click", async () =
     if (!input.value) return;
     await addDoc(collection(db, "boards", currentViewId, "comments"), { text: input.value, createdAt: new Date() });
     input.value = "";
+    loadComments(currentViewId);
     alert("댓글이 등록되었습니다.");
 });
 
