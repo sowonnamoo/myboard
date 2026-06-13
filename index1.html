@@ -10,7 +10,7 @@
 
     <div class="w-[744px] mx-auto min-h-screen">
         
-        <header class="w-full flex justify-center pb-4">           
+        <header class="w-full flex justify-center pb-4">
             <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
             <map name="Map">
                 <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
@@ -21,7 +21,6 @@
         </header>
 
         <div class="py-0">
-            
             <section id="view-write" class="w-full">
                 <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
                 <table class="w-full text-sm border-collapse">
@@ -36,6 +35,10 @@
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="size" class="form-input"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">결제금액 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="price" class="form-input" placeholder="숫자만 입력하세요" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></td>
                     </tr>
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">파일1 (필수) <span class="text-red-500">*</span></td>
@@ -56,8 +59,7 @@
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td>
                         <td>
-                            <input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" 
-                                   maxlength="11" oninput="this.value = this.value.replace(/[^0-9-]/g, '')">
+                            <input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" maxlength="11" oninput="this.value = this.value.replace(/[^0-9-]/g, '')">
                         </td>
                     </tr>
                     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
@@ -115,9 +117,7 @@
                     <button onclick="handleBankPay()" class="flex-1 py-3 bg-green-700 text-white font-bold rounded text-sm">무통장결제</button>
                     <button id="pay-card-btn" onclick="handleCardPay()" class="flex-1 py-3 bg-blue-900 text-white font-bold rounded text-sm">카드결제</button>
                 </div>
-                <div class="text-center text-xs text-gray-500">
-                    TIP. 결제가 완료되시면 시안보기 게시판에 시안이 등록됩니다. 교정 후 인쇄승인 버튼을 누르시면 인쇄가 진행됩니다.
-                </div>
+                <div class="text-center text-xs text-gray-500">TIP. 결제가 완료되시면 시안보기 게시판에 시안이 등록됩니다.</div>
                 <div class="border border-gray-200 rounded bg-white overflow-hidden">
                     <div id="detail-title" class="bg-gray-50 px-4 py-3 font-bold text-lg text-gray-700 border-b"></div>
                     <div class="flex justify-between text-xs bg-slate-50 border-b text-gray-400 p-2.5 px-4">
@@ -128,7 +128,6 @@
                     <div class="p-4 divide-y divide-gray-100 text-sm space-y-3">
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">수량</span><span id="detail-qty"></span></div>
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">사이즈</span><span id="detail-size"></span></div>
-                        <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">결제금액</span><span id="detail-price"></span></div>
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">접수자핸드폰</span><span id="detail-phone"></span></div>
                         <div class="flex py-1"><span class="w-28 font-semibold text-gray-400">배송지</span><span id="detail-address"></span></div>
                         <div class="flex flex-col py-2 space-y-2">
@@ -138,19 +137,19 @@
                         <div class="flex py-2 items-center"><span class="w-28 font-semibold text-gray-400">첨부파일</span><div id="detail-files" class="space-y-1"></div></div>
                     </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
                     <div style="display: flex; gap: 2px;">
-                        <a href="https://sowonnamoo.github.io/myboard/" class="border px-1 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors inline-block text-center">목록</a>
-                        <button onclick="openDoc('print1.html', 'estimate')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">견적서</button>
-                        <button onclick="openDoc('print2.html', 'statement')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">거래명세서</button>
-                        <button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">세금계산서</button>
-                        <button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">현금영수증</button>
-                        <button onclick="openReceipt()" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">간이영수증출력</button>
-                        <button id="card-receipt-btn" onclick="openCardPage()" class="border px-1 py-1 text-xs rounded bg-gray-50 hover:bg-gray-100 transition-colors">카드전표</button>
+                        <a href="https://sowonnamoo.github.io/myboard/" class="border px-1 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700">목록</a>
+                        <button onclick="openDoc('print1.html', 'estimate')" class="border px-1 py-1 text-xs rounded bg-gray-50">견적서</button>
+                        <button onclick="openDoc('print2.html', 'statement')" class="border px-1 py-1 text-xs rounded bg-gray-50">거래명세서</button>
+                        <button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50">세금계산서</button>
+                        <button onclick="openLink('https://sowonnamoo.github.io/myboard/segum')" class="border px-1 py-1 text-xs rounded bg-gray-50">현금영수증</button>
+                        <button onclick="openReceipt()" class="border px-1 py-1 text-xs rounded bg-gray-50">간이영수증출력</button>
+                        <button id="card-receipt-btn" onclick="openCardPage()" class="border px-1 py-1 text-xs rounded bg-gray-50">카드전표</button>
                     </div>
                     <div style="display: flex; gap: 6px;">
-                        <button id="detail-edit-btn" class="bg-gray-300 text-gray-700 px-3 py-1.5 text-[15px] rounded hover:bg-gray-400 transition-colors">배송지 수정하기</button>
-                        <button id="detail-delete-btn" class="bg-gray-300 text-gray-700 px-3 py-1.5 text-[15px] rounded hover:bg-gray-400 transition-colors">주문삭제</button>
+                        <button id="detail-edit-btn" class="bg-gray-300 px-3 py-1.5 text-sm rounded">배송지 수정하기</button>
+                        <button id="detail-delete-btn" class="bg-gray-300 px-3 py-1.5 text-sm rounded">주문삭제</button>
                     </div>
                 </div>
             </section>
@@ -163,10 +162,10 @@
         <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
             <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글(헨드폰번호 뒷네자리)</h3>
             <p class="text-xs text-gray-500 mb-4">휴대폰 뒷자리 4자리를 입력하세요.</p>
-            <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;" class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4 focus:outline-none focus:border-blue-500 bg-white text-gray-900" placeholder="••••">
-            <div class="flex gap-2 text-sm font-medium">
-                <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">취소</button>
-                <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">확인</button>
+            <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;" class="w-full border border-gray-300 rounded p-2 text-center text-lg tracking-widest mb-4">
+            <div class="flex gap-2">
+                <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 text-gray-600 rounded">취소</button>
+                <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 text-white rounded">확인</button>
             </div>
         </div>
     </div>
