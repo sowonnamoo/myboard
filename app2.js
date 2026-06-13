@@ -164,14 +164,9 @@ dImage.innerHTML = `
             <img src="${imgUrl}?t=${timestamp}" 
                  class="auto-refresh-img" 
                  alt="시안 이미지" 
-                 onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block'; document.getElementById('watermark-img').style.display='none';"
-                 onload="document.getElementById('loading-msg').style.display='none'; document.getElementById('watermark-img').style.display='block';"
+                 onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                 onload="document.getElementById('loading-msg').style.display='none';"
                  style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
-            
-            <img id="watermark-img" 
-                 src="${watermarkUrl}" 
-                 alt="워터마크"
-                 style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; z-index: 2; opacity: 0.5;"> 
         </a>
     </div>
     
