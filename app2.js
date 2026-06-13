@@ -235,38 +235,37 @@ async function loadComments(boardId) {
     
     if (snapshot.empty) {
         commentsList.innerHTML = '<p class="text-gray-400">등록된 댓글이 없습니다.</p>';
-        return;
+    } else {
+        snapshot.forEach(doc => {
+            const comment = doc.data();
+            const date = comment.createdAt ? comment.createdAt.toDate().toLocaleString() : "";
+            
+            // 여기서 innerHTML을 사용하여 한 번에 추가합니다.
+            commentsList.innerHTML += `
+                <div class="border-b py-2 flex justify-between items-center">
+                    <div>
+                        <span>${comment.text}</span>
+                        <span class="text-xs text-gray-400 ml-2">${date}</span>
+                    </div>
+                    <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
+                </div>
+            `;
+        });
     }
 
-    // Firestore 삭제 함수 임포트가 필요합니다 (파일 최상단 확인!)
-    // import { ..., deleteDoc } from "...";
-    
-    snapshot.forEach(doc => {
-        const comment = doc.data();
-        const date = comment.createdAt ? comment.createdAt.toDate().toLocaleString() : "";
-        
-        // 댓글 항목 생성
-        const div = document.createElement("div");
-        div.className = "border-b py-2 flex justify-between items-center";
-        div.innerHTML = `
-            <div>
-                <span>${comment.text}</span>
-                <span class="text-xs text-gray-400 ml-2">${date}</span>
-            </div>
-            <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
-        `;
-        commentsList.appendChild(div);
-    });
-
-    // 삭제 버튼 클릭 이벤트 연결
+    // 삭제 버튼 이벤트 연결
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.onclick = async (e) => {
             if (confirm("댓글을 삭제하시겠습니까?")) {
                 const commentId = e.target.getAttribute("data-id");
-                await deleteDoc(doc(db, "boards", boardId, "comments", commentId));
-                loadComments(boardId); // 삭제 후 목록 새로고침
+                try {
+                    await deleteDoc(doc(db, "boards", boardId, "comments", commentId));
+                    loadComments(boardId); // 삭제 후 다시 불러오기
+                } catch (error) {
+                    console.error("삭제 실패:", error);
+                    alert("삭제 중 오류가 발생했습니다.");
+                }
             }
         };
     });
 }
-
