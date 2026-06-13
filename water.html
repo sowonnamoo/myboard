@@ -2,50 +2,69 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>상세 이미지 뷰어</title>
-    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <title>상세 이미지 보기</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #333; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        body { margin: 0; background: #333; display: flex; justify-content: center; min-height: 100vh; overflow: auto; }
         
-        /* 뷰어 컨테이너 */
-        #viewer { position: relative; cursor: grab; }
-        #viewer:active { cursor: grabbing; }
+        /* 1. 이미지 컨테이너 (가로 744px 고정) */
+        #viewer-wrapper {
+            position: relative;
+            width: 744px;
+            margin: 20px 0;
+            background-color: #f9f9f9;
+            cursor: move; /* 손바닥 모양 커서 */
+            overflow: hidden; /* 영역 밖으로 나가는 것 방지 */
+        }
 
-        /* 워터마크 타일 처리 (대각선 도배) */
-        .watermark-overlay {
+        /* 2. 이미지 스타일 (높이는 자동) */
+        #main-img { width: 100%; display: block; pointer-events: none; }
+        
+        /* 3. 워터마크 레이어 (배경 간섭 없음) */
+        #watermark-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
+            pointer-events: none; /* 클릭 방해 금지 */
             background-image: url('https://sowonnamoo1005.cafe24.com/web/1new/watermark.png');
-            background-size: 200px; /* 워터마크 크기 조절 */
-            opacity: 0.3;
+            background-size: 200px; /* 워터마크 타일 크기 */
+            opacity: 0.4;
             z-index: 10;
         }
 
-        #main-img { display: block; max-width: 90vw; }
-        #loading-msg { position: absolute; color: white; top: 50%; width: 100%; text-align: center; }
+        #loading { color: #666; text-align: center; padding-top: 200px; }
     </style>
 </head>
 <body>
 
-    <div id="viewer">
-        <div id="loading-msg">이미지 불러오는 중...</div>
-        <img id="main-img" src="" alt="시안">
-        <div class="watermark-overlay"></div>
-    </div>
+<div id="viewer-wrapper">
+    <div id="loading">이미지 로딩중...</div>
+    <img id="main-img" src="" alt="시안">
+    <div id="watermark-layer"></div>
+</div>
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const img = document.getElementById('main-img');
-        img.src = params.get('url');
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const img = document.getElementById('main-img');
+    const wrapper = document.getElementById('viewer-wrapper');
+    const loading = document.getElementById('loading');
 
-        img.onload = () => {
-            document.getElementById('loading-msg').style.display = 'none';
-            // Panzoom 적용
-            const elem = document.getElementById('viewer');
-            const panzoom = Panzoom(elem, { maxScale: 5 });
-            elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel);
-        };
-    </script>
+    img.src = params.get('url');
+
+    img.onload = () => {
+        loading.style.display = 'none';
+    };
+
+    // 돋보기(확대) 및 이동 기능
+    let scale = 1;
+    const step = 0.2; // 확대 단계
+
+    // 휠로 확대/축소
+    wrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        scale += e.deltaY > 0 ? -step : step;
+        scale = Math.min(Math.max(1, scale), 3); // 1배~3배 확대
+        wrapper.style.transform = `scale(${scale})`;
+        wrapper.style.transformOrigin = "top center"; // 상단 기준 확대
+    });
+</script>
 </body>
 </html>
