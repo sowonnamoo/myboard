@@ -32,7 +32,7 @@
         <div class="watermark-overlay"></div>
     </div>
 
-    <button id="zoom-btn">🔍</button>
+<button id="zoom-btn">🔍</button>
 
     <script>
         const params = new URLSearchParams(window.location.search);
@@ -46,6 +46,7 @@
             isZoomed = !isZoomed;
             // 1.5배 확대 또는 원래대로
             container.style.transform = isZoomed ? 'scale(1.5)' : 'scale(1)';
+            // 클릭될 때마다 아이콘 변경
             btn.innerText = isZoomed ? '➖' : '🔍';
         };
     </script>
