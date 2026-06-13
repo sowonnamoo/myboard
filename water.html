@@ -4,33 +4,44 @@
     <meta charset="UTF-8">
     <title>상세 이미지 보기</title>
     <style>
-        body { margin: 0; background: #333; display: flex; justify-content: center; min-height: 100vh; overflow: auto; }
+        /* 1. 배경을 아예 꽉 채우고 스크롤 생성 */
+        body { 
+            margin: 0; 
+            padding: 20px 0; /* 위아래 약간의 여유 */
+            background: #333; 
+            display: flex; 
+            justify-content: center; 
+            min-height: 100vh;
+        }
         
-        /* 1. 이미지 컨테이너 (가로 744px 고정) */
+        /* 2. 이미지 컨테이너: 높이를 내부 이미지에 딱 맞춤 */
         #viewer-wrapper {
             position: relative;
             width: 744px;
-            margin: 20px 0;
             background-color: #f9f9f9;
-            cursor: move; /* 손바닥 모양 커서 */
-            overflow: hidden; /* 영역 밖으로 나가는 것 방지 */
+            cursor: move;
+            display: flex; /* 이미지 하단 여백 제거 핵심 */
+            align-items: flex-start;
         }
 
-        /* 2. 이미지 스타일 (높이는 자동) */
-        #main-img { width: 100%; display: block; pointer-events: none; }
+        /* 3. 이미지 스타일 */
+        #main-img { 
+            width: 100%; 
+            display: block; /* block으로 설정해야 하단 여백(inline 공백)이 안 생김 */
+        }
         
-        /* 3. 워터마크 레이어 (배경 간섭 없음) */
+        /* 4. 워터마크 레이어 */
         #watermark-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* 클릭 방해 금지 */
+            pointer-events: none;
             background-image: url('https://sowonnamoo1005.cafe24.com/web/1new/watermark.png');
-            background-size: 200px; /* 워터마크 타일 크기 */
+            background-size: 200px;
             opacity: 0.4;
             z-index: 10;
         }
 
-        #loading { color: #666; text-align: center; padding-top: 200px; }
+        #loading { color: #666; text-align: center; padding-top: 200px; position: absolute; width: 100%; }
     </style>
 </head>
 <body>
@@ -53,17 +64,14 @@
         loading.style.display = 'none';
     };
 
-    // 돋보기(확대) 및 이동 기능
+    // 휠 확대 기능 (CSS 변환)
     let scale = 1;
-    const step = 0.2; // 확대 단계
-
-    // 휠로 확대/축소
     wrapper.addEventListener('wheel', (e) => {
         e.preventDefault();
-        scale += e.deltaY > 0 ? -step : step;
-        scale = Math.min(Math.max(1, scale), 3); // 1배~3배 확대
+        scale += e.deltaY > 0 ? -0.2 : 0.2;
+        scale = Math.min(Math.max(1, scale), 3);
         wrapper.style.transform = `scale(${scale})`;
-        wrapper.style.transformOrigin = "top center"; // 상단 기준 확대
+        wrapper.style.transformOrigin = "top center";
     });
 </script>
 </body>
