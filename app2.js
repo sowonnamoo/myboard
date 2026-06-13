@@ -148,24 +148,32 @@ if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.qu
     const rawPhone = data.phone || "00000000000";
     const phonePrefix = rawPhone.slice(0, -2);
     const finalCode = phonePrefix + timeCode;
-    
+    const watermarkUrl = 'https://sowonnamoo1005.cafe24.com/web/upload/watermark.png';
     const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
     const timestamp = new Date().getTime();
 
     // 아래 코드로 완전히 교체하세요 (중복 제거 및 테두리/정렬 수정 완료)
     dImage.innerHTML = `
-    <div id="image-container" style="position: relative; width: 744px; height: 500px; margin: 0; border: none; display: flex; align-items: center; justify-content: flex-start; background-color: #f9f9f9;">
-        <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none;">
+    <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; border: none; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
         
-        <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+        <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+        
+        <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link" 
+           style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+            
             <img src="${imgUrl}?t=${timestamp}" 
                  class="auto-refresh-img" 
                  alt="시안 이미지" 
-                 onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
-                 onload="document.getElementById('loading-msg').style.display='none';"
-                 style="width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block;">
-        </a>
+                 onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block'; document.getElementById('watermark-img').style.display='none';"
+                 onload="document.getElementById('loading-msg').style.display='none'; document.getElementById('watermark-img').style.display='block';"
+                 style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+            
+            <img id="watermark-img" 
+                 src="${watermarkUrl}" 
+                 alt="워터마크"
+                 style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; z-index: 2; opacity: 0.5;"> </a>
     </div>
+    
     <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
         재구입 이미지번호 : ${finalCode}
     </div>`;
