@@ -191,7 +191,7 @@ document.getElementById("save-comment-btn").addEventListener("click", async () =
     await addDoc(collection(db, "boards", currentViewId, "comments"), { text: input.value, createdAt: new Date() });
     input.value = "";
     loadComments(currentViewId);
-    alert("댓글이 등록되었습니다.");
+    // alert("댓글이 등록되었습니다."); // 제거됨
 });
 
 loadData();
@@ -260,17 +260,10 @@ async function loadComments(boardId) {
 
     // 삭제 버튼 이벤트 연결
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
-        btn.onclick = async (e) => {
-            if (confirm("댓글을 삭제하시겠습니까?")) {
-                const commentId = e.target.getAttribute("data-id");
-                try {
-                    await deleteDoc(doc(db, "boards", boardId, "comments", commentId));
-                    loadComments(boardId); // 삭제 후 다시 불러오기
-                } catch (error) {
-                    console.error("삭제 실패:", error);
-                    alert("삭제 중 오류가 발생했습니다.");
-                }
-            }
-        };
+btn.onclick = async (e) => {
+    const commentId = e.target.getAttribute("data-id");
+    await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
+    loadComments(currentViewId);
+};
     });
 }
