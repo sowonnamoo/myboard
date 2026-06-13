@@ -14,11 +14,13 @@
             transform-origin: top center; 
         }
         
-        /* [추가] 이미지에 마우스 올리면 '손가락(포인터)' 모양이 나오게 함 */
         #main-img { 
             width: 100%; 
             display: block; 
             cursor: pointer; 
+            /* [추가] 이미지 드래그 방지 */
+            user-select: none; 
+            -webkit-user-drag: none; 
         }
         
         .watermark-overlay {
@@ -37,7 +39,7 @@
         }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart="return false">
 
     <div id="container">
         <img id="main-img" src="" alt="시안" onclick="window.close()">
