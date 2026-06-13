@@ -12,7 +12,7 @@
             <thead>
                 <tr class="bg-gray-100">
                     <th class="border p-2">제품명</th>
-                    <th class="border p-2">수량</th>
+                    <th class="border p-2">건 수 (1~100)</th> <th class="border p-2">수량</th>
                     <th class="border p-2">사이즈</th>
                     <th class="border p-2">금액</th>
                     <th class="border p-2">선택</th>
@@ -21,20 +21,26 @@
             <tbody>
                 <tr>
                     <td class="border p-2">스티커 A세트</td>
+                    <td class="border p-2 text-center">
+                        <input type="number" id="qty1" value="1" min="1" max="100" class="w-16 border rounded text-center">
+                    </td>
                     <td class="border p-2">100</td>
                     <td class="border p-2">50x50mm</td>
                     <td class="border p-2">15,000원</td>
                     <td class="border p-2 text-center">
-                        <button onclick="goToWrite('스티커 A세트', '100', '50x50mm', '15000')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">구입하기</button>
+                        <button onclick="goToWrite('스티커 A세트', '100', '50x50mm', '15000', 'qty1')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">구입하기</button>
                     </td>
                 </tr>
                 <tr>
                     <td class="border p-2">명함 B세트</td>
+                    <td class="border p-2 text-center">
+                        <input type="number" id="qty2" value="1" min="1" max="100" class="w-16 border rounded text-center">
+                    </td>
                     <td class="border p-2">500</td>
                     <td class="border p-2">90x50mm</td>
                     <td class="border p-2">30,000원</td>
                     <td class="border p-2 text-center">
-                        <button onclick="goToWrite('명함 B세트', '500', '90x50mm', '30000')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">구입하기</button>
+                        <button onclick="goToWrite('명함 B세트', '500', '90x50mm', '30000', 'qty2')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">구입하기</button>
                     </td>
                 </tr>
             </tbody>
@@ -42,9 +48,15 @@
     </div>
 
     <script>
-        function goToWrite(product, qty, size, price) {
-            // index.html로 페이지 이동하면서 데이터 전달
-            const url = `index.html?product=${encodeURIComponent(product)}&qty=${encodeURIComponent(qty)}&size=${encodeURIComponent(size)}&price=${encodeURIComponent(price)}`;
+        function goToWrite(product, qty, size, price, inputId) {
+            // 입력창에서 현재 값을 가져옴
+            const inputVal = document.getElementById(inputId).value;
+            
+            // 제목 옆에 건 수 붙이기 (예: 스티커 A세트 [3건])
+            const finalProduct = `${product} [${inputVal}건]`;
+            
+            // index.html로 데이터 전달
+            const url = `index.html?product=${encodeURIComponent(finalProduct)}&qty=${encodeURIComponent(qty)}&size=${encodeURIComponent(size)}&price=${encodeURIComponent(price)}`;
             window.location.href = url;
         }
     </script>
