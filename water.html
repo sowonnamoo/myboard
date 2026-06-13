@@ -2,76 +2,51 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>상세 이미지 뷰어</title>
-    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <title>상세 이미지 확인</title>
     <style>
-        body { margin: 0; padding: 0; background: #333; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        /* 배경 전체 */
+        body { margin: 0; padding: 0; background: #333; display: flex; justify-content: center; }
         
-        /* 뷰어 영역 (화면 전체) */
-        #viewer-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; position: relative; }
-        
-        /* 실제 Panzoom이 적용될 요소 */
-        #viewer { position: relative; cursor: grab; display: inline-block; }
-        #viewer:active { cursor: grabbing; }
+        /* 이미지 컨테이너 */
+        #container { 
+            position: relative; 
+            width: 800px; /* 고정 너비 */
+            background-color: #f9f9f9;
+        }
 
-        /* 워터마크 타일 처리 (대각선 도배) */
+        /* 이미지 기본 설정 */
+        #main-img { width: 100%; display: none; }
+        #loading-msg { width: 100%; display: block; padding-top: 100px; text-align: center; color: white; }
+
+        /* 워터마크 (대각선 도배) */
         .watermark-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
-            /* 여러분이 등록할 작은 워터마크 이미지 주소로 교체하세요 */
             background-image: url('https://sowonnamoo1005.cafe24.com/web/1new/watermark.png');
-            background-size: 200px; /* 워터마크 크기 조절 */
+            background-size: 200px; /* 워터마크 간격 */
             opacity: 0.3;
             z-index: 10;
         }
-
-        /* 이미지 CSS 수정: 세로 긴 이미지 대응 */
-        #main-img {
-            display: block;
-            max-width: 100vw;   /* 가로는 화면 꽉 차게 */
-            max-height: 100vh;  /* 세로는 화면 꽉 차게 (핵심: 잘림 방지) */
-            width: auto;        /* 원본 비율 유지 */
-            height: auto;       /* 원본 비율 유지 */
-        }
-        
-        #loading-msg { position: absolute; color: white; top: 50%; width: 100%; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="viewer-container">
+    <div id="container">
         <div id="loading-msg">이미지 불러오는 중...</div>
-        <div id="viewer">
-            <img id="main-img" src="" alt="시안">
-            <div class="watermark-overlay"></div>
-        </div>
+        
+        <img id="main-img" src="" alt="시안"
+             onload="this.style.display='block'; document.getElementById('loading-msg').style.display='none'; document.getElementById('wm').style.display='block';">
+        
+        <div id="wm" class="watermark-overlay" style="display:none;"></div>
     </div>
 
     <script>
         const params = new URLSearchParams(window.location.search);
-        const img = document.getElementById('main-img');
         const imgUrl = params.get('url');
-
         if (imgUrl) {
-            img.src = imgUrl;
-        } else {
-            document.getElementById('loading-msg').innerText = "이미지 경로가 없습니다.";
+            document.getElementById('main-img').src = imgUrl;
         }
-
-        img.onload = () => {
-            document.getElementById('loading-msg').style.display = 'none';
-            // Panzoom 적용
-            const elem = document.getElementById('viewer');
-            const panzoom = Panzoom(elem, {
-                maxScale: 10,       /* 최대 10배 확대 */
-                minScale: 1,        /* 화면에 맞춰진 크기보다 작아지지 않음 */
-                contain: 'outside' /* 확대했을 때 이미지가 뷰어 영역 밖으로 나가도록 */
-            });
-            
-            // 마우스 휠로 줌 기능 연결 (viewer-container에서 작동하도록 변경)
-            document.getElementById('viewer-container').addEventListener('wheel', panzoom.zoomWithWheel);
-        };
     </script>
 </body>
 </html>
