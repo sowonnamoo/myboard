@@ -148,7 +148,7 @@ if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.qu
     const rawPhone = data.phone || "00000000000";
     const phonePrefix = rawPhone.slice(0, -2);
     const finalCode = phonePrefix + timeCode;
-    const watermarkUrl = 'https://sowonnamoo1005.cafe24.com/web/upload/watermark.png';
+    const watermarkUrl = 'https://sowonnamoo1005.cafe24.com/web/1new/watermark.png';
     const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
     const timestamp = new Date().getTime();
 
