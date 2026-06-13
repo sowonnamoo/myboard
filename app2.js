@@ -134,7 +134,7 @@ loadComments(id);
 
             if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
             
-          if (dImage) {
+        if (dImage) {
     const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
     const yy = String(createdAt.getFullYear()).slice(-2);
     const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
@@ -150,8 +150,8 @@ loadComments(id);
     const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
     const timestamp = new Date().getTime();
 
-    // 1. 이미지가 없을 때를 대비한 스타일 및 로직 추가
-dImage.innerHTML = `
+    // 아래 코드로 완전히 교체하세요 (중복 제거 및 테두리/정렬 수정 완료)
+    dImage.innerHTML = `
     <div id="image-container" style="position: relative; width: 744px; height: 500px; margin: 0 auto; border: none; display: flex; align-items: center; justify-content: flex-start; background-color: #f9f9f9;">
         <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none;">
         
@@ -166,8 +166,7 @@ dImage.innerHTML = `
     </div>
     <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-right: 20px;">
         재구입 이미지번호 : ${finalCode}
-    </div>
-`;
+    </div>`;
 }
             
             if (vList) vList.classList.add("hidden");
