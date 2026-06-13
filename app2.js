@@ -168,10 +168,6 @@ dImage.innerHTML = `
         재구입 이미지번호 : ${finalCode}
     </div>
 `;
-        <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-right: 20px;">
-            재구입 이미지번호 : ${finalCode}
-        </div>
-    `;
 }
             
             if (vList) vList.classList.add("hidden");
