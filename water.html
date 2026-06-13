@@ -5,7 +5,16 @@
     <title>상세 이미지 확인</title>
     <style>
         body { margin: 0; background: white; display: flex; justify-content: center; }
-        #container { position: relative; width: 744px; background-color: white; transition: transform 0.3s ease; transform-origin: top center; }
+        
+        /* 초기 확대 상태를 위해 transition을 부드럽게 유지 */
+        #container { 
+            position: relative; 
+            width: 744px; 
+            background-color: white; 
+            transition: transform 0.3s ease; 
+            transform-origin: top center; 
+        }
+        
         #main-img { width: 100%; display: block; }
         
         .watermark-overlay {
@@ -15,7 +24,6 @@
             background-size: 200px; opacity: 0.3; z-index: 10;
         }
 
-        /* 돋보기 버튼 (우측 하단 고정) */
         #zoom-btn {
             position: fixed; bottom: 20px; right: 20px;
             width: 60px; height: 60px; background: #333; color: white;
@@ -32,21 +40,23 @@
         <div class="watermark-overlay"></div>
     </div>
 
-<button id="zoom-btn">🔍</button>
+    <button id="zoom-btn">➖</button>
 
     <script>
         const params = new URLSearchParams(window.location.search);
         document.getElementById('main-img').src = params.get('url');
 
-        let isZoomed = false;
+        // [수정] 처음부터 true로 설정하여 시작하자마자 150% 확대
+        let isZoomed = true; 
         const container = document.getElementById('container');
         const btn = document.getElementById('zoom-btn');
 
+        // 페이지 로드 시 바로 1.5배 적용
+        container.style.transform = 'scale(1.5)';
+
         btn.onclick = () => {
             isZoomed = !isZoomed;
-            // 1.5배 확대 또는 원래대로
             container.style.transform = isZoomed ? 'scale(1.5)' : 'scale(1)';
-            // 클릭될 때마다 아이콘 변경
             btn.innerText = isZoomed ? '➖' : '🔍';
         };
     </script>
