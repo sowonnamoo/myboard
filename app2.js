@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -19,17 +19,20 @@ const POSTS_PER_PAGE = 8;
 let currentViewId = "";
 
 async function loadData() {
-    // 1. 전체가 아닌 최신 20개만 불러오도록 쿼리 수정
+    // 1. 최신 20개만 쿼리
     const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(20));
     
     const snapshot = await getDocs(q);
     allOrders = [];
+    
+    // 2. 데이터 배열에 저장
     snapshot.forEach(doc => {
         const data = doc.data();
         if (!data.isDeleted) allOrders.push({ id: doc.id, ...data });
     });
     
-    renderTable();
+    // 3. 화면 렌더링
+    renderTable(allOrders);
 }
 
 function renderTable(dataToRender = allOrders) {
