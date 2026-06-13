@@ -586,3 +586,46 @@ window.syncStatusOverlay = function(status) {
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
+
+
+
+
+
+// 앞페이지에서 상품정보 가져와 뿌리기 app.js 맨 하단에 추가
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    
+    if (params.has('product')) {
+        // 1. 값 채우기
+        const prodInput = document.getElementById('product-name');
+        const qtyInput = document.getElementById('quantity');
+        const sizeInput = document.getElementById('size');
+        const priceInput = document.getElementById('price');
+        
+        prodInput.value = params.get('product');
+        qtyInput.value = params.get('qty');
+        sizeInput.value = params.get('size');
+        priceInput.value = params.get('price');
+        
+        // 2. [핵심] 수정 불가하도록 readonly 속성 부여
+        prodInput.readOnly = true;
+        qtyInput.readOnly = true;
+        sizeInput.readOnly = true;
+        priceInput.readOnly = true;
+        
+        // 시각적으로 잠겨있다는 느낌을 주려면 스타일 추가 (선택사항)
+        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
+            el.style.backgroundColor = "#f3f4f6"; // 배경색을 회색으로
+            el.style.cursor = "not-allowed";
+        });
+        
+        // 3. 화면 전환
+        switchView('write');
+    }
+});
+
+
+
+
+
+
