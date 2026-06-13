@@ -591,7 +591,7 @@ window.syncStatusOverlay = function(status) {
 
 
 
-// 앞페이지에서 상품정보 가져와 뿌리기 app.js 맨 하단에 추가
+// 앞페이지에서 상품정보 가져와 뿌리기 app.js 맨 하단에 추가 퀴리스트링방식으로 다른페이지도 동일적용
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     
