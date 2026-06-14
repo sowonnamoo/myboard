@@ -239,8 +239,11 @@ async function loadComments(boardId) {
         mainImg.dataset.originalSrc = mainImg.src.split('?')[0];
     }
 
-    const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
-    const snapshot = await getDocs(q);
+const q = query(
+    collection(db, "boards", boardId, "comments"),
+    orderBy("createdAt", "desc"),
+    limit(1)
+);
 
     // 댓글 유무에 따라 이미지 교체 함수
     const updateImageState = (hasComments) => {
@@ -262,9 +265,9 @@ if (docs.length > 0) {
     const comment = latestDoc.data();
 
     commentsList.innerHTML = `
-        <div class="border-b py-2 flex justify-between items-center" id="comment-${latestDoc.id}">
+          <div class="border-b py-2 flex justify-between items-center" id="comment-${doc.id}">
             <span>${comment.text}</span>
-            <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${latestDoc.id}">삭제</button>
+            <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
         </div>`;
 }
     });
