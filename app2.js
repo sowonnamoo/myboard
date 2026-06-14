@@ -102,7 +102,6 @@ window.viewDetail = async function(id) {
     
     const data = snap.data();
     const storedPass = String(data.password || "");
-
     const modal = document.getElementById("password-modal");
     const input = document.getElementById("modal-password-input");
     const confirmBtn = document.getElementById("modal-confirm-btn");
@@ -120,37 +119,98 @@ window.viewDetail = async function(id) {
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id;
-            
-            // 1. 상세 화면 먼저 표시
+
+            // 1. 화면 전환
             document.getElementById("view-list").classList.add("hidden");
             document.getElementById("view-detail").classList.remove("hidden");
-            
-            // 2. 메모 로드 후 버튼 상태 제어
-            await loadMemo(id);
-            const memoDisplay = document.getElementById("memo-display");
-            const approveBtn = document.getElementById("approve-btn");
-            const hasMemo = memoDisplay.innerText !== "작성된 메모가 없습니다." && memoDisplay.innerText.trim() !== "";
 
-            if (data.status === "done") {
-                approveBtn.outerHTML = `<button class="bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default">조판완료</button>`;
-            } else if (hasMemo) {
-                // 메모가 있으면 클릭 시 경고창만 띄움
-                approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
-            } else {
-                // 메모가 없으면 정상 처리
-                approveBtn.onclick = async () => {
-                    if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                        await updateDoc(doc(db, "boards", id), { status: "done" });
-                        approveBtn.outerHTML = `<button class="bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default">조판완료</button>`;
-                        alert("조판완료 처리되었습니다.");
-                    }
-                };
+            // 2. 메모 체크를 위한 별도 함수 호출 (버튼 제어까지 여기서 처리)
+            await checkMemoAndSetButton(id, data.status);
+
+            // ... (이미지 및 타이틀 로드 로직)
+        } else {
+            alert("비밀번호가 일치하지 않습니다.");
+        }
+    };
+    cancelBtn.onclick = () => modal.classList.add("hidden");
+};
+
+// 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
+async function checkMemoAndSetButton(boardId, status) {
+    const memoDisplay = document.getElementById("memo-display");
+    const memoStatus = document.getElementById("memo-status");
+    const approveBtn = document.getElementById("approve-btn");
+    
+    approveBtn.onclick = null;
+    
+    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
+    const snapshot = await getDocs(q);
+
+    const hasMemo = !snapshot.empty;
+    if (hasMemo) {
+        memoDisplay.innerText = snapshot.docs[0].data().text;
+        memoStatus.classList.remove("hidden");
+    } else {
+        memoDisplay.innerText = "작성된 메모가 없습니다.";
+        memoStatus.classList.add("hidden");
+    }
+
+    if (status === "done") {
+        approveBtn.innerText = "조판완료";
+        approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
+    } else if (hasMemo) {
+        approveBtn.innerText = "인쇄승인";
+        approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
+        approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
+    } else {
+        approveBtn.innerText = "인쇄승인";
+        approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
+        approveBtn.onclick = async () => {
+            if (confirm("정말로 인쇄승인하시겠습니까?")) {
+                await updateDoc(doc(db, "boards", boardId), { status: "done" });
+                approveBtn.innerText = "조판완료";
+                approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
+                approveBtn.onclick = null;
+                alert("조판완료 처리되었습니다.");
             }
+        };
+    }
+}
 
+// 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
+window.viewDetail = async function(id) {
+    const snap = await getDoc(doc(db, "boards", id));
+    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
+    
+    const data = snap.data();
+    const storedPass = String(data.password || "");
+    const modal = document.getElementById("password-modal");
+    const input = document.getElementById("modal-password-input");
+    const confirmBtn = document.getElementById("modal-confirm-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
+
+    modal.classList.remove("hidden");
+    input.value = "";
+    input.focus();
+
+    confirmBtn.onclick = async () => {
+        const inputVal = input.value;
+        const isNumeric = /^\d+$/.test(storedPass);
+        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
+
+        if (inputVal === passToCompare) {
+            modal.classList.add("hidden");
+            currentViewId = id;
+
+            document.getElementById("view-list").classList.add("hidden");
+            document.getElementById("view-detail").classList.remove("hidden");
+
+            // 1. 메모 및 버튼 제어 먼저 수행
+            await checkMemoAndSetButton(id, data.status);
+
+            // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
-            const vList = document.getElementById("view-list");
-            const vDetail = document.getElementById("view-detail");
 
             if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
             if (dImage) {
@@ -168,7 +228,7 @@ window.viewDetail = async function(id) {
                 const timestamp = new Date().getTime();
 
                 dImage.innerHTML = `
-                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; border: none; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
                     <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
                     <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
                         <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
@@ -176,13 +236,8 @@ window.viewDetail = async function(id) {
                              onload="document.getElementById('loading-msg').style.display='none';"
                              style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
                     </a>
-                </div>
-                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
-                    재구입 이미지번호 : ${finalCode}
                 </div>`;
             }
-            if (vList) vList.classList.add("hidden");
-            if (vDetail) vDetail.classList.remove("hidden");
         } else {
             alert("비밀번호가 일치하지 않습니다.");
         }
