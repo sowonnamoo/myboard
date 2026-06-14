@@ -19,10 +19,11 @@ let currentPage = 1;
 let currentViewId = ""; 
 const POSTS_PER_PAGE = 8;
 
-// 메모 로드 및 상태 표시 함수
-async function loadMemo(boardId) {
+// 메모 로드 함수 (수정)
+async function loadMemo(boardId, finalCode = "") {
     const memoDisplay = document.getElementById("memo-display");
-    const memoStatus = document.getElementById("memo-status"); // 추가된 상태 문구
+    const memoStatus = document.getElementById("memo-status");
+    const memoImgCode = document.getElementById("memo-img-code"); // 번호 표시 영역
     
     if (!memoDisplay || !memoStatus) return;
     
@@ -31,10 +32,12 @@ async function loadMemo(boardId) {
 
     if (!snapshot.empty) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
-        memoStatus.classList.remove("hidden"); // 메모가 있으면 보여줌
+        memoStatus.classList.remove("hidden");
+        // finalCode가 있으면 앞 6자리 표시
+        if (finalCode) memoImgCode.innerText = `(${finalCode.substring(0, 6)})`;
     } else {
         memoDisplay.innerText = "작성된 메모가 없습니다.";
-        memoStatus.classList.add("hidden");    // 메모가 없으면 숨김
+        memoStatus.classList.add("hidden");
     }
 }
 
