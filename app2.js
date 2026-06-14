@@ -185,3 +185,19 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
 
 loadData();
 // ... (검색/초기화 이벤트는 동일)
+
+
+// 메모 삭제 이벤트 추가
+document.getElementById("delete-memo-btn").addEventListener("click", async () => {
+    if (!currentViewId) return;
+    
+    // 1. 해당 게시글의 hanjool 컬렉션 내 모든 문서 삭제
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    
+    // 2. 화면 초기화
+    document.getElementById("memo-display").innerText = "작성된 메모가 없습니다.";
+    alert("메모가 삭제되었습니다.");
+});
