@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -231,39 +231,45 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 // app2.js 파일 하단에 추가 댓글기능
 async function loadComments(boardId) {
     const commentsList = document.getElementById("comments-list");
-    commentsList.innerHTML = "댓글을 불러오는 중...";
+    const dImage = document.getElementById("detail-image");
+    const printBtn = document.getElementById("print-approve-btn");
 
     const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
-    
-    commentsList.innerHTML = ""; 
-    
+
+    // 1. 댓글 유무에 따른 UI 제어
+    if (!snapshot.empty) {
+        // [댓글 있음] 수정접수완료 이미지 표시 및 버튼 숨김
+        dImage.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:500px;"><img src="https://sowonnamoo1005.cafe24.com/web/1new/수정접수완료.jpg"></div>`;
+        if (printBtn) printBtn.classList.add("hidden");
+    } else {
+        // [댓글 없음] 버튼 보이기
+        if (printBtn) printBtn.classList.remove("hidden");
+        // ※ 이미지가 바로 안 바뀐다면 viewDetail()을 다시 호출하거나 새로고침을 해야 합니다.
+        if (currentViewId) viewDetail(currentViewId);
+    }
+
+    // 2. 댓글 목록 렌더링
+    commentsList.innerHTML = "";
     if (snapshot.empty) {
         commentsList.innerHTML = '<p class="text-gray-400">등록된 댓글이 없습니다.</p>';
     } else {
         snapshot.forEach(doc => {
             const comment = doc.data();
             const date = comment.createdAt ? comment.createdAt.toDate().toLocaleString() : "";
-            
-            // 여기서 innerHTML을 사용하여 한 번에 추가합니다.
             commentsList.innerHTML += `
                 <div class="border-b py-2 flex justify-between items-center">
-                    <div>
-                        <span>${comment.text}</span>
-                        <span class="text-xs text-gray-400 ml-2">${date}</span>
-                    </div>
+                    <div><span>${comment.text}</span> <span class="text-xs text-gray-400 ml-2">${date}</span></div>
                     <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
-                </div>
-            `;
+                </div>`;
         });
     }
 
-    // 삭제 버튼 이벤트 연결
+    // 3. 삭제 이벤트 연결
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
-btn.onclick = async (e) => {
-    const commentId = e.target.getAttribute("data-id");
-    await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
-    loadComments(currentViewId);
-};
+        btn.onclick = async (e) => {
+            await deleteDoc(doc(db, "boards", currentViewId, "comments", e.target.getAttribute("data-id")));
+            loadComments(currentViewId);
+        };
     });
 }
