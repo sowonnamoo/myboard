@@ -273,15 +273,7 @@ async function loadComments(boardId) {
             // 2. 화면에서 해당 댓글 div만 즉시 삭제
             document.getElementById(`comment-${commentId}`).remove();
             
-            // 3. 남은 댓글이 하나도 없다면 이미지 원복
-            const remaining = document.querySelectorAll(".delete-comment-btn");
-            if (remaining.length === 0) {
-                const mainImg = document.getElementById("main-img");
-                if (mainImg) {
-                    // 원본 이미지 URL 규칙에 맞게 경로 재설정
-                    // (상세 진입 시 생성했던 finalCode를 가져올 수 없으므로, 
-                    // 페이지 새로고침 없이 원복하려면 원본 이미지 경로 규칙을 여기에 직접 입력하는 것이 가장 안전합니다)
-                    // 예: mainImg.src = "https://sowonnamoo1005.cafe24.com/1/원본이미지코드.jpg";
+
                 }
             }
         };
