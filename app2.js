@@ -189,10 +189,26 @@ dImage.innerHTML = `
 document.getElementById("save-comment-btn").addEventListener("click", async () => {
     const input = document.getElementById("comment-input");
     if (!input.value) return;
-    await addDoc(collection(db, "boards", currentViewId, "comments"), { text: input.value, createdAt: new Date() });
+
+    // 1. 기존 댓글들을 모두 조회
+    const commentsRef = collection(db, "boards", currentViewId, "comments");
+    const snapshot = await getDocs(commentsRef);
+
+    // 2. 기존 댓글이 있다면 모두 삭제
+    const deletePromises = [];
+    snapshot.forEach((doc) => {
+        deletePromises.push(deleteDoc(doc.ref));
+    });
+    await Promise.all(deletePromises); // 비동기로 빠르게 삭제 실행
+
+    // 3. 새로운 댓글 하나만 등록
+    await addDoc(commentsRef, { 
+        text: input.value, 
+        createdAt: new Date() 
+    });
+
     input.value = "";
-    loadComments(currentViewId);
-    // alert("댓글이 등록되었습니다."); // 제거됨
+    loadComments(currentViewId); // 화면 갱신
 });
 
 loadData();
