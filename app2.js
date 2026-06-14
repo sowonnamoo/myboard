@@ -22,15 +22,19 @@ const POSTS_PER_PAGE = 8;
 // 메모 로드 함수 (위치 최상단 고정)
 async function loadMemo(boardId) {
     const memoDisplay = document.getElementById("memo-display");
-    if (!memoDisplay) return;
+    const memoStatus = document.getElementById("memo-status"); // 추가된 상태 문구
+    
+    if (!memoDisplay || !memoStatus) return;
     
     const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
     const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
+        memoStatus.classList.remove("hidden"); // 메모가 있으면 보여줌
     } else {
         memoDisplay.innerText = "작성된 메모가 없습니다.";
+        memoStatus.classList.add("hidden");    // 메모가 없으면 숨김
     }
 }
 
@@ -185,3 +189,21 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
 
 loadData();
 // ... (검색/초기화 이벤트는 동일)
+
+
+
+// 메모 삭제 이벤트 내부에도 상태 업데이트 추가
+document.getElementById("delete-memo-btn").addEventListener("click", async () => {
+    if (!currentViewId) return;
+    
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    
+    // 화면 초기화 및 문구 숨김
+    document.getElementById("memo-display").innerText = "작성된 메모가 없습니다.";
+    document.getElementById("memo-status").classList.add("hidden");
+    alert("메모가 삭제되었습니다.");
+});
+
