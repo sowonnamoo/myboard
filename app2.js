@@ -186,63 +186,100 @@ dImage.innerHTML = `
     cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
-document.getElementById("save-comment-btn").onclick = async () => {
+document.getElementById("save-comment-btn").addEventListener("click", async () => {
     const input = document.getElementById("comment-input");
-    if (!input.value.trim()) return;
-
-    // 1. 기존 댓글 삭제
-    const commentsRef = collection(db, "boards", currentViewId, "comments");
-    const snapshot = await getDocs(commentsRef);
-    for (const d of snapshot.docs) {
-        await deleteDoc(d.ref);
-    }
-
-    // 2. 새 댓글 추가
-    await addDoc(commentsRef, { text: input.value, createdAt: new Date() });
-    
+    if (!input.value) return;
+    await addDoc(collection(db, "boards", currentViewId, "comments"), { text: input.value, createdAt: new Date() });
     input.value = "";
     loadComments(currentViewId);
-};
+    // alert("댓글이 등록되었습니다."); // 제거됨
+});
 
-// 댓글 로드 로직
+loadData();
+
+
+// 검색 기능 구현
+document.getElementById("search-btn").addEventListener("click", () => {
+    const keyword = document.getElementById("search-author").value.trim();
+    if (!keyword) {
+        alert("작성자 이름을 입력하세요.");
+        return;
+    }
+    // allOrders에서 작성자 이름이 포함된 데이터만 필터링
+    const filteredOrders = allOrders.filter(order => order.author.includes(keyword));
+    
+    // 화면 갱신을 위해 데이터 임시 교체
+    const originalOrders = [...allOrders]; // 원본 보관
+    allOrders = filteredOrders;
+    currentPage = 1; // 1페이지부터 다시 시작
+    renderTable();
+    allOrders = originalOrders; // 다시 원본으로 복구 (다음 검색을 위해)
+    
+    // 초기화 버튼 보이기
+    document.getElementById("search-reset-btn").classList.remove("hidden");
+});
+
+// 초기화 기능 구현
+document.getElementById("search-reset-btn").addEventListener("click", () => {
+    document.getElementById("search-author").value = "";
+    document.getElementById("search-reset-btn").classList.add("hidden");
+    currentPage = 1;
+    renderTable();
+});
+
+
+
+// app2.js 파일 하단에 추가 댓글기능
 async function loadComments(boardId) {
     const commentsList = document.getElementById("comments-list");
     const mainImg = document.getElementById("main-img");
-    
-    // 원본 이미지 경로 저장
+
+    // 원본 이미지 URL을 저장해둡니다 (데이터 속성 활용)
     if (mainImg && !mainImg.dataset.originalSrc) {
         mainImg.dataset.originalSrc = mainImg.src.split('?')[0];
     }
 
-    const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "desc"), limit(1));
+    const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
 
-    // 댓글 유무 판단
-    const hasComments = !snapshot.empty;
-    
-    // 이미지 스위칭
-    if (mainImg) {
+    // 댓글 유무에 따라 이미지 교체 함수
+    const updateImageState = (hasComments) => {
+        if (!mainImg) return;
+        const timestamp = new Date().getTime();
         mainImg.src = hasComments 
             ? "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png" 
-            : (mainImg.dataset.originalSrc + '?t=' + new Date().getTime());
-    }
+            : `${mainImg.dataset.originalSrc}?t=${timestamp}`;
+    };
 
-    // 댓글 영역 초기화
+    updateImageState(!snapshot.empty);
+
+    // 댓글 목록 렌더링
     commentsList.innerHTML = "";
-    
-    if (hasComments) {
-        const docSnap = snapshot.docs[0];
-        const comment = docSnap.data();
-        
-        const div = document.createElement("div");
-        div.className = "border-b py-2 flex justify-between items-center";
-        div.innerHTML = `<span>${comment.text}</span><button id="del-btn" class="text-xs text-red-500 hover:underline">삭제</button>`;
-        commentsList.appendChild(div);
+    snapshot.forEach(doc => {
+        const comment = doc.data();
+        commentsList.innerHTML += `
+            <div class="border-b py-2 flex justify-between items-center" id="comment-${doc.id}">
+                <span>${comment.text}</span>
+                <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
+            </div>`;
+    });
 
-        // 삭제 이벤트
-        div.querySelector("#del-btn").onclick = async () => {
-            await deleteDoc(docSnap.ref);
-            loadComments(boardId);
+    // 삭제 버튼 이벤트
+    document.querySelectorAll(".delete-comment-btn").forEach(btn => {
+        btn.onclick = async (e) => {
+            const commentId = e.target.getAttribute("data-id");
+            
+            // 1. DB에서 삭제
+            await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
+            
+            // 2. 화면에서 요소 제거
+            document.getElementById(`comment-${commentId}`).remove();
+            
+            // 3. 남은 댓글 확인 후 이미지 상태 업데이트 (알림 없이 조용히 처리)
+            const remainingComments = document.querySelectorAll(".delete-comment-btn");
+            if (remainingComments.length === 0) {
+                updateImageState(false);
+            }
         };
-    }
+    });
 }
