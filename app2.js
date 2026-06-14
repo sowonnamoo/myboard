@@ -123,10 +123,17 @@ window.viewDetail = async function(id) {
         const isNumeric = /^\d+$/.test(storedPass);
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
-        if (inputVal === passToCompare) {
-            modal.classList.add("hidden");
-            currentViewId = id; // 전역 변수에 ID를 저장합니다.
-            loadMemo(id);
+     if (inputVal === passToCompare) {
+    modal.classList.add("hidden");
+    currentViewId = id;
+    
+    // finalCode 계산 로직 (기존 코드에 있는 부분)
+    const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+    // ... (날짜 시간 계산 코드들)
+    const finalCode = phonePrefix + timeCode; 
+
+    // 호출 시 finalCode 전달
+    loadMemo(id, finalCode);
             
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
