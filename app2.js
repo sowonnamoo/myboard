@@ -189,26 +189,10 @@ dImage.innerHTML = `
 document.getElementById("save-comment-btn").addEventListener("click", async () => {
     const input = document.getElementById("comment-input");
     if (!input.value) return;
-
-    const commentsRef = collection(db, "boards", currentViewId, "comments");
-    
-    // 1. 기존 댓글 모두 삭제 (배치 작업 없이 순차적으로 처리해도 무방합니다)
-    const snapshot = await getDocs(commentsRef);
-    for (const doc of snapshot.docs) {
-        await deleteDoc(doc.ref);
-    }
-
-    // 2. 새 댓글 추가
-    await addDoc(commentsRef, { 
-        text: input.value, 
-        createdAt: new Date() 
-    });
-
-    // 3. 입력창 비우기
+    await addDoc(collection(db, "boards", currentViewId, "comments"), { text: input.value, createdAt: new Date() });
     input.value = "";
-    
-    // 4. [중요] 전체 새로고침 없이 댓글 목록만 다시 로드
-    loadComments(currentViewId); 
+    loadComments(currentViewId);
+    // alert("댓글이 등록되었습니다."); // 제거됨
 });
 
 loadData();
@@ -280,20 +264,22 @@ async function loadComments(boardId) {
             </div>`;
     });
 
-  // 삭제 버튼 이벤트 (이미지 원복 로직 제거)
+    // 삭제 버튼 이벤트
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.onclick = async (e) => {
             const commentId = e.target.getAttribute("data-id");
             
-            // 1. DB에서 즉시 삭제
+            // 1. DB에서 삭제
             await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
             
-            // 2. 화면에서 해당 댓글 div만 즉시 삭제
-            const commentDiv = document.getElementById(`comment-${commentId}`);
-            if (commentDiv) {
-                commentDiv.remove();
-            }
+            // 2. 화면에서 요소 제거
+            document.getElementById(`comment-${commentId}`).remove();
             
-            // 3. 이미지 상태 업데이트 관련 로직을 모두 제거함
+            // 3. 남은 댓글 확인 후 이미지 상태 업데이트 (알림 없이 조용히 처리)
+            const remainingComments = document.querySelectorAll(".delete-comment-btn");
+            if (remainingComments.length === 0) {
+                updateImageState(false);
+            }
         };
     });
+}
