@@ -245,7 +245,6 @@ window.viewDetail = async function(id) {
     cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
-JavaScript
 document.getElementById("save-memo-btn").addEventListener("click", async () => {
     if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
     const input = document.getElementById("memo-input");
