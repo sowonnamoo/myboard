@@ -1,3 +1,6 @@
+
+
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -246,7 +249,13 @@ async function loadComments(boardId) {
         // [댓글 없음] 버튼 보이기
         if (printBtn) printBtn.classList.remove("hidden");
         // ※ 이미지가 바로 안 바뀐다면 viewDetail()을 다시 호출하거나 새로고침을 해야 합니다.
-        if (currentViewId) viewDetail(currentViewId);
+
+    
+const imgElement = document.querySelector('.auto-refresh-img');
+        if (imgElement) {
+            imgElement.src = imgElement.src.split('?')[0] + '?t=' + new Date().getTime();
+        }
+        // ------------------------
     }
 
     // 2. 댓글 목록 렌더링
