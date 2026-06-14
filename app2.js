@@ -234,20 +234,15 @@ async function loadComments(boardId) {
     const commentsList = document.getElementById("comments-list");
     const mainImg = document.getElementById("main-img");
 
+    // 원본 이미지 URL을 저장해둡니다 (데이터 속성 활용)
     if (mainImg && !mainImg.dataset.originalSrc) {
         mainImg.dataset.originalSrc = mainImg.src.split('?')[0];
     }
 
-    // 1. 최신순으로 정렬하여 딱 1개만 가져오기
-    const q = query(
-        collection(db, "boards", boardId, "comments"), 
-        orderBy("createdAt", "desc"), 
-        limit(1)
-    );
+    const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
 
-    // 2. 이미지 상태 업데이트 (댓글이 있으면 '수정중' 이미지 표시)
-    const hasComments = !snapshot.empty;
+    // 댓글 유무에 따라 이미지 교체 함수
     const updateImageState = (hasComments) => {
         if (!mainImg) return;
         const timestamp = new Date().getTime();
@@ -255,25 +250,36 @@ async function loadComments(boardId) {
             ? "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png" 
             : `${mainImg.dataset.originalSrc}?t=${timestamp}`;
     };
-    updateImageState(hasComments);
 
-    // 3. 댓글 목록 렌더링 (딱 1개만)
+    updateImageState(!snapshot.empty);
+
+    // 댓글 목록 렌더링
     commentsList.innerHTML = "";
-    if (hasComments) {
-        const doc = snapshot.docs[0];
+    snapshot.forEach(doc => {
         const comment = doc.data();
-        commentsList.innerHTML = `
+        commentsList.innerHTML += `
             <div class="border-b py-2 flex justify-between items-center" id="comment-${doc.id}">
                 <span>${comment.text}</span>
                 <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
             </div>`;
+    });
 
-        // 삭제 버튼 이벤트
-        document.querySelector(".delete-comment-btn").onclick = async () => {
-            await deleteDoc(doc.ref);
-            loadComments(boardId); // 삭제 후 다시 불러오기
+    // 삭제 버튼 이벤트
+    document.querySelectorAll(".delete-comment-btn").forEach(btn => {
+        btn.onclick = async (e) => {
+            const commentId = e.target.getAttribute("data-id");
+            
+            // 1. DB에서 삭제
+            await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
+            
+            // 2. 화면에서 요소 제거
+            document.getElementById(`comment-${commentId}`).remove();
+            
+            // 3. 남은 댓글 확인 후 이미지 상태 업데이트 (알림 없이 조용히 처리)
+            const remainingComments = document.querySelectorAll(".delete-comment-btn");
+            if (remainingComments.length === 0) {
+                updateImageState(false);
+            }
         };
-    }
-}
     });
 }
