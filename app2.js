@@ -58,15 +58,15 @@ function renderTable(dataToRender = allOrders) {
         const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
         
         listBody.innerHTML += `
-        <tr class="hover:bg-gray-50 border-b border-gray-100"> 
-            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
-                <span class="mr-2">🔒 ${data.author}님</span>
-                <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
-                <span class="text-xs text-gray-500">${displayInfo}</span>
-            </td>
-            <td class="py-3 text-sm text-gray-600">에코그래픽스</td>
-            <td class="py-3 text-xs text-gray-400">${dateStr}</td>
-        </tr>`;
+    <tr class="hover:bg-gray-50 border-b border-gray-100"> 
+        <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
+            <span class="mr-2">🔒 ${data.author}님</span>
+            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
+            <span class="text-xs text-gray-500">${displayInfo}</span>
+        </td>
+        <td class="py-3 text-sm text-gray-600">에코그래픽스</td>
+        <td class="py-3 text-xs text-gray-400">${dateStr}</td>
+    </tr>`;
     });
 
     const pager = document.getElementById("pagination");
@@ -102,6 +102,7 @@ window.viewDetail = async function(id) {
     
     const data = snap.data();
     const storedPass = String(data.password || "");
+
     const modal = document.getElementById("password-modal");
     const input = document.getElementById("modal-password-input");
     const confirmBtn = document.getElementById("modal-confirm-btn");
@@ -121,11 +122,7 @@ window.viewDetail = async function(id) {
             currentViewId = id;
             loadMemo(id);
             
-            // 상세화면 구성
-            document.getElementById("detail-title").innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-            // ... 이미지 로직 생략 (기존과 동일)
-            
-            // 버튼 상태 제어
+            // 승인 버튼 로직
             const approveBtn = document.getElementById("approve-btn");
             if (data.status === "done") {
                 approveBtn.outerHTML = `<button class="bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default">조판완료</button>`;
@@ -138,9 +135,43 @@ window.viewDetail = async function(id) {
                     }
                 };
             }
-            
-            document.getElementById("view-list").classList.add("hidden");
-            document.getElementById("view-detail").classList.remove("hidden");
+
+            const dTitle = document.getElementById("detail-title");
+            const dImage = document.getElementById("detail-image");
+            const vList = document.getElementById("view-list");
+            const vDetail = document.getElementById("view-detail");
+
+            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+            if (dImage) {
+                const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+                const yy = String(createdAt.getFullYear()).slice(-2);
+                const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
+                const dd = String(createdAt.getDate()).padStart(2, '0');
+                const hh = String(createdAt.getHours()).padStart(2, '0');
+                const mi = String(createdAt.getMinutes()).padStart(2, '0');
+                const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
+                const rawPhone = data.phone || "00000000000";
+                const phonePrefix = rawPhone.slice(0, -2);
+                const finalCode = phonePrefix + timeCode;
+                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+                const timestamp = new Date().getTime();
+
+                dImage.innerHTML = `
+                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; border: none; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+                        <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
+                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                             onload="document.getElementById('loading-msg').style.display='none';"
+                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+                    </a>
+                </div>
+                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+                    재구입 이미지번호 : ${finalCode}
+                </div>`;
+            }
+            if (vList) vList.classList.add("hidden");
+            if (vDetail) vDetail.classList.remove("hidden");
         } else {
             alert("비밀번호가 일치하지 않습니다.");
         }
@@ -148,13 +179,33 @@ window.viewDetail = async function(id) {
     cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
-// 메모 및 기타 이벤트... (기존 코드 유지)
 document.getElementById("save-memo-btn").addEventListener("click", async () => {
-    if (!currentViewId) return;
+    if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
     const input = document.getElementById("memo-input");
-    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { text: input.value, createdAt: new Date() });
+    if (!input.value.trim()) return;
+
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+
+    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
+        text: input.value, 
+        createdAt: new Date() 
+    });
     input.value = "";
     loadMemo(currentViewId);
+});
+
+document.getElementById("delete-memo-btn").addEventListener("click", async () => {
+    if (!currentViewId) return;
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    document.getElementById("memo-display").innerText = "작성된 메모가 없습니다.";
+    document.getElementById("memo-status").classList.add("hidden");
+    alert("메모가 삭제되었습니다.");
 });
 
 loadData();
