@@ -120,13 +120,24 @@ window.viewDetail = async function(id) {
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id;
-            loadMemo(id);
             
-            // 승인 버튼 로직
+            // 1. 상세 화면 먼저 표시
+            document.getElementById("view-list").classList.add("hidden");
+            document.getElementById("view-detail").classList.remove("hidden");
+            
+            // 2. 메모 로드 후 버튼 상태 제어
+            await loadMemo(id);
+            const memoDisplay = document.getElementById("memo-display");
             const approveBtn = document.getElementById("approve-btn");
+            const hasMemo = memoDisplay.innerText !== "작성된 메모가 없습니다." && memoDisplay.innerText.trim() !== "";
+
             if (data.status === "done") {
                 approveBtn.outerHTML = `<button class="bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default">조판완료</button>`;
+            } else if (hasMemo) {
+                // 메모가 있으면 클릭 시 경고창만 띄움
+                approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
             } else {
+                // 메모가 없으면 정상 처리
                 approveBtn.onclick = async () => {
                     if (confirm("정말로 인쇄승인하시겠습니까?")) {
                         await updateDoc(doc(db, "boards", id), { status: "done" });
