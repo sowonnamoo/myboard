@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>시안 확인 및 댓글 게시판</title>
+    <title>시안 확인 게시판</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -22,7 +22,7 @@
 
         <section id="view-list" class="space-y-4">
             <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
-                🎁 <strong>시안 확인 게시판</strong> &nbsp;고객님의 시안을 확인하고 댓글을 남겨주세요.
+                🎁 <strong>시안 확인 게시판</strong> &nbsp;고객님의 시안을 확인해 주세요.
             </div>
 
             <table class="w-full text-sm border-t-2 border-gray-400 table-fixed">
@@ -44,36 +44,26 @@
                 <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
             </div>
         </section>
-    <section id="view-detail" class="hidden w-[744px] mx-auto mt-5">
-    
-    <div id="detail-title" class="font-bold text-lg text-gray-700 py-2 border-b mb-4"></div>
 
-    <div id="detail-image" class="w-full"></div>
+        <section id="view-detail" class="hidden w-[744px] mx-auto mt-5">
+            <div id="detail-title" class="font-bold text-lg text-gray-700 py-2 border-b mb-4"></div>
+            <div id="detail-image" class="w-full"></div>
 
-    <div id="info-and-actions" class="flex justify-between items-center mt-4 px-2">
-        <div id="image-code" class="text-xs font-bold text-gray-600"></div>
-        <div class="flex gap-2">
-            <button class="bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600">재구입</button>
-            <button class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
-        </div>
-    </div>
+            <div id="info-and-actions" class="flex justify-between items-center mt-4 px-2">
+                <div id="image-code" class="text-xs font-bold text-gray-600"></div>
+                <div class="flex gap-2">
+                    <button class="bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600">재구입</button>
+                    <button class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
+                </div>
+            </div>
 
-    <div class="p-4 border rounded bg-gray-50 mt-4">
-        <h3 class="font-bold text-sm mb-3">💬 댓글 (인쇄승인시 아래 댓글은 삭제됩니다. 수정과 인쇄요청을 동시에 하시면 반영되지 않습니다.)</h3>
-        <div id="comments-list" class="space-y-3 mb-4 text-sm"></div>
-        <div class="flex gap-2">
-            <input type="text" id="comment-input" class="flex-grow border p-2 rounded text-sm" placeholder="댓글을 입력하세요">
-            <button id="save-comment-btn" class="bg-gray-600 text-white px-6 py-2 text-sm rounded hover:bg-gray-700">등록</button>
-        </div>
-    </div>
-    
-    <button onclick="location.reload()" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 mt-4">목록으로 돌아가기</button>
-</section>
+            <button onclick="location.reload()" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 mt-4">목록으로 돌아가기</button>
+        </section>
     </div>
 
     <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
-            <h3 class="text-base font-bold text-gray-800 mb-2">🔒 헨드폰번호 뒷 네자리</h3>
+            <h3 class="text-base font-bold text-gray-800 mb-2">🔒 핸드폰번호 뒷 네자리</h3>
             <input type="text" id="modal-password-input" maxlength="20" class="w-full border border-gray-300 rounded p-2 text-center text-lg mb-4 focus:outline-none" placeholder="비밀번호 입력">
             <div class="flex gap-2">
                 <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 rounded">취소</button>
