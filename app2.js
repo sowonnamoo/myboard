@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -13,9 +13,30 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// [중요] 변수들을 파일 맨 위에 확실히 선언합니다.
 let allOrders = [];
 let currentPage = 1;
+let currentViewId = ""; 
 const POSTS_PER_PAGE = 8;
+
+// 메모 로드 및 상태 표시 함수
+async function loadMemo(boardId) {
+    const memoDisplay = document.getElementById("memo-display");
+    const memoStatus = document.getElementById("memo-status"); // 추가된 상태 문구
+    
+    if (!memoDisplay || !memoStatus) return;
+    
+    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        memoDisplay.innerText = snapshot.docs[0].data().text;
+        memoStatus.classList.remove("hidden"); // 메모가 있으면 보여줌
+    } else {
+        memoDisplay.innerText = "작성된 메모가 없습니다.";
+        memoStatus.classList.add("hidden");    // 메모가 없으면 숨김
+    }
+}
 
 async function loadData() {
     const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(20));
@@ -31,7 +52,6 @@ async function loadData() {
 function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    
     const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
@@ -102,6 +122,8 @@ window.viewDetail = async function(id) {
 
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
+            currentViewId = id; // 전역 변수에 ID를 저장합니다.
+            loadMemo(id);
             
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
@@ -146,60 +168,59 @@ window.viewDetail = async function(id) {
     cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
-loadData();
-
-document.getElementById("search-btn").addEventListener("click", () => {
-    const keyword = document.getElementById("search-author").value.trim();
-    if (!keyword) return alert("작성자 이름을 입력하세요.");
-    const filteredOrders = allOrders.filter(order => order.author.includes(keyword));
-    const originalOrders = [...allOrders];
-    allOrders = filteredOrders;
-    currentPage = 1;
-    renderTable();
-    allOrders = originalOrders;
-    document.getElementById("search-reset-btn").classList.remove("hidden");
-});
-
-document.getElementById("search-reset-btn").addEventListener("click", () => {
-    document.getElementById("search-author").value = "";
-    document.getElementById("search-reset-btn").classList.add("hidden");
-    currentPage = 1;
-    renderTable();
-});
-
-
-
 // 메모 저장 이벤트
 document.getElementById("save-memo-btn").addEventListener("click", async () => {
+    if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
     const input = document.getElementById("memo-input");
     if (!input.value.trim()) return;
 
-    // 1. 기존 메모들 삭제 (항상 1개만 유지하기 위해)
     const q = query(collection(db, "boards", currentViewId, "hanjool"));
     const snapshot = await getDocs(q);
     const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
 
-    // 2. 새 메모 저장
     await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
         text: input.value, 
         createdAt: new Date() 
     });
-    
     input.value = "";
     loadMemo(currentViewId);
 });
 
-// 메모 로드 함수
+loadData();
+// ... (검색/초기화 이벤트는 동일)
+
+
+// 메모 로드 및 상태 표시 함수
 async function loadMemo(boardId) {
     const memoDisplay = document.getElementById("memo-display");
+    const memoStatus = document.getElementById("memo-status"); // 추가된 상태 문구
+    
+    if (!memoDisplay || !memoStatus) return;
+    
     const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
     const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
-        const memo = snapshot.docs[0].data();
-        memoDisplay.innerText = memo.text;
+        memoDisplay.innerText = snapshot.docs[0].data().text;
+        memoStatus.classList.remove("hidden"); // 메모가 있으면 보여줌
     } else {
         memoDisplay.innerText = "작성된 메모가 없습니다.";
+        memoStatus.classList.add("hidden");    // 메모가 없으면 숨김
     }
 }
+
+// 메모 삭제 이벤트 내부에도 상태 업데이트 추가
+document.getElementById("delete-memo-btn").addEventListener("click", async () => {
+    if (!currentViewId) return;
+    
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    
+    // 화면 초기화 및 문구 숨김
+    document.getElementById("memo-display").innerText = "작성된 메모가 없습니다.";
+    document.getElementById("memo-status").classList.add("hidden");
+    alert("메모가 삭제되었습니다.");
+});
