@@ -232,24 +232,33 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 // app2.js 파일 하단에 추가 댓글기능
 async function loadComments(boardId) {
     const commentsList = document.getElementById("comments-list");
-    const mainImg = document.getElementById("main-img"); // 위에서 id 심은 태그를 찾습니다.
+    const mainImg = document.getElementById("main-img");
 
     const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
 
-    // 댓글 유무에 따라 이미지 처리
+    // 댓글이 있을 때 적용할 이미지 주소
+    const doneImageUrl = "https://sowonnamoo1005.cafe24.com/web/1new/수정접수완료.jpg";
+
     if (mainImg) {
         if (!snapshot.empty) {
-            // 댓글이 있으면 이미지 강제 교체
-            mainImg.src = "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png";
+            // [댓글 있음] 이미 "수정접수완료"가 떠 있다면 건드리지 않음 (새로고침 방지)
+            if (!mainImg.src.includes("수정접수완료.jpg")) {
+                mainImg.src = doneImageUrl;
+            }
         } else {
-            // 댓글 없으면 원래 이미지 주소로 복구 (시간값 t를 넣어 캐시 방지)
-            const baseUrl = mainImg.src.split('?')[0]; 
-            mainImg.src = baseUrl + "?t=" + new Date().getTime();
+            // [댓글 없음] 원래 이미지 주소로 복구
+            // 여기서 t값을 넣지 않으면 브라우저 캐시를 사용하여 이미지를 유지함
+            // (창을 나갔다 들어와도 이미지가 계속 유지됨)
+            const baseUrl = mainImg.src.split('?')[0];
+            if (mainImg.src.includes("수정접수완료.jpg")) {
+                // 원래 주소로 돌아가야 하는데, 
+                // 이 상황에서는 원본 URL을 찾기 어려우므로 
+                // 원본 이미지 URL이 고정되어 있다면 여기 넣으세요.
+            }
         }
     }
 
-    // 댓글 목록 렌더링
     commentsList.innerHTML = "";
     snapshot.forEach(doc => {
         const comment = doc.data();
@@ -260,11 +269,11 @@ async function loadComments(boardId) {
             </div>`;
     });
 
-    // 삭제 버튼 동작 (확인창 없이 즉시 삭제)
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.onclick = async (e) => {
             await deleteDoc(doc(db, "boards", currentViewId, "comments", e.target.getAttribute("data-id")));
-            loadComments(currentViewId); // 삭제 후 즉시 반영
+            // 삭제 시에는 이미지 상태를 원본으로 되돌리기 위해 새로고침 로직 필요
+            location.reload(); 
         };
     });
 }
