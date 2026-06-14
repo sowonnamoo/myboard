@@ -261,10 +261,24 @@ async function loadComments(boardId) {
     });
 
     // 삭제 버튼 동작 (확인창 없이 즉시 삭제)
-    document.querySelectorAll(".delete-comment-btn").forEach(btn => {
+document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.onclick = async (e) => {
-            await deleteDoc(doc(db, "boards", currentViewId, "comments", e.target.getAttribute("data-id")));
-            loadComments(currentViewId); // 삭제 후 즉시 반영
+            const commentId = e.target.getAttribute("data-id");
+            
+            // 1. DB에서 삭제
+            await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
+            
+            // 2. [변경] 새로고침 없이, 현재 화면의 댓글 div만 찾아서 지움
+            e.target.parentElement.remove();
+            
+            // 3. 만약 댓글이 하나도 안 남았다면 원래 이미지로 돌림
+            const remaining = document.querySelectorAll(".delete-comment-btn");
+            if (remaining.length === 0) {
+                const mainImg = document.getElementById("main-img");
+                if (mainImg) {
+                    const baseUrl = mainImg.src.split('?')[0];
+                    mainImg.src = baseUrl.split('?')[0]; // 원래 이미지 주소로 원복
+                }
+            }
         };
     });
-}
