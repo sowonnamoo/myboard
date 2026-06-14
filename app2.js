@@ -44,7 +44,7 @@ function renderTable(dataToRender = allOrders) {
     <tr class="hover:bg-gray-50 border-b border-gray-100"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
             <span class="mr-2">🔒 ${data.author}님</span>
-            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안확인</button>
+            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
             <span class="text-xs text-gray-500">${displayInfo}</span>
         </td>
         <td class="py-3 text-sm text-gray-600">에코그래픽스</td>
@@ -55,9 +55,11 @@ function renderTable(dataToRender = allOrders) {
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     if (totalPages <= 1) return;
+
     const range = 5;
     const startPage = Math.floor((currentPage - 1) / range) * range + 1;
     const endPage = Math.min(startPage + range - 1, totalPages);
+
     if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100" onclick="goToPage(${currentPage - 1})">이전</span>`;
     for (let i = startPage; i <= endPage; i++) {
         const active = i === currentPage ? "bg-blue-600 text-white" : "bg-white";
@@ -70,7 +72,8 @@ window.goToPage = (p) => {
     currentPage = p; 
     const keyword = document.getElementById("search-author").value.trim();
     if (keyword) {
-        renderTable(allOrders.filter(o => o.author.includes(keyword)));
+        const filtered = allOrders.filter(o => o.author.includes(keyword));
+        renderTable(filtered);
     } else {
         renderTable(); 
     }
@@ -79,67 +82,71 @@ window.goToPage = (p) => {
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
     if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
+    
     const data = snap.data();
-    
+    const storedPass = String(data.password || "");
+
     const modal = document.getElementById("password-modal");
+    const input = document.getElementById("modal-password-input");
+    const confirmBtn = document.getElementById("modal-confirm-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
+
     modal.classList.remove("hidden");
-    
-    document.getElementById("modal-confirm-btn").onclick = () => {
-        if (document.getElementById("modal-password-input").value === (String(data.password || "").slice(-4))) {
+    input.value = "";
+    input.focus();
+
+    confirmBtn.onclick = () => {
+        const inputVal = input.value;
+        const isNumeric = /^\d+$/.test(storedPass);
+        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
+
+        if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id;
-            
-            // UI 세팅
-            document.getElementById("view-list").classList.add("hidden");
-            document.getElementById("view-detail").classList.remove("hidden");
-            document.getElementById("detail-title").innerText = `${data.author}님 상세정보`;
-            
-            // 이미지 세팅
-            const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
-            const timeCode = `${String(createdAt.getFullYear()).slice(-2)}${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')}${String(createdAt.getHours()).padStart(2, '0')}${String(createdAt.getMinutes()).padStart(2, '0')}`;
-            const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${(data.phone || "00000000000").slice(0, -2)}${timeCode}.jpg`;
-            
-            document.getElementById("detail-image").innerHTML = `
-                <img id="main-img" src="${imgUrl}?t=${new Date().getTime()}" style="width:100%; object-fit:contain;" data-original-src="${imgUrl}">
-                <div style="font-size: 9pt; margin-top:5px;">이미지번호: ${timeCode}</div>`;
-            
             loadComments(id);
+            
+            const dTitle = document.getElementById("detail-title");
+            const dImage = document.getElementById("detail-image");
+            const vList = document.getElementById("view-list");
+            const vDetail = document.getElementById("view-detail");
+
+            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+            if (dImage) {
+                const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+                const yy = String(createdAt.getFullYear()).slice(-2);
+                const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
+                const dd = String(createdAt.getDate()).padStart(2, '0');
+                const hh = String(createdAt.getHours()).padStart(2, '0');
+                const mi = String(createdAt.getMinutes()).padStart(2, '0');
+                
+                const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
+                const rawPhone = data.phone || "00000000000";
+                const phonePrefix = rawPhone.slice(0, -2);
+                const finalCode = phonePrefix + timeCode;
+                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+                const timestamp = new Date().getTime();
+
+                dImage.innerHTML = `
+                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; border: none; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" class="auto-refresh-link" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+                        <img src="${imgUrl}?t=${timestamp}" class="auto-refresh-img" id="main-img" alt="시안 이미지" 
+                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                             onload="document.getElementById('loading-msg').style.display='none';"
+                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+                    </a>
+                </div>
+                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+                    재구입 이미지번호 : ${finalCode}
+                </div>`;
+            }
+            if (vList) vList.classList.add("hidden");
+            if (vDetail) vDetail.classList.remove("hidden");
         } else {
             alert("비밀번호가 일치하지 않습니다.");
         }
     };
-};
-
-async function loadComments(boardId) {
-    const commentsList = document.getElementById("comments-list");
-    const mainImg = document.getElementById("main-img");
-    
-    const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "desc"), limit(1));
-    const snapshot = await getDocs(q);
-    
-    const updateImage = (hasComment) => {
-        if (!mainImg) return;
-        mainImg.src = hasComment ? "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png" : `${mainImg.dataset.originalSrc}?t=${new Date().getTime()}`;
-    };
-
-    commentsList.innerHTML = "";
-    if (!snapshot.empty) {
-        const docSnap = snapshot.docs[0];
-        const comment = docSnap.data();
-        commentsList.innerHTML = `
-            <div class="border-b py-2 flex justify-between" id="comment-item">
-                <span>${comment.text}</span>
-                <button class="text-xs text-red-500" onclick="deleteComment('${docSnap.id}')">삭제</button>
-            </div>`;
-        updateImage(true);
-    } else {
-        updateImage(false);
-    }
-}
-
-window.deleteComment = async (commentId) => {
-    await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
-    loadComments(currentViewId); // 삭제 후 다시 로드하여 이미지 상태 갱신
+    cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
 document.getElementById("save-comment-btn").addEventListener("click", async () => {
@@ -151,3 +158,66 @@ document.getElementById("save-comment-btn").addEventListener("click", async () =
 });
 
 loadData();
+
+document.getElementById("search-btn").addEventListener("click", () => {
+    const keyword = document.getElementById("search-author").value.trim();
+    if (!keyword) return alert("작성자 이름을 입력하세요.");
+    const filteredOrders = allOrders.filter(order => order.author.includes(keyword));
+    const originalOrders = [...allOrders];
+    allOrders = filteredOrders;
+    currentPage = 1;
+    renderTable();
+    allOrders = originalOrders;
+    document.getElementById("search-reset-btn").classList.remove("hidden");
+});
+
+document.getElementById("search-reset-btn").addEventListener("click", () => {
+    document.getElementById("search-author").value = "";
+    document.getElementById("search-reset-btn").classList.add("hidden");
+    currentPage = 1;
+    renderTable();
+});
+
+async function loadComments(boardId) {
+    const commentsList = document.getElementById("comments-list");
+    const mainImg = document.getElementById("main-img");
+
+    if (mainImg && !mainImg.dataset.originalSrc) {
+        mainImg.dataset.originalSrc = mainImg.src.split('?')[0];
+    }
+
+    const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "desc")); // 최신순 정렬
+    const snapshot = await getDocs(q);
+
+    const updateImageState = (hasComments) => {
+        if (!mainImg) return;
+        const timestamp = new Date().getTime();
+        mainImg.src = hasComments 
+            ? "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png" 
+            : `${mainImg.dataset.originalSrc}?t=${timestamp}`;
+    };
+
+    updateImageState(!snapshot.empty);
+
+    commentsList.innerHTML = "";
+    // 최신 댓글 1개만 보여주도록 slice(0, 1) 추가
+    const commentsArray = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    commentsArray.slice(0, 1).forEach(comment => {
+        commentsList.innerHTML += `
+            <div class="border-b py-2 flex justify-between items-center" id="comment-${comment.id}">
+                <span>${comment.text}</span>
+                <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${comment.id}">삭제</button>
+            </div>`;
+    });
+
+    document.querySelectorAll(".delete-comment-btn").forEach(btn => {
+        btn.onclick = async (e) => {
+            const commentId = e.target.getAttribute("data-id");
+            await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
+            document.getElementById(`comment-${commentId}`).remove();
+            // 삭제 후 남은 댓글이 없으면 이미지 원복
+            const remaining = document.querySelectorAll(".delete-comment-btn");
+            if (remaining.length === 0) updateImageState(false);
+        };
+    });
+}
