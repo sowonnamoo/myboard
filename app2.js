@@ -189,12 +189,16 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
     const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
 
-    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
-        text: input.value, 
-        createdAt: new Date() 
-    });
-    input.value = "";
-    loadMemo(currentViewId);
+// 메모 저장 이벤트 (하단)
+await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
+    text: input.value, 
+    createdAt: new Date() 
+});
+input.value = "";
+// 여기서도 현재 게시글의 finalCode를 넘겨주어야 합니다.
+// (간단하게 하려면 현재 화면의 이미지 번호를 다시 추출해서 넘겨주세요)
+const currentCode = document.getElementById("image-code")?.innerText.split(": ")[1] || "";
+loadMemo(currentViewId, currentCode);
 });
 
 loadData();
