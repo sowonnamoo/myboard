@@ -265,11 +265,16 @@ async function loadComments(boardId) {
         });
     }
 
-    // 3. 삭제 이벤트 연결
+ // 3. 삭제 이벤트 연결 (수정된 부분)
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.onclick = async (e) => {
-            await deleteDoc(doc(db, "boards", currentViewId, "comments", e.target.getAttribute("data-id")));
-            loadComments(currentViewId);
+            e.stopPropagation(); // 중요: 버튼 클릭이 부모 요소로 전달되지 않게 막음
+            
+            if (confirm("댓글을 삭제하시겠습니까?")) {
+                await deleteDoc(doc(db, "boards", currentViewId, "comments", e.target.getAttribute("data-id")));
+                
+                // [수정] 오직 댓글 목록만 새로고침합니다. viewDetail을 부르면 안 됩니다!
+                loadComments(currentViewId); 
+            }
         };
     });
-}
