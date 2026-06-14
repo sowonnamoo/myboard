@@ -245,6 +245,7 @@ window.viewDetail = async function(id) {
     cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
+JavaScript
 document.getElementById("save-memo-btn").addEventListener("click", async () => {
     if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
     const input = document.getElementById("memo-input");
@@ -260,7 +261,10 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
         createdAt: new Date() 
     });
     input.value = "";
-    loadMemo(currentViewId);
+    
+    // [수정] 아래 줄을 이렇게 바꾸세요
+    await checkMemoAndSetButton(currentViewId, "pending"); 
+    alert("메모가 저장되었습니다.");
 });
 
 document.getElementById("delete-memo-btn").addEventListener("click", async () => {
@@ -269,8 +273,9 @@ document.getElementById("delete-memo-btn").addEventListener("click", async () =>
     const snapshot = await getDocs(q);
     const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
-    document.getElementById("memo-display").innerText = "작성된 메모가 없습니다.";
-    document.getElementById("memo-status").classList.add("hidden");
+    
+    // [수정] 아래 줄을 이렇게 바꾸세요
+    await checkMemoAndSetButton(currentViewId, "pending");
     alert("메모가 삭제되었습니다.");
 });
 
