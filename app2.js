@@ -224,22 +224,21 @@ window.viewDetail = async function(id) {
                 const rawPhone = data.phone || "00000000000";
                 const phonePrefix = rawPhone.slice(0, -2);
                 const finalCode = phonePrefix + timeCode;
-               const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
-    const timestamp = new Date().getTime();
+              const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+const defaultImg = "https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg";
+const timestamp = new Date().getTime();
 
-    dImage.innerHTML = `
-        <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
-            <img src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%;">
-            
-            <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;">
-                <img src="${imgUrl}?t=${timestamp}" 
-                     alt="시안 이미지" 
-                     style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;"
-                     onerror="this.style.display='none';">
-            </a>
-        </div>
-        <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
-            재구입 이미지번호 : ${finalCode}
+dImage.innerHTML = `
+    <div id="image-container" style="position: relative; width: 744px; min-height: 500px; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+        <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: block; width: 100%; height: 100%;">
+            <img id="main-image" src="${imgUrl}?t=${timestamp}" 
+                 alt="시안 이미지" 
+                 onerror="this.onerror=null; this.src='${defaultImg}';" 
+                 style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;">
+        </a>
+    </div>
+    <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+        재구입 이미지번호 : ${finalCode}
         </div>`;
             }
         } else {
