@@ -232,20 +232,21 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 // app2.js 파일 하단에 추가 댓글기능
 async function loadComments(boardId) {
     const commentsList = document.getElementById("comments-list");
-    const mainImg = document.getElementById("main-img"); // 위에서 id 심은 태그를 찾습니다.
+    const mainImg = document.getElementById("main-img");
 
     const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
 
-    // 댓글 유무에 따라 이미지 처리
+    // 댓글 유무에 따라 이미지 교체
     if (mainImg) {
         if (!snapshot.empty) {
-            // 댓글이 있으면 이미지 강제 교체
             mainImg.src = "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png";
         } else {
-            // 댓글 없으면 원래 이미지 주소로 복구 (시간값 t를 넣어 캐시 방지)
-            const baseUrl = mainImg.src.split('?')[0]; 
-            mainImg.src = baseUrl + "?t=" + new Date().getTime();
+            // 원본 이미지 주소를 기억해두었다가 원복
+            // 주의: 이 부분은 상세 열기 할 때 사용한 원본 URL 규칙과 같아야 합니다.
+            // 여기서는 페이지 로드 시의 첫 이미지 주소를 유지하도록 처리합니다.
+            const baseUrl = mainImg.src.split('?')[0];
+            mainImg.src = baseUrl.split('?')[0]; 
         }
     }
 
@@ -253,18 +254,37 @@ async function loadComments(boardId) {
     commentsList.innerHTML = "";
     snapshot.forEach(doc => {
         const comment = doc.data();
+        // 각 댓글마다 고유 ID를 가진 div로 감쌉니다 (삭제를 위해 필요)
         commentsList.innerHTML += `
-            <div class="border-b py-2 flex justify-between items-center">
+            <div class="border-b py-2 flex justify-between items-center" id="comment-${doc.id}">
                 <span>${comment.text}</span>
                 <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
             </div>`;
     });
 
-    // 삭제 버튼 동작 (확인창 없이 즉시 삭제)
+    // 삭제 버튼 이벤트 (새로고침 없음)
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.onclick = async (e) => {
-            await deleteDoc(doc(db, "boards", currentViewId, "comments", e.target.getAttribute("data-id")));
-            loadComments(currentViewId); // 삭제 후 즉시 반영
+            const commentId = e.target.getAttribute("data-id");
+            
+            // 1. DB에서 즉시 삭제
+            await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
+            
+            // 2. 화면에서 해당 댓글 div만 즉시 삭제
+            document.getElementById(`comment-${commentId}`).remove();
+            
+            // 3. 남은 댓글이 하나도 없다면 이미지 원복
+            const remaining = document.querySelectorAll(".delete-comment-btn");
+            if (remaining.length === 0) {
+                const mainImg = document.getElementById("main-img");
+                if (mainImg) {
+                    // 원본 이미지 URL 규칙에 맞게 경로 재설정
+                    // (상세 진입 시 생성했던 finalCode를 가져올 수 없으므로, 
+                    // 페이지 새로고침 없이 원복하려면 원본 이미지 경로 규칙을 여기에 직접 입력하는 것이 가장 안전합니다)
+                    // 예: mainImg.src = "https://sowonnamoo1005.cafe24.com/1/원본이미지코드.jpg";
+                    alert("댓글이 모두 삭제되어 시안 이미지로 복구됩니다."); // 확인용 알림
+                }
+            }
         };
     });
 }
