@@ -255,13 +255,18 @@ async function loadComments(boardId) {
 
     // 댓글 목록 렌더링
     commentsList.innerHTML = "";
-    snapshot.forEach(doc => {
-        const comment = doc.data();
-        commentsList.innerHTML += `
-            <div class="border-b py-2 flex justify-between items-center" id="comment-${doc.id}">
-                <span>${comment.text}</span>
-                <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
-            </div>`;
+const docs = snapshot.docs;
+
+if (docs.length > 0) {
+    const latestDoc = docs[docs.length - 1];
+    const comment = latestDoc.data();
+
+    commentsList.innerHTML = `
+        <div class="border-b py-2 flex justify-between items-center" id="comment-${latestDoc.id}">
+            <span>${comment.text}</span>
+            <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${latestDoc.id}">삭제</button>
+        </div>`;
+}
     });
 
     // 삭제 버튼 이벤트
