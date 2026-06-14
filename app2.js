@@ -13,30 +13,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// [중요] 변수들을 파일 맨 위에 확실히 선언합니다.
 let allOrders = [];
 let currentPage = 1;
-let currentViewId = "";
-let currentFinalCode = ""; // 이미지 번호 전역 저장
+let currentViewId = ""; 
 const POSTS_PER_PAGE = 8;
 
-// 메모 로드 함수
-async function loadMemo(boardId, finalCode = "") {
+// 메모 로드 함수 (위치 최상단 고정)
+async function loadMemo(boardId) {
     const memoDisplay = document.getElementById("memo-display");
-    const memoStatus = document.getElementById("memo-status");
-    const memoImgCode = document.getElementById("memo-img-code");
-    
-    if (!memoDisplay || !memoStatus) return;
+    if (!memoDisplay) return;
     
     const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
     const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
-        memoStatus.classList.remove("hidden");
-        if (finalCode) memoImgCode.innerText = `(${finalCode.substring(0, 6)})`;
     } else {
         memoDisplay.innerText = "작성된 메모가 없습니다.";
-        memoStatus.classList.add("hidden");
     }
 }
 
@@ -124,21 +118,8 @@ window.viewDetail = async function(id) {
 
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
-            currentViewId = id;
-            
-            // 이미지 코드 생성
-            const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
-            const yy = String(createdAt.getFullYear()).slice(-2);
-            const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
-            const dd = String(createdAt.getDate()).padStart(2, '0');
-            const hh = String(createdAt.getHours()).padStart(2, '0');
-            const mi = String(createdAt.getMinutes()).padStart(2, '0');
-            const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
-            const rawPhone = data.phone || "00000000000";
-            const phonePrefix = rawPhone.slice(0, -2);
-            currentFinalCode = phonePrefix + timeCode; // 전역 변수에 저장
-            
-            loadMemo(id, currentFinalCode);
+            currentViewId = id; // 전역 변수에 ID를 저장합니다.
+            loadMemo(id);
             
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
@@ -147,8 +128,32 @@ window.viewDetail = async function(id) {
 
             if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
             if (dImage) {
-                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${currentFinalCode}.jpg`;
-                dImage.innerHTML = `<img src="${imgUrl}?t=${new Date().getTime()}" style="width:100%; object-fit:contain;">`;
+                const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+                const yy = String(createdAt.getFullYear()).slice(-2);
+                const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
+                const dd = String(createdAt.getDate()).padStart(2, '0');
+                const hh = String(createdAt.getHours()).padStart(2, '0');
+                const mi = String(createdAt.getMinutes()).padStart(2, '0');
+                const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
+                const rawPhone = data.phone || "00000000000";
+                const phonePrefix = rawPhone.slice(0, -2);
+                const finalCode = phonePrefix + timeCode;
+                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+                const timestamp = new Date().getTime();
+
+                dImage.innerHTML = `
+                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; border: none; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+                        <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
+                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                             onload="document.getElementById('loading-msg').style.display='none';"
+                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+                    </a>
+                </div>
+                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+                    재구입 이미지번호 : ${finalCode}
+                </div>`;
             }
             if (vList) vList.classList.add("hidden");
             if (vDetail) vDetail.classList.remove("hidden");
@@ -161,28 +166,22 @@ window.viewDetail = async function(id) {
 
 // 메모 저장 이벤트
 document.getElementById("save-memo-btn").addEventListener("click", async () => {
-    if (!currentViewId) return;
+    if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
     const input = document.getElementById("memo-input");
     if (!input.value.trim()) return;
 
     const q = query(collection(db, "boards", currentViewId, "hanjool"));
     const snapshot = await getDocs(q);
-    await Promise.all(snapshot.docs.map(doc => deleteDoc(doc.ref)));
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
 
-    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { text: input.value, createdAt: new Date() });
+    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
+        text: input.value, 
+        createdAt: new Date() 
+    });
     input.value = "";
-    loadMemo(currentViewId, currentFinalCode);
-});
-
-// 메모 삭제 이벤트
-document.getElementById("delete-memo-btn").addEventListener("click", async () => {
-    if (!currentViewId) return;
-    const q = query(collection(db, "boards", currentViewId, "hanjool"));
-    const snapshot = await getDocs(q);
-    await Promise.all(snapshot.docs.map(doc => deleteDoc(doc.ref)));
-    
-    loadMemo(currentViewId, currentFinalCode);
-    alert("메모가 삭제되었습니다.");
+    loadMemo(currentViewId);
 });
 
 loadData();
+// ... (검색/초기화 이벤트는 동일)
