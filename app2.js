@@ -1,284 +1,91 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>시안 확인 게시판</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-white">
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-let allOrders = [];
-let currentPage = 1;
-let currentViewId = ""; 
-const POSTS_PER_PAGE = 8;
-
-async function loadMemo(boardId) {
-    const memoDisplay = document.getElementById("memo-display");
-    const memoStatus = document.getElementById("memo-status");
-    if (!memoDisplay || !memoStatus) return;
-    
-    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-        memoDisplay.innerText = snapshot.docs[0].data().text;
-        memoStatus.classList.remove("hidden");
-    } else {
-        memoDisplay.innerText = "작성된 메모가 없습니다.";
-        memoStatus.classList.add("hidden");
-    }
-}
-
-async function loadData() {
-    const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(20));
-    const snapshot = await getDocs(q);
-    allOrders = [];
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        if (!data.isDeleted) allOrders.push({ id: doc.id, ...data });
-    });
-    renderTable(allOrders);
-}
-
-function renderTable(dataToRender = allOrders) {
-    const listBody = document.getElementById("list-body");
-    listBody.innerHTML = "";
-    const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-
-    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
-        const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
-        const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
-        const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
+    <div class="w-[744px] mx-auto min-h-screen">
         
-        listBody.innerHTML += `
-    <tr class="hover:bg-gray-50 border-b border-gray-100"> 
-        <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
-            <span class="mr-2">🔒 ${data.author}님</span>
-            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
-            <span class="text-xs text-gray-500">${displayInfo}</span>
-        </td>
-        <td class="py-3 text-sm text-gray-600">에코그래픽스</td>
-        <td class="py-3 text-xs text-gray-400">${dateStr}</td>
-    </tr>`;
-    });
+        <header class="w-full flex justify-center pb-4">
+            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+            <map name="Map">
+                <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
+                <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo.github.io/myboard/index2" target="_self">
+                <area shape="rect" coords="383,-1,572,58" href="https://isecogr.cafe24.com/front/php/b/board_list.php?board_no=1002" target="_self">
+                <area shape="rect" coords="572,-3,742,58" href="https://sowonnamoo1004.cafe24.com/front/php/b/board_list.php?board_no=1" target="_self">
+            </map>
+        </header>
 
-    const pager = document.getElementById("pagination");
-    pager.innerHTML = "";
-    if (totalPages <= 1) return;
+        <section id="view-list" class="space-y-4">
+            <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
+                🎁 <strong>시안 확인 게시판</strong> &nbsp;고객님의 시안을 확인해 주세요.
+            </div>
 
-    const range = 5;
-    const startPage = Math.floor((currentPage - 1) / range) * range + 1;
-    const endPage = Math.min(startPage + range - 1, totalPages);
+            <table class="w-full text-sm border-t-2 border-gray-400 table-fixed">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-600 border-b">
+                        <th class="py-3 px-4 text-left w-[450px]">제목</th> 
+                        <th class="py-3 w-[150px] text-center">관리자</th>
+                        <th class="py-3 w-[144px] text-center">작성일</th>
+                    </tr>
+                </thead>
+                <tbody id="list-body" class="text-center"></tbody>
+            </table>
+            
+            <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600"></div>
 
-    if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100" onclick="goToPage(${currentPage - 1})">이전</span>`;
-    for (let i = startPage; i <= endPage; i++) {
-        const active = i === currentPage ? "bg-blue-600 text-white" : "bg-white";
-        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded mx-0.5 ${active}" onclick="goToPage(${i})">${i}</span>`;
-    }
-    if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100" onclick="goToPage(${currentPage + 1})">다음</span>`;
-}
+            <div class="flex justify-end items-center space-x-2 py-4 border-t border-gray-100">
+                <input type="text" id="search-author" class="border px-3 py-1.5 text-sm rounded bg-white w-48 focus:border-gray-400 focus:outline-none" placeholder="이름 검색...">
+                <button id="search-btn" class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700">검색</button>
+                <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
+            </div>
+        </section>
 
-window.goToPage = (p) => { 
-    currentPage = p; 
-    const keyword = document.getElementById("search-author").value.trim();
-    if (keyword) {
-        const filtered = allOrders.filter(o => o.author.includes(keyword));
-        renderTable(filtered);
-    } else {
-        renderTable(); 
-    }
-};
+        <section id="view-detail" class="hidden w-[744px] mx-auto mt-5">
+            <div id="detail-title" class="font-bold text-lg text-gray-700 py-2 border-b mb-4"></div>
+            <div id="detail-image" class="w-full"></div>
 
-window.viewDetail = async function(id) {
-    const snap = await getDoc(doc(db, "boards", id));
-    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
-    
-    const data = snap.data();
-    const storedPass = String(data.password || "");
-    const modal = document.getElementById("password-modal");
-    const input = document.getElementById("modal-password-input");
-    const confirmBtn = document.getElementById("modal-confirm-btn");
-    const cancelBtn = document.getElementById("modal-cancel-btn");
+            <div id="info-and-actions" class="flex justify-between items-center mt-4 px-2">
+                <div id="image-code" class="text-xs font-bold text-gray-600"></div>
+                <div class="flex gap-2">
+                    <button class="bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600">재구입</button>
+                    <button class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
+                </div>
+            </div>
 
-    modal.classList.remove("hidden");
-    input.value = "";
-    input.focus();
-
-    confirmBtn.onclick = async () => {
-        const inputVal = input.value;
-        const isNumeric = /^\d+$/.test(storedPass);
-        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
-
-        if (inputVal === passToCompare) {
-            modal.classList.add("hidden");
-            currentViewId = id;
-
-            // 1. 화면 전환
-            document.getElementById("view-list").classList.add("hidden");
-            document.getElementById("view-detail").classList.remove("hidden");
-
-            // 2. 메모 체크를 위한 별도 함수 호출 (버튼 제어까지 여기서 처리)
-            await checkMemoAndSetButton(id, data.status);
-
-            // ... (이미지 및 타이틀 로드 로직)
-        } else {
-            alert("비밀번호가 일치하지 않습니다.");
-        }
-    };
-    cancelBtn.onclick = () => modal.classList.add("hidden");
-};
-
-// 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
-async function checkMemoAndSetButton(boardId, status) {
-    const memoDisplay = document.getElementById("memo-display");
-    const memoStatus = document.getElementById("memo-status");
-    const approveBtn = document.getElementById("approve-btn");
-    
-    approveBtn.onclick = null;
-    
-    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
-    const snapshot = await getDocs(q);
-
-    const hasMemo = !snapshot.empty;
-    if (hasMemo) {
-        memoDisplay.innerText = snapshot.docs[0].data().text;
-        memoStatus.classList.remove("hidden");
-    } else {
-        memoDisplay.innerText = "작성된 메모가 없습니다.";
-        memoStatus.classList.add("hidden");
-    }
-
-    if (status === "done") {
-        approveBtn.innerText = "조판완료";
-        approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-    } else if (hasMemo) {
-        approveBtn.innerText = "인쇄승인";
-        approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
-        approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
-    } else {
-        approveBtn.innerText = "인쇄승인";
-        approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
-        approveBtn.onclick = async () => {
-            if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                await updateDoc(doc(db, "boards", boardId), { status: "done" });
-                approveBtn.innerText = "조판완료";
-                approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-                approveBtn.onclick = null;
-                alert("조판완료 처리되었습니다.");
-            }
-        };
-    }
-}
-
-// 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
-window.viewDetail = async function(id) {
-    const snap = await getDoc(doc(db, "boards", id));
-    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
-    
-    const data = snap.data();
-    const storedPass = String(data.password || "");
-    const modal = document.getElementById("password-modal");
-    const input = document.getElementById("modal-password-input");
-    const confirmBtn = document.getElementById("modal-confirm-btn");
-    const cancelBtn = document.getElementById("modal-cancel-btn");
-
-    modal.classList.remove("hidden");
-    input.value = "";
-    input.focus();
-
-    confirmBtn.onclick = async () => {
-        const inputVal = input.value;
-        const isNumeric = /^\d+$/.test(storedPass);
-        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
-
-        if (inputVal === passToCompare) {
-            modal.classList.add("hidden");
-            currentViewId = id;
-
-            document.getElementById("view-list").classList.add("hidden");
-            document.getElementById("view-detail").classList.remove("hidden");
-
-            // 1. 메모 및 버튼 제어 먼저 수행
-            await checkMemoAndSetButton(id, data.status);
-
-            // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
-            const dTitle = document.getElementById("detail-title");
-            const dImage = document.getElementById("detail-image");
-
-            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-            if (dImage) {
-                const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
-                const yy = String(createdAt.getFullYear()).slice(-2);
-                const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
-                const dd = String(createdAt.getDate()).padStart(2, '0');
-                const hh = String(createdAt.getHours()).padStart(2, '0');
-                const mi = String(createdAt.getMinutes()).padStart(2, '0');
-                const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
-                const rawPhone = data.phone || "00000000000";
-                const phonePrefix = rawPhone.slice(0, -2);
-                const finalCode = phonePrefix + timeCode;
-              const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
-const defaultImg = "https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg";
-const timestamp = new Date().getTime();
-
-dImage.innerHTML = `
-    <div id="image-container" style="position: relative; width: 744px; min-height: 500px; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
-        <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: block; width: 100%; height: 100%;">
-            <img id="main-image" src="${imgUrl}?t=${timestamp}" 
-                 alt="시안 이미지" 
-                 onerror="this.onerror=null; this.src='${defaultImg}';" 
-                 style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;">
-        </a>
+            
+<div class="p-4 border rounded bg-gray-50 mt-4">
+    <h3 class="font-bold text-sm mb-2">
+        📝 한 줄 메모 
+        <span id="memo-status" class="text-red-500 font-normal ml-2 hidden"> - 접수되셨습니다.</span>
+    </h3>
+    <div id="memo-display" class="text-sm text-gray-700 mb-3 italic"></div>
+    <div class="flex gap-2">
+        <input type="text" id="memo-input" class="flex-grow border p-2 rounded text-sm" placeholder="메모를 입력하세요">
+        <button id="save-memo-btn" class="bg-gray-600 text-white px-6 py-2 text-sm rounded hover:bg-gray-700">등록</button>
+        <button id="delete-memo-btn" class="bg-red-500 text-white px-6 py-2 text-sm rounded hover:bg-red-600">삭제</button>
     </div>
-    <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
-        재구입 이미지번호 : ${finalCode}
-        </div>`;
-            }
-        } else {
-            alert("비밀번호가 일치하지 않습니다.");
-        }
-    };
-    cancelBtn.onclick = () => modal.classList.add("hidden");
-};
+</div>
+            
+            <button onclick="location.reload()" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 mt-4">목록으로 돌아가기</button>
+        </section>
+    </div>
 
-document.getElementById("save-memo-btn").addEventListener("click", async () => {
-    if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
-    const input = document.getElementById("memo-input");
-    if (!input.value.trim()) return;
+    <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
+            <h3 class="text-base font-bold text-gray-800 mb-2">🔒 핸드폰번호 뒷 네자리</h3>
+            <input type="text" id="modal-password-input" maxlength="20" class="w-full border border-gray-300 rounded p-2 text-center text-lg mb-4 focus:outline-none" placeholder="비밀번호 입력">
+            <div class="flex gap-2">
+                <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 rounded">취소</button>
+                <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 text-white rounded">확인</button>
+            </div>
+        </div>
+    </div>
 
-    const q = query(collection(db, "boards", currentViewId, "hanjool"));
-    const snapshot = await getDocs(q);
-    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
-
-    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
-        text: input.value, 
-        createdAt: new Date() 
-    });
-    input.value = "";
-    
-    // [수정] 아래 줄을 이렇게 바꾸세요
-    await checkMemoAndSetButton(currentViewId, "pending"); 
-    alert("메모가 저장되었습니다.");
-});
-
-document.getElementById("delete-memo-btn").addEventListener("click", async () => {
-    if (!currentViewId) return;
-    const q = query(collection(db, "boards", currentViewId, "hanjool"));
-    const snapshot = await getDocs(q);
-    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
-    
-    // [수정] 아래 줄을 이렇게 바꾸세요
-    await checkMemoAndSetButton(currentViewId, "pending");
-    alert("메모가 삭제되었습니다.");
-});
-
-loadData();
+    <script type="module" src="app2.js"></script>
+</body>
+</html>
