@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -119,7 +119,8 @@ window.viewDetail = async function(id) {
         const inputVal = input.value;
         const isNumeric = /^\d+$/.test(storedPass);
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
-
+const approveBtn = document.getElementById("approve-btn");
+        
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id; // 전역 변수에 ID를 저장합니다.
@@ -207,3 +208,30 @@ document.getElementById("delete-memo-btn").addEventListener("click", async () =>
     alert("메모가 삭제되었습니다.");
 });
 
+// 버튼 초기 상태 설정: Firestore에서 현재 상태를 불러와서 적용
+const checkStatus = async () => {
+    const docSnap = await getDoc(doc(db, "boards", currentViewId));
+    if (docSnap.exists() && docSnap.data().status === "done") {
+        approveBtn.outerHTML = `<button class="bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default">조판완료</button>`;
+    }
+};
+checkStatus();
+
+// 인쇄승인 버튼 클릭 이벤트
+approveBtn.onclick = async () => {
+    if (confirm("정말로 인쇄승인하시겠습니까?")) {
+        try {
+            // Firestore에 상태 업데이트 (status: "done" 필드 추가)
+            await updateDoc(doc(db, "boards", currentViewId), {
+                status: "done"
+            });
+            
+            // 화면 버튼 교체
+            approveBtn.outerHTML = `<button class="bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default">조판완료</button>`;
+            alert("조판완료 처리되었습니다.");
+        } catch (e) {
+            console.error("오류 발생: ", e);
+            alert("처리 중 오류가 발생했습니다.");
+        }
+    }
+};
