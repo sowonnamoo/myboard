@@ -163,6 +163,7 @@ dImage.innerHTML = `
             
             <img src="${imgUrl}?t=${timestamp}" 
                  class="auto-refresh-img" 
+                 id="main-img"  // <--- 이 한 줄을 추가하세요!
                  alt="시안 이미지" 
                  onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
                  onload="document.getElementById('loading-msg').style.display='none';"
@@ -231,39 +232,39 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
 // app2.js 파일 하단에 추가 댓글기능
 async function loadComments(boardId) {
     const commentsList = document.getElementById("comments-list");
-    commentsList.innerHTML = "댓글을 불러오는 중...";
+    const mainImg = document.getElementById("main-img"); // 위에서 id 심은 태그를 찾습니다.
 
     const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
-    
-    commentsList.innerHTML = ""; 
-    
-    if (snapshot.empty) {
-        commentsList.innerHTML = '<p class="text-gray-400">등록된 댓글이 없습니다.</p>';
-    } else {
-        snapshot.forEach(doc => {
-            const comment = doc.data();
-            const date = comment.createdAt ? comment.createdAt.toDate().toLocaleString() : "";
-            
-            // 여기서 innerHTML을 사용하여 한 번에 추가합니다.
-            commentsList.innerHTML += `
-                <div class="border-b py-2 flex justify-between items-center">
-                    <div>
-                        <span>${comment.text}</span>
-                        <span class="text-xs text-gray-400 ml-2">${date}</span>
-                    </div>
-                    <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
-                </div>
-            `;
-        });
+
+    // 댓글 유무에 따라 이미지 처리
+    if (mainImg) {
+        if (!snapshot.empty) {
+            // 댓글이 있으면 이미지 강제 교체
+            mainImg.src = "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png";
+        } else {
+            // 댓글 없으면 원래 이미지 주소로 복구 (시간값 t를 넣어 캐시 방지)
+            const baseUrl = mainImg.src.split('?')[0]; 
+            mainImg.src = baseUrl + "?t=" + new Date().getTime();
+        }
     }
 
-    // 삭제 버튼 이벤트 연결
+    // 댓글 목록 렌더링
+    commentsList.innerHTML = "";
+    snapshot.forEach(doc => {
+        const comment = doc.data();
+        commentsList.innerHTML += `
+            <div class="border-b py-2 flex justify-between items-center">
+                <span>${comment.text}</span>
+                <button class="delete-comment-btn text-xs text-red-500 hover:underline" data-id="${doc.id}">삭제</button>
+            </div>`;
+    });
+
+    // 삭제 버튼 동작 (확인창 없이 즉시 삭제)
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
-btn.onclick = async (e) => {
-    const commentId = e.target.getAttribute("data-id");
-    await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
-    loadComments(currentViewId);
-};
+        btn.onclick = async (e) => {
+            await deleteDoc(doc(db, "boards", currentViewId, "comments", e.target.getAttribute("data-id")));
+            loadComments(currentViewId); // 삭제 후 즉시 반영
+        };
     });
 }
