@@ -120,25 +120,13 @@ window.viewDetail = async function(id) {
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id;
+            loadMemo(id);
             
-            // 1. 메모 로드 및 인쇄 승인 버튼 상태 제어
-            const memoDisplay = document.getElementById("memo-display");
+            // 승인 버튼 로직
             const approveBtn = document.getElementById("approve-btn");
-            
-            // 메모 로드 함수 실행
-            await loadMemo(id);
-            
-            // 메모에 글이 있는지 확인 (텍스트 내용이 기본값이 아닌 경우)
-            const hasMemo = memoDisplay.innerText !== "작성된 메모가 없습니다." && memoDisplay.innerText.trim() !== "";
-
             if (data.status === "done") {
                 approveBtn.outerHTML = `<button class="bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default">조판완료</button>`;
-            } else if (hasMemo) {
-                // 메모가 있으면 버튼을 비활성화(회색처리)
-                approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
-                approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
             } else {
-                // 메모가 없으면 정상 작동
                 approveBtn.onclick = async () => {
                     if (confirm("정말로 인쇄승인하시겠습니까?")) {
                         await updateDoc(doc(db, "boards", id), { status: "done" });
@@ -147,8 +135,43 @@ window.viewDetail = async function(id) {
                     }
                 };
             }
-            
-            // ... (기존 코드 생략)
+
+            const dTitle = document.getElementById("detail-title");
+            const dImage = document.getElementById("detail-image");
+            const vList = document.getElementById("view-list");
+            const vDetail = document.getElementById("view-detail");
+
+            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+            if (dImage) {
+                const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+                const yy = String(createdAt.getFullYear()).slice(-2);
+                const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
+                const dd = String(createdAt.getDate()).padStart(2, '0');
+                const hh = String(createdAt.getHours()).padStart(2, '0');
+                const mi = String(createdAt.getMinutes()).padStart(2, '0');
+                const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
+                const rawPhone = data.phone || "00000000000";
+                const phonePrefix = rawPhone.slice(0, -2);
+                const finalCode = phonePrefix + timeCode;
+                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+                const timestamp = new Date().getTime();
+
+                dImage.innerHTML = `
+                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; border: none; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+                        <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
+                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                             onload="document.getElementById('loading-msg').style.display='none';"
+                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+                    </a>
+                </div>
+                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+                    재구입 이미지번호 : ${finalCode}
+                </div>`;
+            }
+            if (vList) vList.classList.add("hidden");
+            if (vDetail) vDetail.classList.remove("hidden");
         } else {
             alert("비밀번호가 일치하지 않습니다.");
         }
