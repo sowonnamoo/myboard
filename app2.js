@@ -234,27 +234,29 @@ async function loadComments(boardId) {
     const commentsList = document.getElementById("comments-list");
     const mainImg = document.getElementById("main-img");
 
+    // 원본 이미지 URL을 저장해둡니다 (데이터 속성 활용)
+    if (mainImg && !mainImg.dataset.originalSrc) {
+        mainImg.dataset.originalSrc = mainImg.src.split('?')[0];
+    }
+
     const q = query(collection(db, "boards", boardId, "comments"), orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
 
-    // 댓글 유무에 따라 이미지 교체
-    if (mainImg) {
-        if (!snapshot.empty) {
-            mainImg.src = "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png";
-        } else {
-            // 원본 이미지 주소를 기억해두었다가 원복
-            // 주의: 이 부분은 상세 열기 할 때 사용한 원본 URL 규칙과 같아야 합니다.
-            // 여기서는 페이지 로드 시의 첫 이미지 주소를 유지하도록 처리합니다.
-            const baseUrl = mainImg.src.split('?')[0];
-            mainImg.src = baseUrl.split('?')[0]; 
-        }
-    }
+    // 댓글 유무에 따라 이미지 교체 함수
+    const updateImageState = (hasComments) => {
+        if (!mainImg) return;
+        const timestamp = new Date().getTime();
+        mainImg.src = hasComments 
+            ? "https://sowonnamoo1005.cafe24.com/web/1new/sujung.png" 
+            : `${mainImg.dataset.originalSrc}?t=${timestamp}`;
+    };
+
+    updateImageState(!snapshot.empty);
 
     // 댓글 목록 렌더링
     commentsList.innerHTML = "";
     snapshot.forEach(doc => {
         const comment = doc.data();
-        // 각 댓글마다 고유 ID를 가진 div로 감쌉니다 (삭제를 위해 필요)
         commentsList.innerHTML += `
             <div class="border-b py-2 flex justify-between items-center" id="comment-${doc.id}">
                 <span>${comment.text}</span>
@@ -262,19 +264,21 @@ async function loadComments(boardId) {
             </div>`;
     });
 
-    // 삭제 버튼 이벤트 (새로고침 없음)
+    // 삭제 버튼 이벤트
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.onclick = async (e) => {
             const commentId = e.target.getAttribute("data-id");
             
-            // 1. DB에서 즉시 삭제
+            // 1. DB에서 삭제
             await deleteDoc(doc(db, "boards", currentViewId, "comments", commentId));
             
-            // 2. 화면에서 해당 댓글 div만 즉시 삭제
+            // 2. 화면에서 요소 제거
             document.getElementById(`comment-${commentId}`).remove();
             
-
-                }
+            // 3. 남은 댓글 확인 후 이미지 상태 업데이트 (알림 없이 조용히 처리)
+            const remainingComments = document.querySelectorAll(".delete-comment-btn");
+            if (remainingComments.length === 0) {
+                updateImageState(false);
             }
         };
     });
