@@ -282,7 +282,6 @@ async function loadComments(boardId) {
                     // (상세 진입 시 생성했던 finalCode를 가져올 수 없으므로, 
                     // 페이지 새로고침 없이 원복하려면 원본 이미지 경로 규칙을 여기에 직접 입력하는 것이 가장 안전합니다)
                     // 예: mainImg.src = "https://sowonnamoo1005.cafe24.com/1/원본이미지코드.jpg";
-                    alert("댓글이 모두 삭제되어 시안 이미지로 복구됩니다."); // 확인용 알림
                 }
             }
         };
