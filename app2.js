@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -15,31 +15,40 @@ const db = getFirestore(app);
 
 let allOrders = [];
 let currentPage = 1;
+let currentViewId = ""; 
 const POSTS_PER_PAGE = 8;
-let currentViewId = "";
+
+async function loadMemo(boardId) {
+    const memoDisplay = document.getElementById("memo-display");
+    const memoStatus = document.getElementById("memo-status");
+    if (!memoDisplay || !memoStatus) return;
+    
+    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        memoDisplay.innerText = snapshot.docs[0].data().text;
+        memoStatus.classList.remove("hidden");
+    } else {
+        memoDisplay.innerText = "작성된 메모가 없습니다.";
+        memoStatus.classList.add("hidden");
+    }
+}
 
 async function loadData() {
-    // 1. 최신 20개만 쿼리
     const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(20));
-    
     const snapshot = await getDocs(q);
     allOrders = [];
-    
-    // 2. 데이터 배열에 저장
     snapshot.forEach(doc => {
         const data = doc.data();
         if (!data.isDeleted) allOrders.push({ id: doc.id, ...data });
     });
-    
-    // 3. 화면 렌더링
     renderTable(allOrders);
 }
 
 function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    
-    // [수정] 전체 개수가 아닌 전달받은 데이터(dataToRender) 개수 기준 계산
     const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
@@ -52,21 +61,17 @@ function renderTable(dataToRender = allOrders) {
     <tr class="hover:bg-gray-50 border-b border-gray-100"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
             <span class="mr-2">🔒 ${data.author}님</span>
-                                    <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
-
+            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
             <span class="text-xs text-gray-500">${displayInfo}</span>
-
         </td>
-        <td class="py-3 text-sm text-gray-600">에코그래픽스</td>
+        <td class="py-3 text-sm text-gray-600">에코</td>
         <td class="py-3 text-xs text-gray-400">${dateStr}</td>
     </tr>`;
     });
 
-    // [수정] 페이징 영역이 정확히 표시되도록
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    
-    if (totalPages <= 1) return; // 페이지가 1개면 페이징 표시 안 함
+    if (totalPages <= 1) return;
 
     const range = 5;
     const startPage = Math.floor((currentPage - 1) / range) * range + 1;
@@ -82,7 +87,6 @@ function renderTable(dataToRender = allOrders) {
 
 window.goToPage = (p) => { 
     currentPage = p; 
-    // 검색 중일 때는 검색 결과로, 아니면 전체 데이터로 렌더링하도록 수정
     const keyword = document.getElementById("search-author").value.trim();
     if (keyword) {
         const filtered = allOrders.filter(o => o.author.includes(keyword));
@@ -98,17 +102,6 @@ window.viewDetail = async function(id) {
     
     const data = snap.data();
     const storedPass = String(data.password || "");
-    
-    // [추가] 랜덤 영문 3자리 생성 함수
-    const getRandomChars = () => {
-        const chars = 'abcdefghijklmnopqrstuvwxyz';
-        let result = '';
-        for (let i = 0; i < 3; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
-    };
-
     const modal = document.getElementById("password-modal");
     const input = document.getElementById("modal-password-input");
     const confirmBtn = document.getElementById("modal-confirm-btn");
@@ -118,7 +111,7 @@ window.viewDetail = async function(id) {
     input.value = "";
     input.focus();
 
-    confirmBtn.onclick = () => {
+    confirmBtn.onclick = async () => {
         const inputVal = input.value;
         const isNumeric = /^\d+$/.test(storedPass);
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
@@ -127,96 +120,165 @@ window.viewDetail = async function(id) {
             modal.classList.add("hidden");
             currentViewId = id;
 
-            const dTitle = document.getElementById("detail-title");
-            const dImage = document.getElementById("detail-image");
-            const vList = document.getElementById("view-list");
-            const vDetail = document.getElementById("view-detail");
+            // 1. 화면 전환
+            document.getElementById("view-list").classList.add("hidden");
+            document.getElementById("view-detail").classList.remove("hidden");
 
-            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
-            
-          if (dImage) {
-    const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
-    const yy = String(createdAt.getFullYear()).slice(-2);
-    const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
-    const dd = String(createdAt.getDate()).padStart(2, '0');
-    const hh = String(createdAt.getHours()).padStart(2, '0');
-    const mi = String(createdAt.getMinutes()).padStart(2, '0');
-    
-    const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
-    const rawPhone = data.phone || "00000000000";
-    const phonePrefix = rawPhone.slice(0, -2);
-    const finalCode = phonePrefix + timeCode;
-    
-    const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
-    const timestamp = new Date().getTime();
+            // 2. 메모 체크를 위한 별도 함수 호출 (버튼 제어까지 여기서 처리)
+            await checkMemoAndSetButton(id, data.status);
 
-    // 1. 이미지가 없을 때를 대비한 스타일 및 로직 추가
-    dImage.innerHTML = `
-        <div id="image-container" style="position: relative; width: 744px; height: 500px; margin: 0 auto; border: 1px solid black; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9;">
-            <p id="loading-msg" style="color: #666; font-size: 16px;">시안이 제작중 입니다.<br>결제확인 되시면 제작후 업로드 됩니다.</p>
-            <a href="${imgUrl}?t=${timestamp}" target="_blank" class="auto-refresh-link" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-                <img src="${imgUrl}?t=${timestamp}" 
-                     class="auto-refresh-img" 
-                     alt="시안 이미지" 
-                     onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
-                     onload="document.getElementById('loading-msg').style.display='none';"
-                     style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;">
-            </a>
-        </div>
-        <div style="text-align: right; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-right: 20px;">
-            재구입 이미지번호 : ${finalCode}
-        </div>
-    `;
-}
-            
-            if (vList) vList.classList.add("hidden");
-            if (vDetail) vDetail.classList.remove("hidden");
+            // ... (이미지 및 타이틀 로드 로직)
         } else {
             alert("비밀번호가 일치하지 않습니다.");
         }
     };
-
     cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
-document.getElementById("save-comment-btn").addEventListener("click", async () => {
-    const input = document.getElementById("comment-input");
-    if (!input.value) return;
-    await addDoc(collection(db, "boards", currentViewId, "comments"), { text: input.value, createdAt: new Date() });
+// 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
+async function checkMemoAndSetButton(boardId, status) {
+    const memoDisplay = document.getElementById("memo-display");
+    const memoStatus = document.getElementById("memo-status");
+    const approveBtn = document.getElementById("approve-btn");
+    
+    approveBtn.onclick = null;
+    
+    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
+    const snapshot = await getDocs(q);
+
+    const hasMemo = !snapshot.empty;
+    if (hasMemo) {
+        memoDisplay.innerText = snapshot.docs[0].data().text;
+        memoStatus.classList.remove("hidden");
+    } else {
+        memoDisplay.innerText = "작성된 메모가 없습니다.";
+        memoStatus.classList.add("hidden");
+    }
+
+    if (status === "done") {
+        approveBtn.innerText = "조판완료";
+        approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
+    } else if (hasMemo) {
+        approveBtn.innerText = "인쇄승인";
+        approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
+        approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
+    } else {
+        approveBtn.innerText = "인쇄승인";
+        approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
+        approveBtn.onclick = async () => {
+            if (confirm("정말로 인쇄승인하시겠습니까?")) {
+                await updateDoc(doc(db, "boards", boardId), { status: "done" });
+                approveBtn.innerText = "조판완료";
+                approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
+                approveBtn.onclick = null;
+                alert("조판완료 처리되었습니다.");
+            }
+        };
+    }
+}
+
+// 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
+window.viewDetail = async function(id) {
+    const snap = await getDoc(doc(db, "boards", id));
+    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
+    
+    const data = snap.data();
+    const storedPass = String(data.password || "");
+    const modal = document.getElementById("password-modal");
+    const input = document.getElementById("modal-password-input");
+    const confirmBtn = document.getElementById("modal-confirm-btn");
+    const cancelBtn = document.getElementById("modal-cancel-btn");
+
+    modal.classList.remove("hidden");
     input.value = "";
-    alert("댓글이 등록되었습니다.");
+    input.focus();
+
+    confirmBtn.onclick = async () => {
+        const inputVal = input.value;
+        const isNumeric = /^\d+$/.test(storedPass);
+        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
+
+        if (inputVal === passToCompare) {
+            modal.classList.add("hidden");
+            currentViewId = id;
+
+            document.getElementById("view-list").classList.add("hidden");
+            document.getElementById("view-detail").classList.remove("hidden");
+
+            // 1. 메모 및 버튼 제어 먼저 수행
+            await checkMemoAndSetButton(id, data.status);
+
+            // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
+            const dTitle = document.getElementById("detail-title");
+            const dImage = document.getElementById("detail-image");
+
+            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+            if (dImage) {
+                const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+                const yy = String(createdAt.getFullYear()).slice(-2);
+                const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
+                const dd = String(createdAt.getDate()).padStart(2, '0');
+                const hh = String(createdAt.getHours()).padStart(2, '0');
+                const mi = String(createdAt.getMinutes()).padStart(2, '0');
+                const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
+                const rawPhone = data.phone || "00000000000";
+                const phonePrefix = rawPhone.slice(0, -2);
+                const finalCode = phonePrefix + timeCode;
+                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+                const timestamp = new Date().getTime();
+
+               dImage.innerHTML = `
+                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+                        <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
+                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                             onload="document.getElementById('loading-msg').style.display='none';"
+                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+                    </a>
+                </div>
+                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+                    재구입 이미지번호 : ${finalCode}
+                </div>`;
+            }
+        } else {
+            alert("비밀번호가 일치하지 않습니다.");
+        }
+    };
+    cancelBtn.onclick = () => modal.classList.add("hidden");
+};
+
+document.getElementById("save-memo-btn").addEventListener("click", async () => {
+    if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
+    const input = document.getElementById("memo-input");
+    if (!input.value.trim()) return;
+
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+
+    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
+        text: input.value, 
+        createdAt: new Date() 
+    });
+    input.value = "";
+    
+    // [수정] 아래 줄을 이렇게 바꾸세요
+    await checkMemoAndSetButton(currentViewId, "pending"); 
+    alert("메모가 저장되었습니다.");
+});
+
+document.getElementById("delete-memo-btn").addEventListener("click", async () => {
+    if (!currentViewId) return;
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    
+    // [수정] 아래 줄을 이렇게 바꾸세요
+    await checkMemoAndSetButton(currentViewId, "pending");
+    alert("메모가 삭제되었습니다.");
 });
 
 loadData();
-
-
-// 검색 기능 구현
-document.getElementById("search-btn").addEventListener("click", () => {
-    const keyword = document.getElementById("search-author").value.trim();
-    if (!keyword) {
-        alert("작성자 이름을 입력하세요.");
-        return;
-    }
-    // allOrders에서 작성자 이름이 포함된 데이터만 필터링
-    const filteredOrders = allOrders.filter(order => order.author.includes(keyword));
-    
-    // 화면 갱신을 위해 데이터 임시 교체
-    const originalOrders = [...allOrders]; // 원본 보관
-    allOrders = filteredOrders;
-    currentPage = 1; // 1페이지부터 다시 시작
-    renderTable();
-    allOrders = originalOrders; // 다시 원본으로 복구 (다음 검색을 위해)
-    
-    // 초기화 버튼 보이기
-    document.getElementById("search-reset-btn").classList.remove("hidden");
-});
-
-// 초기화 기능 구현
-document.getElementById("search-reset-btn").addEventListener("click", () => {
-    document.getElementById("search-author").value = "";
-    document.getElementById("search-reset-btn").classList.add("hidden");
-    currentPage = 1;
-    renderTable();
-});
-
-
