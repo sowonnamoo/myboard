@@ -166,3 +166,40 @@ document.getElementById("search-reset-btn").addEventListener("click", () => {
     currentPage = 1;
     renderTable();
 });
+
+
+
+// 메모 저장 이벤트
+document.getElementById("save-memo-btn").addEventListener("click", async () => {
+    const input = document.getElementById("memo-input");
+    if (!input.value.trim()) return;
+
+    // 1. 기존 메모들 삭제 (항상 1개만 유지하기 위해)
+    const q = query(collection(db, "boards", currentViewId, "hanjool"));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+
+    // 2. 새 메모 저장
+    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
+        text: input.value, 
+        createdAt: new Date() 
+    });
+    
+    input.value = "";
+    loadMemo(currentViewId);
+});
+
+// 메모 로드 함수
+async function loadMemo(boardId) {
+    const memoDisplay = document.getElementById("memo-display");
+    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        const memo = snapshot.docs[0].data();
+        memoDisplay.innerText = memo.text;
+    } else {
+        memoDisplay.innerText = "작성된 메모가 없습니다.";
+    }
+}
