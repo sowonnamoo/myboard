@@ -267,7 +267,6 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
     
     // 수정된 부분: 최신 sian 데이터를 다시 읽어서 버튼 갱신
     const snap = await getDoc(doc(db, "boards", currentViewId));
-    await checkMemoAndSetButton(currentViewId, snap.data().sian);
     alert("메모가 저장되었습니다.");
 });
 
