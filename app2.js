@@ -348,7 +348,24 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
+// [하단 추가용] preview_v1.jpg 노출 시 재구입 정보 영역 숨김 처리
+setInterval(() => {
+    const loadingMsg = document.getElementById('loading-msg');
+    
+    // '재구입 이미지번호'를 포함하고 있는 텍스트 영역을 찾음
+    const infoContainer = Array.from(document.querySelectorAll('div')).find(div => 
+        div.innerText.includes('재구입 이미지번호')
+    );
 
+    if (infoContainer) {
+        // loading-msg(preview_v1.jpg)가 보이면 숨기고, 안 보이면 다시 보이게 함
+        if (loadingMsg && loadingMsg.style.display !== 'none') {
+            infoContainer.style.visibility = "hidden";
+        } else {
+            infoContainer.style.visibility = "visible";
+        }
+    }
+}, 500);
 
 
 
