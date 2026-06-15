@@ -349,39 +349,36 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 1. 상세정보 앵커 추가 (재구입 이미지번호 div 가장 앞에)
-const infoContainer = Array.from(document.querySelectorAll('div')).find(div => div.innerText.includes('재구입 이미지번호'));
-if (infoContainer) {
-    const anchor = document.createElement('a');
-    anchor.href = "#";
-    anchor.innerText = "[상세정보]";
-    anchor.style.marginRight = "10px";
-    anchor.style.color = "blue";
-    anchor.style.cursor = "pointer";
-    anchor.onclick = (e) => { e.preventDefault(); };
-    infoContainer.prepend(anchor);
+
+// 1. 이미지전호가리개 이미지가 떠 있는 동안 가릴 영역을 생성 (이미지 컨테이너+번호+버튼 포함)
+const maskLayer = document.createElement("div");
+maskLayer.id = "top-mask-layer";
+// 영역의 크기와 위치는 CSS로 조정 가능하며, 현재는 상단 영역을 덮도록 설정
+maskLayer.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 600px; z-index: 100; display: none; background-size: cover; background-position: center; pointer-events: none;";
+maskLayer.style.backgroundImage = "url('https://sowonnamoo1005.cafe24.com/web/1new/가려지는이미지.jpg')";
+
+// 2. 부모 컨테이너(상단 영역)에 마스크 추가
+// #image-container를 감싸고 있는 요소나, detail-image div를 활용합니다.
+const detailImageDiv = document.getElementById("detail-image");
+if (detailImageDiv) {
+    detailImageDiv.style.position = "relative";
+    detailImageDiv.appendChild(maskLayer);
 }
 
-// 2. 가리개 강제 제어 (preview_v1.jpg 가 떠 있는 동안 무조건 가리기)
+// 3. 댓글(메모)과는 완전히 별도로, 상단 영역만 감시
 setInterval(() => {
     const loadingMsg = document.getElementById('loading-msg');
-    const overlay = document.getElementById('done-overlay');
+    const mask = document.getElementById('top-mask-layer');
     
-    if (!overlay) return;
+    if (!mask) return;
 
-    // preview_v1.jpg(제작중 이미지)가 보여지고 있다면
+    // preview_v1.jpg(제작중)가 보일 때만 가리기
     if (loadingMsg && loadingMsg.style.display !== 'none') {
-        overlay.classList.remove('hidden'); // 가리개 강제 표시
-        overlay.style.backgroundImage = "url('https://sowonnamoo1005.cafe24.com/web/1new/가려지는이미지.jpg')";
-        overlay.style.backgroundSize = "cover";
-    } 
-    // 제작중 이미지가 사라졌고, 아직 조판완료 상태가 아닐 때만 가리개 숨김
-    else if (document.getElementById('approve-btn')?.innerText !== '조판완료') {
-        overlay.classList.add('hidden');
+        mask.style.display = "block";
+    } else {
+        mask.style.display = "none";
     }
-}, 1000);
-
-
+}, 500);
 
 
 
