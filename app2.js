@@ -289,31 +289,21 @@ loadData();
 
 
 
-// app2.js 맨 마지막에 아래 코드를 복사해서 붙여넣으세요
-
-function toggleOverlay(sianStatus) {
+// app2.js 맨 마지막에 추가
+function updateOverlayState(sianStatus) {
     const overlay = document.getElementById("done-overlay");
     if (!overlay) return;
     
     if (sianStatus === "done") {
-        overlay.classList.remove("hidden");
+        overlay.classList.remove("hidden"); // 던일 때 레이어 보임
     } else {
-        overlay.classList.add("hidden");
+        overlay.classList.add("hidden");    // 던 아닐 때 레이어 숨김
     }
 }
 
-// 기존 checkMemoAndSetButton 함수가 호출될 때마다 자동으로 레이어도 제어되도록 연결
-// 아래 코드는 기존 checkMemoAndSetButton 함수 내부 로직을 건드리지 않고,
-// 해당 함수 실행 후 자동으로 덮개를 씌우는 효과를 줍니다.
+// 기존 함수들을 수정하지 않고, 상태가 바뀔 때 레이어를 동기화
 const originalCheckMemo = checkMemoAndSetButton;
 checkMemoAndSetButton = async function(boardId, sianStatus) {
     await originalCheckMemo(boardId, sianStatus);
-    toggleOverlay(sianStatus);
+    updateOverlayState(sianStatus);
 };
-
-
-
-
-
-
-
