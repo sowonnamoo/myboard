@@ -350,38 +350,3 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 재구입
-// === 수정된 체크 및 버튼 제어 통합 함수 ===
-// 조판 완료(done)일 때만 재구입 버튼을 보여줍니다.
-
-const originalCheckMemo = checkMemoAndSetButton;
-
-checkMemoAndSetButton = async function(boardId, sianStatus) {
-    // 1. 원래의 메모 확인 및 버튼 세팅 로직을 비동기로 실행
-    await originalCheckMemo(boardId, sianStatus);
-    
-    // 2. 조판 완료 시 레이어(가리개) 처리
-    updateOverlayState(sianStatus);
-    
-    // 3. 재구입 버튼 제어 (sianStatus가 'done'인 경우에만 표시)
-    const allButtons = Array.from(document.querySelectorAll('button'));
-    const reOrderBtn = allButtons.find(btn => btn.innerText.includes('재구입'));
-    
-    if (reOrderBtn) {
-        // 정확히 'done'일 때만 보이게 설정
-        reOrderBtn.style.display = (sianStatus === "done") ? "inline-block" : "none";
-    }
-};
-
-// 레이어 상태 업데이트 함수
-function updateOverlayState(sianStatus) {
-    const overlay = document.getElementById("done-overlay");
-    if (overlay) {
-        // 조판 완료(done) 상태면 메모 가리개 표시
-        if (sianStatus === "done") {
-            overlay.classList.remove("hidden");
-        } else {
-            overlay.classList.add("hidden");
-        }
-    }
-}
