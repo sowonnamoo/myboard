@@ -254,19 +254,23 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
     const input = document.getElementById("memo-input");
     if (!input.value.trim()) return;
 
+    // 1. 기존 메모 삭제
     const q = query(collection(db, "boards", currentViewId, "hanjool"));
     const snapshot = await getDocs(q);
     const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
 
+    // 2. 새 메모 저장
     await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
         text: input.value, 
         createdAt: new Date() 
     });
     input.value = "";
     
-    // 수정된 부분: 최신 sian 데이터를 다시 읽어서 버튼 갱신
+    // 3. (핵심) 최신 상태를 DB에서 다시 읽어온 후 버튼과 레이어 동기화
     const snap = await getDoc(doc(db, "boards", currentViewId));
+    await checkMemoAndSetButton(currentViewId, snap.data().sian);
+    
     alert("메모가 저장되었습니다.");
 });
 
