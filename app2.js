@@ -140,7 +140,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
-    const doneAnchor = document.getElementById("done-anchor"); // 추가
+const doneAnchor = document.getElementById("done-anchor");
     
     approveBtn.onclick = null;
     
@@ -157,36 +157,29 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     }
 
     // [여기가 핵심입니다]
-    if (sianStatus === "done") {
-        approveBtn.innerText = "조판완료";
-        approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-        approveBtn.onclick = null;
-        
-        // 메모장 덮기 (링크 클릭 차단)
-        if (doneAnchor) doneAnchor.classList.remove("hidden");
-        
-    } else if (hasMemo) {
-        // 메모가 있으면 덮었던 레이어를 숨김
-        if (doneAnchor) doneAnchor.classList.add("hidden");
-        
+  if (sianStatus === "done") {
+    // 1. 던 상태: 조판완료 표시 + 메모창 덮기
+    approveBtn.innerText = "조판완료";
+    approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
+    approveBtn.onclick = null;
+    if (doneAnchor) doneAnchor.classList.remove("hidden"); // 레이어 켬
+} else {
+    // 2. 던이 아님: 레이어 무조건 끔
+    if (doneAnchor) doneAnchor.classList.add("hidden"); 
+
+    if (hasMemo) {
+        // 메모 있음
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
         approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
-        
     } else {
-        // 메모가 없으면 덮었던 레이어를 숨김
-        if (doneAnchor) doneAnchor.classList.add("hidden");
-        
+        // 메모 없음
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
         approveBtn.onclick = async () => {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
                 await updateDoc(doc(db, "boards", boardId), { sian: "done" });
-                // 승인 성공 시 즉시 UI 업데이트
-                approveBtn.innerText = "조판완료";
-                approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-                approveBtn.onclick = null;
-                if (doneAnchor) doneAnchor.classList.remove("hidden"); // 레이어 활성화
+                checkMemoAndSetButton(boardId, "done"); // 상태 갱신
                 alert("조판완료 처리되었습니다.");
             }
         };
