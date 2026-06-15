@@ -136,7 +136,7 @@ window.viewDetail = async function(id) {
 };
 
 // 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
-1 async function checkMemoAndSetButton(boardId, status) {
+async function checkMemoAndSetButton(boardId, status) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
@@ -155,7 +155,7 @@ window.viewDetail = async function(id) {
         memoStatus.classList.add("hidden");
     }
 
-   if (status === "done") {
+    if (status === "done") {
         approveBtn.innerText = "조판완료";
         approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
     } else if (hasMemo) {
@@ -167,7 +167,7 @@ window.viewDetail = async function(id) {
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
         approveBtn.onclick = async () => {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                // [수정됨] updateDoc 관련 한 줄만 삭제되었습니다. 
+                await updateDoc(doc(db, "boards", boardId), { status: "done" });
                 approveBtn.innerText = "조판완료";
                 approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
                 approveBtn.onclick = null;
