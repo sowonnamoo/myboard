@@ -352,45 +352,25 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 재구입제어
-const originalCheckMemo = checkMemoAndSetButton;
+// [최종 코드] '재구입' 버튼만 콕 집어 숨기기
+setInterval(() => {
+    const loadingMsg = document.getElementById('loading-msg');
+    
+    // '재구입'이라는 텍스트가 들어있는 모든 버튼을 찾음
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const reOrderBtn = buttons.find(btn => btn.innerText.includes('재구입'));
 
-checkMemoAndSetButton = async function(boardId, sianStatus) {
-    // 1. 원래의 메모 확인 및 버튼 세팅 로직을 비동기로 실행
-    await originalCheckMemo(boardId, sianStatus);
-    
-    // 2. 조판 완료 시 레이어(가리개) 처리
-    updateOverlayState(sianStatus);
-    
-    // 3. 재구입 버튼 제어 (자리 유지하면서 보이기/숨기기)
-    const allButtons = Array.from(document.querySelectorAll('button'));
-    const reOrderBtn = allButtons.find(btn => btn.innerText.includes('재구입'));
-    
     if (reOrderBtn) {
-        // visibility: hidden은 자리는 그대로 두고 내용만 사라지게 합니다.
-        // 버튼이 안 보일 때 클릭도 안 되게 하려면 pointer-events를 같이 씁니다.
-        if (sianStatus === "done") {
-            reOrderBtn.style.visibility = "visible";
-            reOrderBtn.style.pointerEvents = "auto";
-        } else {
+        // 프리뷰(제작중)가 보이면 숨김 (visibility: hidden은 영역 유지)
+        if (loadingMsg && loadingMsg.style.display !== 'none') {
             reOrderBtn.style.visibility = "hidden";
             reOrderBtn.style.pointerEvents = "none";
-        }
-    }
-};
-
-// 레이어 상태 업데이트 함수
-function updateOverlayState(sianStatus) {
-    const overlay = document.getElementById("done-overlay");
-    if (overlay) {
-        if (sianStatus === "done") {
-            overlay.classList.remove("hidden");
         } else {
-            overlay.classList.add("hidden");
+            reOrderBtn.style.visibility = "visible";
+            reOrderBtn.style.pointerEvents = "auto";
         }
     }
-}
-
+}, 500);
 
 
 
