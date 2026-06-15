@@ -182,6 +182,14 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
         approveBtn.onclick = async () => {
+            // [핵심] 시안 이미지 로드 상태 체크
+            const loadingMsg = document.getElementById('loading-msg');
+            // loadingMsg가 화면에 보이고 있다면(display가 none이 아니면) 이미지가 아직 안 올라온 것
+            if (loadingMsg && loadingMsg.style.display !== 'none') {
+                return alert("아직 시안 이미지가 등록되지 않았습니다. 시안이 등록된 후 승인해주세요.");
+            }
+
+            // 승인 진행
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
                 await updateDoc(doc(db, "boards", boardId), { sian: "done" });
                 // 상태 변경 후 즉시 상태 갱신
