@@ -140,7 +140,22 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
+    const memoInput = document.getElementById("memo-input"); // 입력창
+    const saveBtn = document.getElementById("save-memo-btn"); // 등록버튼
+    const deleteBtn = document.getElementById("delete-memo-btn"); // 삭제버튼
     
+    // 조판 완료 상태 여부 확인
+    const isDone = (sianStatus === "done");
+
+    // [핵심] 조판 완료 시 입력창과 버튼 비활성화
+    memoInput.disabled = isDone;
+    saveBtn.disabled = isDone;
+    deleteBtn.disabled = isDone;
+    
+    // 버튼 스타일 조정 (비활성화 시 흐리게)
+    saveBtn.style.opacity = isDone ? "0.5" : "1";
+    deleteBtn.style.opacity = isDone ? "0.5" : "1";
+
     approveBtn.onclick = null;
     
     const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
@@ -151,16 +166,15 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
         memoStatus.classList.remove("hidden");
     } else {
-        memoDisplay.innerText = "작성된 메모가 없습니다.";
+        memoDisplay.innerText = isDone ? "조판 완료로 인해 메모 작성이 불가능합니다." : "작성된 메모가 없습니다.";
         memoStatus.classList.add("hidden");
     }
 
-   if (sianStatus === "done") {
-    // DB값이 'done'이면 새로고침해도 무조건 이쪽으로 들어옵니다.
-    approveBtn.innerText = "조판완료";
-    approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-    approveBtn.onclick = null; // 클릭 방지
-} else if (hasMemo) {
+    if (isDone) {
+        approveBtn.innerText = "조판완료";
+        approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
+        approveBtn.onclick = null;
+    } else if (hasMemo) {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
         approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
@@ -170,9 +184,8 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         approveBtn.onclick = async () => {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
                 await updateDoc(doc(db, "boards", boardId), { sian: "done" });
-                approveBtn.innerText = "조판완료";
-                approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-                approveBtn.onclick = null;
+                // 상태 변경 후 즉시 상태 갱신
+                await checkMemoAndSetButton(boardId, "done");
                 alert("조판완료 처리되었습니다.");
             }
         };
