@@ -350,35 +350,30 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 1. 이미지전호가리개 이미지가 떠 있는 동안 가릴 영역을 생성 (이미지 컨테이너+번호+버튼 포함)
-const maskLayer = document.createElement("div");
-maskLayer.id = "top-mask-layer";
-// 영역의 크기와 위치는 CSS로 조정 가능하며, 현재는 상단 영역을 덮도록 설정
-maskLayer.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 600px; z-index: 100; display: none; background-size: cover; background-position: center; pointer-events: none;";
-maskLayer.style.backgroundImage = "url('https://sowonnamoo1005.cafe24.com/web/1new/가려지는이미지.jpg')";
-
-// 2. 부모 컨테이너(상단 영역)에 마스크 추가
-// #image-container를 감싸고 있는 요소나, detail-image div를 활용합니다.
-const detailImageDiv = document.getElementById("detail-image");
-if (detailImageDiv) {
-    detailImageDiv.style.position = "relative";
-    detailImageDiv.appendChild(maskLayer);
-}
-
-// 3. 댓글(메모)과는 완전히 별도로, 상단 영역만 감시
+// 맨 아래 가리기 로직 교체
 setInterval(() => {
     const loadingMsg = document.getElementById('loading-msg');
-    const mask = document.getElementById('top-mask-layer');
+    const container = document.getElementById('image-container'); // 실제 이미지 박스
     
-    if (!mask) return;
+    if (!container) return;
 
-    // preview_v1.jpg(제작중)가 보일 때만 가리기
+    // 가리개 요소가 없으면 생성
+    let mask = document.getElementById('top-mask-layer');
+    if (!mask) {
+        mask = document.createElement("div");
+        mask.id = "top-mask-layer";
+        // 위치를 부모와 정확히 일치시킴
+        mask.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 999; display: none; background-image: url('https://sowonnamoo1005.cafe24.com/web/1new/가려지는이미지.jpg'); background-size: cover; background-position: center;";
+        container.style.position = "relative"; // 부모가 relative여야 가리개가 위치함
+        container.appendChild(mask);
+    }
+
+    // 제작중 이미지(loading-msg)가 보일 때만 가리기
     if (loadingMsg && loadingMsg.style.display !== 'none') {
         mask.style.display = "block";
     } else {
         mask.style.display = "none";
     }
 }, 500);
-
 
 
