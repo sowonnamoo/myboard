@@ -227,23 +227,19 @@ window.viewDetail = async function(id) {
                 const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
                 const timestamp = new Date().getTime();
 
-         if (!window.imgVersion) window.imgVersion = 1;
-const version = window.imgVersion++;
-const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
-
-dImage.innerHTML = `
-<div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
-    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
-    <a href="water.html?url=${encodeURIComponent(imgUrl + '?' + version)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
-        <img src="${imgUrl}?${version}" alt="시안 이미지" 
-             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
-             onload="document.getElementById('loading-msg').style.display='none';"
-             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
-    </a>
-</div>
-<div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
-    재구입 이미지번호 : ${finalCode}
-</div>`;
+               dImage.innerHTML = `
+                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+                        <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
+                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                             onload="document.getElementById('loading-msg').style.display='none';"
+                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+                    </a>
+                </div>
+                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+                    재구입 이미지번호 : ${finalCode}
+                </div>`;
             }
         } else {
             alert("비밀번호가 일치하지 않습니다.");
