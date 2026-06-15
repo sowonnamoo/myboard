@@ -170,27 +170,29 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoStatus.classList.add("hidden");
     }
 
-    if (isDone) {
-        approveBtn.innerText = "조판완료";
-        approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-        approveBtn.onclick = null;
-    } else if (hasMemo) {
-        approveBtn.innerText = "인쇄승인";
-        approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
-        approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
-    } else {
+} else {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
         approveBtn.onclick = async () => {
+            // 1. 먼저 시안 이미지 로드 상태 체크
+            const loadingMsg = document.getElementById('loading-msg');
+            if (loadingMsg && loadingMsg.style.display !== 'none') {
+                return alert("아직 시안 이미지가 등록되지 않았습니다.");
+            }
+
+            // 2. 그다음 메모 작성 여부 체크
+            if (hasMemo) {
+                return alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
+            }
+
+            // 3. 둘 다 통과하면 승인 진행
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
                 await updateDoc(doc(db, "boards", boardId), { sian: "done" });
-                // 상태 변경 후 즉시 상태 갱신
                 await checkMemoAndSetButton(boardId, "done");
                 alert("조판완료 처리되었습니다.");
             }
         };
     }
-}
 // 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
