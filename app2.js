@@ -344,3 +344,44 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
     // 2. (핵심) 조판 완료로 변경된 상태를 즉시 UI(레이어)에 반영
     updateOverlayState(sianStatus);
 };
+
+
+
+
+
+JavaScript
+// 맨 아래에 추가
+// 재구입 이미지번호 옆에 가리기용 앵커 추가
+const infoDiv = document.querySelector('div[style*="재구입 이미지번호"]');
+if (infoDiv) {
+    const anchor = document.createElement('a');
+    anchor.href = "#";
+    anchor.innerText = " [상세정보]";
+    anchor.style.marginLeft = "10px";
+    anchor.style.color = "blue";
+    anchor.onclick = (e) => { e.preventDefault(); /* 원하는 기능 */ };
+    infoDiv.appendChild(anchor);
+}
+
+// 1초마다 체크하여 preview_v1.jpg 가 떠있으면 가려주는 함수
+setInterval(() => {
+    const loadingMsg = document.getElementById('loading-msg');
+    const overlay = document.getElementById('done-overlay'); // 기존 가리개 ID 활용
+    
+    if (!overlay) return;
+
+    // 제작중 이미지가 보이는 상태이면 가리개(overlay)를 무조건 표시
+    if (loadingMsg && loadingMsg.style.display !== 'none') {
+        overlay.classList.remove('hidden');
+    } 
+    // 조판 완료가 아닌데 제작중 이미지가 사라졌다면 가리개 해제
+    else if (document.getElementById('approve-btn')?.innerText !== '조판완료') {
+        overlay.classList.add('hidden');
+    }
+}, 1000);
+
+
+
+
+
+
