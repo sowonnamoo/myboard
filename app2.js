@@ -125,7 +125,7 @@ window.viewDetail = async function(id) {
             document.getElementById("view-detail").classList.remove("hidden");
 
             // 2. 메모 체크를 위한 별도 함수 호출 (버튼 제어까지 여기서 처리)
-            await checkMemoAndSetButton(id, data.status, data.sian);
+            await checkMemoAndSetButton(id, data.status);
 
             // ... (이미지 및 타이틀 로드 로직)
         } else {
@@ -136,7 +136,7 @@ window.viewDetail = async function(id) {
 };
 
 // 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
-async function checkMemoAndSetButton(boardId, sianStatus) {
+async function checkMemoAndSetButton(boardId, status) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
@@ -145,8 +145,8 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     
     const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
     const snapshot = await getDocs(q);
-    const hasMemo = !snapshot.empty;
 
+    const hasMemo = !snapshot.empty;
     if (hasMemo) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
         memoStatus.classList.remove("hidden");
@@ -155,7 +155,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoStatus.classList.add("hidden");
     }
 
-    if (sianStatus === "done") {
+    if (status === "done") {
         approveBtn.innerText = "조판완료";
         approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
     } else if (hasMemo) {
@@ -167,7 +167,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
         approveBtn.onclick = async () => {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                await updateDoc(doc(db, "boards", boardId), { sian: "done" });
+                await updateDoc(doc(db, "boards", boardId), { status: "done" });
                 approveBtn.innerText = "조판완료";
                 approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
                 approveBtn.onclick = null;
@@ -176,6 +176,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         };
     }
 }
+
 // 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
@@ -205,7 +206,7 @@ window.viewDetail = async function(id) {
             document.getElementById("view-detail").classList.remove("hidden");
 
             // 1. 메모 및 버튼 제어 먼저 수행
-            await checkMemoAndSetButton(id, data.status, data.sian);
+            await checkMemoAndSetButton(id, data.status);
 
             // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
             const dTitle = document.getElementById("detail-title");
