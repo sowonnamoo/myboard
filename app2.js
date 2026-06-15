@@ -350,27 +350,29 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-
-
-// [최종 코드] '재구입' 버튼만 콕 집어 숨기기
-setInterval(() => {
-    const loadingMsg = document.getElementById('loading-msg');
+// 1. 재구입 버튼 상태를 조판 상태(sian)에 따라 제어하는 함수
+function toggleReorderButton(sianStatus) {
+    const allButtons = Array.from(document.querySelectorAll('button'));
+    const reOrderBtn = allButtons.find(btn => btn.innerText.includes('재구입'));
     
-    // '재구입'이라는 텍스트가 들어있는 모든 버튼을 찾음
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const reOrderBtn = buttons.find(btn => btn.innerText.includes('재구입'));
-
     if (reOrderBtn) {
-        // 프리뷰(제작중)가 보이면 숨김 (visibility: hidden은 영역 유지)
-        if (loadingMsg && loadingMsg.style.display !== 'none') {
-            reOrderBtn.style.visibility = "hidden";
-            reOrderBtn.style.pointerEvents = "none";
-        } else {
+        // 조판 완료(done)면 버튼 보임, 아니면 숨김 (visibility 사용으로 레이아웃 유지)
+        if (sianStatus === "done") {
             reOrderBtn.style.visibility = "visible";
             reOrderBtn.style.pointerEvents = "auto";
+        } else {
+            reOrderBtn.style.visibility = "hidden";
+            reOrderBtn.style.pointerEvents = "none";
         }
     }
-}, 500);
+}
+
+// 2. checkMemoAndSetButton이 실행될 때마다 버튼 상태를 업데이트
+const originalCheckMemo = checkMemoAndSetButton;
+checkMemoAndSetButton = async function(boardId, sianStatus) {
+    await originalCheckMemo(boardId, sianStatus);
+    toggleReorderButton(sianStatus);
+};
 
 
 
