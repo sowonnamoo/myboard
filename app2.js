@@ -125,7 +125,7 @@ window.viewDetail = async function(id) {
             document.getElementById("view-detail").classList.remove("hidden");
 
             // 2. 메모 체크를 위한 별도 함수 호출 (버튼 제어까지 여기서 처리)
-            await checkMemoAndSetButton(id, data.status);
+            await checkMemoAndSetButton(id, data.status, data.sian);
 
             // ... (이미지 및 타이틀 로드 로직)
         } else {
@@ -136,7 +136,7 @@ window.viewDetail = async function(id) {
 };
 
 // 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
-async function checkMemoAndSetButton(boardId, status) {
+async function checkMemoAndSetButton(boardId, status, sianStatus) { // sianStatus 인자 추가
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
@@ -155,7 +155,7 @@ async function checkMemoAndSetButton(boardId, status) {
         memoStatus.classList.add("hidden");
     }
 
-    if (status === "done") {
+   if (sianStatus === "done") {
         approveBtn.innerText = "조판완료";
         approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
     } else if (hasMemo) {
@@ -165,13 +165,17 @@ async function checkMemoAndSetButton(boardId, status) {
     } else {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
-        approveBtn.onclick = async () => {
+  approveBtn.onclick = async () => {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                await updateDoc(doc(db, "boards", boardId), { status: "done" });
+                // [수정된 부분] status: "done" 대신 sian: "done" 필드를 추가/업데이트합니다.
+                await updateDoc(doc(db, "boards", boardId), { sian: "done" });
+                
                 approveBtn.innerText = "조판완료";
                 approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
                 approveBtn.onclick = null;
                 alert("조판완료 처리되었습니다.");
+            }
+        };
             }
         };
     }
@@ -206,7 +210,7 @@ window.viewDetail = async function(id) {
             document.getElementById("view-detail").classList.remove("hidden");
 
             // 1. 메모 및 버튼 제어 먼저 수행
-            await checkMemoAndSetButton(id, data.status);
+            await checkMemoAndSetButton(id, data.status, data.sian);
 
             // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
             const dTitle = document.getElementById("detail-title");
