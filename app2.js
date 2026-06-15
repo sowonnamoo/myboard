@@ -136,7 +136,7 @@ window.viewDetail = async function(id) {
 };
 
 // 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
-async function checkMemoAndSetButton(boardId, status, sianStatus) { // sianStatus 인자 추가
+async function checkMemoAndSetButton(boardId, sianStatus) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
@@ -145,8 +145,8 @@ async function checkMemoAndSetButton(boardId, status, sianStatus) { // sianStatu
     
     const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
     const snapshot = await getDocs(q);
-
     const hasMemo = !snapshot.empty;
+
     if (hasMemo) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
         memoStatus.classList.remove("hidden");
@@ -155,7 +155,7 @@ async function checkMemoAndSetButton(boardId, status, sianStatus) { // sianStatu
         memoStatus.classList.add("hidden");
     }
 
-   if (sianStatus === "done") {
+    if (sianStatus === "done") {
         approveBtn.innerText = "조판완료";
         approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
     } else if (hasMemo) {
@@ -165,22 +165,17 @@ async function checkMemoAndSetButton(boardId, status, sianStatus) { // sianStatu
     } else {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
-  approveBtn.onclick = async () => {
+        approveBtn.onclick = async () => {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                // [수정된 부분] status: "done" 대신 sian: "done" 필드를 추가/업데이트합니다.
                 await updateDoc(doc(db, "boards", boardId), { sian: "done" });
-                
                 approveBtn.innerText = "조판완료";
                 approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
                 approveBtn.onclick = null;
                 alert("조판완료 처리되었습니다.");
             }
         };
-            }
-        };
     }
 }
-
 // 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
