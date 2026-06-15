@@ -265,9 +265,10 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
     });
     input.value = "";
     
-    // 수정된 부분: 최신 sian 데이터를 다시 읽어서 버튼 갱신
-    const snap = await getDoc(doc(db, "boards", currentViewId));
-    await checkMemoAndSetButton(currentViewId, snap.data().sian);
+ // 메모가 저장되었으니, 혹시라도 덮여있던 이미지가 있다면 숨김 처리
+    const overlay = document.getElementById("done-overlay");
+    if (overlay) overlay.classList.add("hidden");
+    
     alert("메모가 저장되었습니다.");
 });
 
