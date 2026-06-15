@@ -125,7 +125,7 @@ window.viewDetail = async function(id) {
             document.getElementById("view-detail").classList.remove("hidden");
 
             // 2. 메모 체크를 위한 별도 함수 호출 (버튼 제어까지 여기서 처리)
-await checkMemoAndSetButton(id, data.sian);
+await checkMemoAndSetButton(id, data.sian || "start");
             
             // ... (이미지 및 타이틀 로드 로직)
         } else {
@@ -155,12 +155,14 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoStatus.classList.add("hidden");
     }
 
-   if (sianStatus === "done") {
-    // DB값이 'done'이면 새로고침해도 무조건 이쪽으로 들어옵니다.
+if (sianStatus === "done") {
+    // DB값이 'done'이면 이쪽으로 들어옵니다.
     approveBtn.innerText = "조판완료";
     approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-    approveBtn.onclick = null; // 클릭 방지
-} else if (hasMemo) {
+    approveBtn.onclick = null;
+} else {
+    // 이 'else' 부분이 sianStatus가 "start"이거나 값이 없는(undefined) 모든 글을 처리합니다.
+    if (hasMemo) {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
         approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
