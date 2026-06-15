@@ -273,14 +273,13 @@ document.getElementById("delete-memo-btn").addEventListener("click", async () =>
     if (!currentViewId) return;
     const q = query(collection(db, "boards", currentViewId, "hanjool"));
     const snapshot = await getDocs(q);
-   const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
     
     // 수정된 부분: 최신 sian 데이터를 다시 읽어서 버튼 갱신
     const snap = await getDoc(doc(db, "boards", currentViewId));
     await checkMemoAndSetButton(currentViewId, snap.data().sian);
     alert("메모가 삭제되었습니다.");
-});
-});
+}); // <-- 이벤트 리스너를 닫는 괄호는 딱 여기까지만 있어야 합니다.
 
 loadData();
