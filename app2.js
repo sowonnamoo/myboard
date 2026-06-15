@@ -168,7 +168,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     } else {
         memoDisplay.innerText = isDone ? "조판 완료로 인해 메모 작성이 불가능합니다." : "작성된 메모가 없습니다.";
         memoStatus.classList.add("hidden");
-    }
+
 
   if (isDone) {
         approveBtn.innerText = "조판완료";
@@ -198,7 +198,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
             }
         };
     }
-}
+
 // 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
