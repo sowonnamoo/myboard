@@ -155,10 +155,12 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoStatus.classList.add("hidden");
     }
 
-    if (sianStatus === "done") {
-        approveBtn.innerText = "조판완료";
-        approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
-    } else if (hasMemo) {
+   if (sianStatus === "done") {
+    // DB값이 'done'이면 새로고침해도 무조건 이쪽으로 들어옵니다.
+    approveBtn.innerText = "조판완료";
+    approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
+    approveBtn.onclick = null; // 클릭 방지
+} else if (hasMemo) {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
         approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
@@ -198,15 +200,15 @@ window.viewDetail = async function(id) {
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
         if (inputVal === passToCompare) {
-            modal.classList.add("hidden");
-            currentViewId = id;
+    modal.classList.add("hidden");
+    currentViewId = id;
 
-            document.getElementById("view-list").classList.add("hidden");
-            document.getElementById("view-detail").classList.remove("hidden");
-
+    document.getElementById("view-list").classList.add("hidden");
+    document.getElementById("view-detail").classList.remove("hidden");
+            
             // 1. 메모 및 버튼 제어 먼저 수행
-            await checkMemoAndSetButton(id, data.status);
-
+await checkMemoAndSetButton(id, data.sian);
+            
             // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
