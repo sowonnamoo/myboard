@@ -352,7 +352,7 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// === 수정된 체크 및 버튼 제어 통합 함수 ===
+// 재구입제어
 const originalCheckMemo = checkMemoAndSetButton;
 
 checkMemoAndSetButton = async function(boardId, sianStatus) {
