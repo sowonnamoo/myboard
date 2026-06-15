@@ -350,3 +350,25 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
+
+// [최종 코드] '재구입' 버튼만 콕 집어 숨기기
+setInterval(() => {
+    const loadingMsg = document.getElementById('loading-msg');
+    
+    // '재구입'이라는 텍스트가 들어있는 모든 버튼을 찾음
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const reOrderBtn = buttons.find(btn => btn.innerText.includes('재구입'));
+
+    if (reOrderBtn) {
+        // 프리뷰(제작중)가 보이면 숨김 (visibility: hidden은 영역 유지)
+        if (loadingMsg && loadingMsg.style.display !== 'none') {
+            reOrderBtn.style.visibility = "hidden";
+            reOrderBtn.style.pointerEvents = "none";
+        } else {
+            reOrderBtn.style.visibility = "visible";
+            reOrderBtn.style.pointerEvents = "auto";
+        }
+    }
+}, 500);
+
+
