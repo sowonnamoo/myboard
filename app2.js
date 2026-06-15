@@ -347,10 +347,6 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-
-
-JavaScript
-// 맨 아래에 추가
 // 재구입 이미지번호 옆에 가리기용 앵커 추가
 const infoDiv = document.querySelector('div[style*="재구입 이미지번호"]');
 if (infoDiv) {
