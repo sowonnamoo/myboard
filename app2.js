@@ -341,38 +341,5 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// [핵심 추가] 데이터 로드 시 sian 필드가 없으면 "start"로 즉시 자동 변환하는 래퍼
-const originalLoadData = loadData;
-loadData = async function() {
-    await originalLoadData();
-    
-    // 로드된 allOrders 데이터 중 sian 값이 없는 것들을 찾아 즉시 "start"로 보정
-    for (let order of allOrders) {
-        if (!order.sian) {
-            order.sian = "start";
-        }
-    }
-    // 보정된 데이터로 테이블을 다시 그립니다.
-    renderTable(allOrders);
-};
-
-// [추가] 상세 보기 진입 시 sian 값이 없으면 "start"로 강제 세팅하는 안전 장치
-const originalViewDetail = window.viewDetail;
-window.viewDetail = async function(id) {
-    // 오리지널 함수를 실행하여 데이터가 로드된 후
-    await originalViewDetail(id);
-    
-    // 현재 보고 있는 게시글의 sian 값이 없다면 "start"로 취급
-    const snap = await getDoc(doc(db, "boards", id));
-    const data = snap.data();
-    if (!data.sian) {
-        // 화면 로직상에서만 강제로 "start"를 넘겨줌 (DB 데이터는 건드리지 않음)
-        await checkMemoAndSetButton(id, "start");
-    }
-};
-
-
-
-
 
 
