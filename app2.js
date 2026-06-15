@@ -245,22 +245,23 @@ await checkMemoAndSetButton(id, data.sian);
                 const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
                 const rawPhone = data.phone || "00000000000";
                 const phonePrefix = rawPhone.slice(0, -2);
-                const finalCode = phonePrefix + timeCode;
-                const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
-                const timestamp = new Date().getTime();
+               const finalCode = phonePrefix + timeCode;
+const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+const isDone = (data.sian === "done"); // 조판 완료 여부 확인
 
-               dImage.innerHTML = `
-                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
-                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
-                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
-                        <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
-                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
-                             onload="document.getElementById('loading-msg').style.display='none';"
-                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
-                    </a>
-                </div>
-                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
-                    재구입 이미지번호 : ${finalCode}
+dImage.innerHTML = `
+    <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+        <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+        <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + new Date().getTime())}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+            <img src="${imgUrl}?t=${new Date().getTime()}" alt="시안 이미지" 
+                 onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                 onload="document.getElementById('loading-msg').style.display='none';"
+                 style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+        </a>
+    </div>
+    <div id="re-order-info" style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px; ${isDone ? '' : 'display: none;'}">
+        재구입 이미지번호 : ${finalCode}
+    </div>`;
                 </div>`;
             }
         } else {
@@ -338,9 +339,19 @@ const originalCheckMemo = checkMemoAndSetButton;
  * 원래의 메모 및 버튼 제어 로직을 실행한 후, 즉시 레이어 상태를 업데이트합니다.
  */
 checkMemoAndSetButton = async function(boardId, sianStatus) {
-    // 1. 원래의 메모 확인 및 버튼 세팅 로직을 비동기로 실행
+    // 1. 기존 로직 실행
     await originalCheckMemo(boardId, sianStatus);
     
-    // 2. (핵심) 조판 완료로 변경된 상태를 즉시 UI(레이어)에 반영
+    // 2. 조판 완료 시 레이어 덮기 (기존)
     updateOverlayState(sianStatus);
+    
+    // 3. 재구입 이미지번호 영역 보이기/숨기기 (추가)
+    const reOrderInfo = document.getElementById("re-order-info");
+    if (reOrderInfo) {
+        if (sianStatus === "done") {
+            reOrderInfo.style.display = "block"; // 조판 완료 시 표시
+        } else {
+            reOrderInfo.style.display = "none";  // 그 외에는 숨김
+        }
+    }
 };
