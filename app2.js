@@ -347,31 +347,38 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 재구입 이미지번호 옆에 가리기용 앵커 추가
-const infoDiv = document.querySelector('div[style*="재구입 이미지번호"]');
-if (infoDiv) {
+// 1. 재구입 이미지번호 텍스트 근처(재구입의 '재' 부근)에 상세정보 앵커 추가
+const infoContainer = Array.from(document.querySelectorAll('div')).find(div => div.innerText.includes('재구입 이미지번호'));
+if (infoContainer) {
     const anchor = document.createElement('a');
     anchor.href = "#";
-    anchor.innerText = " [상세정보]";
-    anchor.style.marginLeft = "10px";
+    anchor.innerText = "[상세정보]";
+    anchor.style.marginRight = "10px";
     anchor.style.color = "blue";
-    anchor.onclick = (e) => { e.preventDefault(); /* 원하는 기능 */ };
-    infoDiv.appendChild(anchor);
+    anchor.style.cursor = "pointer";
+    anchor.onclick = (e) => { e.preventDefault(); /* 원하시는 기능 추가 */ };
+    
+    // 텍스트 내용의 가장 앞에 삽입 (재구입의 '재' 부근)
+    infoContainer.prepend(anchor);
 }
 
-// 1초마다 체크하여 preview_v1.jpg 가 떠있으면 가려주는 함수
+// 2. preview_v1.jpg(제작중) 노출 시 done-overlay(가리개.jpg) 표시
 setInterval(() => {
     const loadingMsg = document.getElementById('loading-msg');
-    const overlay = document.getElementById('done-overlay'); // 기존 가리개 ID 활용
-    
+    const overlay = document.getElementById('done-overlay');
+    const approveBtn = document.getElementById('approve-btn');
+
     if (!overlay) return;
 
-    // 제작중 이미지가 보이는 상태이면 가리개(overlay)를 무조건 표시
+    // preview_v1.jpg가 보여지고 있다면 가리개 표시
     if (loadingMsg && loadingMsg.style.display !== 'none') {
         overlay.classList.remove('hidden');
+        // 필요 시 배경 이미지 강제 설정
+        overlay.style.backgroundImage = "url('https://sowonnamoo1005.cafe24.com/web/1new/가려지는이미지.jpg')";
+        overlay.style.backgroundSize = "cover";
     } 
-    // 조판 완료가 아닌데 제작중 이미지가 사라졌다면 가리개 해제
-    else if (document.getElementById('approve-btn')?.innerText !== '조판완료') {
+    // 조판완료 상태가 아닐 때만 가리개 숨김
+    else if (approveBtn && approveBtn.innerText !== '조판완료') {
         overlay.classList.add('hidden');
     }
 }, 1000);
