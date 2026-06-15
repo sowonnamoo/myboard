@@ -350,30 +350,5 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 맨 아래 가리기 로직 교체
-setInterval(() => {
-    const loadingMsg = document.getElementById('loading-msg');
-    const container = document.getElementById('image-container'); // 실제 이미지 박스
-    
-    if (!container) return;
-
-    // 가리개 요소가 없으면 생성
-    let mask = document.getElementById('top-mask-layer');
-    if (!mask) {
-        mask = document.createElement("div");
-        mask.id = "top-mask-layer";
-        // 위치를 부모와 정확히 일치시킴
-        mask.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 999; display: none; background-image: url('https://sowonnamoo1005.cafe24.com/web/1new/가려지는이미지.jpg'); background-size: cover; background-position: center;";
-        container.style.position = "relative"; // 부모가 relative여야 가리개가 위치함
-        container.appendChild(mask);
-    }
-
-    // 제작중 이미지(loading-msg)가 보일 때만 가리기
-    if (loadingMsg && loadingMsg.style.display !== 'none') {
-        mask.style.display = "block";
-    } else {
-        mask.style.display = "none";
-    }
-}, 500);
 
 
