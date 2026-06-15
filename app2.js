@@ -350,25 +350,36 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
+// 재구입
 
-// [최종 코드] '재구입' 버튼만 콕 집어 숨기기
-setInterval(() => {
-    const loadingMsg = document.getElementById('loading-msg');
+const originalCheckMemo = checkMemoAndSetButton;
+
+checkMemoAndSetButton = async function(boardId, sianStatus) {
+    // 1. 기존의 메모 확인 및 버튼 세팅 로직 실행
+    await originalCheckMemo(boardId, sianStatus);
     
-    // '재구입'이라는 텍스트가 들어있는 모든 버튼을 찾음
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const reOrderBtn = buttons.find(btn => btn.innerText.includes('재구입'));
-
+    // 2. 조판 완료 시 레이어(가리개) 처리
+    updateOverlayState(sianStatus);
+    
+    // 3. 재구입 버튼 제어 (조판 완료 상태일 때만 표시)
+    const allButtons = Array.from(document.querySelectorAll('button'));
+    const reOrderBtn = allButtons.find(btn => btn.innerText.includes('재구입'));
+    
     if (reOrderBtn) {
-        // 프리뷰(제작중)가 보이면 숨김 (visibility: hidden은 영역 유지)
-        if (loadingMsg && loadingMsg.style.display !== 'none') {
-            reOrderBtn.style.visibility = "hidden";
-            reOrderBtn.style.pointerEvents = "none";
+        // sianStatus가 'done'이면 표시, 아니면 숨김
+        reOrderBtn.style.display = (sianStatus === "done") ? "inline-block" : "none";
+    }
+};
+
+// 레이어 상태 업데이트 함수
+function updateOverlayState(sianStatus) {
+    const overlay = document.getElementById("done-overlay");
+    if (overlay) {
+        // 상태가 'done'이면 레이어를 표시하여 메모장 가림
+        if (sianStatus === "done") {
+            overlay.classList.remove("hidden");
         } else {
-            reOrderBtn.style.visibility = "visible";
-            reOrderBtn.style.pointerEvents = "auto";
+            overlay.classList.add("hidden");
         }
     }
-}, 500);
-
-
+}
