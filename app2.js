@@ -177,7 +177,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     } else if (hasMemo) {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
-        approveBtn.onclick = () => alert("메모가 작성된 상태에서는 인쇄승인이 불가능합니다.");
+        approveBtn.onclick = () => alert("수정내용이 작성된 상태에서는 인쇄승인이 불가능합니다. 삭제버튼 클릭후 글을 삭제해주세요.");
     } else {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
