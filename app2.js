@@ -348,24 +348,26 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// [하단 추가용] preview_v1.jpg 노출 시 재구입 정보 영역 숨김 처리
+// [최종 수정 코드] 텍스트와 버튼이 포함된 영역 전체를 투명화
 setInterval(() => {
     const loadingMsg = document.getElementById('loading-msg');
     
-    // '재구입 이미지번호'를 포함하고 있는 텍스트 영역을 찾음
-    const infoContainer = Array.from(document.querySelectorAll('div')).find(div => 
+    // 재구입 번호와 버튼이 포함된 영역을 찾음 (재구입 이미지번호가 들어있는 div를 타겟팅)
+    // 버튼을 별도로 감싸고 있다면 해당 영역의 클래스나 ID를 명시해도 됩니다.
+    const targetAreas = Array.from(document.querySelectorAll('div')).filter(div => 
         div.innerText.includes('재구입 이미지번호')
     );
 
-    if (infoContainer) {
-        // loading-msg(preview_v1.jpg)가 보이면 숨기고, 안 보이면 다시 보이게 함
+    targetAreas.forEach(area => {
+        // 프리뷰(제작중)가 보이면 투명하게, 아니면 다시 선명하게
         if (loadingMsg && loadingMsg.style.display !== 'none') {
-            infoContainer.style.visibility = "hidden";
+            area.style.opacity = "0"; 
+            area.style.pointerEvents = "none"; // 클릭/버튼 기능 차단
         } else {
-            infoContainer.style.visibility = "visible";
+            area.style.opacity = "1";
+            area.style.pointerEvents = "auto";
         }
-    }
+    });
 }, 500);
-
 
 
