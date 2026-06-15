@@ -338,20 +338,17 @@ const originalCheckMemo = checkMemoAndSetButton;
  * checkMemoAndSetButton 함수를 재정의합니다.
  * 원래의 메모 및 버튼 제어 로직을 실행한 후, 즉시 레이어 상태를 업데이트합니다.
  */
+const originalCheckMemo = checkMemoAndSetButton;
+
 checkMemoAndSetButton = async function(boardId, sianStatus) {
-    // 1. 기존 로직 실행
+    // 1. 원래의 로직 실행
     await originalCheckMemo(boardId, sianStatus);
     
-    // 2. 조판 완료 시 레이어 덮기 (기존)
+    // 2. 조판 완료 시 레이어 덮기
     updateOverlayState(sianStatus);
     
-    // 3. 재구입 이미지번호 영역 보이기/숨기기 (추가)
+    // 3. 재구입 이미지번호 영역 보이기/숨기기
     const reOrderInfo = document.getElementById("re-order-info");
     if (reOrderInfo) {
-        if (sianStatus === "done") {
-            reOrderInfo.style.display = "block"; // 조판 완료 시 표시
-        } else {
-            reOrderInfo.style.display = "none";  // 그 외에는 숨김
-        }
+        reOrderInfo.style.display = (sianStatus === "done") ? "block" : "none";
     }
-};
