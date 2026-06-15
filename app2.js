@@ -136,7 +136,7 @@ window.viewDetail = async function(id) {
 };
 
 // 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
-async function checkMemoAndSetButton(boardId, status) {
+1 async function checkMemoAndSetButton(boardId, status) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
@@ -155,7 +155,7 @@ async function checkMemoAndSetButton(boardId, status) {
         memoStatus.classList.add("hidden");
     }
 
-    if (status === "done") {
+   if (status === "done") {
         approveBtn.innerText = "조판완료";
         approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
     } else if (hasMemo) {
@@ -167,7 +167,7 @@ async function checkMemoAndSetButton(boardId, status) {
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
         approveBtn.onclick = async () => {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                await updateDoc(doc(db, "boards", boardId), { status: "done" });
+                // [수정됨] updateDoc 관련 한 줄만 삭제되었습니다. 
                 approveBtn.innerText = "조판완료";
                 approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
                 approveBtn.onclick = null;
@@ -227,19 +227,23 @@ window.viewDetail = async function(id) {
                 const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
                 const timestamp = new Date().getTime();
 
-               dImage.innerHTML = `
-                <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
-                    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
-                    <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
-                        <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
-                             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
-                             onload="document.getElementById('loading-msg').style.display='none';"
-                             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
-                    </a>
-                </div>
-                <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
-                    재구입 이미지번호 : ${finalCode}
-                </div>`;
+         if (!window.imgVersion) window.imgVersion = 1;
+const version = window.imgVersion++;
+const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+
+dImage.innerHTML = `
+<div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+    <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+    <a href="water.html?url=${encodeURIComponent(imgUrl + '?' + version)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+        <img src="${imgUrl}?${version}" alt="시안 이미지" 
+             onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+             onload="document.getElementById('loading-msg').style.display='none';"
+             style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+    </a>
+</div>
+<div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px;">
+    재구입 이미지번호 : ${finalCode}
+</div>`;
             }
         } else {
             alert("비밀번호가 일치하지 않습니다.");
