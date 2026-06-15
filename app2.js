@@ -295,18 +295,31 @@ loadData();
 // app2.js 맨 마지막에 추가
 function updateOverlayState(sianStatus) {
     const overlay = document.getElementById("done-overlay");
-    if (!overlay) return;
+    if (!overlay) {
+        console.error("#done-overlay 요소를 찾을 수 없습니다.");
+        return;
+    }
     
+    // 상태가 'done'이면 레이어를 표시하여 메모장을 가립니다.
     if (sianStatus === "done") {
-        overlay.classList.remove("hidden"); // 던일 때 레이어 보임
+        overlay.classList.remove("hidden"); // 레이어 보임 (메모장 가림)
     } else {
-        overlay.classList.add("hidden");    // 던 아닐 때 레이어 숨김
+        overlay.classList.add("hidden");    // 레이어 숨김 (메모장 보임)
     }
 }
 
-// 기존 함수들을 수정하지 않고, 상태가 바뀔 때 레이어를 동기화
+// === 기존 함수를 수정하지 않고, 상태 변경 시 레이어를 동기화하기 위한 래퍼 구성 ===
+// 원래의 checkMemoAndSetButton 함수를 다른 이름으로 저장합니다.
 const originalCheckMemo = checkMemoAndSetButton;
+
+/**
+ * checkMemoAndSetButton 함수를 재정의합니다.
+ * 원래의 메모 및 버튼 제어 로직을 실행한 후, 즉시 레이어 상태를 업데이트합니다.
+ */
 checkMemoAndSetButton = async function(boardId, sianStatus) {
+    // 1. 원래의 메모 확인 및 버튼 세팅 로직을 비동기로 실행
     await originalCheckMemo(boardId, sianStatus);
+    
+    // 2. (핵심) 조판 완료로 변경된 상태를 즉시 UI(레이어)에 반영
     updateOverlayState(sianStatus);
 };
