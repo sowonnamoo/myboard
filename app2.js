@@ -350,3 +350,50 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
+
+
+// === 수정된 체크 및 버튼 제어 통합 함수 ===
+const originalCheckMemo = checkMemoAndSetButton;
+
+checkMemoAndSetButton = async function(boardId, sianStatus) {
+    // 1. 원래의 메모 확인 및 버튼 세팅 로직을 비동기로 실행
+    await originalCheckMemo(boardId, sianStatus);
+    
+    // 2. 조판 완료 시 레이어(가리개) 처리
+    updateOverlayState(sianStatus);
+    
+    // 3. 재구입 버튼 제어 (자리 유지하면서 보이기/숨기기)
+    const allButtons = Array.from(document.querySelectorAll('button'));
+    const reOrderBtn = allButtons.find(btn => btn.innerText.includes('재구입'));
+    
+    if (reOrderBtn) {
+        // visibility: hidden은 자리는 그대로 두고 내용만 사라지게 합니다.
+        // 버튼이 안 보일 때 클릭도 안 되게 하려면 pointer-events를 같이 씁니다.
+        if (sianStatus === "done") {
+            reOrderBtn.style.visibility = "visible";
+            reOrderBtn.style.pointerEvents = "auto";
+        } else {
+            reOrderBtn.style.visibility = "hidden";
+            reOrderBtn.style.pointerEvents = "none";
+        }
+    }
+};
+
+// 레이어 상태 업데이트 함수
+function updateOverlayState(sianStatus) {
+    const overlay = document.getElementById("done-overlay");
+    if (overlay) {
+        if (sianStatus === "done") {
+            overlay.classList.remove("hidden");
+        } else {
+            overlay.classList.add("hidden");
+        }
+    }
+}
+
+
+
+
+
+
+
