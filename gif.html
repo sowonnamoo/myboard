@@ -2,57 +2,31 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>시안 다운로드</title>
+    <title>시안 미리보기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 우클릭 방지 적용 */
-        body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        /* 포토샵 같은 어두운 배경 스타일 */
+        body { background-color: #333; display: flex; flex-direction: column; align-items: center; }
     </style>
 </head>
-<body class="w-[300px] h-[400px] flex flex-col justify-between items-center p-6 bg-gray-50" oncontextmenu="return false">
-    
-    <div class="flex-grow flex flex-col items-center justify-center">
-<h2 class="text-xl font-bold text-gray-800 mb-2">시안 다운로드</h2>
-<p id="code-display" class="text-sm text-blue-600 font-bold mb-6"></p>
+<body class="min-h-screen p-4">
 
-<script>
-    // URL에서 code 파라미터 가져오기
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    
-    // 가져온 번호를 화면에 표시
-    if(code) {
-        document.getElementById('code-display').innerText = "이미지 번호: " + code;
-    }
+    <div id="viewer" class="bg-white shadow-2xl p-1" style="width: 700px;">
+        <img id="main-image" src="" class="w-full h-auto block" alt="시안이미지">
+    </div>
 
-    // 다운로드 실행 함수
-    function startDownload() {
-        if (!code) {
-            alert("이미지 번호를 찾을 수 없습니다.");
-            return;
+    <div class="fixed bottom-0 w-full bg-gray-800 text-gray-400 text-[10px] py-1 text-center">
+        이미지 번호: <span id="code-text"></span> | © 2026 YOUR COMPANY
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        
+        if (code) {
+            document.getElementById('code-text').innerText = code;
+            document.getElementById('main-image').src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
         }
-        
-        // 이미지 주소 생성
-        const imageUrl = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
-        
-        // 브라우저에서 다운로드를 실행하는 방법
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `${code}.jpg`; // 다운로드될 파일명
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-</script>
-
-<button onclick="startDownload()" class="bg-blue-600 text-white w-full py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md">
-    파일 다운로드
-</button>
-    </div>
-
-    <div class="text-[10px] text-gray-400 text-center">
-        © 2026 YOUR COMPANY. All Rights Reserved.
-    </div>
-
+    </script>
 </body>
 </html>
