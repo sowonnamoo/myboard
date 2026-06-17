@@ -2,50 +2,43 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>상세 이미지 확인</title>
+    <title>웹 캡처 도구</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <style>
-        body { margin: 0; background: #eee; display: flex; flex-direction: column; align-items: center; }
-        #msg { width: 100%; background: #ffeb3b; padding: 10px; text-align: center; font-weight: bold; }
-        #container { position: relative; width: 744px; margin-top: 20px; }
-        #main-img { width: 100%; display: block; }
+        body { background: #333; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        #image-container { max-width: 800px; }
+        img { max-width: 100%; display: block; }
+        .controls { margin-top: 20px; }
+        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <div id="msg">이미지 위에서 '우클릭 -> 다른 이름으로 저장' 하세요! (자동으로 합쳐집니다)</div>
-    
-    <div id="container">
-        <img id="main-img" src="" alt="시안">
-        <canvas id="watermark-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+
+    <div id="image-container">
+        <img id="image" src="https://sowonnamoo1005.cafe24.com/1/파일명.jpg">
+    </div>
+
+    <div class="controls">
+        <button id="crop-btn">선택 영역 저장하기</button>
     </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const img = document.getElementById('main-img');
-        const canvas = document.getElementById('watermark-canvas');
-        const ctx = canvas.getContext('2d');
+        const image = document.getElementById('image');
+        const cropper = new Cropper(image, {
+            viewMode: 1,
+            dragMode: 'crop',
+            autoCropArea: 0.5,
+        });
 
-        img.crossOrigin = "anonymous";
-        img.src = params.get('url');
-
-        img.onload = () => {
-            // 캔버스 크기 맞추기
-            canvas.width = img.offsetWidth;
-            canvas.height = img.offsetHeight;
-
-            // 워터마크 이미지 로드
-            const wm = new Image();
-            wm.crossOrigin = "anonymous";
-            wm.src = 'https://sowonnamoo1005.cafe24.com/web/1new/watermark.png';
-            wm.onload = () => {
-                ctx.globalAlpha = 0.3; // 투명도
-                // 타일 형태로 워터마크 뿌리기
-                for(let i=0; i<canvas.width; i+=200) {
-                    for(let j=0; j<canvas.height; j+=200) {
-                        ctx.drawImage(wm, i, j, 200, 200);
-                    }
-                }
-            };
-        };
+        document.getElementById('crop-btn').addEventListener('click', () => {
+            // 선택한 영역만 캔버스로 만들기
+            const canvas = cropper.getCroppedCanvas();
+            const link = document.createElement('a');
+            link.download = 'capture.jpg';
+            link.href = canvas.toDataURL("image/jpeg");
+            link.click();
+        });
     </script>
 </body>
 </html>
