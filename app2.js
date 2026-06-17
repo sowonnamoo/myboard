@@ -378,9 +378,7 @@ setInterval(() => {
 
 // 시안 이미지 다운로드
 document.getElementById("download-btn").addEventListener("click", () => {
-    // 1. 현재 상세 페이지에서 이미지 번호(finalCode)를 찾습니다.
-    // 기존 로직에서 이미지 번호를 보여주는 부분의 텍스트를 가져오거나, 
-    // 전역 변수에서 가져올 수 있습니다. 여기서는 화면의 텍스트에서 번호를 추출합니다.
+    // 1. 현재 화면의 재구입 이미지 번호 추출
     const codeText = document.getElementById("image-code") ? document.getElementById("image-code").innerText : "";
     const finalCode = codeText.replace("재구입 이미지번호 : ", "").trim();
     
@@ -388,24 +386,6 @@ document.getElementById("download-btn").addEventListener("click", () => {
         return alert("이미지 번호를 찾을 수 없습니다.");
     }
 
-    // 2. 요청하신 이미지 경로 조합
-    const imageUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
-
-    // 3. 브라우저가 직접 다운로드하게 만듭니다. (blob 방식)
-    fetch(imageUrl)
-        .then(response => response.blob())
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `${finalCode}.jpg`; // 저장될 파일명
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            alert("다운로드가 시작되었습니다.");
-        })
-        .catch(err => {
-            alert("다운로드에 실패했습니다. 이미지가 존재하지 않을 수 있습니다.");
-        });
+    // 2. 새 창으로 이동 (download.html에 코드 전달)
+    window.open(`download.html?code=${finalCode}`, '_blank');
 });
