@@ -50,11 +50,27 @@
             <div id="detail-image" class="w-full"></div>
 
             <div id="info-and-actions" class="flex justify-between items-center mt-4 px-2">
-                <div id="image-code" class="text-xs font-bold text-gray-600"></div>
-               <div class="flex gap-2">
-    <button class="bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600">재구입</button>
-<button id="download-btn" class="bg-purple-500 text-white px-6 py-2 rounded font-bold hover:bg-purple-600">시안 다운로드</button>
-                   <button id="approve-btn" class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
+    <div id="image-code" class="text-xs font-bold text-gray-600"></div>
+    
+    <!-- 버튼 그룹 -->
+    <div class="flex gap-2">
+        <button id="download-btn" class="bg-gray-500 text-white px-6 py-2 rounded font-bold hover:bg-gray-600">시안 다운로드</button>
+        <button class="bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600">재구입</button>
+        <button id="approve-btn" class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
+    </div>
+</div>
+
+<!-- 스크립트는 본문 하단(</body> 바로 위)에 위치시키는 것이 가장 좋습니다 -->
+<script>
+    document.getElementById('download-btn').addEventListener('click', function() {
+        if (typeof currentViewId !== 'undefined' && currentViewId) {
+            // 300x400px 크기의 팝업창으로 열기
+            window.open('download.html?id=' + currentViewId, 'DownloadPopup', 'width=300,height=400,scrollbars=no');
+        } else {
+            alert('게시글 정보를 불러오는 중입니다. 잠시만 기다려주세요.');
+        }
+    });
+</script>
 </div>
 </div>
             </div>
