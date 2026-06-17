@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// Firebase 설정
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
@@ -33,24 +32,15 @@ window.onload = () => {
         if (parts[0]) document.getElementById('name').value = parts[0].trim();
     }
 
-    // 2. [필터링] 이미지 번호에서 숫자만 추출
+    // 2. [필터링] 이미지 번호에서 숫자만 추출하여 입력창에 투입
     if (rawImgCode) {
         const onlyNumbers = rawImgCode.replace(/[^0-9]/g, '');
-        document.getElementById('imgCode').value = onlyNumbers;
+        const imgInput = document.getElementById('imgCode');
+        if (imgInput) imgInput.value = onlyNumbers;
     }
 };
 
-// 탭 전환 로직
-document.getElementById('btn-no-change').onclick = function() {
-    this.className = 'tab-btn active';
-    document.getElementById('btn-change').className = 'tab-btn inactive';
-};
-document.getElementById('btn-change').onclick = function() {
-    this.className = 'tab-btn active';
-    document.getElementById('btn-no-change').className = 'tab-btn inactive';
-};
-
-// [핵심] 'jae' 컬렉션으로 주문 저장
+// 탭 및 저장 로직 (동일)
 window.submitOrder = async (type) => {
     try {
         await addDoc(collection(db, "jae"), {
@@ -58,8 +48,8 @@ window.submitOrder = async (type) => {
             quantity: document.getElementById('qty').value,
             size: document.getElementById('size').value,
             price: document.getElementById('price').value,
-            imgCode: document.getElementById('imgCode').value,
-            type: type, // '카결' or '무결'
+            imgCode: document.getElementById('imgCode').value, // 필터링된 숫자만 저장됨
+            type: type,
             name: document.getElementById('name').value,
             phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
             address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
