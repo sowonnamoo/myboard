@@ -2,43 +2,60 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>웹 캡처 도구</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <title>웹 마키툴 캡처</title>
     <style>
-        body { background: #333; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        #image-container { max-width: 800px; }
-        img { max-width: 100%; display: block; }
-        .controls { margin-top: 20px; }
-        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+        #container { position: relative; display: inline-block; cursor: crosshair; }
+        #selection-box { position: absolute; border: 2px dashed #007bff; background: rgba(0, 123, 255, 0.2); display: none; }
+        #main-img { display: block; }
     </style>
 </head>
 <body>
 
-    <div id="image-container">
-        <img id="image" src="https://sowonnamoo1005.cafe24.com/1/파일명.jpg">
-    </div>
-
-    <div class="controls">
-        <button id="crop-btn">선택 영역 저장하기</button>
+    <button id="save-btn" style="padding: 10px 20px; margin-bottom: 10px;">선택 영역만 저장하기</button>
+    <div id="container">
+        <img id="main-img" src="https://sowonnamoo1005.cafe24.com/1/파일명.jpg" alt="시안">
+        <div id="selection-box"></div>
     </div>
 
     <script>
-        const image = document.getElementById('image');
-        const cropper = new Cropper(image, {
-            viewMode: 1,
-            dragMode: 'crop',
-            autoCropArea: 0.5,
-        });
+        const container = document.getElementById('container');
+        const box = document.getElementById('selection-box');
+        let startX, startY, isDragging = false;
+        let rect = { x: 0, y: 0, w: 0, h: 0 };
 
-        document.getElementById('crop-btn').addEventListener('click', () => {
-            // 선택한 영역만 캔버스로 만들기
-            const canvas = cropper.getCroppedCanvas();
+        // 1. 드래그 시작
+        container.onmousedown = (e) => {
+            isDragging = true;
+            startX = e.offsetX; startY = e.offsetY;
+            box.style.left = startX + 'px'; box.style.top = startY + 'px';
+            box.style.display = 'block';
+        };
+
+        // 2. 드래그 중
+        container.onmousemove = (e) => {
+            if (!isDragging) return;
+            rect.w = e.offsetX - startX; rect.h = e.offsetY - startY;
+            box.style.width = rect.w + 'px'; box.style.height = rect.h + 'px';
+        };
+
+        // 3. 드래그 끝
+        container.onmouseup = () => { isDragging = false; };
+
+        // 4. 저장 로직
+        document.getElementById('save-btn').onclick = () => {
+            const img = document.getElementById('main-img');
+            const canvas = document.createElement('canvas');
+            canvas.width = rect.w;
+            canvas.height = rect.h;
+            
+            // 이미지의 선택된 영역만큼만 잘라서 캔버스에 그리기
+            canvas.getContext('2d').drawImage(img, startX, startY, rect.w, rect.h, 0, 0, rect.w, rect.h);
+            
             const link = document.createElement('a');
             link.download = 'capture.jpg';
             link.href = canvas.toDataURL("image/jpeg");
             link.click();
-        });
+        };
     </script>
 </body>
 </html>
