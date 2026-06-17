@@ -1,61 +1,182 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>웹 마키툴 캡처</title>
-    <style>
-        #container { position: relative; display: inline-block; cursor: crosshair; }
-        #selection-box { position: absolute; border: 2px dashed #007bff; background: rgba(0, 123, 255, 0.2); display: none; }
-        #main-img { display: block; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snipping Tool Clone</title>
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:#222;
+}
+
+#screenCanvas{
+    display:block;
+    width:100vw;
+    height:100vh;
+}
+
+#overlay{
+    position:fixed;
+    inset:0;
+    cursor:crosshair;
+}
+
+#selection{
+    position:absolute;
+    border:2px solid #00aaff;
+    background:rgba(0,170,255,0.15);
+    display:none;
+}
+
+#toolbar{
+    position:fixed;
+    top:10px;
+    left:10px;
+    z-index:9999;
+}
+
+button{
+    padding:10px 15px;
+    font-size:14px;
+}
+</style>
 </head>
 <body>
 
-    <button id="save-btn" style="padding: 10px 20px; margin-bottom: 10px;">선택 영역만 저장하기</button>
-    <div id="container">
-        <img id="main-img" src="https://sowonnamoo1005.cafe24.com/1/파일명.jpg" alt="시안">
-        <div id="selection-box"></div>
-    </div>
+<div id="toolbar">
+    <button id="startBtn">화면 선택 시작</button>
+</div>
 
-    <script>
-        const container = document.getElementById('container');
-        const box = document.getElementById('selection-box');
-        let startX, startY, isDragging = false;
-        let rect = { x: 0, y: 0, w: 0, h: 0 };
+<canvas id="screenCanvas"></canvas>
 
-        // 1. 드래그 시작
-        container.onmousedown = (e) => {
-            isDragging = true;
-            startX = e.offsetX; startY = e.offsetY;
-            box.style.left = startX + 'px'; box.style.top = startY + 'px';
-            box.style.display = 'block';
-        };
+<div id="overlay" style="display:none;">
+    <div id="selection"></div>
+</div>
 
-        // 2. 드래그 중
-        container.onmousemove = (e) => {
-            if (!isDragging) return;
-            rect.w = e.offsetX - startX; rect.h = e.offsetY - startY;
-            box.style.width = rect.w + 'px'; box.style.height = rect.h + 'px';
-        };
+<script>
+const startBtn = document.getElementById('startBtn');
+const screenCanvas = document.getElementById('screenCanvas');
+const screenCtx = screenCanvas.getContext('2d');
 
-        // 3. 드래그 끝
-        container.onmouseup = () => { isDragging = false; };
+const overlay = document.getElementById('overlay');
+const selection = document.getElementById('selection');
 
-        // 4. 저장 로직
-        document.getElementById('save-btn').onclick = () => {
-            const img = document.getElementById('main-img');
-            const canvas = document.createElement('canvas');
-            canvas.width = rect.w;
-            canvas.height = rect.h;
-            
-            // 이미지의 선택된 영역만큼만 잘라서 캔버스에 그리기
-            canvas.getContext('2d').drawImage(img, startX, startY, rect.w, rect.h, 0, 0, rect.w, rect.h);
-            
-            const link = document.createElement('a');
-            link.download = 'capture.jpg';
-            link.href = canvas.toDataURL("image/jpeg");
-            link.click();
-        };
-    </script>
+let stream;
+let video;
+
+let startX = 0;
+let startY = 0;
+let endX = 0;
+let endY = 0;
+let selecting = false;
+
+startBtn.addEventListener('click', startCapture);
+
+async function startCapture() {
+
+    stream = await navigator.mediaDevices.getDisplayMedia({
+        video:true
+    });
+
+    video = document.createElement('video');
+    video.srcObject = stream;
+
+    await video.play();
+
+    screenCanvas.width = video.videoWidth;
+    screenCanvas.height = video.videoHeight;
+
+    screenCtx.drawImage(
+        video,
+        0,
+        0,
+        screenCanvas.width,
+        screenCanvas.height
+    );
+
+    overlay.style.display = 'block';
+}
+
+overlay.addEventListener('mousedown', e => {
+
+    selecting = true;
+
+    startX = e.clientX;
+    startY = e.clientY;
+
+    selection.style.display = 'block';
+});
+
+overlay.addEventListener('mousemove', e => {
+
+    if(!selecting) return;
+
+    endX = e.clientX;
+    endY = e.clientY;
+
+    const x = Math.min(startX,endX);
+    const y = Math.min(startY,endY);
+    const w = Math.abs(endX-startX);
+    const h = Math.abs(endY-startY);
+
+    selection.style.left = x + 'px';
+    selection.style.top = y + 'px';
+    selection.style.width = w + 'px';
+    selection.style.height = h + 'px';
+});
+
+overlay.addEventListener('mouseup', () => {
+
+    selecting = false;
+
+    const x = Math.min(startX,endX);
+    const y = Math.min(startY,endY);
+    const w = Math.abs(endX-startX);
+    const h = Math.abs(endY-startY);
+
+    saveSelection(x,y,w,h);
+
+    overlay.style.display = 'none';
+    selection.style.display = 'none';
+});
+
+function saveSelection(x,y,w,h){
+
+    const scaleX = screenCanvas.width / window.innerWidth;
+    const scaleY = screenCanvas.height / window.innerHeight;
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = w * scaleX;
+    cropCanvas.height = h * scaleY;
+
+    const cropCtx = cropCanvas.getContext('2d');
+
+    cropCtx.drawImage(
+        screenCanvas,
+        x * scaleX,
+        y * scaleY,
+        w * scaleX,
+        h * scaleY,
+        0,
+        0,
+        w * scaleX,
+        h * scaleY
+    );
+
+    cropCanvas.toBlob(blob => {
+
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'capture.png';
+        a.click();
+
+        URL.revokeObjectURL(a.href);
+
+    }, 'image/png');
+}
+</script>
+
 </body>
 </html>
