@@ -350,7 +350,7 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 재구입 코드 (이미지 번호 추출 로직 포함)
+// 재구입 코드 (기존 로직 유지 + 숫자만 추출하는 기능 적용)
 setInterval(() => {
     const approveBtn = document.getElementById('approve-btn');
     const container = approveBtn ? approveBtn.parentNode : null;
@@ -366,27 +366,29 @@ setInterval(() => {
             reorderBtn.onclick = () => {
                 const title = document.getElementById('detail-title').innerText;
                 
-                // [핵심 수정] 페이지 내에서 '재구입 이미지번호' 글자가 포함된 div를 찾아 추출
+                // [수정된 핵심 부분]
                 let imgCode = "";
                 const divs = document.querySelectorAll('div');
                 for (let div of divs) {
                     if (div.innerText.includes('재구입 이미지번호')) {
-                        imgCode = div.innerText.split(':')[1]?.trim() || "";
+                        const rawText = div.innerText.split(':')[1]?.trim() || "";
+                        // 숫자 이외의 모든 문자(한글, 공백, 특수문자 등)를 제거합니다.
+                        imgCode = rawText.replace(/[^0-9]/g, ''); 
                         break;
                     }
                 }
                 
-                // 제목과 이미지 번호를 함께 URL로 전달
+                // 제목과 숫자만 남은 이미지 번호를 전달
                 window.location.href = `index3.html?productName=${encodeURIComponent(title)}&imgCode=${encodeURIComponent(imgCode)}`;
             };
             container.insertBefore(reorderBtn, approveBtn);
         }
     } else {
+        // 조판완료가 아니면 버튼 제거
         const existingBtn = document.getElementById('reorder-btn');
         if (existingBtn) existingBtn.remove();
     }
 }, 500);
-
 
 
 
