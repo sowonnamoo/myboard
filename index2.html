@@ -52,10 +52,9 @@
             <div id="info-and-actions" class="flex justify-between items-center mt-4 px-2">
                 <div id="image-code" class="text-xs font-bold text-gray-600"></div>
                <div class="flex gap-2">
-<button onclick="
-    const title = document.getElementById('detail-title').innerText;
-    window.location.href = 'index3.html?productName=' + encodeURIComponent(title);
-" class="bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600">
+<button id="reorder-btn" class="hidden bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600"
+        onclick="const title = document.getElementById('detail-title').innerText;
+                 window.location.href = 'index3.html?productName=' + encodeURIComponent(title);">
     재구입
 </button>
 <button 
