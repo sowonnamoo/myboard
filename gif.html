@@ -2,72 +2,57 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>시안 저장</title>
+    <title>시안 저장(워터마크 포함)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
-        #capture-area { background-color: white; width: 700px; padding: 10px; margin-top: 20px; }
+        canvas { background-color: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); margin-top: 20px; }
     </style>
 </head>
 <body oncontextmenu="return false">
 
     <div class="w-[700px] mt-6 flex justify-end">
-        <button onclick="captureAndSave()" id="save-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md transition">
-            페이지 전체 저장하기
+        <button onclick="saveImage()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md transition">
+            워터마크 포함 저장
         </button>
     </div>
 
-    <div id="capture-area">
-        <img id="main-image" src="" style="width: 100%; display: block;" onload="console.log('이미지 로딩 완료')">
-        <div class="mt-4 text-center text-gray-500 text-sm">
-            이미지 번호: <span id="code-text"></span>
-        </div>
-    </div>
+    <canvas id="canvas"></canvas>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        const mainImage = document.getElementById('main-image');
-        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
         if (code) {
-            document.getElementById('code-text').innerText = code;
-            mainImage.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg?t=${Date.now()}`;
+            const img = new Image();
+            img.crossOrigin = "anonymous"; 
+            img.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg?t=${Date.now()}`;
+
+            img.onload = function() {
+                const ratio = 700 / img.width;
+                canvas.width = 700;
+                canvas.height = img.height * ratio;
+                
+                // 1. 원본 이미지 그리기
+                ctx.drawImage(img, 0, 0, 700, canvas.height);
+                
+                // 2. 워터마크 글씨 넣기 (미니 포토샵 기능!)
+                ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; // 흰색 반투명
+                ctx.font = "bold 30px Arial";
+                ctx.textAlign = "center";
+                
+                // 이미지 하단 중앙에 워터마크 삽입
+                ctx.fillText("YOUR COMPANY", 350, canvas.height - 30);
+            };
         }
 
-        async function captureAndSave() {
-            // 버튼 비활성화 (캡처 중 중복 클릭 방지)
-            const btn = document.getElementById('save-btn');
-            btn.innerText = "저장 중...";
-            btn.disabled = true;
-
-            // 2. 이미지가 확실히 다 불러와졌는지 체크 (naturalWidth가 0보다 커야 함)
-            if (mainImage.naturalWidth === 0) {
-                alert("이미지가 아직 로딩 중입니다. 잠시만 기다려주세요.");
-                btn.innerText = "페이지 전체 저장하기";
-                btn.disabled = false;
-                return;
-            }
-
-            const area = document.getElementById('capture-area');
-            
-            // 3. 캡처 시작
-            html2canvas(area, {
-                width: 700,
-                windowWidth: 700,
-                scale: 2,
-                useCORS: true, // 외부 이미지 강제 허용 옵션
-                allowTaint: false
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `${code}_capture.jpg`;
-                link.href = canvas.toDataURL("image/jpeg", 0.9);
-                link.click();
-                
-                // 버튼 복구
-                btn.innerText = "페이지 전체 저장하기";
-                btn.disabled = false;
-            });
+        function saveImage() {
+            const link = document.createElement('a');
+            link.download = `${code}_watermark.jpg`;
+            link.href = canvas.toDataURL("image/jpeg", 0.9);
+            link.click();
         }
     </script>
 </body>
