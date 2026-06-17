@@ -1,3 +1,17 @@
+window.onload = () => {
+    const params = new URLSearchParams(window.location.search);
+    
+    // URL에 파라미터가 있으면 가져와서 채우기
+    if(params.get('productName')) document.getElementById('productName').value = decodeURIComponent(params.get('productName'));
+    if(params.get('qty')) document.getElementById('qty').value = decodeURIComponent(params.get('qty'));
+    if(params.get('size')) document.getElementById('size').value = decodeURIComponent(params.get('size'));
+    if(params.get('price')) document.getElementById('price').value = decodeURIComponent(params.get('price'));
+};
+
+
+
+
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
