@@ -29,7 +29,7 @@
     <input type="text" id="price" placeholder="결제금액 (숫자만)">
     
     <div style="display:flex; gap:10px;">
-        <input type="text" value="122432424" readonly style="flex:1;">
+        <input type="text" id="imgCode" readonly style="flex:1;" placeholder="이미지번호">
         <input type="text" placeholder="이전페이지 URL" style="flex:2;">
     </div>
 
@@ -44,6 +44,80 @@
     </div>
 </div>
 
-<script type="module" src="./app4.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 1. 페이지 로드 시 데이터 자동 입력
+    window.onload = () => {
+        const params = new URLSearchParams(window.location.search);
+        const fullTitle = params.get('productName');
+        const imgCode = params.get('imgCode');
+
+        // 제품/작성자 정보 분리 파싱
+        if (fullTitle) {
+            const cleanData = fullTitle.replace(/[()]/g, '');
+            const parts = cleanData.split('님');
+            const dataStr = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+            const items = dataStr.split('/');
+            
+            if (items[0]) document.getElementById('productName').value = items[0].trim();
+            if (items[1]) document.getElementById('qty').value = items[1].trim();
+            if (items[2]) document.getElementById('size').value = items[2].trim();
+            if (items[3]) document.getElementById('price').value = items[3].trim();
+            if (parts[0]) document.getElementById('name').value = parts[0].trim();
+        }
+
+        // 이미지 번호 입력
+        if (imgCode) {
+            document.getElementById('imgCode').value = imgCode;
+        }
+    };
+
+    // 탭 전환
+    document.getElementById('btn-no-change').onclick = function() {
+        this.className = 'tab-btn active';
+        document.getElementById('btn-change').className = 'tab-btn inactive';
+    };
+    document.getElementById('btn-change').onclick = function() {
+        this.className = 'tab-btn active';
+        document.getElementById('btn-no-change').className = 'tab-btn inactive';
+    };
+
+    // 저장 함수
+    window.submitOrder = async (type) => {
+        const orderData = {
+            productName: document.getElementById('productName').value,
+            quantity: document.getElementById('qty').value,
+            size: document.getElementById('size').value,
+            price: document.getElementById('price').value,
+            imgCode: document.getElementById('imgCode').value,
+            type: type,
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
+            address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
+            timestamp: new Date().toLocaleString()
+        };
+
+        try {
+            await addDoc(collection(db, "reorders"), orderData);
+            alert('주문 접수 완료!');
+        } catch (e) {
+            alert('오류 발생: ' + e.message);
+        }
+    };
+</script>
 </body>
 </html>
