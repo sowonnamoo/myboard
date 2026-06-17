@@ -60,3 +60,11 @@ window.submitOrder = async (type) => {
         alert('오류 발생: ' + e.message);
     }
 };
+
+
+// app4.js 맨 마지막에 이거 추가해보세요 / 이미지번호 옆 한글지우미
+const imgInput = document.getElementById('imgCode');
+if (imgInput) {
+    const rawValue = imgInput.value;
+    imgInput.value = rawValue.replace(/[^0-9]/g, ''); // 여기서 한 번 더 털어버리기!
+}
