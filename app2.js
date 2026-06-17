@@ -373,3 +373,40 @@ setInterval(() => {
 
 
 
+
+
+
+// 시안 이미지 다운로드
+document.getElementById("download-btn").addEventListener("click", () => {
+    const imgElement = document.querySelector("#detail-image img[alt='시안 이미지']");
+    
+    if (!imgElement || imgElement.style.display === 'none') {
+        return alert("다운로드할 시안 이미지가 준비되지 않았습니다.");
+    }
+
+    // URL에서 파일명 추출 (예: 2606171024.jpg)
+    const urlParts = imgElement.src.split('/');
+    const fileName = urlParts[urlParts.length - 1].split('?')[0]; // 파라미터(?t=...) 제거
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    
+    img.crossOrigin = "Anonymous"; 
+    img.src = imgElement.src;
+
+    img.onload = () => {
+        const maxWidth = 700;
+        const scale = maxWidth / img.width;
+        
+        canvas.width = maxWidth;
+        canvas.height = img.height * scale;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const link = document.createElement("a");
+        link.download = fileName; // 추출한 파일명(예: 2606171024.jpg) 사용
+        link.href = canvas.toDataURL("image/jpeg", 0.9);
+        link.click();
+    };
+});
