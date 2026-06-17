@@ -1,16 +1,25 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-const firebaseConfig = { /* 설정 그대로 */ };
+// Firebase 설정
+const firebaseConfig = {
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    authDomain: "board-291e3.firebaseapp.com",
+    projectId: "board-291e3",
+    storageBucket: "board-291e3.firebasestorage.app",
+    messagingSenderId: "25881766316",
+    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 페이지 로드 시 URL 파라미터 받아서 채우기
 window.onload = () => {
     const params = new URLSearchParams(window.location.search);
     const fullTitle = params.get('productName');
-    const imgCode = params.get('imgCode');
+    const rawImgCode = params.get('imgCode');
 
+    // 1. 제품 정보 파싱
     if (fullTitle) {
         const cleanData = fullTitle.replace(/[()]/g, '');
         const parts = cleanData.split('님');
@@ -23,26 +32,41 @@ window.onload = () => {
         if (items[3]) document.getElementById('price').value = items[3].trim();
         if (parts[0]) document.getElementById('name').value = parts[0].trim();
     }
-    if (imgCode) document.getElementById('imgCode').value = imgCode;
+
+    // 2. [필터링] 이미지 번호에서 숫자만 추출
+    if (rawImgCode) {
+        const onlyNumbers = rawImgCode.replace(/[^0-9]/g, '');
+        document.getElementById('imgCode').value = onlyNumbers;
+    }
 };
 
-// [핵심] 'jae' 컬렉션으로 저장하는 로직
+// 탭 전환 로직
+document.getElementById('btn-no-change').onclick = function() {
+    this.className = 'tab-btn active';
+    document.getElementById('btn-change').className = 'tab-btn inactive';
+};
+document.getElementById('btn-change').onclick = function() {
+    this.className = 'tab-btn active';
+    document.getElementById('btn-no-change').className = 'tab-btn inactive';
+};
+
+// [핵심] 'jae' 컬렉션으로 주문 저장
 window.submitOrder = async (type) => {
     try {
-        await addDoc(collection(db, "jae"), { // 여기서 'jae' 컬렉션 지정
+        await addDoc(collection(db, "jae"), {
             productName: document.getElementById('productName').value,
             quantity: document.getElementById('qty').value,
             size: document.getElementById('size').value,
             price: document.getElementById('price').value,
             imgCode: document.getElementById('imgCode').value,
-            type: type,
+            type: type, // '카결' or '무결'
             name: document.getElementById('name').value,
             phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
             address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
             timestamp: new Date().toLocaleString()
         });
-        alert('주문 접수가 완료되었습니다 (jae 저장).');
+        alert('주문 접수 완료!');
     } catch (e) {
-        alert('오류: ' + e.message);
+        alert('오류 발생: ' + e.message);
     }
 };
