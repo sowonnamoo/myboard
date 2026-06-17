@@ -20,7 +20,7 @@
     <canvas id="canvas"></canvas>
 
     <div class="mt-4 text-gray-400 text-[10px]">
-        이미지 번호: <span id="code-text"></span> | © 2026 YOUR COMPANY
+        이미지 번호: <span id="code-text"></span>
     </div>
 
     <script>
@@ -29,41 +29,36 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        async function init() {
-            if (!code) return;
+        if (code) {
             document.getElementById('code-text').innerText = code;
 
-            const imageUrl = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
+            const img = new Image();
+            // CORS 문제를 완화하기 위해 crossOrigin 설정
+            img.crossOrigin = "anonymous"; 
+            
+            // 캐시를 방지하기 위해 타임스탬프 추가
+            img.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg?t=${Date.now()}`;
 
-            try {
-                // 1. 이미지를 blob(데이터 덩어리)으로 직접 가져와서 CORS 문제 회피
-                const response = await fetch(imageUrl);
-                const blob = await response.blob();
-                const bitmap = await createImageBitmap(blob);
-
-                // 2. 700px 고정 너비로 캔버스 크기 조절
-                const ratio = 700 / bitmap.width;
+            img.onload = function() {
+                const ratio = 700 / img.width;
                 canvas.width = 700;
-                canvas.height = bitmap.height * ratio;
+                canvas.height = img.height * ratio;
+                ctx.drawImage(img, 0, 0, 700, canvas.height);
+            };
 
-                // 3. 캔버스에 그리기
-                ctx.drawImage(bitmap, 0, 0, 700, canvas.height);
-            } catch (err) {
-                console.error("이미지 로드 실패:", err);
-                alert("이미지를 불러올 수 없습니다. 경로를 확인해주세요.");
-            }
+            img.onerror = function() {
+                alert("이미지를 불러올 수 없습니다. 경로 또는 서버 권한을 확인해주세요.");
+                console.error("이미지 로드 경로:", img.src);
+            };
         }
 
         function saveImage() {
+            if (canvas.width === 0) return alert("이미지가 준비되지 않았습니다.");
             const link = document.createElement('a');
             link.download = `${code}_700px.jpg`;
-            // 캔버스 내용을 이미지 데이터로 변환
             link.href = canvas.toDataURL("image/jpeg", 0.9);
             link.click();
         }
-
-        // 초기 실행
-        init();
     </script>
 </body>
 </html>
