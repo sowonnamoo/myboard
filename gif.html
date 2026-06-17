@@ -25,20 +25,14 @@
         document.getElementById('code-display').innerText = "이미지 번호: " + code;
     }
 
-    // 다운로드 실행 함수
+    // 버튼 클릭 시 즉시 다운로드 실행
     function startDownload() {
-        if (!code) {
-            alert("이미지 번호를 찾을 수 없습니다.");
-            return;
-        }
+        if (!code) return;
         
-        // 이미지 주소 생성
         const imageUrl = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
-        
-        // 브라우저에서 다운로드를 실행하는 방법
         const link = document.createElement('a');
         link.href = imageUrl;
-        link.download = `${code}.jpg`; // 다운로드될 파일명
+        link.download = `${code}.jpg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
