@@ -13,36 +13,35 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 1. 페이지 로드 시 URL 파라미터 분석 및 자동 입력
+// 페이지 로드 시 파라미터 분석 및 자동 입력
 window.onload = () => {
     const params = new URLSearchParams(window.location.search);
-    const fullTitle = params.get('productName'); // 예: "홍길동님 (명함 B세트/500/90x50mm/30000)"
+    const fullTitle = params.get('productName'); // "홍길동님 (명함 B세트/500/90x50mm/30000)"
 
     if (fullTitle) {
         try {
-            // [분석 로직] 괄호 안의 내용만 추출
-            const regex = /\(([^)]+)\)/;
-            const match = fullTitle.match(regex);
-            
+            // 1. 작성자명 추출 (첫 번째 '님' 앞부분)
+            const authorPart = fullTitle.split('님')[0];
+            document.getElementById('name').value = authorPart.trim();
+
+            // 2. 괄호 안의 데이터 추출
+            const match = fullTitle.match(/\(([^)]+)\)/);
             if (match && match[1]) {
-                const [pName, qty, size, price] = match[1].split('/');
+                const parts = match[1].split('/');
                 
-                document.getElementById('productName').value = pName || "";
-                document.getElementById('qty').value = qty || "";
-                document.getElementById('size').value = size || "";
-                document.getElementById('price').value = price || "";
+                // 순서대로 매핑 (0:상품명, 1:수량, 2:사이즈, 3:금액)
+                document.getElementById('productName').value = parts[0] || "";
+                document.getElementById('qty').value = parts[1] || "";
+                document.getElementById('size').value = parts[2] || "";
+                document.getElementById('price').value = parts[3] || "";
             }
-            
-            // 작성자명 추출 ("홍길동님" 부분)
-            const author = fullTitle.split('님')[0];
-            document.getElementById('name').value = author || "";
         } catch (e) {
-            console.error("데이터 파싱 중 오류 발생:", e);
+            console.error("데이터 파싱 오류:", e);
         }
     }
 };
 
-// 2. 탭 전환 로직
+// 탭 전환 로직
 document.getElementById('btn-no-change').onclick = function() {
     this.className = 'tab-btn active';
     document.getElementById('btn-change').className = 'tab-btn inactive';
@@ -52,15 +51,15 @@ document.getElementById('btn-change').onclick = function() {
     document.getElementById('btn-no-change').className = 'tab-btn inactive';
 };
 
-// 3. 주문 저장 로직
+// 주문 저장 로직
 window.submitOrder = async (type) => {
-    // 폼에서 데이터 수집
+    // 폼 입력값 수집
     const orderData = {
         productName: document.getElementById('productName').value,
         quantity: document.getElementById('qty').value,
         size: document.getElementById('size').value,
         price: document.getElementById('price').value,
-        type: type, // '카결' or '무결'
+        type: type, 
         name: document.getElementById('name').value,
         phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
         address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
