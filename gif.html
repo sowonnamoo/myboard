@@ -2,56 +2,53 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>시안 저장</title>
+    <title>시안 저장 뷰어</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
+        /* 캡처할 영역 */
         #capture-area { position: relative; width: 700px; background-color: white; margin-top: 20px; }
-        .watermark { position: absolute; bottom: 20px; width: 100%; text-align: center; color: rgba(255, 255, 255, 0.6); font-size: 30px; font-weight: bold; pointer-events: none; }
+        /* 아이프레임 설정 (테두리 제거) */
+        iframe { width: 700px; height: 800px; border: none; display: block; }
+        .watermark { position: absolute; bottom: 20px; width: 100%; text-align: center; color: rgba(0, 0, 0, 0.3); font-size: 30px; font-weight: bold; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div class="w-[700px] mt-6 flex justify-end">
         <button onclick="saveImage()" id="save-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
-            저장하기
+            캡처 저장하기
         </button>
     </div>
 
     <div id="capture-area">
-        <img id="main-image" src="" style="width: 700px; display: block;">
+        <iframe id="viewer-frame" src=""></iframe>
         <div class="watermark">YOUR COMPANY</div>
     </div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        const img = document.getElementById('main-image');
-
-        // 1. 이미지를 데이터 형태로 변환하여 로드 (CORS 문제 원천 봉쇄)
-        async function loadImageAsBase64() {
-            const url = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
-            try {
-                const response = await fetch(url);
-                const blob = await response.blob();
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    img.src = reader.result; // Base64 데이터를 직접 src에 박음
-                };
-                reader.readAsDataURL(blob);
-            } catch (err) {
-                console.error("이미지 변환 실패:", err);
-            }
+        
+        // 아이프레임에 이미지 URL을 직접 띄움
+        const frame = document.getElementById('viewer-frame');
+        if (code) {
+            // 아이프레임 안에 이미지를 직접 보여주는 간단한 HTML 생성
+            const content = `
+                <html>
+                    <body style="margin:0; padding:0; background:white;">
+                        <img src="https://sowonnamoo1005.cafe24.com/1/${code}.jpg" style="width:700px;">
+                    </body>
+                </html>
+            `;
+            frame.srcdoc = content;
         }
 
-        if (code) loadImageAsBase64();
-
-        // 2. 캡처 함수
         async function saveImage() {
             const btn = document.getElementById('save-btn');
+            btn.innerText = "캡처 중...";
             btn.disabled = true;
-            btn.innerText = "저장 중...";
 
             const area = document.getElementById('capture-area');
             
@@ -59,16 +56,16 @@
             html2canvas(area, {
                 width: 700,
                 windowWidth: 700,
-                allowTaint: false,
-                useCORS: true 
+                useCORS: true,
+                allowTaint: true // 아이프레임 내부 캡처 시 필수 옵션
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `${code}_final.jpg`;
+                link.download = `${code}_capture.jpg`;
                 link.href = canvas.toDataURL("image/jpeg", 0.9);
                 link.click();
                 
+                btn.innerText = "캡처 저장하기";
                 btn.disabled = false;
-                btn.innerText = "저장하기";
             });
         }
     </script>
