@@ -16,6 +16,7 @@ const db = getFirestore(app);
 let allOrders = [];
 let currentPage = 1;
 let currentViewId = ""; 
+let currentOrderData = null; // ★ 여기 추가!
 const POSTS_PER_PAGE = 8;
 
 async function loadMemo(boardId) {
@@ -116,6 +117,13 @@ window.viewDetail = async function(id) {
         const isNumeric = /^\d+$/.test(storedPass);
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
+if (inputVal === passToCompare) {
+        modal.classList.add("hidden");
+        currentViewId = id;
+        currentOrderData = data; // ★ 여기서 데이터를 전역 변수에 저장!
+
+
+        
         if (inputVal === passToCompare) {
             modal.classList.add("hidden");
             currentViewId = id;
@@ -350,33 +358,35 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 재구입 코드
+// 재구입코드
 setInterval(() => {
     const approveBtn = document.getElementById('approve-btn');
     const container = approveBtn ? approveBtn.parentNode : null;
     
-    // 조판완료 상태일 때
-    if (approveBtn && approveBtn.innerText === "조판완료") {
-        // 이미 버튼이 있는지 확인
-        if (!document.getElementById('reorder-btn')) {
-            const reorderBtn = document.createElement('button');
-            reorderBtn.id = 'reorder-btn';
-            reorderBtn.className = 'bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600';
-            reorderBtn.innerText = '재구입';
-            reorderBtn.onclick = () => {
-                const title = document.getElementById('detail-title').innerText;
-                window.location.href = 'index3.html?productName=' + encodeURIComponent(title);
-            };
-            // 인쇄승인 버튼 바로 앞에 삽입
-            container.insertBefore(reorderBtn, approveBtn);
-        }
-    } else {
-        // 조판완료가 아니면 버튼 제거
-        const existingBtn = document.getElementById('reorder-btn');
-        if (existingBtn) existingBtn.remove();
+    // 조건: 조판완료 버튼이 화면에 있고(보이고), 데이터가 존재함
+    const isDone = approveBtn && approveBtn.innerText === "조판완료";
+    const exists = document.getElementById('reorder-btn');
+
+    if (isDone && !exists && currentOrderData) {
+        // [생성] 조판완료 상태인데 버튼이 없을 때만 생성
+        const reorderBtn = document.createElement('button');
+        reorderBtn.id = 'reorder-btn';
+        reorderBtn.className = 'bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600 ml-2'; // ml-2로 간격 확보
+        reorderBtn.innerText = '재구입';
+        
+        reorderBtn.onclick = () => {
+            const url = `index3.html?productName=${encodeURIComponent(currentOrderData.productName || "")}` +
+                        `&qty=${encodeURIComponent(currentOrderData.quantity || "")}` +
+                        `&size=${encodeURIComponent(currentOrderData.size || "")}` +
+                        `&price=${encodeURIComponent(currentOrderData.price || "")}`;
+            window.location.href = url;
+        };
+        container.insertBefore(reorderBtn, approveBtn);
+    } else if (!isDone && exists) {
+        // [삭제] 조판완료 상태가 아닐 때 버튼이 있다면 제거
+        exists.remove();
     }
 }, 500);
-
 
 
 
