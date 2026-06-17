@@ -378,46 +378,34 @@ setInterval(() => {
 
 // 시안 이미지 다운로드
 document.getElementById("download-btn").addEventListener("click", () => {
-    // 1. 화면에 표시된 이미지 번호를 확인합니다.
-    const imageCodeElement = document.querySelector("#image-code"); // 또는 #detail-image 하단의 텍스트
-    // 만약 #image-code 요소가 있다면 거기서 가져오고, 없다면 전역 변수 finalCode 활용 가능
-    const finalCode = typeof window.finalCode !== 'undefined' ? window.finalCode : null; 
+    // 1. 현재 상세 페이지에서 이미지 번호(finalCode)를 찾습니다.
+    // 기존 로직에서 이미지 번호를 보여주는 부분의 텍스트를 가져오거나, 
+    // 전역 변수에서 가져올 수 있습니다. 여기서는 화면의 텍스트에서 번호를 추출합니다.
+    const codeText = document.getElementById("image-code") ? document.getElementById("image-code").innerText : "";
+    const finalCode = codeText.replace("재구입 이미지번호 : ", "").trim();
     
-    // 만약 위 방식이 안되면, 현재 상세화면 제목에서 추출하거나 직접 코드 로직에 접근해야 합니다.
-    // 가장 확실한 방법은 이미지 src에서 추출하는 것입니다.
-    const imgElement = document.querySelector("#detail-image img[alt='시안 이미지']");
-    if (!imgElement) return alert("시안 이미지를 찾을 수 없습니다.");
-    
-    const src = imgElement.src.split('?')[0]; // 타임스탬프 제거
-    const fileName = src.split('/').pop(); // 마지막 파일명 (예: 2606171024.jpg)
+    if (!finalCode) {
+        return alert("이미지 번호를 찾을 수 없습니다.");
+    }
 
-    // 2. 고정된 서버 경로 생성
-    const fixedUrl = `https://sowonnamoo1005.cafe24.com/1/${fileName}`;
+    // 2. 요청하신 이미지 경로 조합
+    const imageUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
 
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    
-    img.crossOrigin = "Anonymous"; 
-    img.src = fixedUrl; // 고정된 서버 경로 사용
-
-    img.onload = () => {
-        const maxWidth = 700; // 요청하신 700px 고정
-        const scale = maxWidth / img.width;
-        
-        canvas.width = maxWidth;
-        canvas.height = img.height * scale; // 세로는 비율 유지
-
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // 3. 다운로드 실행
-        const link = document.createElement("a");
-        link.download = fileName; // 파일명 유지
-        link.href = canvas.toDataURL("image/jpeg", 0.9);
-        link.click();
-    };
-
-    img.onerror = () => {
-        alert("이미지를 다운로드할 수 없습니다. 서버 경로를 확인해주세요.");
-    };
+    // 3. 브라우저가 직접 다운로드하게 만듭니다. (blob 방식)
+    fetch(imageUrl)
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `${finalCode}.jpg`; // 저장될 파일명
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            alert("다운로드가 시작되었습니다.");
+        })
+        .catch(err => {
+            alert("다운로드에 실패했습니다. 이미지가 존재하지 않을 수 있습니다.");
+        });
 });
