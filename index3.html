@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>빠른 재구입</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+        .box { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; cursor: pointer; color: white; font-weight: bold; border-radius: 4px; }
+        .active { background: #e63946; }
+        .inactive { background: #adb5bd; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 10px; }
+        .btn-group button { flex: 1; padding: 15px; border: none; background: #333; color: white; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <div class="tabs">
+        <button class="tab-btn active" id="btn-no-change">수량,사이즈,금액변동 없음</button>
+        <button class="tab-btn inactive" id="btn-change">수량,사이즈,금액변동 있음</button>
+    </div>
+    
+    <input type="text" id="productName" placeholder="구입 제품명">
+    <input type="text" id="qty" placeholder="수량">
+    <input type="text" id="size" placeholder="사이즈">
+    <input type="text" id="price" placeholder="결제금액 (숫자만)">
+    
+    <div style="display:flex; gap:10px;">
+        <input type="text" value="122432424" readonly style="flex:1;">
+        <input type="text" placeholder="이전페이지 URL" style="flex:2;">
+    </div>
+
+    <input type="text" id="name" placeholder="작성자명">
+    <input type="text" id="phone" placeholder="접수자 핸드폰">
+    <input type="text" id="address" placeholder="주소">
+    <input type="text" id="addressDetail" placeholder="상세주소">
+
+    <div class="btn-group">
+        <button onclick="submitOrder('카결')">카결</button>
+        <button onclick="submitOrder('무결')">무결</button>
+    </div>
+</div>
+
+<script type="module" src="app4.js"></script>
+</body>
+</html>

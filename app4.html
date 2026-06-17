@@ -1,0 +1,35 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+const firebaseConfig = { /* 아까 그 설정 그대로 넣으세요 */ };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// 버튼 클릭 시 상태 변경
+document.getElementById('btn-no-change').onclick = function() {
+    this.className = 'tab-btn active';
+    document.getElementById('btn-change').className = 'tab-btn inactive';
+};
+document.getElementById('btn-change').onclick = function() {
+    this.className = 'tab-btn active';
+    document.getElementById('btn-no-change').className = 'tab-btn inactive';
+};
+
+// 저장 로직
+window.submitOrder = async (type) => {
+    const orderData = {
+        productName: document.getElementById('productName').value,
+        type: type, // '카결' or '무결'
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
+        address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
+        timestamp: new Date().toLocaleString()
+    };
+
+    try {
+        await addDoc(collection(db, "reorders"), orderData);
+        alert('주문 접수 완료!');
+    } catch (e) {
+        alert('오류 발생: ' + e.message);
+    }
+};
