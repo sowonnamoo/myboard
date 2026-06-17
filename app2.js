@@ -393,6 +393,14 @@ setInterval(() => {
 }, 500);
 
 
+// 재구입 코드 복
 
+window.copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("이미지 번호가 복사되었습니다: " + text);
+    }).catch(err => {
+        alert("복사에 실패했습니다.");
+    });
+};
 
 
