@@ -13,63 +13,32 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 페이지 로드 시 파라미터 분석 및 자동 입력
 window.onload = () => {
     const params = new URLSearchParams(window.location.search);
-    const fullTitle = params.get('productName'); // "홍길동님 (명함 B세트/500/90x50mm/30000)"
+    const rawData = params.get('productName'); // URL의 productName 값
 
-    if (fullTitle) {
-        try {
-            // 1. 작성자명 추출 (첫 번째 '님' 앞부분)
-            const authorPart = fullTitle.split('님')[0];
-            document.getElementById('name').value = authorPart.trim();
-
-            // 2. 괄호 안의 데이터 추출
-            const match = fullTitle.match(/\(([^)]+)\)/);
-            if (match && match[1]) {
-                const parts = match[1].split('/');
-                
-                // 순서대로 매핑 (0:상품명, 1:수량, 2:사이즈, 3:금액)
-                document.getElementById('productName').value = parts[0] || "";
-                document.getElementById('qty').value = parts[1] || "";
-                document.getElementById('size').value = parts[2] || "";
-                document.getElementById('price').value = parts[3] || "";
-            }
-        } catch (e) {
-            console.error("데이터 파싱 오류:", e);
+    if (rawData) {
+        // 1. 괄호 제거 (만약 괄호가 있다면)
+        let cleanData = rawData.replace(/[()]/g, '');
+        
+        // 2. '님' 제거 (작성자명 분리)
+        const parts = cleanData.split('님');
+        if (parts.length > 1) {
+            document.getElementById('name').value = parts[0].trim();
+            cleanData = parts[1].trim(); // 이제 1111/1111/1111 만 남음
         }
+
+        // 3. 슬래시(/) 기준으로 데이터 분리
+        const items = cleanData.split('/');
+        
+        // 4. 순서대로 입력창에 자동 투입
+        if (items.length >= 1) document.getElementById('productName').value = items[0].trim();
+        if (items.length >= 2) document.getElementById('qty').value = items[1].trim();
+        if (items.length >= 3) document.getElementById('size').value = items[2].trim();
+        if (items.length >= 4) document.getElementById('price').value = items[3].trim();
+        
+        console.log("데이터 추출 성공:", items);
     }
 };
 
-// 탭 전환 로직
-document.getElementById('btn-no-change').onclick = function() {
-    this.className = 'tab-btn active';
-    document.getElementById('btn-change').className = 'tab-btn inactive';
-};
-document.getElementById('btn-change').onclick = function() {
-    this.className = 'tab-btn active';
-    document.getElementById('btn-no-change').className = 'tab-btn inactive';
-};
-
-// 주문 저장 로직
-window.submitOrder = async (type) => {
-    // 폼 입력값 수집
-    const orderData = {
-        productName: document.getElementById('productName').value,
-        quantity: document.getElementById('qty').value,
-        size: document.getElementById('size').value,
-        price: document.getElementById('price').value,
-        type: type, 
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
-        address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
-        timestamp: new Date().toLocaleString()
-    };
-
-    try {
-        await addDoc(collection(db, "reorders"), orderData);
-        alert('주문 접수 완료!');
-    } catch (e) {
-        alert('오류 발생: ' + e.message);
-    }
-};
+// ... (이후 탭 전환 및 submitOrder 코드는 그대로 유지하세요)
