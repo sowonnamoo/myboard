@@ -4,47 +4,51 @@
     <meta charset="UTF-8">
     <title>시안 저장</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
+        #capture-area { background-color: white; width: 700px; padding: 10px; margin-top: 20px; }
+    </style>
 </head>
-<body class="bg-[#333] flex flex-col items-center p-4">
+<body oncontextmenu="return false">
 
-    <div class="w-[700px] mb-4 flex justify-end">
-        <button onclick="downloadAs700()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
-            700px로 저장하기
+    <div class="w-[700px] mt-6 flex justify-end">
+        <button onclick="captureAndSave()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md transition">
+            페이지 전체 저장하기
         </button>
     </div>
 
-    <img id="main-image" src="" style="width: 700px;" alt="시안">
+    <div id="capture-area">
+        <img id="main-image" src="" style="width: 100%; display: block;">
+        <div class="mt-4 text-center text-gray-500 text-sm">
+            이미지 번호: <span id="code-text"></span>
+        </div>
+    </div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        const img = document.getElementById('main-image');
-
+        
+        // 이미지 로드
         if (code) {
-            img.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
+            document.getElementById('code-text').innerText = code;
+            document.getElementById('main-image').src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
         }
 
-        function downloadAs700() {
-            // 이미지를 캔버스에 그릴 때 CORS 에러가 나므로, 
-            // 아예 다운로드 전용 캔버스를 메모리상에만 생성하여 처리합니다.
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+        // html2canvas를 사용하여 캡처 후 저장
+        function captureAndSave() {
+            const area = document.getElementById('capture-area');
             
-            // 700px 기준으로 비율 계산
-            canvas.width = 700;
-            canvas.height = (img.naturalHeight / img.naturalWidth) * 700;
-            
-            // 여기서 에러가 난다면, 서버 이미지를 프록시 없이 캔버스에 그릴 수 없는 환경입니다.
-            // 이 경우엔 아래처럼 처리하여 다운로드 링크를 강제로 생성합니다.
-            try {
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            html2canvas(area, {
+                width: 700, // 캡처 너비 강제 고정
+                windowWidth: 700,
+                scale: 2 // 고화질 캡처를 위해 2배 확대
+            }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `${code}_700px.jpg`;
+                link.download = `${code}_capture.jpg`;
                 link.href = canvas.toDataURL("image/jpeg", 0.9);
                 link.click();
-            } catch (e) {
-                alert("브라우저 보안 정책으로 인해 직접 저장(700px 변환)이 불가능합니다. 이미지를 마우스 우클릭하여 '다른 이름으로 저장' 하세요.");
-            }
+            });
         }
     </script>
 </body>
