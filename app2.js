@@ -350,28 +350,38 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// 재구입 코드
+// 재구입 코드 (이미지 번호 추출 로직 포함)
 setInterval(() => {
     const approveBtn = document.getElementById('approve-btn');
     const container = approveBtn ? approveBtn.parentNode : null;
     
     // 조판완료 상태일 때
     if (approveBtn && approveBtn.innerText === "조판완료") {
-        // 이미 버튼이 있는지 확인
         if (!document.getElementById('reorder-btn')) {
             const reorderBtn = document.createElement('button');
             reorderBtn.id = 'reorder-btn';
             reorderBtn.className = 'bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600';
             reorderBtn.innerText = '재구입';
+            
             reorderBtn.onclick = () => {
                 const title = document.getElementById('detail-title').innerText;
-                window.location.href = 'index3.html?productName=' + encodeURIComponent(title);
+                
+                // [핵심 수정] 페이지 내에서 '재구입 이미지번호' 글자가 포함된 div를 찾아 추출
+                let imgCode = "";
+                const divs = document.querySelectorAll('div');
+                for (let div of divs) {
+                    if (div.innerText.includes('재구입 이미지번호')) {
+                        imgCode = div.innerText.split(':')[1]?.trim() || "";
+                        break;
+                    }
+                }
+                
+                // 제목과 이미지 번호를 함께 URL로 전달
+                window.location.href = `index3.html?productName=${encodeURIComponent(title)}&imgCode=${encodeURIComponent(imgCode)}`;
             };
-            // 인쇄승인 버튼 바로 앞에 삽입
             container.insertBefore(reorderBtn, approveBtn);
         }
     } else {
-        // 조판완료가 아니면 버튼 제거
         const existingBtn = document.getElementById('reorder-btn');
         if (existingBtn) existingBtn.remove();
     }
