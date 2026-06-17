@@ -2,72 +2,50 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>시안 저장 뷰어</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>상세 이미지 확인</title>
     <style>
-        body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
-        /* 캡처할 영역 */
-        #capture-area { position: relative; width: 700px; background-color: white; margin-top: 20px; }
-        /* 아이프레임 설정 (테두리 제거) */
-        iframe { width: 700px; height: 800px; border: none; display: block; }
-        .watermark { position: absolute; bottom: 20px; width: 100%; text-align: center; color: rgba(0, 0, 0, 0.3); font-size: 30px; font-weight: bold; pointer-events: none; }
+        body { margin: 0; background: #eee; display: flex; flex-direction: column; align-items: center; }
+        #msg { width: 100%; background: #ffeb3b; padding: 10px; text-align: center; font-weight: bold; }
+        #container { position: relative; width: 744px; margin-top: 20px; }
+        #main-img { width: 100%; display: block; }
     </style>
 </head>
 <body>
-
-    <div class="w-[700px] mt-6 flex justify-end">
-        <button onclick="saveImage()" id="save-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
-            캡처 저장하기
-        </button>
-    </div>
-
-    <div id="capture-area">
-        <iframe id="viewer-frame" src=""></iframe>
-        <div class="watermark">YOUR COMPANY</div>
+    <div id="msg">이미지 위에서 '우클릭 -> 다른 이름으로 저장' 하세요! (자동으로 합쳐집니다)</div>
+    
+    <div id="container">
+        <img id="main-img" src="" alt="시안">
+        <canvas id="watermark-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
     </div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        
-        // 아이프레임에 이미지 URL을 직접 띄움
-        const frame = document.getElementById('viewer-frame');
-        if (code) {
-            // 아이프레임 안에 이미지를 직접 보여주는 간단한 HTML 생성
-            const content = `
-                <html>
-                    <body style="margin:0; padding:0; background:white;">
-                        <img src="https://sowonnamoo1005.cafe24.com/1/${code}.jpg" style="width:700px;">
-                    </body>
-                </html>
-            `;
-            frame.srcdoc = content;
-        }
+        const params = new URLSearchParams(window.location.search);
+        const img = document.getElementById('main-img');
+        const canvas = document.getElementById('watermark-canvas');
+        const ctx = canvas.getContext('2d');
 
-        async function saveImage() {
-            const btn = document.getElementById('save-btn');
-            btn.innerText = "캡처 중...";
-            btn.disabled = true;
+        img.crossOrigin = "anonymous";
+        img.src = params.get('url');
 
-            const area = document.getElementById('capture-area');
-            
-            // html2canvas 실행
-            html2canvas(area, {
-                width: 700,
-                windowWidth: 700,
-                useCORS: true,
-                allowTaint: true // 아이프레임 내부 캡처 시 필수 옵션
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `${code}_capture.jpg`;
-                link.href = canvas.toDataURL("image/jpeg", 0.9);
-                link.click();
-                
-                btn.innerText = "캡처 저장하기";
-                btn.disabled = false;
-            });
-        }
+        img.onload = () => {
+            // 캔버스 크기 맞추기
+            canvas.width = img.offsetWidth;
+            canvas.height = img.offsetHeight;
+
+            // 워터마크 이미지 로드
+            const wm = new Image();
+            wm.crossOrigin = "anonymous";
+            wm.src = 'https://sowonnamoo1005.cafe24.com/web/1new/watermark.png';
+            wm.onload = () => {
+                ctx.globalAlpha = 0.3; // 투명도
+                // 타일 형태로 워터마크 뿌리기
+                for(let i=0; i<canvas.width; i+=200) {
+                    for(let j=0; j<canvas.height; j+=200) {
+                        ctx.drawImage(wm, i, j, 200, 200);
+                    }
+                }
+            };
+        };
     </script>
 </body>
 </html>
