@@ -7,17 +7,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
-        /* 캡처 영역을 700px로 고정하고 상대 위치 지정 */
         #capture-area { position: relative; width: 700px; background-color: white; margin-top: 20px; }
-        /* 글씨를 이미지 위에 얹기 위한 절대 위치 설정 */
-        .watermark { position: absolute; bottom: 20px; width: 100%; text-align: center; color: rgba(255, 255, 255, 0.7); font-size: 30px; font-weight: bold; }
+        .watermark { position: absolute; bottom: 20px; width: 100%; text-align: center; color: rgba(255, 255, 255, 0.6); font-size: 30px; font-weight: bold; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div class="w-[700px] mt-6 flex justify-end">
-        <button onclick="saveImage()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
-            워터마크 포함 저장
+        <button onclick="saveImage()" id="save-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
+            저장하기
         </button>
     </div>
 
@@ -29,25 +27,48 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        
-        if (code) {
-            document.getElementById('main-image').src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg?t=${Date.now()}`;
+        const img = document.getElementById('main-image');
+
+        // 1. 이미지를 데이터 형태로 변환하여 로드 (CORS 문제 원천 봉쇄)
+        async function loadImageAsBase64() {
+            const url = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    img.src = reader.result; // Base64 데이터를 직접 src에 박음
+                };
+                reader.readAsDataURL(blob);
+            } catch (err) {
+                console.error("이미지 변환 실패:", err);
+            }
         }
 
-        function saveImage() {
+        if (code) loadImageAsBase64();
+
+        // 2. 캡처 함수
+        async function saveImage() {
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            btn.innerText = "저장 중...";
+
             const area = document.getElementById('capture-area');
             
-            // html2canvas 옵션: 외부 이미지를 강제로 허용
+            // html2canvas 실행
             html2canvas(area, {
                 width: 700,
                 windowWidth: 700,
-                useCORS: true, 
-                logging: false
+                allowTaint: false,
+                useCORS: true 
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `${code}_watermark.jpg`;
+                link.download = `${code}_final.jpg`;
                 link.href = canvas.toDataURL("image/jpeg", 0.9);
                 link.click();
+                
+                btn.disabled = false;
+                btn.innerText = "저장하기";
             });
         }
     </script>
