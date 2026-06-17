@@ -1,25 +1,47 @@
-window.onload = () => {
-    const params = new URLSearchParams(window.location.search);
-    
-    // URL에 파라미터가 있으면 가져와서 채우기
-    if(params.get('productName')) document.getElementById('productName').value = decodeURIComponent(params.get('productName'));
-    if(params.get('qty')) document.getElementById('qty').value = decodeURIComponent(params.get('qty'));
-    if(params.get('size')) document.getElementById('size').value = decodeURIComponent(params.get('size'));
-    if(params.get('price')) document.getElementById('price').value = decodeURIComponent(params.get('price'));
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+// Firebase 설정 (아까 그 정보 그대로 사용)
+const firebaseConfig = {
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    authDomain: "board-291e3.firebaseapp.com",
+    projectId: "board-291e3",
+    storageBucket: "board-291e3.firebasestorage.app",
+    messagingSenderId: "25881766316",
+    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
 };
 
-
-
-
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-
-const firebaseConfig = { /* 아까 그 설정 그대로 넣으세요 */ };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 버튼 클릭 시 상태 변경
+// 1. 페이지 로드 시 URL 파라미터(id)를 이용해 DB 데이터 직접 호출
+window.onload = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const boardId = params.get('id'); // app2에서 넘어오는 파라미터
+
+    if (boardId) {
+        try {
+            const docRef = doc(db, "boards", boardId);
+            const snap = await getDoc(docRef);
+            
+            if (snap.exists()) {
+                const d = snap.data();
+                // 데이터 채우기 (HTML ID 기준)
+                document.getElementById('productName').value = d.productName || "";
+                document.getElementById('qty').value = d.quantity || "";
+                document.getElementById('size').value = d.size || "";
+                document.getElementById('price').value = d.price || "";
+                document.getElementById('name').value = d.author || "";
+                document.getElementById('phone').value = d.phone || "";
+                document.getElementById('address').value = d.address || "";
+            }
+        } catch (e) {
+            console.error("데이터 로드 실패:", e);
+        }
+    }
+};
+
+// 2. 탭 전환 로직
 document.getElementById('btn-no-change').onclick = function() {
     this.className = 'tab-btn active';
     document.getElementById('btn-change').className = 'tab-btn inactive';
@@ -29,10 +51,13 @@ document.getElementById('btn-change').onclick = function() {
     document.getElementById('btn-no-change').className = 'tab-btn inactive';
 };
 
-// 저장 로직
+// 3. 주문 저장 로직
 window.submitOrder = async (type) => {
     const orderData = {
         productName: document.getElementById('productName').value,
+        quantity: document.getElementById('qty').value,
+        size: document.getElementById('size').value,
+        price: document.getElementById('price').value,
         type: type, // '카결' or '무결'
         name: document.getElementById('name').value,
         phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
