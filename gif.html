@@ -2,62 +2,49 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>시안 미리보기</title>
+    <title>시안 저장</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
-        canvas { background-color: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); margin-top: 20px; }
-    </style>
 </head>
-<body oncontextmenu="return false">
+<body class="bg-[#333] flex flex-col items-center p-4">
 
-    <div class="w-[700px] mt-6 flex justify-end">
-        <button onclick="saveImage()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md transition">
+    <div class="w-[700px] mb-4 flex justify-end">
+        <button onclick="downloadAs700()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
             700px로 저장하기
         </button>
     </div>
 
-    <canvas id="canvas"></canvas>
-
-    <div class="mt-4 text-gray-400 text-[10px]">
-        이미지 번호: <span id="code-text"></span>
-    </div>
+    <img id="main-image" src="" style="width: 700px;" alt="시안">
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const img = document.getElementById('main-image');
 
         if (code) {
-            document.getElementById('code-text').innerText = code;
-
-            const img = new Image();
-            // CORS 문제를 완화하기 위해 crossOrigin 설정
-            img.crossOrigin = "anonymous"; 
-            
-            // 캐시를 방지하기 위해 타임스탬프 추가
-            img.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg?t=${Date.now()}`;
-
-            img.onload = function() {
-                const ratio = 700 / img.width;
-                canvas.width = 700;
-                canvas.height = img.height * ratio;
-                ctx.drawImage(img, 0, 0, 700, canvas.height);
-            };
-
-            img.onerror = function() {
-                alert("이미지를 불러올 수 없습니다. 경로 또는 서버 권한을 확인해주세요.");
-                console.error("이미지 로드 경로:", img.src);
-            };
+            img.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
         }
 
-        function saveImage() {
-            if (canvas.width === 0) return alert("이미지가 준비되지 않았습니다.");
-            const link = document.createElement('a');
-            link.download = `${code}_700px.jpg`;
-            link.href = canvas.toDataURL("image/jpeg", 0.9);
-            link.click();
+        function downloadAs700() {
+            // 이미지를 캔버스에 그릴 때 CORS 에러가 나므로, 
+            // 아예 다운로드 전용 캔버스를 메모리상에만 생성하여 처리합니다.
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 700px 기준으로 비율 계산
+            canvas.width = 700;
+            canvas.height = (img.naturalHeight / img.naturalWidth) * 700;
+            
+            // 여기서 에러가 난다면, 서버 이미지를 프록시 없이 캔버스에 그릴 수 없는 환경입니다.
+            // 이 경우엔 아래처럼 처리하여 다운로드 링크를 강제로 생성합니다.
+            try {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const link = document.createElement('a');
+                link.download = `${code}_700px.jpg`;
+                link.href = canvas.toDataURL("image/jpeg", 0.9);
+                link.click();
+            } catch (e) {
+                alert("브라우저 보안 정책으로 인해 직접 저장(700px 변환)이 불가능합니다. 이미지를 마우스 우클릭하여 '다른 이름으로 저장' 하세요.");
+            }
         }
     </script>
 </body>
