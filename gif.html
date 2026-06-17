@@ -13,13 +13,13 @@
 <body oncontextmenu="return false">
 
     <div class="w-[700px] mt-6 flex justify-end">
-        <button onclick="captureAndSave()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md transition">
+        <button onclick="captureAndSave()" id="save-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md transition">
             페이지 전체 저장하기
         </button>
     </div>
 
     <div id="capture-area">
-        <img id="main-image" src="" style="width: 100%; display: block;">
+        <img id="main-image" src="" style="width: 100%; display: block;" onload="console.log('이미지 로딩 완료')">
         <div class="mt-4 text-center text-gray-500 text-sm">
             이미지 번호: <span id="code-text"></span>
         </div>
@@ -28,26 +28,45 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
+        const mainImage = document.getElementById('main-image');
         
-        // 이미지 로드
         if (code) {
             document.getElementById('code-text').innerText = code;
-            document.getElementById('main-image').src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
+            mainImage.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg?t=${Date.now()}`;
         }
 
-        // html2canvas를 사용하여 캡처 후 저장
-        function captureAndSave() {
+        async function captureAndSave() {
+            // 버튼 비활성화 (캡처 중 중복 클릭 방지)
+            const btn = document.getElementById('save-btn');
+            btn.innerText = "저장 중...";
+            btn.disabled = true;
+
+            // 2. 이미지가 확실히 다 불러와졌는지 체크 (naturalWidth가 0보다 커야 함)
+            if (mainImage.naturalWidth === 0) {
+                alert("이미지가 아직 로딩 중입니다. 잠시만 기다려주세요.");
+                btn.innerText = "페이지 전체 저장하기";
+                btn.disabled = false;
+                return;
+            }
+
             const area = document.getElementById('capture-area');
             
+            // 3. 캡처 시작
             html2canvas(area, {
-                width: 700, // 캡처 너비 강제 고정
+                width: 700,
                 windowWidth: 700,
-                scale: 2 // 고화질 캡처를 위해 2배 확대
+                scale: 2,
+                useCORS: true, // 외부 이미지 강제 허용 옵션
+                allowTaint: false
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `${code}_capture.jpg`;
                 link.href = canvas.toDataURL("image/jpeg", 0.9);
                 link.click();
+                
+                // 버튼 복구
+                btn.innerText = "페이지 전체 저장하기";
+                btn.disabled = false;
             });
         }
     </script>
