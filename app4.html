@@ -1,71 +1,48 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-const firebaseConfig = { 
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-};
-
+const firebaseConfig = { /* 설정 그대로 */ };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// 페이지 로드 시 URL 파라미터 받아서 채우기
 window.onload = () => {
     const params = new URLSearchParams(window.location.search);
-    const rawData = params.get('productName'); // "1111님(1111/1111/1111)"
+    const fullTitle = params.get('productName');
+    const imgCode = params.get('imgCode');
 
-    if (rawData) {
-        console.log("받은 데이터:", rawData);
-        // 괄호 제거
-        let cleanData = rawData.replace(/[()]/g, '');
-        
-        // 작성자명 분리
+    if (fullTitle) {
+        const cleanData = fullTitle.replace(/[()]/g, '');
         const parts = cleanData.split('님');
-        if (parts.length > 1) {
-            document.getElementById('name').value = parts[0].trim();
-            cleanData = parts[1].trim(); 
-        }
-
-        // 슬래시로 쪼개기
-        const items = cleanData.split('/');
-        if (items.length >= 1) document.getElementById('productName').value = items[0].trim();
-        if (items.length >= 2) document.getElementById('qty').value = items[1].trim();
-        if (items.length >= 3) document.getElementById('size').value = items[2].trim();
-        if (items.length >= 4) document.getElementById('price').value = items[3].trim();
+        const dataStr = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+        const items = dataStr.split('/');
+        
+        if (items[0]) document.getElementById('productName').value = items[0].trim();
+        if (items[1]) document.getElementById('qty').value = items[1].trim();
+        if (items[2]) document.getElementById('size').value = items[2].trim();
+        if (items[3]) document.getElementById('price').value = items[3].trim();
+        if (parts[0]) document.getElementById('name').value = parts[0].trim();
     }
+    if (imgCode) document.getElementById('imgCode').value = imgCode;
 };
 
-// 탭 전환
-document.getElementById('btn-no-change').onclick = function() {
-    this.className = 'tab-btn active';
-    document.getElementById('btn-change').className = 'tab-btn inactive';
-};
-document.getElementById('btn-change').onclick = function() {
-    this.className = 'tab-btn active';
-    document.getElementById('btn-no-change').className = 'tab-btn inactive';
-};
-
-// 주문 저장
+// [핵심] 'jae' 컬렉션으로 저장하는 로직
 window.submitOrder = async (type) => {
-    const orderData = {
-        productName: document.getElementById('productName').value,
-        quantity: document.getElementById('qty').value,
-        size: document.getElementById('size').value,
-        price: document.getElementById('price').value,
-        type: type,
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
-        address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
-        timestamp: new Date().toLocaleString()
-    };
-
     try {
-        await addDoc(collection(db, "reorders"), orderData);
-        alert('주문 접수 완료!');
+        await addDoc(collection(db, "jae"), { // 여기서 'jae' 컬렉션 지정
+            productName: document.getElementById('productName').value,
+            quantity: document.getElementById('qty').value,
+            size: document.getElementById('size').value,
+            price: document.getElementById('price').value,
+            imgCode: document.getElementById('imgCode').value,
+            type: type,
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
+            address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
+            timestamp: new Date().toLocaleString()
+        });
+        alert('주문 접수가 완료되었습니다 (jae 저장).');
     } catch (e) {
-        alert('오류 발생: ' + e.message);
+        alert('오류: ' + e.message);
     }
 };
