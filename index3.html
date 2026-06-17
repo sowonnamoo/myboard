@@ -90,16 +90,16 @@
         return;
     }
     
-    // 새 창 생성
-    const win = window.open('', '_blank', 'width=700,height=800');
+    // resizable=no 옵션 추가
+    const win = window.open('', '_blank', 'width=700,height=800,resizable=no');
     
-    // 새 창에 HTML 구조 삽입 (우클릭 방지 스크립트 포함)
     win.document.write(`
         <body style="margin:0; text-align:center;" oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
             <img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;">
         </body>
     `);
     win.document.title = "이미지 보기";
+};
 };
 
     document.getElementById('btn-no-change').onclick = function() {
