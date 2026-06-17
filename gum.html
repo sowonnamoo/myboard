@@ -1,0 +1,57 @@
+<style>
+  body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+  .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+  button { width: 100%; padding: 12px; background: #03c75a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+  .item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+  a { color: #03c75a; text-decoration: none; font-weight: bold; }
+</style>
+
+<div class="container">
+  <h3>📦 배송 조회</h3>
+  <input type="text" id="searchPhone" placeholder="전화번호 11자리 입력">
+  <button onclick="searchData()">검색하기</button>
+  <div id="resultList" style="margin-top: 20px;"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+  import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+  // [중요] 저장 페이지에서 쓰던 그 firebaseConfig 그대로 붙여넣으세요!
+  const firebaseConfig = {
+     // ... 여기에 복사한 내용 ...
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.searchData = async () => {
+    const phone = document.getElementById('searchPhone').value;
+    const list = document.getElementById('resultList');
+    list.innerHTML = '조회 중...';
+
+    if (!phone) { alert('전화번호를 입력하세요.'); return; }
+
+    // woonso 컬렉션에서 phone이 일치하는 데이터를 찾음
+    const q = query(collection(db, "woonso"), where("phone", "==", phone));
+    const querySnapshot = await getDocs(q);
+
+    list.innerHTML = ''; // 이전 결과 초기화
+    
+    if (querySnapshot.empty) {
+        list.innerHTML = '등록된 정보가 없습니다.';
+        return;
+    }
+
+    querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        list.innerHTML += `
+            <div class="item">
+                <span>${data.date}</span>
+                <a href="${data.url}" target="_blank">배송 조회</a>
+            </div>
+        `;
+    });
+  };
+</script>
