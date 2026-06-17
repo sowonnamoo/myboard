@@ -5,19 +5,19 @@
     <title>시안 미리보기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        canvas { background-color: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: crosshair; }
+        body { background-color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
+        canvas { background-color: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); margin-top: 20px; }
     </style>
 </head>
-<body class="p-4" oncontextmenu="return false">
+<body oncontextmenu="return false">
 
-    <div class="w-[700px] mb-4 flex justify-end">
+    <div class="w-[700px] mt-6 flex justify-end">
         <button onclick="saveImage()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md transition">
             700px로 저장하기
         </button>
     </div>
 
-    <canvas id="canvas" width="700"></canvas>
+    <canvas id="canvas"></canvas>
 
     <div class="mt-4 text-gray-400 text-[10px]">
         이미지 번호: <span id="code-text"></span> | © 2026 YOUR COMPANY
@@ -29,30 +29,41 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        if (code) {
+        async function init() {
+            if (!code) return;
             document.getElementById('code-text').innerText = code;
-            
-            const img = new Image();
-            img.crossOrigin = "Anonymous"; // 외부 이미지 로드 설정
-            img.src = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
-            
-            img.onload = () => {
-                // 700px 너비에 맞춘 비율로 높이 계산
-                const ratio = 700 / img.width;
-                canvas.height = img.height * ratio;
-                
-                // 캔버스에 이미지 그리기
-                ctx.drawImage(img, 0, 0, 700, canvas.height);
-            };
+
+            const imageUrl = `https://sowonnamoo1005.cafe24.com/1/${code}.jpg`;
+
+            try {
+                // 1. 이미지를 blob(데이터 덩어리)으로 직접 가져와서 CORS 문제 회피
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                const bitmap = await createImageBitmap(blob);
+
+                // 2. 700px 고정 너비로 캔버스 크기 조절
+                const ratio = 700 / bitmap.width;
+                canvas.width = 700;
+                canvas.height = bitmap.height * ratio;
+
+                // 3. 캔버스에 그리기
+                ctx.drawImage(bitmap, 0, 0, 700, canvas.height);
+            } catch (err) {
+                console.error("이미지 로드 실패:", err);
+                alert("이미지를 불러올 수 없습니다. 경로를 확인해주세요.");
+            }
         }
 
-        // 700px로 리사이징된 파일로 저장하는 함수
         function saveImage() {
             const link = document.createElement('a');
             link.download = `${code}_700px.jpg`;
-            link.href = canvas.toDataURL("image/jpeg", 0.9); // 품질 90%
+            // 캔버스 내용을 이미지 데이터로 변환
+            link.href = canvas.toDataURL("image/jpeg", 0.9);
             link.click();
         }
+
+        // 초기 실행
+        init();
     </script>
 </body>
 </html>
