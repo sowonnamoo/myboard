@@ -350,25 +350,34 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 
 
 
-// [최종 코드] '재구입' 버튼만 콕 집어 숨기기
+// 재구입 코드
 setInterval(() => {
-    const loadingMsg = document.getElementById('loading-msg');
+    const approveBtn = document.getElementById('approve-btn');
+    const container = approveBtn ? approveBtn.parentNode : null;
     
-    // '재구입'이라는 텍스트가 들어있는 모든 버튼을 찾음
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const reOrderBtn = buttons.find(btn => btn.innerText.includes('재구입'));
-
-    if (reOrderBtn) {
-        // 프리뷰(제작중)가 보이면 숨김 (visibility: hidden은 영역 유지)
-        if (loadingMsg && loadingMsg.style.display !== 'none') {
-            reOrderBtn.style.visibility = "hidden";
-            reOrderBtn.style.pointerEvents = "none";
-        } else {
-            reOrderBtn.style.visibility = "visible";
-            reOrderBtn.style.pointerEvents = "auto";
+    // 조판완료 상태일 때
+    if (approveBtn && approveBtn.innerText === "조판완료") {
+        // 이미 버튼이 있는지 확인
+        if (!document.getElementById('reorder-btn')) {
+            const reorderBtn = document.createElement('button');
+            reorderBtn.id = 'reorder-btn';
+            reorderBtn.className = 'bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600';
+            reorderBtn.innerText = '재구입';
+            reorderBtn.onclick = () => {
+                const title = document.getElementById('detail-title').innerText;
+                window.location.href = 'index3.html?productName=' + encodeURIComponent(title);
+            };
+            // 인쇄승인 버튼 바로 앞에 삽입
+            container.insertBefore(reorderBtn, approveBtn);
         }
+    } else {
+        // 조판완료가 아니면 버튼 제거
+        const existingBtn = document.getElementById('reorder-btn');
+        if (existingBtn) existingBtn.remove();
     }
 }, 500);
+
+
 
 
 
