@@ -58,14 +58,13 @@
 <button id="download-btn" class="bg-gray-500 text-white px-6 py-2 rounded font-bold hover:bg-gray-600">시안 다운로드</button>
 
 <script>
-    document.getElementById('download-btn').onclick = () => {
-        // 상세 화면에 표시된 이미지 번호를 가져옵니다 (재구입 이미지번호 : 000000000 형태)
-        const codeElement = document.querySelector('div[style*="font-size: 9pt"]'); 
-        const imageCode = codeElement ? codeElement.innerText.replace('재구입 이미지번호 : ', '').trim() : '번호없음';
-        
-        // gif.html 뒤에 번호를 파라미터로 붙여서 엽니다
-        window.open('gif.html?code=' + imageCode, 'DownloadPopup', 'width=300,height=400');
-    };
+  document.getElementById('download-btn').onclick = () => {
+    const codeElement = document.querySelector('div[style*="font-size: 9pt"]');
+    const imageCode = codeElement ? codeElement.innerText.replace('재구입 이미지번호 :', '').trim() : "";
+    
+    // 뷰어 창을 720px 너비로 엽니다 (여유공간 포함)
+    window.open('gif.html?code=' + imageCode, 'PhotoShopViewer', 'width=740,height=900,scrollbars=yes');
+};
 </script>
 
 
