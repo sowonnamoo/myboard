@@ -178,36 +178,6 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
 
 
 
-    // 파일링크보이기
-    const filesDiv = document.getElementById("detail-files");
-    if (filesDiv) {
-        filesDiv.innerHTML = ""; // 기존 내용 초기화
-        filesDiv.style.display = "block"; // 강제 노출
-        filesDiv.style.position = "relative";
-        filesDiv.style.zIndex = "10"; 
-
-        // 데이터가 있는지 콘솔로 확인 (디버깅용)
-        console.log("파일 정보:", data.file1Url, data.file2Url);
-
-        if (data.file1Url) {
-            filesDiv.innerHTML += `
-                <a href="${createDownloadUrl(data.file1Url)}" target="_blank" 
-                   style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
-                   📁 첨부파일 1 다운로드
-                </a>`;
-        }
-        if (data.file2Url) {
-            filesDiv.innerHTML += `
-                <a href="${createDownloadUrl(data.file2Url)}" target="_blank" 
-                   style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
-                   📁 첨부파일 2 다운로드
-                </a>`;
-        }
-        
-        if (!data.file1Url && !data.file2Url) {
-            filesDiv.innerHTML = `<span style="color: gray;">파일 없음</span>`;
-        }
-    }
 
 
 
@@ -691,4 +661,34 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 
+    // 파일링크보이기
+    const filesDiv = document.getElementById("detail-files");
+    if (filesDiv) {
+        filesDiv.innerHTML = ""; // 기존 내용 초기화
+        filesDiv.style.display = "block"; // 강제 노출
+        filesDiv.style.position = "relative";
+        filesDiv.style.zIndex = "10"; 
+
+        // 데이터가 있는지 콘솔로 확인 (디버깅용)
+        console.log("파일 정보:", data.file1Url, data.file2Url);
+
+        if (data.file1Url) {
+            filesDiv.innerHTML += `
+                <a href="${createDownloadUrl(data.file1Url)}" target="_blank" 
+                   style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+                   📁 첨부파일 1 다운로드
+                </a>`;
+        }
+        if (data.file2Url) {
+            filesDiv.innerHTML += `
+                <a href="${createDownloadUrl(data.file2Url)}" target="_blank" 
+                   style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+                   📁 첨부파일 2 다운로드
+                </a>`;
+        }
+        
+        if (!data.file1Url && !data.file2Url) {
+            filesDiv.innerHTML = `<span style="color: gray;">파일 없음</span>`;
+        }
+    }
 
