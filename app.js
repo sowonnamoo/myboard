@@ -650,7 +650,25 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-
+/ 파일 다운로드 강제 실행 함수
+window.downloadFile = async (url, filename) => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+    } catch (e) {
+        alert("다운로드 중 오류가 발생했습니다.");
+        console.error(e);
+    }
+};
 
 
 
