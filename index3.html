@@ -64,30 +64,29 @@
         const params = new URLSearchParams(window.location.search);
         const fullTitle = params.get('productName');
         const imgCode = params.get('imgCode');
-        const rawUrl = window.location.search; // 인코딩된 상태의 원본 URL 활용
 
         if (fullTitle) {
-            // 1. 작성자 이름 추출
+            // 1. 이름 추출 (님 앞까지)
             const nameMatch = fullTitle.match(/^(.*?)님/);
             if (nameMatch) document.getElementById('name').value = nameMatch[1].trim();
 
-            // 2. 제품명 및 수량 파싱
+            // 2. 제품명 및 수량 추출 ( / 기준 )
             const parts = fullTitle.split('/');
             if (parts[0]) {
+                // (제품명 형식에서 괄호 제거
                 const pName = parts[0].split('(');
                 document.getElementById('productName').value = pName.length > 1 ? pName[1].trim() : pName[0].replace('(', '').trim();
             }
             if (parts[1]) document.getElementById('qty').value = parts[1].trim();
 
-            // 3. [개선 규칙] 사이즈 추출: %2F ~ %29 사이
-            const sizeMatch = rawUrl.match(/%2F(.*?)%29/);
+            // 3. 사이즈 추출: / 부터 ) 까지
+            const sizeMatch = fullTitle.match(/\/(.*?)\)/);
             if (sizeMatch && sizeMatch[1]) {
-                document.getElementById('size').value = decodeURIComponent(sizeMatch[1]).trim();
+                document.getElementById('size').value = sizeMatch[1].trim();
             }
 
-            // 4. [개선 규칙] 결제금액 추출: )%20 ~ % 사이의 숫자
-            // URL 인코딩 상 ')'는 %29이므로, rawUrl에는 %29%20 형태로 존재하게 됩니다.
-            const priceMatch = rawUrl.match(/%29%20(\d+)%/);
+            // 4. 결제금액 추출: ) 뒤의 공백 이후 숫자만 ( ) \s+ (\d+) )
+            const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch && priceMatch[1]) {
                 document.getElementById('price').value = priceMatch[1].trim();
             }
