@@ -23,9 +23,7 @@
         <button class="tab-btn inactive" id="btn-change">수량,사이즈,금액변동 있음</button>
     </div>
     
-    <input type="text" id="productName" placeholder="구입 제품명">
-    <input type="text" id="qty" placeholder="수량">
-    <input type="text" id="size" placeholder="사이즈">
+    <input type="text" id="productInfo" placeholder="제품명 / 수량 / 사이즈">
     <input type="text" id="price" placeholder="결제금액 (숫자만)">
     
     <div style="display:flex; gap:10px; margin-bottom: 10px;">
@@ -62,30 +60,21 @@
 
     window.onload = async () => {
         const params = new URLSearchParams(window.location.search);
-        const fullTitle = params.get('productName');
+        const fullTitle = params.get('productName'); // URL에서 넘어오는 전체 문자열
         const imgCode = params.get('imgCode');
 
         if (fullTitle) {
-            // 1. 이름 추출 (님 앞까지)
+            // 1. 작성자 이름 분리
             const nameMatch = fullTitle.match(/^(.*?)님/);
             if (nameMatch) document.getElementById('name').value = nameMatch[1].trim();
 
-            // 2. 제품명 및 수량 추출 ( / 기준 )
-            const parts = fullTitle.split('/');
-            if (parts[0]) {
-                // (제품명 형식에서 괄호 제거
-                const pName = parts[0].split('(');
-                document.getElementById('productName').value = pName.length > 1 ? pName[1].trim() : pName[0].replace('(', '').trim();
-            }
-            if (parts[1]) document.getElementById('qty').value = parts[1].trim();
-
-            // 3. 사이즈 추출: / 부터 ) 까지
-            const sizeMatch = fullTitle.match(/\/(.*?)\)/);
-            if (sizeMatch && sizeMatch[1]) {
-                document.getElementById('size').value = sizeMatch[1].trim();
+            // 2. 통합 제품정보 분리 (괄호 안의 내용에서 추출)
+            const contentMatch = fullTitle.match(/\((.*?)\)/);
+            if (contentMatch) {
+                document.getElementById('productInfo').value = contentMatch[1].trim();
             }
 
-            // 4. 결제금액 추출: ) 뒤의 공백 이후 숫자만 ( ) \s+ (\d+) )
+            // 3. 결제금액 추출 (닫는 괄호 ) 뒤의 숫자)
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch && priceMatch[1]) {
                 document.getElementById('price').value = priceMatch[1].trim();
@@ -102,20 +91,9 @@
         win.document.write(`<body style="margin:0; text-align:center;"><img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;"></body>`);
     };
 
-    document.getElementById('btn-no-change').onclick = function() {
-        this.className = 'tab-btn active';
-        document.getElementById('btn-change').className = 'tab-btn inactive';
-    };
-    document.getElementById('btn-change').onclick = function() {
-        this.className = 'tab-btn active';
-        document.getElementById('btn-no-change').className = 'tab-btn inactive';
-    };
-
     window.submitOrder = async (type) => {
         const orderData = {
-            productName: document.getElementById('productName').value,
-            quantity: document.getElementById('qty').value,
-            size: document.getElementById('size').value,
+            productInfo: document.getElementById('productInfo').value, // 통합된 정보
             price: document.getElementById('price').value,
             imgCode: document.getElementById('imgCode').value,
             type: type,
