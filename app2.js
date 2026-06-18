@@ -231,10 +231,17 @@ window.viewDetail = async function(id) {
 await checkMemoAndSetButton(id, data.sian);
             
             // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
-            const dTitle = document.getElementById("detail-title");
-            const dImage = document.getElementById("detail-image");
+          const dTitle = document.getElementById("detail-title");
+const dImage = document.getElementById("detail-image");
 
-            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+
+
+
+            
+            if (dTitle) {
+    const priceVal = data.price ? `${data.price.toLocaleString()}원` : "가격 미정";
+    dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size}) ${priceVal}`;
+}
             if (dImage) {
                 const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
                 const yy = String(createdAt.getFullYear()).slice(-2);
