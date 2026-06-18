@@ -53,25 +53,23 @@ window.switchView = function(viewName) {
 async function uploadToR2(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null;
-    
+
     const file = fileInput.files[0];
-    const fileName = `${authorName || "user"}_${file.name}`;
-    const filePath = `orders/${encodeURIComponent(fileName)}`; // orders 폴더 지정
+    const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
     
-    // R2 공식 주소 (Public Development URL)
+    // Cloudflare R2의 Public URL
     const R2_URL = "https://pub-cee4798293994a16aac9d4972fddf5ec.r2.dev"; 
 
-    const response = await fetch(`${R2_URL}/${filePath}`, {
+    const response = await fetch(`${R2_URL}/${fileName}`, {
         method: 'PUT',
         body: file,
         headers: { 'Content-Type': file.type }
     });
 
     if (response.ok) {
-        return `${R2_URL}/${filePath}`; // 이 주소가 DB에 저장됩니다
+        return `${R2_URL}/${fileName}`; // 이 URL을 DB에 저장
     } else {
-        alert("업로드 실패");
-        return null;
+        throw new Error("R2 업로드 실패");
     }
 }
 
