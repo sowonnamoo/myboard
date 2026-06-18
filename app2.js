@@ -52,17 +52,12 @@ function renderTable(dataToRender = allOrders) {
     const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
-   dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
-    const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
-    const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
-    const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
-    
-    // 가격 데이터 포맷팅
-    const priceDisplay = (data.price !== undefined && data.price !== null) 
-                         ? `${data.price.toLocaleString()}원` 
-                         : "-";
-
-    listBody.innerHTML += `
+    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+        const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
+        const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
+        const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
+        
+        listBody.innerHTML += `
     <tr class="hover:bg-gray-50 border-b border-gray-100"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
             <span class="mr-2">🔒 ${data.author}님</span>
@@ -71,7 +66,7 @@ function renderTable(dataToRender = allOrders) {
         </td>
         <td class="py-3 text-sm text-gray-600">에코</td>
         <td class="py-3 text-xs text-gray-400">${dateStr}</td>
-        <td class="py-3 text-sm text-gray-600">${priceDisplay}</td> </tr>`;
+    </tr>`;
     });
 
     const pager = document.getElementById("pagination");
@@ -239,21 +234,10 @@ await checkMemoAndSetButton(id, data.sian);
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
 
-            // [추가된 가격 로직]
-            const priceStr = (data.price !== undefined && data.price !== null) 
-                             ? `${data.price.toLocaleString()}원` 
-                             : "가격 미정";
-
-            // [기존 코드에서 dTitle.innerText 부분만 수정]
-            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size}) - ${priceStr}`;
-            
+            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
             if (dImage) {
                 const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
                 const yy = String(createdAt.getFullYear()).slice(-2);
-
-
-
-                
                 const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
                 const dd = String(createdAt.getDate()).padStart(2, '0');
                 const hh = String(createdAt.getHours()).padStart(2, '0');
