@@ -46,7 +46,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = { 
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -60,7 +60,36 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    window.onload = () => {
+    // 가격 자동 검색 함수
+    async function autoFetchPrice() {
+        const name = document.getElementById('productName').value;
+        const qty = document.getElementById('qty').value;
+        const size = document.getElementById('size').value;
+
+        if (!name || !qty || !size) return;
+
+        try {
+            const q = query(
+                collection(db, "boards"), 
+                where("productName", "==", name),
+                where("quantity", "==", qty),
+                where("size", "==", size),
+                orderBy("createdAt", "desc"),
+                limit(1)
+            );
+
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                querySnapshot.forEach((doc) => {
+                    document.getElementById('price').value = doc.data().price;
+                });
+            }
+        } catch (e) {
+            console.error("가격 검색 오류:", e);
+        }
+    }
+
+    window.onload = async () => {
         const params = new URLSearchParams(window.location.search);
         const fullTitle = params.get('productName');
         const imgCode = params.get('imgCode');
@@ -74,32 +103,26 @@
             if (items[0]) document.getElementById('productName').value = items[0].trim();
             if (items[1]) document.getElementById('qty').value = items[1].trim();
             if (items[2]) document.getElementById('size').value = items[2].trim();
-            if (items[3]) document.getElementById('price').value = items[3].trim();
             if (parts[0]) document.getElementById('name').value = parts[0].trim();
         }
 
-        if (imgCode) {
-            document.getElementById('imgCode').value = imgCode;
-        }
+        if (imgCode) document.getElementById('imgCode').value = imgCode;
+
+        // URL 파싱 후 0.1초 뒤 자동 가격 검색
+        setTimeout(autoFetchPrice, 100);
     };
 
+    // 입력값 변경 시에도 자동으로 다시 검색
+    ['productName', 'qty', 'size'].forEach(id => {
+        document.getElementById(id).addEventListener('change', autoFetchPrice);
+    });
+
     window.openImage = () => {
-    const imgCode = document.getElementById('imgCode').value;
-    if (!imgCode) {
-        alert("이미지 번호가 없습니다.");
-        return;
-    }
-    
-    // resizable=no 옵션 추가
-    const win = window.open('', '_blank', 'width=700,height=800,resizable=no');
-    
-    win.document.write(`
-        <body style="margin:0; text-align:center;" oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
-            <img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;">
-        </body>
-    `);
-    win.document.title = "이미지 보기";
-};
+        const imgCode = document.getElementById('imgCode').value;
+        if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
+        const win = window.open('', '_blank', 'width=700,height=800,resizable=no');
+        win.document.write(`<body style="margin:0; text-align:center;"><img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;"></body>`);
+    };
 
     document.getElementById('btn-no-change').onclick = function() {
         this.className = 'tab-btn active';
