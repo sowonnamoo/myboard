@@ -25,7 +25,7 @@
     
     <input type="text" id="productName" placeholder="구입 제품명">
     <input type="text" id="qty" placeholder="수량">
-    <input type="text" id="size" placeholder="사이즈">
+    <input type="text" id="size" placeholder="사이즈" onblur="separatePrice()">
     <input type="text" id="price" placeholder="결제금액 (숫자만)">
     
     <div style="display:flex; gap:10px; margin-bottom: 10px;">
@@ -46,7 +46,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = { 
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -60,39 +60,22 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 가격 자동 검색 함수
-    async function autoFetchPrice() {
-        const name = document.getElementById('productName').value;
-        const qty = document.getElementById('qty').value;
-        const size = document.getElementById('size').value;
+    // [핵심] 사이즈란에서 가격을 분리하여 이동시키는 함수
+    window.separatePrice = () => {
+        const sizeInput = document.getElementById('size');
+        const priceInput = document.getElementById('price');
+        let val = sizeInput.value;
 
-        if (!name || !qty || !size) return;
-
-        try {
-            const q = query(
-                collection(db, "boards"), 
-                where("productName", "==", name),
-                where("quantity", "==", qty),
-                where("size", "==", size),
-                orderBy("createdAt", "desc"),
-                limit(1)
-            );
-
-            const querySnapshot = await getDocs(q);
-            console.log("검색된 문서 수:", querySnapshot.size); // <--- 이 줄 추가
-            if (!querySnapshot.empty) {
-                querySnapshot.forEach((doc) => {
-                    console.log("찾은 가격:", doc.data().price); // <--- 이 줄 추가
-                    document.getElementById('price').value = doc.data().price;
-                });
-} else {
-                console.log("일치하는 데이터 없음. 조건 확인 필요!"); // <--- 이 줄 추가
-            }
-
-        } catch (e) {
-            console.error("가격 검색 오류:", e);
+        // 1. 숫자만 추출하여 결제금액란에 대입
+        const priceOnly = val.replace(/[^0-9]/g, '');
+        if (priceOnly) {
+            priceInput.value = priceOnly;
+            
+            // 2. 사이즈란에서 숫자와 기호(콤마, 원, 괄호 등) 제거
+            // 정규식: [0-9,원(),\s] -> 숫자, 콤마, '원', 괄호, 공백 제거
+            sizeInput.value = val.replace(/[0-9,원()\s]/g, '').trim();
         }
-    }
+    };
 
     window.onload = async () => {
         const params = new URLSearchParams(window.location.search);
@@ -107,20 +90,16 @@
             
             if (items[0]) document.getElementById('productName').value = items[0].trim();
             if (items[1]) document.getElementById('qty').value = items[1].trim();
-            if (items[2]) document.getElementById('size').value = items[2].trim();
+            if (items[2]) {
+                document.getElementById('size').value = items[2].trim();
+                // 데이터 로드 시에도 가격 분리 수행
+                separatePrice();
+            }
             if (parts[0]) document.getElementById('name').value = parts[0].trim();
         }
 
         if (imgCode) document.getElementById('imgCode').value = imgCode;
-
-        // URL 파싱 후 0.1초 뒤 자동 가격 검색
-        setTimeout(autoFetchPrice, 100);
     };
-
-    // 입력값 변경 시에도 자동으로 다시 검색
-    ['productName', 'qty', 'size'].forEach(id => {
-        document.getElementById(id).addEventListener('change', autoFetchPrice);
-    });
 
     window.openImage = () => {
         const imgCode = document.getElementById('imgCode').value;
