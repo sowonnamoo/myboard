@@ -79,11 +79,16 @@
             );
 
             const querySnapshot = await getDocs(q);
+            console.log("검색된 문서 수:", querySnapshot.size); // <--- 이 줄 추가
             if (!querySnapshot.empty) {
                 querySnapshot.forEach((doc) => {
+                    console.log("찾은 가격:", doc.data().price); // <--- 이 줄 추가
                     document.getElementById('price').value = doc.data().price;
                 });
+} else {
+                console.log("일치하는 데이터 없음. 조건 확인 필요!"); // <--- 이 줄 추가
             }
+
         } catch (e) {
             console.error("가격 검색 오류:", e);
         }
