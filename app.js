@@ -1,7 +1,8 @@
 // 🔑 구글 앱스 스크립트 웹 앱 URL
 const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
@@ -70,8 +71,7 @@ async function uploadToGoogleDrive(fileInputId, authorName) {
 
 async function loadAndRender() {
     try {
-        // 최근 20개만 불러오도록 limit(20) 추가 쿼리아끼기
-        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(20)); 
+        const q = query(ordersCollection, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
         allOrders = [];
         snapshot.forEach(doc => { 
@@ -589,25 +589,14 @@ window.syncStatusOverlay = function(status) {
 
 
 
-// [추가] 페이지 로드 시 데이터를 딱 한 번만 불러오게 설정 용량 아끼기
-let isLoaded = false;
-function initBoard() {
-    if (isLoaded) return;
-    loadAndRender(); // 여기서 데이터를 처음으로 불러옴
-    isLoaded = true;
-}
 
-// 페이지가 다 로드되면 실행
-initBoard();
 
-// 맨 하단 이벤트 리스너들을 이렇게 하나로 합치세요
+// 앞페이지에서 상품정보 가져와 뿌리기 app.js 맨 하단에 추가 퀴리스트링방식으로 다른페이지도 동일적용
 window.addEventListener('DOMContentLoaded', () => {
-    // 1. 기존 데이터 로드 실행
-    initBoard();
-
-    // 2. 쿼리스트링 상품 정보 처리
     const params = new URLSearchParams(window.location.search);
+    
     if (params.has('product')) {
+        // 1. 값 채우기
         const prodInput = document.getElementById('product-name');
         const qtyInput = document.getElementById('quantity');
         const sizeInput = document.getElementById('size');
@@ -618,12 +607,19 @@ window.addEventListener('DOMContentLoaded', () => {
         sizeInput.value = params.get('size');
         priceInput.value = params.get('price');
         
+        // 2. [핵심] 수정 불가하도록 readonly 속성 부여
+        prodInput.readOnly = true;
+        qtyInput.readOnly = true;
+        sizeInput.readOnly = true;
+        priceInput.readOnly = true;
+        
+        // 시각적으로 잠겨있다는 느낌을 주려면 스타일 추가 (선택사항)
         [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
-            el.readOnly = true;
-            el.style.backgroundColor = "#f3f4f6";
+            el.style.backgroundColor = "#f3f4f6"; // 배경색을 회색으로
             el.style.cursor = "not-allowed";
         });
         
+        // 3. 화면 전환
         switchView('write');
     }
 });
