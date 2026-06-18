@@ -653,7 +653,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-/ 파일 다운로드 강제 실행 함수
+// 파일 다운로드 강제 실행 함수
 window.downloadFile = async (url, filename) => {
     try {
         const response = await fetch(url);
