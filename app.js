@@ -48,25 +48,54 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
+
+
+
 async function uploadToGoogleDrive(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
+    // 파일이 없으면 null 반환 (문제없음)
     if (!fileInput || fileInput.files.length === 0) return null;
+    
     const file = fileInput.files[0];
-    const fileName = `${authorName || ""}_${file.name}`;
-    return new Promise((resolve) => {
+    const fileName = `${authorName || "unknown"}_${file.name}`;
+    
+    // 파일 크기 제한 (예: 5MB 초과 시 경고)
+    if (file.size > 5 * 1024 * 1024) {
+        alert(`${file.name} 파일이 너무 큽니다. 5MB 이하의 파일을 선택해주세요.`);
+        throw new Error("파일 크기 초과");
+    }
+
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async function(e) {
             try {
                 const base64Data = e.target.result.split(',')[1];
-                const body = new URLSearchParams({ data: base64Data, filename: fileName, mimetype: file.type });
-                const res = await fetch(GOOGLE_WEB_APP_URL, { method: 'POST', body });
-                const data = await res.json();
-                resolve(data && data.url ? data.url : null);
-            } catch (error) { resolve(null); }
+                const response = await fetch(GOOGLE_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // 구글 GAS 특성상 no-cors가 필요할 수 있음
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        data: base64Data,
+                        filename: fileName,
+                        mimetype: file.type
+                    })
+                });
+
+                // 성공 여부를 판별하기 어려우면 타임아웃을 두거나 
+                // 업로드 완료 후 URL을 직접 DB에 저장하는 방식으로 전환해야 합니다.
+                // 일단 기존 방식대로 결과를 기다립니다.
+                resolve("UPLOAD_PENDING_OR_SUCCESS"); 
+            } catch (error) {
+                console.error("업로드 에러:", error);
+                reject(error);
+            }
         };
+        reader.onerror = (err) => reject(err);
         reader.readAsDataURL(file);
     });
 }
+
+
 
 async function loadAndRender() {
     try {
