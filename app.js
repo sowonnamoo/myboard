@@ -173,33 +173,33 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
     
     // [파일 출력 로직]
-   const filesDiv = document.getElementById("detail-files");
-    filesDiv.innerHTML = ""; // 기존 내용 초기화
+ const filesDiv = document.getElementById("detail-files");
+filesDiv.innerHTML = ""; // 초기화
 
-    // 파일 1 링크 생성
-    if (data.file1Url) {
-        const file1Link = document.createElement("a");
-        file1Link.href = data.file1Url;
-        file1Link.target = "_blank";
-        file1Link.innerText = "📁 첨부파일 1 다운로드";
-        file1Link.style.cssText = "display: block; margin: 5px 0; padding: 10px; background: #f3f4f6; border-radius: 5px; color: blue; text-decoration: underline; font-weight: bold;";
-        filesDiv.appendChild(file1Link);
-    }
+// 1. 데이터 확인
+if (data.file1Url || data.file2Url) {
+    const files = [
+        { name: "첨부파일 1", url: data.file1Url },
+        { name: "첨부파일 2", url: data.file2Url }
+    ];
 
-    // 파일 2 링크 생성
-    if (data.file2Url) {
-        const file2Link = document.createElement("a");
-        file2Link.href = data.file2Url;
-        file2Link.target = "_blank";
-        file2Link.innerText = "📁 첨부파일 2 다운로드";
-        file2Link.style.cssText = "display: block; margin: 5px 0; padding: 10px; background: #f3f4f6; border-radius: 5px; color: blue; text-decoration: underline; font-weight: bold;";
-        filesDiv.appendChild(file2Link);
-    }
-
-    // 파일이 없을 때
-    if (!data.file1Url && !data.file2Url) {
-        filesDiv.innerHTML = '<span style="color: gray;">파일 없음</span>';
-    }
+    files.forEach((file, index) => {
+        if (file.url) {
+            const link = document.createElement("a");
+            link.href = file.url; // 변환 없이 DB 값 그대로 사용
+            link.target = "_blank";
+            link.textContent = `📁 ${file.name} 다운로드`;
+            // 스타일을 직접 지정하여 레이아웃 문제 방지
+            link.style.cssText = "display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px; cursor: pointer;";
+            
+            filesDiv.appendChild(link);
+        }
+    });
+} else {
+    // 파일이 진짜 없는 경우
+    filesDiv.textContent = "파일 없음";
+    filesDiv.style.color = "gray";
+}
 
     // 마지막 단계
     switchView('detail');
