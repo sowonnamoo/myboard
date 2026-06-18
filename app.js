@@ -48,24 +48,31 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-async function uploadToGoogleDrive(fileInputId, authorName) {
+
+// [R2 업로드 함수] 업로드
+async function uploadToR2(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null;
+    
     const file = fileInput.files[0];
-    const fileName = `${authorName || ""}_${file.name}`;
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const base64Data = e.target.result.split(',')[1];
-                const body = new URLSearchParams({ data: base64Data, filename: fileName, mimetype: file.type });
-                const res = await fetch(GOOGLE_WEB_APP_URL, { method: 'POST', body });
-                const data = await res.json();
-                resolve(data && data.url ? data.url : null);
-            } catch (error) { resolve(null); }
-        };
-        reader.readAsDataURL(file);
+    const fileName = `${authorName || "user"}_${file.name}`;
+    const filePath = `orders/${encodeURIComponent(fileName)}`; // orders 폴더 지정
+    
+    // R2 공식 주소 (Public Development URL)
+    const R2_URL = "https://pub-cee4798293994a16aac9d4972fddf5ec.r2.dev"; 
+
+    const response = await fetch(`${R2_URL}/${filePath}`, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type }
     });
+
+    if (response.ok) {
+        return `${R2_URL}/${filePath}`; // 이 주소가 DB에 저장됩니다
+    } else {
+        alert("업로드 실패");
+        return null;
+    }
 }
 
 async function loadAndRender() {
@@ -172,12 +179,13 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         };
     }
     
-    const filesDiv = document.getElementById("detail-files"); 
-    filesDiv.innerHTML = "";
-    if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
-    if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
-    document.getElementById("detail-delete-btn").onclick = async () => { 
-        if(confirm("삭제하시겠습니까?")) { 
+   
+   const filesDiv = document.getElementById("detail-files"); 
+filesDiv.innerHTML = "";
+// createDownloadUrl() 없이 직접 URL 삽입
+if(data.file1Url) filesDiv.innerHTML += `<a href="${data.file1Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
+if(data.file2Url) filesDiv.innerHTML += `<a href="${data.file2Url}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;   document.getElementById("detail-delete-btn").onclick = async () => { 
+ if(confirm("삭제하시겠습니까?")) { 
             try { await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); alert("삭제되었습니다."); switchView('list'); } catch (e) { alert("삭제 실패: " + e.message); }
         } 
     };
@@ -222,35 +230,38 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     }, 3000); // 3초 간격
 
     // 3. 기존 글쓰기 로직 (침범 안 함)
-    try {
-        const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
-        const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
+  try {
+    // 1. 파일 업로드 실행
+    const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value);
+    const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value);
         
-        await addDoc(collection(db, "boards"), { 
-    author: document.getElementById('input-author').value, 
-    productName: document.getElementById('product-name').value, 
-    quantity: document.getElementById('quantity').value, 
-    size: document.getElementById('size').value, 
-    phone: document.getElementById('phone').value, 
+    // 2. 파이어베이스에 모든 정보 저장 (누락 없이 합침)
+  await addDoc(collection(db, "boards"), { 
+    author: document.getElementById('input-author').value,
+    productName: document.getElementById('product-name').value,
+    quantity: document.getElementById('quantity').value,
+    size: document.getElementById('size').value,
+    phone: document.getElementById('phone').value,
     price: document.getElementById('price').value,
-    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
-    password: phoneVal.slice(-4), 
-    message: document.getElementById('message').value, 
-    file1Url, 
-    file2Url, 
-    views: 0, 
-    createdAt: new Date(), 
+    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
+    password: document.getElementById('phone').value.slice(-4),
+    message: document.getElementById('message').value,
+    file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
+    file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
+    views: 0,
+    createdAt: new Date(),
     isDeleted: false,
-    status: '대기' // <--- 이 한 줄을 반드시 추가해야 합니다!
-});
-        
-        alert("접수되었습니다."); 
-        switchView('list');
-    } catch (e) { 
-        alert("오류: " + e.message); 
-    } finally { 
-        // 4. 로딩바 종료
-        clearInterval(interval);
+    status: '대기'
+    });
+
+    alert("접수되었습니다.");
+    switchView('list');
+} catch (e) {
+    console.error(e);
+    alert("오류: " + e.message);
+} finally {
+    // 4. 로딩바 종료
+    clearInterval(interval);
         spinner.classList.add("hidden");
         bar.style.width = "0%";
     }
