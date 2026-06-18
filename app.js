@@ -161,9 +161,9 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
-    window.syncStatusOverlay(data.status);
-    
-    // 수정 버튼 안전하게 연결
+   window.syncStatusOverlay(data.status);
+
+    // 수정 버튼 로직
     const editBtn = document.getElementById("detail-edit-btn");
     if (editBtn) {
         editBtn.onclick = () => {
@@ -172,30 +172,27 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         };
     }
     
-   const filesDiv = document.getElementById("detail-files"); 
-    filesDiv.innerHTML = ""; // 초기화
+    // [파일 출력 로직]
+    const filesDiv = document.getElementById("detail-files"); 
+    filesDiv.innerHTML = ""; 
 
-    // 파일 1 처리
     if (data.file1Url) {
-        // 주소에서 ID만 추출하여 강제 다운로드 URL 생성
         const fileId = data.file1Url.includes('/d/') ? data.file1Url.split('/d/')[1].split('/')[0] : data.file1Url.split('id=')[1]?.split('&')[0];
         const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        
         filesDiv.innerHTML += `<a href="${downloadUrl}" target="_blank" class="block p-2 my-1 bg-blue-50 border border-blue-200 rounded text-blue-700 font-bold hover:bg-blue-100">📁 첨부파일 1 다운로드 (직접 다운)</a>`;
     }
 
-    // 파일 2 처리
     if (data.file2Url) {
         const fileId = data.file2Url.includes('/d/') ? data.file2Url.split('/d/')[1].split('/')[0] : data.file2Url.split('id=')[1]?.split('&')[0];
         const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        
         filesDiv.innerHTML += `<a href="${downloadUrl}" target="_blank" class="block p-2 my-1 bg-blue-50 border border-blue-200 rounded text-blue-700 font-bold hover:bg-blue-100">📁 첨부파일 2 다운로드 (직접 다운)</a>`;
     }
 
     if (!data.file1Url && !data.file2Url) {
         filesDiv.innerHTML = `<span class="text-gray-400 text-sm">파일이 없습니다.</span>`;
     }
-    };
+
+    // 마지막 단계
     switchView('detail');
 });
 
