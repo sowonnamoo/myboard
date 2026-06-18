@@ -5,40 +5,70 @@
     <title>빠른 재구입</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
-        .box { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .box { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; border: 1px solid #ddd; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; }
         .tab-btn { flex: 1; padding: 10px; border: none; cursor: pointer; color: white; font-weight: bold; border-radius: 4px; }
         .active { background: #e63946; }
         .inactive { background: #adb5bd; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; box-sizing: border-box; }
-        .btn-group { display: flex; gap: 10px; }
-        .btn-group button { flex: 1; padding: 15px; border: none; background: #333; color: white; font-weight: bold; cursor: pointer; }
+        
+        /* 라벨과 입력창 정렬 */
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-group button { flex: 1; padding: 15px; border: none; background: #333; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div class="box">
     <div class="tabs">
-        <button class="tab-btn active" id="btn-no-change">수량,사이즈,금액변동 없음</button>
-        <button class="tab-btn inactive" id="btn-change">수량,사이즈,금액변동 있음</button>
+        <button class="tab-btn active" id="btn-no-change">변동 없음</button>
+        <button class="tab-btn inactive" id="btn-change">변동 있음</button>
     </div>
     
-    <input type="text" id="productInfo" placeholder="제품명 / 수량 / 사이즈">
-    <input type="text" id="price" placeholder="결제금액 (숫자만)">
+    <div class="input-group">
+        <label>제품명 / 수량 / 사이즈</label>
+        <input type="text" id="productInfo" placeholder="내용이 여기에 표시됩니다">
+    </div>
     
-    <div style="display:flex; gap:10px; margin-bottom: 10px;">
-        <input type="text" id="imgCode" readonly style="flex:1;" placeholder="이미지 번호">
-        <button type="button" onclick="openImage()" style="flex:1; background:#555; color:white; border:none; cursor:pointer;">이미지 보기</button>
+    <div class="input-group">
+        <label>결제금액</label>
+        <input type="text" id="price" placeholder="숫자만">
+    </div>
+    
+    <div class="input-group">
+        <label>이미지 번호</label>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="imgCode" readonly placeholder="이미지 코드">
+            <button type="button" onclick="openImage()" style="width:100px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">이미지 보기</button>
+        </div>
     </div>
 
-    <input type="text" id="name" placeholder="작성자명">
-    <input type="text" id="phone" placeholder="접수자 핸드폰">
-    <input type="text" id="address" placeholder="주소">
-    <input type="text" id="addressDetail" placeholder="상세주소">
+    <div class="input-group">
+        <label>작성자명</label>
+        <input type="text" id="name" placeholder="홍길동">
+    </div>
+    
+    <div class="input-group">
+        <label>핸드폰 번호</label>
+        <input type="text" id="phone" placeholder="010-0000-0000">
+    </div>
+
+    <div class="input-group">
+        <label>주소</label>
+        <input type="text" id="address" placeholder="기본 주소">
+    </div>
+
+    <div class="input-group">
+        <label>상세주소</label>
+        <input type="text" id="addressDetail" placeholder="상세 주소">
+    </div>
 
     <div class="btn-group">
-        <button onclick="submitOrder('카결')">카결</button>
-        <button onclick="submitOrder('무결')">무결</button>
+        <button onclick="submitOrder('카결')">카드 결제</button>
+        <button onclick="submitOrder('무결')">무통장 입금</button>
     </div>
 </div>
 
@@ -60,25 +90,18 @@
 
     window.onload = async () => {
         const params = new URLSearchParams(window.location.search);
-        const fullTitle = params.get('productName'); // URL에서 넘어오는 전체 문자열
+        const fullTitle = params.get('productName');
         const imgCode = params.get('imgCode');
 
         if (fullTitle) {
-            // 1. 작성자 이름 분리
             const nameMatch = fullTitle.match(/^(.*?)님/);
             if (nameMatch) document.getElementById('name').value = nameMatch[1].trim();
 
-            // 2. 통합 제품정보 분리 (괄호 안의 내용에서 추출)
             const contentMatch = fullTitle.match(/\((.*?)\)/);
-            if (contentMatch) {
-                document.getElementById('productInfo').value = contentMatch[1].trim();
-            }
+            if (contentMatch) document.getElementById('productInfo').value = contentMatch[1].trim();
 
-            // 3. 결제금액 추출 (닫는 괄호 ) 뒤의 숫자)
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
-            if (priceMatch && priceMatch[1]) {
-                document.getElementById('price').value = priceMatch[1].trim();
-            }
+            if (priceMatch && priceMatch[1]) document.getElementById('price').value = priceMatch[1].trim();
         }
 
         if (imgCode) document.getElementById('imgCode').value = imgCode;
@@ -91,14 +114,24 @@
         win.document.write(`<body style="margin:0; text-align:center;"><img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;"></body>`);
     };
 
+    // 탭 전환 기능
+    document.getElementById('btn-no-change').onclick = function() {
+        this.className = 'tab-btn active';
+        document.getElementById('btn-change').className = 'tab-btn inactive';
+    };
+    document.getElementById('btn-change').onclick = function() {
+        this.className = 'tab-btn active';
+        document.getElementById('btn-no-change').className = 'tab-btn inactive';
+    };
+
     window.submitOrder = async (type) => {
         const orderData = {
-            productInfo: document.getElementById('productInfo').value, // 통합된 정보
+            productInfo: document.getElementById('productInfo').value,
             price: document.getElementById('price').value,
             imgCode: document.getElementById('imgCode').value,
             type: type,
             name: document.getElementById('name').value,
-            phone: document.getElementById('phone').value.replace(/[^0-9]/g, ''),
+            phone: document.getElementById('phone').value,
             address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
             timestamp: new Date().toLocaleString()
         };
