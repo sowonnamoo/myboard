@@ -173,18 +173,19 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     filesDiv.innerHTML = "";
     
     if(data.file1Url) {
-        const a = document.createElement('a');
-        a.innerText = "📁 첨부파일 1 (다운로드)";
-        a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-        a.onclick = () => window.downloadFile(data.file1Url, "file1_download.png");
-        filesDiv.appendChild(a);
-    }
-    if(data.file2Url) {
-        const a = document.createElement('a');
-        a.innerText = "📁 첨부파일 2 (다운로드)";
-        a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-        a.onclick = () => window.downloadFile(data.file2Url, "file2_download.png");
-        filesDiv.appendChild(a);
+       const a = document.createElement('a');
+       // 이모지를 회색으로 만들기 위해 grayscale 필터 클래스 추가
+       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 1 (다운로드)';
+       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
+       a.onclick = () => window.downloadFile(data.file1Url, "file1_download.png");
+       filesDiv.appendChild(a);
+   }
+   if(data.file2Url) {
+       const a = document.createElement('a');
+       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 2 (다운로드)';
+       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
+       a.onclick = () => window.downloadFile(data.file2Url, "file2_download.png");
+       filesDiv.appendChild(a);
     }
 
     // 삭제 버튼 설정
