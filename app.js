@@ -173,16 +173,18 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
     
 const filesDiv = document.getElementById("detail-files"); 
-    filesDiv.innerHTML = ""; // 초기화
-    
+    filesDiv.innerHTML = ""; 
     if (data.file1Url) {
-        filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
+        filesDiv.innerHTML += `<div style="margin-bottom: 5px;"><a href="${createDownloadUrl(data.file1Url)}" target="_blank" style="color: blue; text-decoration: underline; font-weight: bold; font-size: 14px;">📁 [다운로드] 첨부파일 1</a></div>`;
     }
     if (data.file2Url) {
-        filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
+        filesDiv.innerHTML += `<div style="margin-bottom: 5px;"><a href="${createDownloadUrl(data.file2Url)}" target="_blank" style="color: blue; text-decoration: underline; font-weight: bold; font-size: 14px;">📁 [다운로드] 첨부파일 2</a></div>`;
+    }
+    if (!data.file1Url && !data.file2Url) {
+        filesDiv.innerHTML = `<span style="color: gray;">파일 없음</span>`;
     }
 
-    // 삭제 버튼 이벤트 설정
+    // [삭제 버튼 이벤트]
     document.getElementById("detail-delete-btn").onclick = async () => { 
         if(confirm("삭제하시겠습니까?")) { 
             try { 
@@ -191,11 +193,16 @@ const filesDiv = document.getElementById("detail-files");
                 switchView('list'); 
             } catch (e) { 
                 alert("삭제 실패: " + e.message); 
-         }
+            }
         } 
     };
+
+    // 마지막에 뷰 전환
+    window.syncStatusOverlay(data.status);
     switchView('detail');
 });
+
+
 
 // ... 나머지는 기존 코드와 동일 (생략) ...
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
