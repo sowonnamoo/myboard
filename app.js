@@ -47,17 +47,16 @@ async function uploadToR2(fileInputId, authorName) {
     const file = fileInput.files[0];
     const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
     
-    // Cloudflare R2의 Public URL
-    const R2_URL = "https://pub-cee4798293994a16aac9d4972fddf5ec.r2.dev"; 
+    // 본인의 Worker 주소 (Worker 화면 상단이나 배포 후 URL 확인)
+    const WORKER_URL = "https://your-worker-name.your-subdomain.workers.dev";
 
-    const response = await fetch(`${R2_URL}/${fileName}`, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type }
+    const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(fileName)}`, {
+        method: "PUT",
+        body: file
     });
 
-    if (response.ok) {
-        return `${R2_URL}/${fileName}`; // 이 URL을 DB에 저장
+    const result = await response.json();
+    return result.url; // 여기서 반환된 URL이 DB에 저장됨
     } else {
         throw new Error("R2 업로드 실패");
     }
