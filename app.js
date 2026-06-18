@@ -650,6 +650,20 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 
-
+// --- 테스트용 강제 링크 출력 코드 ---
+const testDiv = document.createElement("div");
+testDiv.style.padding = "20px";
+testDiv.style.border = "2px solid red"; // 빨간 테두리로 영역 표시
+testDiv.style.marginTop = "20px";
+testDiv.innerHTML = `
+    <p style="font-weight:bold; color:red;">[테스트용 파일 링크]</p>
+    <a href="https://drive.google.com/uc?export=download&id=파일ID를여기에넣으세요" 
+       target="_blank" 
+       style="color: blue; font-size: 18px; text-decoration: underline;">
+       📁 다운로드 테스트 링크 (클릭해보세요)
+    </a>
+`;
+document.body.appendChild(testDiv); // 페이지 맨 아래에 강제 부착
+// ----------------------------------
 
 
