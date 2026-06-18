@@ -1,8 +1,7 @@
 // 🔑 구글 앱스 스크립트 웹 앱 URL
 const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
@@ -71,7 +70,8 @@ async function uploadToGoogleDrive(fileInputId, authorName) {
 
 async function loadAndRender() {
     try {
-        const q = query(ordersCollection, orderBy("createdAt", "desc"));
+        // 최근 20개만 불러오도록 limit(20) 추가 쿼리아끼기
+        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(20)); 
         const snapshot = await getDocs(q);
         allOrders = [];
         snapshot.forEach(doc => { 
@@ -226,24 +226,23 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
         const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
         
-       await addDoc(collection(db, "boards"), { 
-            author: document.getElementById('input-author').value, 
-            productName: document.getElementById('product-name').value, 
-            quantity: document.getElementById('quantity').value, 
-            size: document.getElementById('size').value, 
-            phone: document.getElementById('phone').value, 
-            price: document.getElementById('price').value,
-            address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
-            password: phoneVal.slice(-4), 
-            message: document.getElementById('message').value, 
-            file1Url, 
-            file2Url, 
-            views: 0, 
-            createdAt: new Date(), 
-            isDeleted: false,
-            // [추가할 코드]
-            status: "대기" 
-        });
+        await addDoc(collection(db, "boards"), { 
+    author: document.getElementById('input-author').value, 
+    productName: document.getElementById('product-name').value, 
+    quantity: document.getElementById('quantity').value, 
+    size: document.getElementById('size').value, 
+    phone: document.getElementById('phone').value, 
+    price: document.getElementById('price').value,
+    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
+    password: phoneVal.slice(-4), 
+    message: document.getElementById('message').value, 
+    file1Url, 
+    file2Url, 
+    views: 0, 
+    createdAt: new Date(), 
+    isDeleted: false,
+    status: '대기' // <--- 이 한 줄을 반드시 추가해야 합니다!
+});
         
         alert("접수되었습니다."); 
         switchView('list');
@@ -491,54 +490,146 @@ window.onfocus = () => {
 
 
 
+// 카드결제 결제 완료 후 부모창 상태 업데이트 로직 (app.js 하단)
+window.addEventListener("message", async (event) => {
+    if (event.data && event.data.type === 'PAYMENT_SUCCESS') {
+        const paidPrice = event.data.price;
+
+        // 1. 현재 상세 페이지에 떠 있는 주문 정보를 가져옵니다.
+        const docRef = doc(db, "boards", currentViewId);
+        const snap = await getDoc(docRef);
+        
+        if (!snap.exists()) return;
+
+        const data = snap.data();
+
+        // 2. [핵심] 상태가 '대기'이고 금액이 일치할 때만 업데이트!
+        if (data.status === '대기' && data.price === paidPrice) {
+            
+            // DB 상태 변경
+            await updateDoc(docRef, {
+                status: '카드결제'
+            });
+
+            alert("결제가 정상적으로 확인되었습니다.");
+            
+            // 3. 화면 상태 즉시 갱신 (이미지 변경)
+            // 상세 정보를 다시 불러와서 status 필드가 '카드결제'로 바뀐 것을 반영합니다.
+            window.syncStatusOverlay('카드결제');
+            
+            // viewDetail을 다시 호출하면 DB에서 바뀐 status를 다시 읽어와 화면을 갱신합니다.
+            // (만약 팝업 닫기나 화면 리로드가 필요하면 여기서 처리하세요)
+            location.reload(); 
+        } else if (data.status !== '대기') {
+            console.log("이미 처리된 주문입니다.");
+        } else {
+            console.log("금액이 일치하지 않습니다.");
+        }
+    }
+});
+
+
+
 
 
 
 // 앙카 png 주문내용 강제 링크 막음소스
 window.syncStatusOverlay = function(status) {
-    // 이제 무통장 상태값을 정확히 매칭합니다.
     const isBank = (status === '무통장');
     const isCard = (status === '카드결제');
+    const isWaiting = (status === '대기');
 
-    const targets = [
-        { btnId: 'anchor-text',    imgId: 'img-1', dx: -25, dy: -25 }, 
-        { 
-            // 무통장일 때는 card-receipt-btn, 카드일 때는 segum-btn-id를 타겟팅
-            btnId: isBank ? 'card-receipt-btn' : 'segum-btn-id', 
-            imgId: 'img-2', 
-            dx: -8, 
-            dy: -10 
-        },
-        { btnId: 'detail-edit-btn', imgId: 'img-3', dx: -8, dy: -10 }
-    ];
+    const positionImage = (btnId, imgId, dx, dy) => {
+        const btn = document.getElementById(btnId);
+        const img = document.getElementById(imgId);
+        
+        if (!btn || !img) return false;
 
-    targets.forEach(t => {
-        const img = document.getElementById(t.imgId);
-        if (img) img.classList.add('hidden');
-    });
+        const rect = btn.getBoundingClientRect();
+        if (rect.top === 0 && rect.left === 0) return false;
 
-    // 이제 '무통장' 또는 '카드결제'일 때 동작합니다.
-    if (isCard || isBank) {
-        setTimeout(() => {
-            targets.forEach(t => {
-                const btn = document.getElementById(t.btnId);
-                const img = document.getElementById(t.imgId);
-                
-                if (btn && img) {
-                    const rect = btn.getBoundingClientRect();
-                    
-                    img.style.position = 'absolute';
-                    img.style.top = (rect.top + window.scrollY + t.dy) + 'px';
-                    img.style.left = (rect.left + window.scrollX + t.dx) + 'px';
-                    img.style.zIndex = '9999';
-                    img.style.pointerEvents = 'auto'; // 버튼 클릭 차단
-                    
-                    img.classList.remove('hidden');
-                }
-            });
-        }, 150);
-    }
+        img.style.position = 'absolute';
+        img.style.top = (rect.top + window.scrollY + dy) + 'px';
+        img.style.left = (rect.left + window.scrollX + dx) + 'px';
+        img.style.display = 'block'; 
+        img.style.zIndex = '9999';
+        img.style.pointerEvents = 'auto'; // 버튼 클릭 차단 (링크 막음)
+        
+        return true;
+    };
+
+    const updatePositions = () => {
+        // 1. 모든 이미지 숨김
+        ['img-1', 'img-2', 'img-3'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.style.display = 'none';
+        });
+
+        // 2. 상태별 배치
+        if (isWaiting) {
+            // 대기일 때는 '세금계산서 버튼(segum-btn-id)' 위에 'img-3'을 띄움
+            positionImage('segum-btn-id', 'img-3', -8, -10);
+        } else if (isCard || isBank) {
+            // 결제 완료일 때는 3개 이미지 모두 표시
+            positionImage('anchor-text', 'img-1', -25, -25);
+            positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
+            positionImage('detail-edit-btn', 'img-3', -8, -10);
+        }
+    };
+
+    updatePositions();
+    
+    // 렌더링 지연 대비 반복 체크
+    let checkTimes = [100, 300, 600, 1000];
+    checkTimes.forEach(time => setTimeout(updatePositions, time));
+
+    window.removeEventListener('resize', updatePositions);
+    window.addEventListener('resize', updatePositions);
 };
+
+
+
+// [추가] 페이지 로드 시 데이터를 딱 한 번만 불러오게 설정 용량 아끼기
+let isLoaded = false;
+function initBoard() {
+    if (isLoaded) return;
+    loadAndRender(); // 여기서 데이터를 처음으로 불러옴
+    isLoaded = true;
+}
+
+// 페이지가 다 로드되면 실행
+initBoard();
+
+// 맨 하단 이벤트 리스너들을 이렇게 하나로 합치세요
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. 기존 데이터 로드 실행
+    initBoard();
+
+    // 2. 쿼리스트링 상품 정보 처리
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('product')) {
+        const prodInput = document.getElementById('product-name');
+        const qtyInput = document.getElementById('quantity');
+        const sizeInput = document.getElementById('size');
+        const priceInput = document.getElementById('price');
+        
+        prodInput.value = params.get('product');
+        qtyInput.value = params.get('qty');
+        sizeInput.value = params.get('size');
+        priceInput.value = params.get('price');
+        
+        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
+            el.readOnly = true;
+            el.style.backgroundColor = "#f3f4f6";
+            el.style.cursor = "not-allowed";
+        });
+        
+        switchView('write');
+    }
+});
+
+
+
 
 
 
