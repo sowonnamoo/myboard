@@ -47,17 +47,21 @@ async function uploadToR2(fileInputId, authorName) {
     const file = fileInput.files[0];
     const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
     
-    // 본인의 Worker 주소 (Worker 화면 상단이나 배포 후 URL 확인)
-    const WORKER_URL = "https://pub-cee4798293994a16aac9d4972fddf5ec.r2.dev";
+    // [중요] 여기를 본인의 Workers & Pages 대시보드 상단에 있는 
+    // "https://이름.아이디.workers.dev" 주소로 바꾸세요!
+    const WORKER_URL = "https://r2.ecogr.workers.dev/"; 
 
     const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(fileName)}`, {
         method: "PUT",
         body: file
     });
 
+    if (!response.ok) {
+        throw new Error("업로드 실패: " + response.statusText);
+    }
+
     const result = await response.json();
-    return result.url; // 여기서 반환된 URL이 DB에 저장됨
-    } 
+    return result.url;
 }
 
 async function loadAndRender() {
