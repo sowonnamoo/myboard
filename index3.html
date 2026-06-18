@@ -11,7 +11,6 @@
         .active { background: #e63946; }
         .inactive { background: #adb5bd; }
         
-        /* 라벨과 입력창 정렬 */
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
         input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
@@ -110,11 +109,19 @@
     window.openImage = () => {
         const imgCode = document.getElementById('imgCode').value;
         if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
+        
+        // 팝업창 생성 및 보안 속성 추가
         const win = window.open('', '_blank', 'width=700,height=800,resizable=no');
-        win.document.write(`<body style="margin:0; text-align:center;"><img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;"></body>`);
+        win.document.write(`
+            <body style="margin:0; text-align:center;" 
+                  oncontextmenu="return false" 
+                  ondragstart="return false" 
+                  onselectstart="return false">
+                <img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;">
+            </body>
+        `);
     };
 
-    // 탭 전환 기능
     document.getElementById('btn-no-change').onclick = function() {
         this.className = 'tab-btn active';
         document.getElementById('btn-change').className = 'tab-btn inactive';
