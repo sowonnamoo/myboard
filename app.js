@@ -173,23 +173,32 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
     
     // [파일 출력 로직]
-    const filesDiv = document.getElementById("detail-files"); 
-    filesDiv.innerHTML = ""; 
+   const filesDiv = document.getElementById("detail-files");
+    filesDiv.innerHTML = ""; // 기존 내용 초기화
 
+    // 파일 1 링크 생성
     if (data.file1Url) {
-        const fileId = data.file1Url.includes('/d/') ? data.file1Url.split('/d/')[1].split('/')[0] : data.file1Url.split('id=')[1]?.split('&')[0];
-        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        filesDiv.innerHTML += `<a href="${downloadUrl}" target="_blank" class="block p-2 my-1 bg-blue-50 border border-blue-200 rounded text-blue-700 font-bold hover:bg-blue-100">📁 첨부파일 1 다운로드 (직접 다운)</a>`;
+        const file1Link = document.createElement("a");
+        file1Link.href = data.file1Url;
+        file1Link.target = "_blank";
+        file1Link.innerText = "📁 첨부파일 1 다운로드";
+        file1Link.style.cssText = "display: block; margin: 5px 0; padding: 10px; background: #f3f4f6; border-radius: 5px; color: blue; text-decoration: underline; font-weight: bold;";
+        filesDiv.appendChild(file1Link);
     }
 
+    // 파일 2 링크 생성
     if (data.file2Url) {
-        const fileId = data.file2Url.includes('/d/') ? data.file2Url.split('/d/')[1].split('/')[0] : data.file2Url.split('id=')[1]?.split('&')[0];
-        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        filesDiv.innerHTML += `<a href="${downloadUrl}" target="_blank" class="block p-2 my-1 bg-blue-50 border border-blue-200 rounded text-blue-700 font-bold hover:bg-blue-100">📁 첨부파일 2 다운로드 (직접 다운)</a>`;
+        const file2Link = document.createElement("a");
+        file2Link.href = data.file2Url;
+        file2Link.target = "_blank";
+        file2Link.innerText = "📁 첨부파일 2 다운로드";
+        file2Link.style.cssText = "display: block; margin: 5px 0; padding: 10px; background: #f3f4f6; border-radius: 5px; color: blue; text-decoration: underline; font-weight: bold;";
+        filesDiv.appendChild(file2Link);
     }
 
+    // 파일이 없을 때
     if (!data.file1Url && !data.file2Url) {
-        filesDiv.innerHTML = `<span class="text-gray-400 text-sm">파일이 없습니다.</span>`;
+        filesDiv.innerHTML = '<span style="color: gray;">파일 없음</span>';
     }
 
     // 마지막 단계
