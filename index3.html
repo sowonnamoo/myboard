@@ -62,32 +62,34 @@
 
     window.onload = async () => {
         const params = new URLSearchParams(window.location.search);
-        const fullTitle = params.get('productName'); // URL 전체 파라미터 값
-        const rawUrl = window.location.search; // 인코딩된 원본 문자열 확인용
+        const fullTitle = params.get('productName');
         const imgCode = params.get('imgCode');
+        const rawUrl = window.location.search; // 인코딩된 상태의 원본 URL 활용
 
         if (fullTitle) {
-            // 1. 이름/제품명/수량 파싱
-            const cleanData = fullTitle.replace(/[()]/g, '');
-            const parts = cleanData.split('님');
-            const dataStr = parts.length > 1 ? parts[1].trim() : parts[0].trim();
-            const items = dataStr.split('/');
-            
-            if (items[0]) document.getElementById('productName').value = items[0].trim();
-            if (items[1]) document.getElementById('qty').value = items[1].trim();
-            if (parts[0]) document.getElementById('name').value = parts[0].trim();
+            // 1. 작성자 이름 추출
+            const nameMatch = fullTitle.match(/^(.*?)님/);
+            if (nameMatch) document.getElementById('name').value = nameMatch[1].trim();
 
-            // 2. [수정된 핵심 규칙] URL 문자열에서 직접 추출
-            // %2F 부터 %29( ) ) 사이 -> 사이즈
+            // 2. 제품명 및 수량 파싱
+            const parts = fullTitle.split('/');
+            if (parts[0]) {
+                const pName = parts[0].split('(');
+                document.getElementById('productName').value = pName.length > 1 ? pName[1].trim() : pName[0].replace('(', '').trim();
+            }
+            if (parts[1]) document.getElementById('qty').value = parts[1].trim();
+
+            // 3. [개선 규칙] 사이즈 추출: %2F ~ %29 사이
             const sizeMatch = rawUrl.match(/%2F(.*?)%29/);
             if (sizeMatch && sizeMatch[1]) {
                 document.getElementById('size').value = decodeURIComponent(sizeMatch[1]).trim();
             }
 
-            // %20 부터 % 사이 -> 결제금액(숫자만)
-            const priceMatch = rawUrl.match(/%20(.*?)%/);
+            // 4. [개선 규칙] 결제금액 추출: )%20 ~ % 사이의 숫자
+            // URL 인코딩 상 ')'는 %29이므로, rawUrl에는 %29%20 형태로 존재하게 됩니다.
+            const priceMatch = rawUrl.match(/%29%20(\d+)%/);
             if (priceMatch && priceMatch[1]) {
-                document.getElementById('price').value = priceMatch[1].trim().replace(/[^0-9]/g, '');
+                document.getElementById('price').value = priceMatch[1].trim();
             }
         }
 
