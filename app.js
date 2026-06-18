@@ -191,7 +191,8 @@ const filesDiv = document.getElementById("detail-files");
                 switchView('list'); 
             } catch (e) { 
                 alert("삭제 실패: " + e.message); 
-            }
+         }
+        } 
     };
     switchView('detail');
 });
