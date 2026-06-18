@@ -16,7 +16,7 @@
         input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
-        .btn-group button { flex: 1; padding: 15px; border: none; background: #333; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .btn-group button { flex: 1; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; }
     </style>
 </head>
 <body>
@@ -66,8 +66,9 @@
     </div>
 
     <div class="btn-group">
-<button onclick="handleBankPay()" class="flex-1 py-3 bg-green-700 text-white font-bold rounded text-sm">무통장결제</button>
-<button id="pay-card-btn" onclick="handleCardPay()" class="flex-1 py-3 bg-blue-900 text-white font-bold rounded text-sm">카드결제</button></div>
+        <button onclick="submitOrder('무통장')" style="background-color: #15803d;">무통장결제</button>
+        <button onclick="submitOrder('카드')" style="background-color: #1e3a8a;">카드결제</button>
+    </div>
 </div>
 
 <script type="module">
@@ -108,14 +109,9 @@
     window.openImage = () => {
         const imgCode = document.getElementById('imgCode').value;
         if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
-        
-        // 팝업창 생성 및 보안 속성 추가
         const win = window.open('', '_blank', 'width=700,height=800,resizable=no');
         win.document.write(`
-            <body style="margin:0; text-align:center;" 
-                  oncontextmenu="return false" 
-                  ondragstart="return false" 
-                  onselectstart="return false">
+            <body style="margin:0; text-align:center;" oncontextmenu="return false" ondragstart="return false" onselectstart="return false">
                 <img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;">
             </body>
         `);
@@ -130,6 +126,7 @@
         document.getElementById('btn-no-change').className = 'tab-btn inactive';
     };
 
+    // 전역 함수로 등록해야 HTML에서 호출 가능합니다.
     window.submitOrder = async (type) => {
         const orderData = {
             productInfo: document.getElementById('productInfo').value,
@@ -144,7 +141,7 @@
 
         try {
             await addDoc(collection(db, "reorders"), orderData);
-            alert('주문 접수 완료!');
+            alert(type + ' 주문 접수 완료!');
         } catch (e) {
             alert('오류 발생: ' + e.message);
         }
