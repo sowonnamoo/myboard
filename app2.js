@@ -239,10 +239,21 @@ await checkMemoAndSetButton(id, data.sian);
             const dTitle = document.getElementById("detail-title");
             const dImage = document.getElementById("detail-image");
 
-            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size})`;
+            // [추가된 가격 로직]
+            const priceStr = (data.price !== undefined && data.price !== null) 
+                             ? `${data.price.toLocaleString()}원` 
+                             : "가격 미정";
+
+            // [기존 코드에서 dTitle.innerText 부분만 수정]
+            if (dTitle) dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size}) - ${priceStr}`;
+            
             if (dImage) {
                 const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
                 const yy = String(createdAt.getFullYear()).slice(-2);
+
+
+
+                
                 const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
                 const dd = String(createdAt.getDate()).padStart(2, '0');
                 const hh = String(createdAt.getHours()).padStart(2, '0');
