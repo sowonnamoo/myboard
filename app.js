@@ -607,24 +607,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 2. 쿼리스트링 상품 정보 처리
     const params = new URLSearchParams(window.location.search);
-    if (params.has('product')) {
-        const prodInput = document.getElementById('product-name');
-        const qtyInput = document.getElementById('quantity');
-        const sizeInput = document.getElementById('size');
-        const priceInput = document.getElementById('price');
-        
-        prodInput.value = params.get('product');
-        qtyInput.value = params.get('qty');
-        sizeInput.value = params.get('size');
-        priceInput.value = params.get('price');
-        
-        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
+if (params.has('product')) {
+    const prodInput = document.getElementById('product-name');
+    const qtyInput = document.getElementById('quantity');
+    const sizeInput = document.getElementById('size');
+    const authorInput = document.getElementById('input-author');
+    const priceInput = document.getElementById('price'); // 1. 가격 입력창 변수 추가
+
+    prodInput.value = params.get('product');
+    qtyInput.value = params.get('qty');
+    sizeInput.value = params.get('size');
+    authorInput.value = params.get('author');
+    priceInput.value = params.get('price'); // 2. 가격 데이터 가져오기
+
+    // 입력창 비활성화 (이미 있는 코드에 priceInput 추가)
+    [prodInput, qtyInput, sizeInput, authorInput, priceInput].forEach(el => {
+        if(el) {
             el.readOnly = true;
             el.style.backgroundColor = "#f3f4f6";
             el.style.cursor = "not-allowed";
-        });
-        
-        switchView('write');
+        }
+    });
+    
+    switchView('write');
     }
 });
 
