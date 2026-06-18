@@ -48,7 +48,7 @@ async function uploadToR2(fileInputId, authorName) {
     const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
     
     // 본인의 Worker 주소 (Worker 화면 상단이나 배포 후 URL 확인)
-    const WORKER_URL = "https://your-worker-name.your-subdomain.workers.dev";
+    const WORKER_URL = "https://pub-cee4798293994a16aac9d4972fddf5ec.r2.dev";
 
     const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(fileName)}`, {
         method: "PUT",
