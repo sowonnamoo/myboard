@@ -171,19 +171,49 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
             window.open(url, "editWindow", "width=400,height=500");
         };
     }
+
+
+
+
+
+
+
+    // 파일링크보이기
+
     
-const filesDiv = document.getElementById("detail-files"); 
-    filesDiv.innerHTML = ""; 
+const filesDiv = document.getElementById("detail-files");
+if (filesDiv) {
+    filesDiv.innerHTML = ""; // 초기화
+    filesDiv.style.display = "block"; // 강제 노출
+    filesDiv.style.position = "relative";
+    filesDiv.style.zIndex = "10"; // 오버레이 이미지보다 위에 오도록 설정
+
     if (data.file1Url) {
-        filesDiv.innerHTML += `<div style="margin-bottom: 5px;"><a href="${createDownloadUrl(data.file1Url)}" target="_blank" style="color: blue; text-decoration: underline; font-weight: bold; font-size: 14px;">📁 [다운로드] 첨부파일 1</a></div>`;
+        filesDiv.innerHTML += `
+            <a href="${createDownloadUrl(data.file1Url)}" target="_blank" 
+               style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+               📁 첨부파일 1 다운로드
+            </a>`;
     }
     if (data.file2Url) {
-        filesDiv.innerHTML += `<div style="margin-bottom: 5px;"><a href="${createDownloadUrl(data.file2Url)}" target="_blank" style="color: blue; text-decoration: underline; font-weight: bold; font-size: 14px;">📁 [다운로드] 첨부파일 2</a></div>`;
+        filesDiv.innerHTML += `
+            <a href="${createDownloadUrl(data.file2Url)}" target="_blank" 
+               style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+               📁 첨부파일 2 다운로드
+            </a>`;
     }
     if (!data.file1Url && !data.file2Url) {
         filesDiv.innerHTML = `<span style="color: gray;">파일 없음</span>`;
     }
+}
 
+
+
+
+
+
+
+    
     // [삭제 버튼 이벤트]
     document.getElementById("detail-delete-btn").onclick = async () => { 
         if(confirm("삭제하시겠습니까?")) { 
@@ -201,6 +231,16 @@ const filesDiv = document.getElementById("detail-files");
     window.syncStatusOverlay(data.status);
     switchView('detail');
 });
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -649,21 +689,5 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-
-// --- 테스트용 강제 링크 출력 코드 ---
-const testDiv = document.createElement("div");
-testDiv.style.padding = "20px";
-testDiv.style.border = "2px solid red"; // 빨간 테두리로 영역 표시
-testDiv.style.marginTop = "20px";
-testDiv.innerHTML = `
-    <p style="font-weight:bold; color:red;">[테스트용 파일 링크]</p>
-    <a href="https://drive.google.com/uc?export=download&id=파일ID를여기에넣으세요" 
-       target="_blank" 
-       style="color: blue; font-size: 18px; text-decoration: underline;">
-       📁 다운로드 테스트 링크 (클릭해보세요)
-    </a>
-`;
-document.body.appendChild(testDiv); // 페이지 맨 아래에 강제 부착
-// ----------------------------------
 
 
