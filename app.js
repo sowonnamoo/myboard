@@ -1,7 +1,8 @@
 // 🔑 구글 앱스 스크립트 웹 앱 URL
 const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
@@ -48,59 +49,29 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-
-
-
 async function uploadToGoogleDrive(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
-    // 파일이 없으면 null 반환 (문제없음)
     if (!fileInput || fileInput.files.length === 0) return null;
-    
     const file = fileInput.files[0];
-    const fileName = `${authorName || "unknown"}_${file.name}`;
-    
-    // 파일 크기 제한 (예: 5MB 초과 시 경고)
-    if (file.size > 5 * 1024 * 1024) {
-        alert(`${file.name} 파일이 너무 큽니다. 5MB 이하의 파일을 선택해주세요.`);
-        throw new Error("파일 크기 초과");
-    }
-
-    return new Promise((resolve, reject) => {
+    const fileName = `${authorName || ""}_${file.name}`;
+    return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = async function(e) {
             try {
                 const base64Data = e.target.result.split(',')[1];
-                const response = await fetch(GOOGLE_WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // 구글 GAS 특성상 no-cors가 필요할 수 있음
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        data: base64Data,
-                        filename: fileName,
-                        mimetype: file.type
-                    })
-                });
-
-                // 성공 여부를 판별하기 어려우면 타임아웃을 두거나 
-                // 업로드 완료 후 URL을 직접 DB에 저장하는 방식으로 전환해야 합니다.
-                // 일단 기존 방식대로 결과를 기다립니다.
-                resolve("UPLOAD_PENDING_OR_SUCCESS"); 
-            } catch (error) {
-                console.error("업로드 에러:", error);
-                reject(error);
-            }
+                const body = new URLSearchParams({ data: base64Data, filename: fileName, mimetype: file.type });
+                const res = await fetch(GOOGLE_WEB_APP_URL, { method: 'POST', body });
+                const data = await res.json();
+                resolve(data && data.url ? data.url : null);
+            } catch (error) { resolve(null); }
         };
-        reader.onerror = (err) => reject(err);
         reader.readAsDataURL(file);
     });
 }
 
-
-
 async function loadAndRender() {
     try {
-        // 최근 20개만 불러오도록 limit(20) 추가 쿼리아끼기
-        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(20)); 
+        const q = query(ordersCollection, orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
         allOrders = [];
         snapshot.forEach(doc => { 
@@ -190,9 +161,9 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
-   window.syncStatusOverlay(data.status);
-
-    // 수정 버튼 로직
+    window.syncStatusOverlay(data.status);
+    
+    // 수정 버튼 안전하게 연결
     const editBtn = document.getElementById("detail-edit-btn");
     if (editBtn) {
         editBtn.onclick = () => {
@@ -201,36 +172,15 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         };
     }
     
-    // [파일 출력 로직]
- const filesDiv = document.getElementById("detail-files");
-filesDiv.innerHTML = ""; // 초기화
-
-// 1. 데이터 확인
-if (data.file1Url || data.file2Url) {
-    const files = [
-        { name: "첨부파일 1", url: data.file1Url },
-        { name: "첨부파일 2", url: data.file2Url }
-    ];
-
-    files.forEach((file, index) => {
-        if (file.url) {
-            const link = document.createElement("a");
-            link.href = file.url; // 변환 없이 DB 값 그대로 사용
-            link.target = "_blank";
-            link.textContent = `📁 ${file.name} 다운로드`;
-            // 스타일을 직접 지정하여 레이아웃 문제 방지
-            link.style.cssText = "display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px; cursor: pointer;";
-            
-            filesDiv.appendChild(link);
-        }
-    });
-} else {
-    // 파일이 진짜 없는 경우
-    filesDiv.textContent = "파일 없음";
-    filesDiv.style.color = "gray";
-}
-
-    // 마지막 단계
+    const filesDiv = document.getElementById("detail-files"); 
+    filesDiv.innerHTML = "";
+    if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
+    if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
+    document.getElementById("detail-delete-btn").onclick = async () => { 
+        if(confirm("삭제하시겠습니까?")) { 
+            try { await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); alert("삭제되었습니다."); switchView('list'); } catch (e) { alert("삭제 실패: " + e.message); }
+        } 
+    };
     switchView('detail');
 });
 
@@ -636,50 +586,3 @@ window.syncStatusOverlay = function(status) {
     window.removeEventListener('resize', updatePositions);
     window.addEventListener('resize', updatePositions);
 };
-
-
-
-// [추가] 페이지 로드 시 데이터를 딱 한 번만 불러오게 설정 용량 아끼기
-let isLoaded = false;
-function initBoard() {
-    if (isLoaded) return;
-    loadAndRender(); // 여기서 데이터를 처음으로 불러옴
-    isLoaded = true;
-}
-
-// 페이지가 다 로드되면 실행
-initBoard();
-
-// 맨 하단 이벤트 리스너들을 이렇게 하나로 합치세요
-window.addEventListener('DOMContentLoaded', () => {
-    // 1. 기존 데이터 로드 실행
-    initBoard();
-
-    // 2. 쿼리스트링 상품 정보 처리
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('product')) {
-        const prodInput = document.getElementById('product-name');
-        const qtyInput = document.getElementById('quantity');
-        const sizeInput = document.getElementById('size');
-        const priceInput = document.getElementById('price');
-        
-        prodInput.value = params.get('product');
-        qtyInput.value = params.get('qty');
-        sizeInput.value = params.get('size');
-        priceInput.value = params.get('price');
-        
-        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
-            el.readOnly = true;
-            el.style.backgroundColor = "#f3f4f6";
-            el.style.cursor = "not-allowed";
-        });
-        
-        switchView('write');
-    }
-});
-
-
-
-
-
-
