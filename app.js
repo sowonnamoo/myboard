@@ -48,7 +48,7 @@ async function uploadToR2(fileInputId, authorName) {
     const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
     
     // Cloudflare R2의 Public URL
-    const R2_URL = "https://f7a19a3249009e868d1df89ea3edc154.r2.cloudflarestorage.com/ecogr"; 
+    const R2_URL = "https://pub-cee4798293994a16aac9d4972fddf5ec.r2.dev"; 
 
     const response = await fetch(`${R2_URL}/${fileName}`, {
         method: 'PUT',
