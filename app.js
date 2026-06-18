@@ -57,9 +57,7 @@ async function uploadToR2(fileInputId, authorName) {
 
     const result = await response.json();
     return result.url; // 여기서 반환된 URL이 DB에 저장됨
-    } else {
-        throw new Error("R2 업로드 실패");
-    }
+    } 
 }
 
 async function loadAndRender() {
