@@ -39,16 +39,23 @@ window.switchView = function(viewName) {
 }
 
 
-// [R2 업로드 함수] 업로드
+// [R2 업로드 함수] 업로드 및 보안 검사 포함
 async function uploadToR2(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null;
 
     const file = fileInput.files[0];
-    const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
     
-    // [중요] 여기를 본인의 Workers & Pages 대시보드 상단에 있는 
-    // "https://이름.아이디.workers.dev" 주소로 바꾸세요!
+    // 1. 보안을 위한 확장자 필터링 (허용할 형식만 명시)
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp']; 
+    const ext = file.name.split('.').pop().toLowerCase();
+    
+    if (!allowedExtensions.includes(ext)) {
+        alert("⚠️ 허용되지 않는 파일 형식입니다.\n업로드 가능: " + allowedExtensions.join(', '));
+        throw new Error("보안상 차단된 파일 형식: " + ext);
+    }
+
+    const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
     const WORKER_URL = "https://r2.ecogr.workers.dev/"; 
 
     const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(fileName)}`, {
