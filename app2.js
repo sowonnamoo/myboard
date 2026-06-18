@@ -52,12 +52,17 @@ function renderTable(dataToRender = allOrders) {
     const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
-    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
-        const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
-        const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
-        const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
-        
-        listBody.innerHTML += `
+   dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
+    const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
+    const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
+    
+    // 가격 데이터 포맷팅
+    const priceDisplay = (data.price !== undefined && data.price !== null) 
+                         ? `${data.price.toLocaleString()}원` 
+                         : "-";
+
+    listBody.innerHTML += `
     <tr class="hover:bg-gray-50 border-b border-gray-100"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
             <span class="mr-2">🔒 ${data.author}님</span>
@@ -66,7 +71,7 @@ function renderTable(dataToRender = allOrders) {
         </td>
         <td class="py-3 text-sm text-gray-600">에코</td>
         <td class="py-3 text-xs text-gray-400">${dateStr}</td>
-    </tr>`;
+        <td class="py-3 text-sm text-gray-600">${priceDisplay}</td> </tr>`;
     });
 
     const pager = document.getElementById("pagination");
