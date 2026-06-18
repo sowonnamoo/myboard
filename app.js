@@ -47,7 +47,7 @@ async function uploadToR2(fileInputId, authorName) {
     const file = fileInput.files[0];
     
     // 1. 보안을 위한 확장자 필터링 (허용할 형식만 명시)
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp']; 
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP']; 
     const ext = file.name.split('.').pop().toLowerCase();
     
     if (!allowedExtensions.includes(ext)) {
