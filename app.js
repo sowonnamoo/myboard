@@ -171,49 +171,33 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
             window.open(url, "editWindow", "width=400,height=500");
         };
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
     
-    // [삭제 버튼 이벤트]
-    document.getElementById("detail-delete-btn").onclick = async () => { 
-        if(confirm("삭제하시겠습니까?")) { 
-            try { 
-                await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
-                alert("삭제되었습니다."); 
-                switchView('list'); 
-            } catch (e) { 
-                alert("삭제 실패: " + e.message); 
-            }
-        } 
-    };
+   const filesDiv = document.getElementById("detail-files"); 
+    filesDiv.innerHTML = ""; // 초기화
 
-    // 마지막에 뷰 전환
-    window.syncStatusOverlay(data.status);
+    // 파일 1 처리
+    if (data.file1Url) {
+        // 주소에서 ID만 추출하여 강제 다운로드 URL 생성
+        const fileId = data.file1Url.includes('/d/') ? data.file1Url.split('/d/')[1].split('/')[0] : data.file1Url.split('id=')[1]?.split('&')[0];
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+        
+        filesDiv.innerHTML += `<a href="${downloadUrl}" target="_blank" class="block p-2 my-1 bg-blue-50 border border-blue-200 rounded text-blue-700 font-bold hover:bg-blue-100">📁 첨부파일 1 다운로드 (직접 다운)</a>`;
+    }
+
+    // 파일 2 처리
+    if (data.file2Url) {
+        const fileId = data.file2Url.includes('/d/') ? data.file2Url.split('/d/')[1].split('/')[0] : data.file2Url.split('id=')[1]?.split('&')[0];
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+        
+        filesDiv.innerHTML += `<a href="${downloadUrl}" target="_blank" class="block p-2 my-1 bg-blue-50 border border-blue-200 rounded text-blue-700 font-bold hover:bg-blue-100">📁 첨부파일 2 다운로드 (직접 다운)</a>`;
+    }
+
+    if (!data.file1Url && !data.file2Url) {
+        filesDiv.innerHTML = `<span class="text-gray-400 text-sm">파일이 없습니다.</span>`;
+    }
+    };
     switchView('detail');
 });
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ... 나머지는 기존 코드와 동일 (생략) ...
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
@@ -661,34 +645,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 
-    // 파일링크보이기
-    const filesDiv = document.getElementById("detail-files");
-    if (filesDiv) {
-        filesDiv.innerHTML = ""; // 기존 내용 초기화
-        filesDiv.style.display = "block"; // 강제 노출
-        filesDiv.style.position = "relative";
-        filesDiv.style.zIndex = "10"; 
 
-        // 데이터가 있는지 콘솔로 확인 (디버깅용)
-        console.log("파일 정보:", data.file1Url, data.file2Url);
 
-        if (data.file1Url) {
-            filesDiv.innerHTML += `
-                <a href="${createDownloadUrl(data.file1Url)}" target="_blank" 
-                   style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
-                   📁 첨부파일 1 다운로드
-                </a>`;
-        }
-        if (data.file2Url) {
-            filesDiv.innerHTML += `
-                <a href="${createDownloadUrl(data.file2Url)}" target="_blank" 
-                   style="display: block; padding: 10px; margin-bottom: 5px; color: blue; text-decoration: underline; font-weight: bold; font-size: 14px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
-                   📁 첨부파일 2 다운로드
-                </a>`;
-        }
-        
-        if (!data.file1Url && !data.file2Url) {
-            filesDiv.innerHTML = `<span style="color: gray;">파일 없음</span>`;
-        }
-    }
 
