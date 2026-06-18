@@ -170,37 +170,40 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     
    
  const filesDiv = document.getElementById("detail-files"); 
-   filesDiv.innerHTML = "";
-   
-   // 다운로드 함수를 호출하도록 버튼 형태로 생성합니다.
-   if(data.file1Url) {
-       const a = document.createElement('a');
-       a.innerText = "📁 첨부파일 1 (다운로드)";
-       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-       a.onclick = () => window.downloadFile(data.file1Url, "file1_download.png");
-       filesDiv.appendChild(a);
-   }
-   if(data.file2Url) {
-       const a = document.createElement('a');
-       a.innerText = "📁 첨부파일 2 (다운로드)";
-       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-       a.onclick = () => window.downloadFile(data.file2Url, "file2_download.png");
-       filesDiv.appendChild(a);
-   }
+    filesDiv.innerHTML = "";
+    
+    if(data.file1Url) {
+        const a = document.createElement('a');
+        a.innerText = "📁 첨부파일 1 (다운로드)";
+        a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
+        a.onclick = () => window.downloadFile(data.file1Url, "file1_download.png");
+        filesDiv.appendChild(a);
+    }
+    if(data.file2Url) {
+        const a = document.createElement('a');
+        a.innerText = "📁 첨부파일 2 (다운로드)";
+        a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
+        a.onclick = () => window.downloadFile(data.file2Url, "file2_download.png");
+        filesDiv.appendChild(a);
+    }
 
-   document.getElementById("detail-delete-btn").onclick = async () => { 
-       if(confirm("삭제하시겠습니까?")) { 
-           try { 
-               await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
-               alert("삭제되었습니다."); 
-               switchView('list'); 
-           } catch (e) { 
-               alert("삭제 실패: " + e.message); 
-           }
-       } 
-   };
-   switchView('detail');
-});
+    // 삭제 버튼 설정
+    document.getElementById("detail-delete-btn").onclick = async () => { 
+        if(confirm("삭제하시겠습니까?")) { 
+            try { 
+                await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
+                alert("삭제되었습니다."); 
+                switchView('list'); 
+            } catch (e) { 
+                alert("삭제 실패: " + e.message); 
+            }
+        } 
+    };
+
+    // 상세화면으로 전환
+    switchView('detail');
+
+}); // <--- 이것이 modal-confirm-btn의 click 이벤트 리스너를 닫는 괄호입니다.
 
 // ... 나머지는 기존 코드와 동일 (생략) ...
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
