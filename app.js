@@ -1,5 +1,3 @@
-// 🔑 구글 앱스 스크립트 웹 앱 URL
-const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 const firebaseConfig = {
@@ -29,15 +27,7 @@ let filteredOrders = [];
 let currentPage = 1;      
 const POSTS_PER_PAGE = 8; 
 
-function createDownloadUrl(url) {
-    if (!url) return null;
-    try {
-        let fileId = "";
-        if (url.includes('/d/')) { fileId = url.split('/d/')[1].split('/')[0]; }
-        else if (url.includes('id=')) { fileId = url.split('id=')[1].split('&')[0]; }
-        return `https://drive.google.com/uc?export=download&id=${fileId}`;
-    } catch (e) { return url; }
-}
+
 
 window.switchView = function(viewName) {
     document.getElementById("view-list").classList.add("hidden");
