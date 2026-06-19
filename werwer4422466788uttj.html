@@ -49,7 +49,7 @@
 
         const generatePassword = () => Math.random().toString(36).slice(-8);
 
-        window.savePost = async () => {
+       window.savePost = async () => {
             // 랜덤하게 선택
             const randomTitle = titles[Math.floor(Math.random() * titles.length)];
             const randomAuthor = authors[Math.floor(Math.random() * authors.length)];
@@ -58,11 +58,12 @@
                 productName: randomTitle,
                 author: randomAuthor,
                 password: generatePassword(),
-                createdAt: new Date()
+                createdAt: new Date(),
+                sian: "done" // 이 한 줄을 추가했습니다.
             };
 
             await addDoc(collection(db, "boards"), data);
-            alert(`등록 완료!\n제목: ${data.productName}\n작성자: ${data.author}\n비밀번호: ${data.password}`);
+            alert(`등록 완료!\n제목: ${data.productName}\n작성자: ${data.author}\n비밀번호: ${data.password}\n상태: ${data.sian}`);
             loadPosts();
         };
 
