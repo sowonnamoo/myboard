@@ -20,7 +20,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -47,14 +47,11 @@
             resultsDiv.innerHTML = "조회 중...";
 
             try {
-                // 이름으로 일단 쿼리
                 const q = query(collection(db, "boards"), where("author", "==", name));
                 const snapshot = await getDocs(q);
                 
-                // 가져온 데이터 중에서 전화번호 뒷 4자리가 일치하는 것만 필터링
                 const filteredData = snapshot.docs.filter(doc => {
                     const data = doc.data();
-                    // 데이터의 phone 필드 마지막 4자리와 입력한 번호 비교
                     return data.phone && data.phone.slice(-4) === phone;
                 });
 
@@ -73,10 +70,13 @@
                                 <div><span class="font-semibold">작성자:</span> ${d.author}</div>
                                 <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
                                 <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
+                                <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
+                                <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
                                 <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
                             </div>
                             <div class="mt-3 text-sm text-gray-600 border-t pt-3">
                                 <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
+                                <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
                                 <div class="mt-2 font-semibold">첨부파일:</div>
                                 <div class="flex gap-2">
                                     ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : ''}
