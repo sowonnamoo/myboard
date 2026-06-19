@@ -1,63 +1,38 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>고속 조회 검색기</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="p-5">
-    <div class="max-w-2xl mx-auto">
-        <div class="flex gap-2 mb-6">
-            <input type="text" id="search-input" class="border p-2 flex-grow" placeholder="작성자 이름 검색">
-            <button id="search-btn" class="bg-blue-600 text-white px-4 py-2">검색</button>
-        </div>
-        <div id="results" class="space-y-4"></div>
-    </div>
+// ... 상단 생략
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, limit, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+document.getElementById('search-btn').addEventListener('click', async () => {
+    const author = document.getElementById('search-input').value;
+    const resultsDiv = document.getElementById('results');
+    
+    if (!author) {
+        alert("작성자 이름을 입력하세요.");
+        return;
+    }
 
-        // 기존 설정 재사용
-const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-    authDomain: "board-291e3.firebaseapp.com",
-    projectId: "board-291e3",
-    storageBucket: "board-291e3.firebasestorage.app",
-    messagingSenderId: "25881766316",
-    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-};
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    resultsDiv.innerHTML = "조회 중...";
 
-        document.getElementById('search-btn').addEventListener('click', async () => {
-            const author = document.getElementById('search-input').value;
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = "조회 중...";
+    // [핵심] orderBy를 제거하여 인덱스 없이도 즉시 검색되게 함
+    const q = query(collection(db, "boards"), 
+                    where("author", "==", author), 
+                    limit(8));
 
-            // [핵심] Firestore 서버에서 author가 일치하는 것만 딱 8개 쿼리
-            const q = query(collection(db, "boards"), 
-                            where("author", "==", author), 
-                            orderBy("createdAt", "desc"), 
-                            limit(8));
+    const snapshot = await getDocs(q);
+    resultsDiv.innerHTML = "";
 
-            const snapshot = await getDocs(q);
-            resultsDiv.innerHTML = "";
+    if(snapshot.empty) { 
+        resultsDiv.innerHTML = "데이터가 없습니다."; 
+        return; 
+    }
 
-            if(snapshot.empty) { resultsDiv.innerHTML = "데이터가 없습니다."; return; }
-
-            snapshot.forEach(doc => {
-                const d = doc.data();
-                resultsDiv.innerHTML += `
-                    <div class="border p-4 rounded shadow-sm">
-                        <div class="font-bold">${d.productName}</div>
-                        <div class="text-sm">작성자: ${d.author} / 상태: ${d.status}</div>
-                        <div class="text-sm text-gray-500">배송지: ${d.address}</div>
-                        <a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">첨부파일 보기</a>
-                    </div>
-                `;
-            });
-        });
-    </script>
-</body>
-</html>
+    snapshot.forEach(doc => {
+        const d = doc.data();
+        resultsDiv.innerHTML += `
+            <div class="border p-4 rounded shadow-sm">
+                <div class="font-bold">${d.productName}</div>
+                <div class="text-sm">작성자: ${d.author} / 상태: ${d.status}</div>
+                <div class="text-sm text-gray-500">배송지: ${d.address}</div>
+                <a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">첨부파일 보기</a>
+            </div>
+        `;
+    });
+});
