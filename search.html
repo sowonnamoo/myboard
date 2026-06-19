@@ -2,14 +2,18 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>고속 조회 검색기</title>
+    <title>주문 조회 검색기</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="p-5">
+<body class="p-5 bg-gray-50">
     <div class="max-w-2xl mx-auto">
-        <div class="flex gap-2 mb-6">
-            <input type="text" id="search-input" class="border p-2 flex-grow" placeholder="작성자 이름 검색">
-            <button id="search-btn" class="bg-blue-600 text-white px-4 py-2">검색</button>
+        <div class="bg-white p-6 rounded shadow-sm mb-6">
+            <h2 class="text-xl font-bold mb-4">주문 내역 조회</h2>
+            <div class="flex gap-2">
+                <input type="text" id="search-name" class="border p-2 flex-grow rounded" placeholder="이름 입력">
+                <input type="text" id="search-phone" class="border p-2 w-32 rounded" placeholder="전화번호 뒤 4자리" maxlength="4">
+                <button id="search-btn" class="bg-blue-600 text-white px-4 py-2 rounded">조회</button>
+            </div>
         </div>
         <div id="results" class="space-y-4"></div>
     </div>
@@ -18,7 +22,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 본인의 파이어베이스 설정값 입력
         const firebaseConfig = {
             apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
             authDomain: "board-291e3.firebaseapp.com",
@@ -32,44 +35,60 @@
         const db = getFirestore(app);
 
         document.getElementById('search-btn').addEventListener('click', async () => {
-            const author = document.getElementById('search-input').value.trim();
+            const name = document.getElementById('search-name').value.trim();
+            const phone = document.getElementById('search-phone').value.trim();
             const resultsDiv = document.getElementById('results');
             
-            if (!author) {
-                alert("작성자 이름을 입력하세요.");
+            if (!name || phone.length !== 4) {
+                alert("이름과 전화번호 뒷 4자리를 정확히 입력해주세요.");
                 return;
             }
 
             resultsDiv.innerHTML = "조회 중...";
 
             try {
-                // orderBy를 제거하여 인덱스 생성 대기 없이 즉시 검색
-                const q = query(collection(db, "boards"), 
-                                where("author", "==", author), 
-                                limit(8));
-
+                // 이름으로 일단 쿼리
+                const q = query(collection(db, "boards"), where("author", "==", name));
                 const snapshot = await getDocs(q);
-                resultsDiv.innerHTML = "";
+                
+                // 가져온 데이터 중에서 전화번호 뒷 4자리가 일치하는 것만 필터링
+                const filteredData = snapshot.docs.filter(doc => {
+                    const data = doc.data();
+                    // 데이터의 phone 필드 마지막 4자리와 입력한 번호 비교
+                    return data.phone && data.phone.slice(-4) === phone;
+                });
 
-                if(snapshot.empty) { 
-                    resultsDiv.innerHTML = "데이터가 없습니다."; 
+                resultsDiv.innerHTML = "";
+                if(filteredData.length === 0) { 
+                    resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
                     return; 
                 }
 
-                snapshot.forEach(doc => {
+                filteredData.forEach(doc => {
                     const d = doc.data();
                     resultsDiv.innerHTML += `
-                        <div class="border p-4 rounded shadow-sm">
-                            <div class="font-bold">${d.productName || '상품명 없음'}</div>
-                            <div class="text-sm">작성자: ${d.author} / 상태: ${d.status || '상태 없음'}</div>
-                            <div class="text-sm text-gray-500">배송지: ${d.address || '주소 없음'}</div>
-                            <a href="${d.file1Url || '#'}" target="_blank" class="text-blue-500 underline text-xs">첨부파일 보기</a>
+                        <div class="bg-white border p-6 rounded shadow-sm">
+                            <h2 class="font-bold text-lg mb-2">${d.productName || '상품명 없음'}</h2>
+                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                                <div><span class="font-semibold">작성자:</span> ${d.author}</div>
+                                <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
+                                <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
+                                <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
+                            </div>
+                            <div class="mt-3 text-sm text-gray-600 border-t pt-3">
+                                <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
+                                <div class="mt-2 font-semibold">첨부파일:</div>
+                                <div class="flex gap-2">
+                                    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : ''}
+                                    ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
+                                </div>
+                            </div>
                         </div>
                     `;
                 });
             } catch (error) {
-                console.error("검색 오류:", error);
-                resultsDiv.innerHTML = "검색 중 오류가 발생했습니다.";
+                console.error(error);
+                resultsDiv.innerHTML = "오류가 발생했습니다.";
             }
         });
     </script>
