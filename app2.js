@@ -38,11 +38,34 @@ async function loadMemo(boardId) {
 async function loadData() {
     const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(20));
     const snapshot = await getDocs(q);
-    allOrders = [];
+    
+    // 1. 데이터를 배열로 변환
+    let items = [];
     snapshot.forEach(doc => {
         const data = doc.data();
-        if (!data.isDeleted) allOrders.push({ id: doc.id, ...data });
+        if (!data.isDeleted) items.push({ id: doc.id, ...data });
     });
+
+    // 2. [정렬 로직] done이 아닌 건을 맨 위로, 나머지는 날짜 최신순
+    const today = new Date();
+    items.sort((a, b) => {
+        const aActive = a.sian !== 'done';
+        const bActive = b.sian !== 'done';
+        
+        if (aActive !== bActive) return aActive ? -1 : 1; // 활성건 우선
+        
+        // 상태가 같다면 기존 날짜순
+        const aDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const bDate = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return bDate - aDate;
+    });
+
+    // 3. 화면 표시용 날짜 부여 (sian이 done이 아니면 오늘 날짜로 강제)
+    allOrders = items.map(item => ({
+        ...item,
+        displayDate: (item.sian !== 'done') ? today : (item.createdAt?.toDate ? item.createdAt.toDate() : new Date())
+    }));
+
     renderTable(allOrders);
 }
 
@@ -52,11 +75,11 @@ function renderTable(dataToRender = allOrders) {
     const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
-    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
-        const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
+dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
-        const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : "";
-        
+const dateStr = data.displayDate ? data.displayDate.toLocaleDateString() : "";
+    
         listBody.innerHTML += `
     <tr class="hover:bg-gray-50 border-b border-gray-100"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
@@ -67,7 +90,7 @@ function renderTable(dataToRender = allOrders) {
         <td class="py-3 text-sm text-gray-600">에코</td>
         <td class="py-3 text-xs text-gray-400">${dateStr}</td>
     </tr>`;
-    });
+});
 
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
