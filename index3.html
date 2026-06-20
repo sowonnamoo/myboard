@@ -120,7 +120,7 @@
             return;
         }
 
- const orderData = {
+const orderData = {
     productName: document.getElementById('productInfo').value,
     price: document.getElementById('price').value,
     imgCode: document.getElementById('imgCode').value,
@@ -129,7 +129,8 @@
     phone: document.getElementById('phone').value,
     address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
     createdAt: new Date(),
-    sian: 'jaejoo' // 재구입 건임을 표시
+    status: '대기',      // 기존 시스템 보존
+    jajoo: '재주문'      // [핵심] 이 필드가 추가되어 게시판에서 필터링됩니다.
 };
 
 await addDoc(collection(db, "boards"), orderData);
