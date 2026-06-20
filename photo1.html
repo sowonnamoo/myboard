@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시안 보기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-5">
+
+    <div class="max-w-xl mx-auto bg-white p-6 rounded shadow-sm text-center">
+        <h2 id="design-no-text" class="text-xl font-bold mb-6 text-gray-800">시안을 불러오는 중...</h2>
+        
+        <div class="border rounded overflow-hidden">
+            <img id="design-image" src="" alt="시안 이미지" class="w-full h-auto" onerror="this.src='https://via.placeholder.com/500x700?text=이미지를+찾을+수+없습니다';">
+        </div>
+        
+        <button onclick="window.close()" class="mt-6 bg-gray-800 text-white px-6 py-2 rounded font-bold hover:bg-gray-700">
+            닫기
+        </button>
+    </div>
+
+    <script>
+        // 1. URL 파라미터에서 designNo 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const designNo = urlParams.get('designNo');
+
+        // 2. 요소 선택
+        const titleElement = document.getElementById('design-no-text');
+        const imgElement = document.getElementById('design-image');
+
+        if (designNo) {
+            // 상단 제목에 이미지 번호 표시
+            titleElement.innerText = `시안 이미지 번호: ${designNo}`;
+            
+            // 이미지 경로 설정
+            imgElement.src = `https://sowonnamoo1005.cafe24.com/1/${designNo}.jpg`;
+        } else {
+            titleElement.innerText = "잘못된 접근입니다.";
+            imgElement.style.display = "none";
+        }
+    </script>
+</body>
+</html>
