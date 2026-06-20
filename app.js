@@ -73,16 +73,14 @@ async function uploadToR2(fileInputId, authorName) {
 
 async function loadAndRender() {
     try {
-        // 최근 20개만 불러오도록 쿼리 유지
         const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(20)); 
         const snapshot = await getDocs(q);
         allOrders = [];
         snapshot.forEach(doc => { 
             const data = doc.data();
             
-            // [중요 수정] 삭제되지 않았으면서, status가 '재구입'이 아닌 것만 리스트에 포함
-            // 이렇게 하면 기존의 isDeleted 로직은 그대로 유지하면서 재구입 건만 숨겨집니다.
-            if (!data.isDeleted && data.status !== '재구입') {
+            // [수정] jajoo 필드가 '재주문'인 데이터는 게시판 목록에서 제외
+            if (!data.isDeleted && data.jajoo !== '재주문') {
                 allOrders.push({ id: doc.id, ...data }); 
             }
         });
