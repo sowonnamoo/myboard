@@ -31,10 +31,11 @@
 
         if (designNo) {
             // 상단 제목에 이미지 번호 표시
-            titleElement.innerText = `시안 이미지 번호: ${designNo}`;
+titleElement.innerText = `시안 이미지 번호: ${designNo}`;
             
-            // 이미지 경로 설정
-            imgElement.src = `https://sowonnamoo1005.cafe24.com/1/${designNo}.jpg`;
+            // 이미지 경로에 타임스탬프 추가 (자동 갱신)
+            const timestamp = new Date().getTime();
+            imgElement.src = `https://sowonnamoo1005.cafe24.com/1/${designNo}.jpg?${timestamp}`;
         } else {
             titleElement.innerText = "잘못된 접근입니다.";
             imgElement.style.display = "none";
