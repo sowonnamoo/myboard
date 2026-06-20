@@ -69,17 +69,19 @@
 filteredData.forEach(doc => {
     const d = doc.data();
     
-    // 1. 날짜 데이터 및 시안번호 생성
+    // 1. 날짜 및 시안번호 생성 로직
     const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
-const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
-const phonePrefix = phoneFull.slice(0, -2);    
+    const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
+    const phonePrefix = phoneFull.slice(0, -2);    
     const year = dateObj.getFullYear().toString().slice(-2);
     const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
     const day = dateObj.getDate().toString().padStart(2, '0');
     const hours = dateObj.getHours().toString().padStart(2, '0');
     const minutes = dateObj.getMinutes().toString().padStart(2, '0');
     
-    const designNo = `${phonePrefix}${year}${month}${day}${hours}${minutes}`;
+    // [중요 수정] DB에 imgCode가 있으면 그걸 쓰고, 없으면 자동 생성된 번호(designNo)를 사용
+    const designNo = d.imgCode || `${phonePrefix}${year}${month}${day}${hours}${minutes}`;
+    
     const dateStr = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`;
 
     // 2. 결제 상태 조건
