@@ -124,8 +124,8 @@ const phonePrefix = phoneFull.slice(0, -2);
                     <button onclick="openPopup('photo1.html?designNo=${designNo}')" 
                             class="bg-green-600 text-white px-6 py-2 rounded font-bold">시안보기</button>
                     
-                    <button onclick="openPopup('index3.html')" 
-                            class="bg-black text-white px-6 py-2 rounded font-bold">재구입</button>
+                    <button onclick="openPopup('index3.html?product=${encodeURIComponent(d.productName)}&qty=${d.quantity}&size=${d.size}&price=${d.price}&designNo=${designNo}&author=${encodeURIComponent(d.author)}')" 
+        class="bg-black text-white px-6 py-2 rounded font-bold">재구입</button>
                 </div>
             </div>
 
