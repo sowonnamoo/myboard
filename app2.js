@@ -386,7 +386,7 @@ setInterval(() => {
     const approveBtn = document.getElementById('approve-btn');
     const container = approveBtn ? approveBtn.parentNode : null;
     
-    // 조판완료 상태일 때
+    // 조판완료 상태일 때 (기존 로직)
     if (approveBtn && approveBtn.innerText === "조판완료") {
         if (!document.getElementById('reorder-btn')) {
             const reorderBtn = document.createElement('button');
@@ -397,22 +397,25 @@ setInterval(() => {
             reorderBtn.onclick = () => {
                 const title = document.getElementById('detail-title').innerText;
                 
-                // [수정된 핵심 부분]
                 let imgCode = "";
                 const divs = document.querySelectorAll('div');
                 for (let div of divs) {
                     if (div.innerText.includes('재구입 이미지번호')) {
                         const rawText = div.innerText.split(':')[1]?.trim() || "";
-                        // 숫자 이외의 모든 문자(한글, 공백, 특수문자 등)를 제거합니다.
                         imgCode = rawText.replace(/[^0-9]/g, ''); 
                         break;
                     }
                 }
                 
-                // 제목과 숫자만 남은 이미지 번호를 전달
-                window.location.href = `index3.html?productName=${encodeURIComponent(title)}&imgCode=${encodeURIComponent(imgCode)}`;
+                // [수정된 부분] window.location.href 대신 window.open으로 새 창(팝업) 오픈
+                const url = `index3.html?productName=${encodeURIComponent(title)}&imgCode=${encodeURIComponent(imgCode)}`;
+                window.open(url, '_blank', 'width=500,height=800,scrollbars=yes');
             };
-            container.insertBefore(reorderBtn, approveBtn);
+            
+            // 기존 approveBtn 앞에 삽입
+            if (container) {
+                container.insertBefore(reorderBtn, approveBtn);
+            }
         }
     } else {
         // 조판완료가 아니면 버튼 제거
