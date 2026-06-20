@@ -120,20 +120,20 @@
             return;
         }
 
-        const orderData = {
-            productName: document.getElementById('productInfo').value, // 필드명 통일
-            price: price,
-            imgCode: document.getElementById('imgCode').value,
-            type: type,
-            author: name,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
-            createdAt: new Date(),
-            sian: 'pending' // 주문 상태
-        };
+       const orderData = {
+    productName: document.getElementById('productInfo').value,
+    price: document.getElementById('price').value,
+    imgCode: document.getElementById('imgCode').value,
+    type: type,
+    author: name,
+    phone: document.getElementById('phone').value,
+    address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
+    createdAt: new Date(),
+    status: '대기',      // 기존 시스템 보존
+    jajoo: '재주문'      // [핵심] 이 필드가 추가되어 게시판에서 필터링됩니다.
+};
 
-        try {
-            await addDoc(collection(db, "boards"), orderData);
+await addDoc(collection(db, "boards"), orderData);
             
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
