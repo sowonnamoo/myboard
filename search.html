@@ -125,7 +125,7 @@ filteredData.forEach(doc => {
                 ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
             </div>
 
-   const cardParams = new URLSearchParams({
+  const cardParams = new URLSearchParams({
     date: `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`,
     name: d.productName || '상품명 없음',
     size: d.size || '0',
