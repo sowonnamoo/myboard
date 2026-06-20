@@ -58,6 +58,38 @@ titleElement.innerText = `시안 이미지 번호: ${designNo}`;
     };
 </script>
 
+
+
+
+
+<script>
+    // 1. 마우스 우클릭 방지
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    // 2. 키보드 단축키 방지 (F12, Ctrl+C, Ctrl+V, Ctrl+U 등)
+    document.addEventListener('keydown', function(e) {
+        // F12 키 방지
+        if (e.keyCode == 123) {
+            e.preventDefault();
+        }
+        // Ctrl + C, Ctrl + V, Ctrl + U, Ctrl + A 방지
+        if (e.ctrlKey && (e.keyCode == 67 || e.keyCode == 86 || e.keyCode == 85 || e.keyCode == 65)) {
+            e.preventDefault();
+        }
+    });
+
+    // 3. 드래그 방지
+    document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+    });
+</script>
+
+
+
+
+    
     
 </body>
 </html>
