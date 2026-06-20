@@ -71,9 +71,8 @@ filteredData.forEach(doc => {
     
     // 1. 날짜 데이터 및 시안번호 생성
     const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
-    const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
-    const phonePrefix = phoneFull.slice(0, -4);
-    
+const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
+const phonePrefix = phoneFull.slice(0, -2);    
     const year = dateObj.getFullYear().toString().slice(-2);
     const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
     const day = dateObj.getDate().toString().padStart(2, '0');
