@@ -102,55 +102,46 @@
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch && priceMatch[1]) document.getElementById('price').value = priceMatch[1].trim();
         }
-
         if (imgCode) document.getElementById('imgCode').value = imgCode;
     };
 
-window.openImage = () => {
+    window.openImage = () => {
         const imgCode = document.getElementById('imgCode').value;
         if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
-        
-        // 기존 744 가로폭에 맞춰 새 창 열기
-        // (세로 크기는 photo1.html 내부 스크립트가 로드 후 자동으로 조절합니다)
         window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
     };
 
-    document.getElementById('btn-no-change').onclick = function() {
-        this.className = 'tab-btn active';
-        document.getElementById('btn-change').className = 'tab-btn inactive';
-    };
-    document.getElementById('btn-change').onclick = function() {
-        this.className = 'tab-btn active';
-        document.getElementById('btn-no-change').className = 'tab-btn inactive';
-    };
-
-    // 전역 함수로 등록해야 HTML에서 호출 가능합니다.
-   window.submitOrder = async (type) => {
+    window.submitOrder = async (type) => {
         const price = document.getElementById('price').value;
+        const name = document.getElementById('name').value;
+        
+        if (!name || !price) {
+            alert("작성자명과 결제금액은 필수입니다.");
+            return;
+        }
+
         const orderData = {
-            productInfo: document.getElementById('productInfo').value,
+            productName: document.getElementById('productInfo').value, // 필드명 통일
             price: price,
             imgCode: document.getElementById('imgCode').value,
             type: type,
-            name: document.getElementById('name').value,
+            author: name,
             phone: document.getElementById('phone').value,
             address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
-            timestamp: new Date().toLocaleString()
+            createdAt: new Date(),
+            sian: 'pending' // 주문 상태
         };
 
         try {
-            // 1. 파이어베이스 데이터 저장
-            await addDoc(collection(db, "reorders"), orderData);
+            await addDoc(collection(db, "boards"), orderData);
             
-            // 2. 무통장 결제일 경우 새 창으로 이동
             if (type === '무통장') {
-                const url = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-                window.open(url, '_blank', 'width=700,height=800,scrollbars=yes');
+                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
             } else {
-                alert('카드 주문 접수 완료!');
+                alert("카드 결제가 접수되었습니다.");
             }
         } catch (e) {
-            alert('오류 발생: ' + e.message);
+            alert('주문 처리 중 오류 발생: ' + e.message);
         }
     };
 </script>
