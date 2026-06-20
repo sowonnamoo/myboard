@@ -125,22 +125,32 @@ filteredData.forEach(doc => {
                 ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
             </div>
 
-            <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
+   const cardParams = new URLSearchParams({
+    date: `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`,
+    name: d.productName || '상품명 없음',
+    size: d.size || '0',
+    qty: d.quantity || '0',
+    price: d.price || '0'
+}).toString();
 
-            <div class="mt-4 flex gap-2 flex-wrap">
-                <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/segum')" 
-                   class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
-                
-                <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/print3.html?${params}')" 
-                   class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
-                
-                <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myjs/gum')" 
-                   class="border px-2 py-1 text-xs hover:bg-gray-100">운송장</a>
-                
-                <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/cardf.html?price=${d.price || 0}')"
-                   class="border px-2 py-1 text-xs ${isCard ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
-            </div>           </div>
-        </div>
+resultsDiv.innerHTML += `
+    <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
+
+    <div class="mt-4 flex gap-2 flex-wrap">
+        <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/segum')" 
+           class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
+        
+        <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/print3.html?${params}')" 
+           class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
+        
+        <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myjs/gum')" 
+           class="border px-2 py-1 text-xs hover:bg-gray-100">운송장</a>
+        
+        <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/cardh.html?${cardParams}')"
+           class="border px-2 py-1 text-xs ${isCard ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
+    </div>
+</div>
+</div>
     `;
 });
             } catch (error) {
