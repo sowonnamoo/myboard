@@ -61,18 +61,16 @@
                     return; 
                 }
 
-      filteredData.forEach(doc => {
+   filteredData.forEach(doc => {
     const d = doc.data();
     
     // 1. 날짜 데이터 객체 생성
     const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
     
     // 2. 시안 이미지 번호 자동 생성 로직
-    // 전화번호에서 숫자만 추출 후 뒷 4자리를 제외한 앞부분 (010...까지)
     const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
     const phonePrefix = phoneFull.slice(0, -4);
     
-    // 날짜/시간 포맷팅 (YYMMDDHHmm)
     const year = dateObj.getFullYear().toString().slice(-2);
     const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
     const day = dateObj.getDate().toString().padStart(2, '0');
@@ -83,6 +81,10 @@
 
     // 날짜 출력용 문자열
     const dateStr = dateObj.toLocaleString();
+
+    // 결제 상태별 조건 설정
+    const isBankTransfer = d.status === '무통장';
+    const isCard = d.status === '카드결제';
 
     resultsDiv.innerHTML += `
         <div class="bg-white border p-6 rounded shadow-sm">
@@ -120,11 +122,17 @@
                 </div>
 
                 <div class="mt-4 flex gap-2">
-                    <button class="border px-2 py-1 text-xs hover:bg-gray-100">계산서</button>
-                    <button class="border px-2 py-1 text-xs hover:bg-gray-100">현금영수증</button>
-                    <button class="border px-2 py-1 text-xs hover:bg-gray-100">간이영수증</button>
+                    <a href="https://myboard-delta.vercel.app/print3.html" target="_blank" 
+                       class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서</a>
+                    <a href="https://myboard-delta.vercel.app/print3.html" target="_blank" 
+                       class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">현금영수증</a>
+                    <a href="https://myboard-delta.vercel.app/print3.html" target="_blank" 
+                       class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
+                    
                     <button class="border px-2 py-1 text-xs hover:bg-gray-100">운송장</button>
-                    <button class="border px-2 py-1 text-xs hover:bg-gray-100">전표</button>
+                    
+                    <a href="https://sowonnamoo.github.io/myboard/cardf.html?price=${d.price || 0}" target="_blank"
+                       class="border px-2 py-1 text-xs ${isCard ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">전표</a>
                 </div>
             </div>
         </div>
