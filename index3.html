@@ -1,9 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>빠른 재구입</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+        .box { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; border: 1px solid #ddd; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; cursor: pointer; color: white; font-weight: bold; border-radius: 4px; }
+        .active { background: #e63946; }
+        .inactive { background: #adb5bd; }
+        
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-group button { flex: 1; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; }
+    </style>
+</head>
+<body>
+
 <div class="box">
-    <div class="input-group">
+    <div class="tabs">
+        <button class="tab-btn active" id="btn-no-change">변동 없음</button>
+        <button class="tab-btn inactive" id="btn-change">변동 있음</button>
+    </div>
+    
+   <div class="input-group">
         <label>제품명</label>
         <input type="text" id="productName" placeholder="제품명">
     </div>
-    
+
     <div style="display: flex; gap: 10px;">
         <div class="input-group" style="flex: 1;">
             <label>수량</label>
@@ -13,53 +41,107 @@
             <label>사이즈</label>
             <input type="text" id="size" placeholder="사이즈">
         </div>
-    </div>
-
+    
     <div class="input-group">
         <label>결제금액</label>
         <input type="text" id="price" placeholder="숫자만">
     </div>
     
+    <div class="input-group">
+        <label>이미지 번호</label>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="imgCode" readonly placeholder="이미지 코드">
+            <button type="button" onclick="openImage()" style="width:100px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">이미지 보기</button>
+        </div>
     </div>
 
+    <div class="input-group">
+        <label>작성자명</label>
+        <input type="text" id="name" placeholder="접수자이름">
+    </div>
+    
+    <div class="input-group">
+        <label>핸드폰 번호</label>
+        <input type="text" id="phone" placeholder="-없이 입력해주세요">
+    </div>
+
+    <div class="input-group">
+        <label>주소</label>
+        <input type="text" id="address" placeholder="기본 주소">
+    </div>
+
+    <div class="input-group">
+        <label>상세주소</label>
+        <input type="text" id="addressDetail" placeholder="상세 주소">
+    </div>
+
+    <div class="btn-group">
+        <button onclick="submitOrder('무통장')" style="background-color: #15803d;">무통장결제</button>
+        <button onclick="submitOrder('카드')" style="background-color: #1e3a8a;">카드결제</button>
+    </div>
+</div>
+
 <script type="module">
-    // ... 파이어베이스 설정 생략 ...
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
     window.onload = async () => {
         const params = new URLSearchParams(window.location.search);
-        const fullTitle = params.get('productName'); // 예: "홍길동님 (스티커/100/A4) 50000"
+        const fullTitle = params.get('productName');
         const imgCode = params.get('imgCode');
 
         if (fullTitle) {
-            // 이름 추출
             const nameMatch = fullTitle.match(/^(.*?)님/);
             if (nameMatch) document.getElementById('name').value = nameMatch[1].trim();
 
-            // 괄호 안의 내용 (제품/수량/사이즈) 추출
-            const contentMatch = fullTitle.match(/\((.*?)\)/);
-            if (contentMatch) {
-                const parts = contentMatch[1].split('/');
-                if (parts[0]) document.getElementById('productName').value = parts[0].trim();
-                if (parts[1]) document.getElementById('quantity').value = parts[1].trim();
-                if (parts[2]) document.getElementById('size').value = parts[2].trim();
-            }
+const contentMatch = fullTitle.match(/\((.*?)\)/);
+if (contentMatch) {
+    const parts = contentMatch[1].split('/'); // 슬래시(/) 기준으로 분리
+    document.getElementById('productName').value = parts[0]?.trim() || '';
+    document.getElementById('quantity').value = parts[1]?.trim() || '';
+    document.getElementById('size').value = parts[2]?.trim() || '';
+}
 
-            // 금액 추출
+
+            
+
+            
+            
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch && priceMatch[1]) document.getElementById('price').value = priceMatch[1].trim();
         }
         if (imgCode) document.getElementById('imgCode').value = imgCode;
     };
 
+    window.openImage = () => {
+        const imgCode = document.getElementById('imgCode').value;
+        if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
+        window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
+    };
+
     window.submitOrder = async (type) => {
         const price = document.getElementById('price').value;
         const name = document.getElementById('name').value;
         
-        // 데이터 객체 생성 시 분리된 필드들을 합침
+        if (!name || !price) {
+            alert("작성자명과 결제금액은 필수입니다.");
+            return;
+        }
+
         const orderData = {
-            productName: document.getElementById('productName').value,
-            quantity: document.getElementById('quantity').value,
-            size: document.getElementById('size').value,
+            productName: document.getElementById('productInfo').value, // 필드명 통일
             price: price,
             imgCode: document.getElementById('imgCode').value,
             type: type,
@@ -67,7 +149,7 @@
             phone: document.getElementById('phone').value,
             address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
             createdAt: new Date(),
-            jajoo: '재주문' // 게시판 필터링을 위한 필드
+            sian: 'pending' // 주문 상태
         };
 
         try {
@@ -83,3 +165,5 @@
         }
     };
 </script>
+</body>
+</html>
