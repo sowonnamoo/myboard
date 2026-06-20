@@ -61,11 +61,30 @@
                     return; 
                 }
 
-            filteredData.forEach(doc => {
+      filteredData.forEach(doc => {
     const d = doc.data();
-    const dateStr = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : '-';
-    const designNo = d.designNo || '번호 없음';
-                   resultsDiv.innerHTML += `
+    
+    // 1. 날짜 데이터 객체 생성
+    const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+    
+    // 2. 시안 이미지 번호 자동 생성 로직
+    // 전화번호에서 숫자만 추출 후 뒷 4자리를 제외한 앞부분 (010...까지)
+    const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
+    const phonePrefix = phoneFull.slice(0, -4);
+    
+    // 날짜/시간 포맷팅 (YYMMDDHHmm)
+    const year = dateObj.getFullYear().toString().slice(-2);
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const hours = dateObj.getHours().toString().padStart(2, '0');
+    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+    
+    const designNo = `${phonePrefix}${year}${month}${day}${hours}${minutes}`;
+
+    // 날짜 출력용 문자열
+    const dateStr = dateObj.toLocaleString();
+
+    resultsDiv.innerHTML += `
         <div class="bg-white border p-6 rounded shadow-sm">
             <div class="flex justify-between items-start">
                 <div>
