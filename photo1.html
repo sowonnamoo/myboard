@@ -40,5 +40,23 @@
             imgElement.style.display = "none";
         }
     </script>
+
+
+<script>
+    // ... (기존 코드 생략)
+    
+    const imgElement = document.getElementById('design-image');
+    
+    // 이미지가 완전히 로드되면 실행
+    imgElement.onload = function() {
+        const padding = 150; // 상단 텍스트와 하단 여유 공간 확보
+        const newHeight = imgElement.naturalHeight + padding;
+        
+        // 팝업 창 크기 조절
+        window.resizeTo(744, newHeight);
+    };
+</script>
+
+    
 </body>
 </html>
