@@ -10,11 +10,9 @@
         .tab-btn { flex: 1; padding: 10px; border: none; cursor: pointer; color: white; font-weight: bold; border-radius: 4px; }
         .active { background: #e63946; }
         .inactive { background: #adb5bd; }
-        
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
         input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         .btn-group button { flex: 1; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; }
     </style>
@@ -27,7 +25,7 @@
         <button class="tab-btn inactive" id="btn-change">변동 있음</button>
     </div>
     
-   <div class="input-group">
+    <div class="input-group">
         <label>제품명</label>
         <input type="text" id="productName" placeholder="제품명">
     </div>
@@ -41,6 +39,7 @@
             <label>사이즈</label>
             <input type="text" id="size" placeholder="사이즈">
         </div>
+    </div>
     
     <div class="input-group">
         <label>결제금액</label>
@@ -106,19 +105,13 @@
             const nameMatch = fullTitle.match(/^(.*?)님/);
             if (nameMatch) document.getElementById('name').value = nameMatch[1].trim();
 
-const contentMatch = fullTitle.match(/\((.*?)\)/);
-if (contentMatch) {
-    const parts = contentMatch[1].split('/'); // 슬래시(/) 기준으로 분리
-    document.getElementById('productName').value = parts[0]?.trim() || '';
-    document.getElementById('quantity').value = parts[1]?.trim() || '';
-    document.getElementById('size').value = parts[2]?.trim() || '';
-}
-
-
-            
-
-            
-            
+            const contentMatch = fullTitle.match(/\((.*?)\)/);
+            if (contentMatch) {
+                const parts = contentMatch[1].split('/');
+                document.getElementById('productName').value = parts[0]?.trim() || '';
+                document.getElementById('quantity').value = parts[1]?.trim() || '';
+                document.getElementById('size').value = parts[2]?.trim() || '';
+            }
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch && priceMatch[1]) document.getElementById('price').value = priceMatch[1].trim();
         }
@@ -141,7 +134,9 @@ if (contentMatch) {
         }
 
         const orderData = {
-            productName: document.getElementById('productInfo').value, // 필드명 통일
+            productName: document.getElementById('productName').value,
+            quantity: document.getElementById('quantity').value,
+            size: document.getElementById('size').value,
             price: price,
             imgCode: document.getElementById('imgCode').value,
             type: type,
@@ -149,12 +144,11 @@ if (contentMatch) {
             phone: document.getElementById('phone').value,
             address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
             createdAt: new Date(),
-            sian: 'pending' // 주문 상태
+            jajoo: '재주문'
         };
 
         try {
             await addDoc(collection(db, "boards"), orderData);
-            
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
             } else {
