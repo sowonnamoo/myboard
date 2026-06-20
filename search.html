@@ -24,7 +24,7 @@
 
         // 팝업 열기 함수 추가
         window.openPopup = (url) => {
-            window.open(url, '_blank', 'width=500,height=700,scrollbars=yes');
+            window.open(url, '_blank', 'width=500,height=800,scrollbars=yes');
         };
 
         const firebaseConfig = {
@@ -99,7 +99,7 @@ filteredData.forEach(doc => {
             <div class="flex justify-between items-start">
                 <div>
                     <h2 class="font-bold text-lg mb-2">${d.productName || '상품명 없음'}</h2>
-                    <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                    <div class="grid grid-cols-2 gap-2 text-sm text-gray-800">
                         <div><span class="font-semibold">작성자:</span> ${d.author}</div>
                         <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
                         <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
