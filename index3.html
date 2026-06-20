@@ -106,15 +106,14 @@
         if (imgCode) document.getElementById('imgCode').value = imgCode;
     };
 
-    window.openImage = () => {
+window.openImage = () => {
         const imgCode = document.getElementById('imgCode').value;
         if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
-        const win = window.open('', '_blank', 'width=700,height=800,resizable=no');
-        win.document.write(`
-            <body style="margin:0; text-align:center;" oncontextmenu="return false" ondragstart="return false" onselectstart="return false">
-                <img src="https://sowonnamoo1005.cafe24.com/1/${imgCode}.jpg" style="width:100%;">
-            </body>
-        `);
+        
+        // 기존 744 가로폭에 맞춰 새 창 열기
+        // (세로 크기는 photo1.html 내부 스크립트가 로드 후 자동으로 조절합니다)
+        window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
+    };
     };
 
     document.getElementById('btn-no-change').onclick = function() {
