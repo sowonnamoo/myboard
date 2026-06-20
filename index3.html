@@ -102,9 +102,9 @@
         const imgCode = params.get('imgCode');
 
         if (fullTitle) {
-            const nameMatch = fullTitle.match(/^(.*?)님/);
-            if (nameMatch) document.getElementById('name').value = nameMatch[1].trim();
-
+            // [수정] 이름, 주소, 연락처 자동 채우기 로직은 삭제했습니다.
+            
+            // 제품 정보(제품명/수량/사이즈)와 결제금액만 자동으로 채워지도록 유지
             const contentMatch = fullTitle.match(/\((.*?)\)/);
             if (contentMatch) {
                 const parts = contentMatch[1].split('/');
@@ -115,6 +115,8 @@
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch && priceMatch[1]) document.getElementById('price').value = priceMatch[1].trim();
         }
+        
+        // 이미지 코드는 확인용이므로 유지
         if (imgCode) document.getElementById('imgCode').value = imgCode;
     };
 
