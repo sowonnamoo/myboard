@@ -138,18 +138,19 @@
         }
 
         // DB에 저장할 데이터 객체
-        const orderData = {
+       const orderData = {
             productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
             size: document.getElementById('size').value,
             price: price,
             imgCode: document.getElementById('imgCode').value,
             type: type,
-            author: name,           // 입력창에 적은 이름
-            phone: phone,           // 입력창에 적은 전화번호
-            address: address + " " + addressDetail, // 기본주소 + 상세주소 합침
+            author: name,
+            phone: phone,
+            address: address + " " + addressDetail,
             createdAt: new Date(),
-            jajoo: '재주문'         // 필터링용 필드
+            status: '대기',    // [추가] 주문 상태를 '대기'로 저장
+            jajoo: '재주문'    // [유지] 게시판 필터링용 필드
         };
 
         try {
