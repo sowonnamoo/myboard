@@ -105,6 +105,20 @@ filteredData.forEach(doc => {
                         <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
                         <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
                         <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
+
+                        
+                                             </div>
+                            <div class="mt-3 text-sm text-gray-600 border-t pt-3">
+                                <div><span class="font-semibold">작성일:</span> ${dateStr}</div>
+                                <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
+                                <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
+                                <div class="mt-2 font-semibold">첨부파일:</div>
+                                <div class="flex gap-2">
+                                    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : ''}
+                                    ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
+
+
+
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
