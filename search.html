@@ -61,7 +61,7 @@
                     return; 
                 }
 
- filteredData.forEach(doc => {
+filteredData.forEach(doc => {
     const d = doc.data();
     
     // 1. 날짜 데이터 및 시안번호 생성
@@ -82,14 +82,14 @@
     const isBankTransfer = d.status === '무통장';
     const isCard = d.status === '카드결제';
 
-    // 3. 간이영수증용 URL 파라미터 생성 (encodeURIComponent로 인코딩)
+    // 3. 간이영수증용 URL 파라미터 생성
     const params = new URLSearchParams({
         product: d.productName || '상품명 없음',
         size: d.size || '0',
         qty: d.quantity || '0',
         price: d.price || '0',
         date: `작성일: ${dateStr}`,
-        bizType: '기술서비스', // 데이터에 따라 수정 가능
+        bizType: '기술서비스',
         bizItem: '광고, 대행'
     }).toString();
 
@@ -128,7 +128,8 @@
                     <a href="https://sowonnamoo.github.io/myboard/print3.html?${params}" target="_blank" 
                        class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
                     
-                    <button class="border px-2 py-1 text-xs hover:bg-gray-100">운송장</button>
+                    <a href="https://sowonnamoo.github.io/myjs/gum" target="_blank" 
+                       class="border px-2 py-1 text-xs hover:bg-gray-100">운송장</a>
                     
                     <a href="https://sowonnamoo.github.io/myboard/cardf.html?price=${d.price || 0}" target="_blank"
                        class="border px-2 py-1 text-xs ${isCard ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
