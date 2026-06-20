@@ -124,15 +124,20 @@
         window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
     };
 
-    window.submitOrder = async (type) => {
+   window.submitOrder = async (type) => {
+        // 입력값 가져오기
         const price = document.getElementById('price').value;
         const name = document.getElementById('name').value;
+        const phone = document.getElementById('phone').value;
+        const address = document.getElementById('address').value;
+        const addressDetail = document.getElementById('addressDetail').value;
         
         if (!name || !price) {
             alert("작성자명과 결제금액은 필수입니다.");
             return;
         }
 
+        // DB에 저장할 데이터 객체
         const orderData = {
             productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
@@ -140,15 +145,16 @@
             price: price,
             imgCode: document.getElementById('imgCode').value,
             type: type,
-            author: name,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
+            author: name,           // 입력창에 적은 이름
+            phone: phone,           // 입력창에 적은 전화번호
+            address: address + " " + addressDetail, // 기본주소 + 상세주소 합침
             createdAt: new Date(),
-            jajoo: '재주문'
+            jajoo: '재주문'         // 필터링용 필드
         };
 
         try {
             await addDoc(collection(db, "boards"), orderData);
+            
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
             } else {
