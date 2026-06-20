@@ -125,10 +125,11 @@ window.openImage = () => {
     };
 
     // 전역 함수로 등록해야 HTML에서 호출 가능합니다.
-    window.submitOrder = async (type) => {
+   window.submitOrder = async (type) => {
+        const price = document.getElementById('price').value;
         const orderData = {
             productInfo: document.getElementById('productInfo').value,
-            price: document.getElementById('price').value,
+            price: price,
             imgCode: document.getElementById('imgCode').value,
             type: type,
             name: document.getElementById('name').value,
@@ -138,8 +139,16 @@ window.openImage = () => {
         };
 
         try {
+            // 1. 파이어베이스 데이터 저장
             await addDoc(collection(db, "reorders"), orderData);
-            alert(type + ' 주문 접수 완료!');
+            
+            // 2. 무통장 결제일 경우 새 창으로 이동
+            if (type === '무통장') {
+                const url = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
+                window.open(url, '_blank', 'width=700,height=800,scrollbars=yes');
+            } else {
+                alert('카드 주문 접수 완료!');
+            }
         } catch (e) {
             alert('오류 발생: ' + e.message);
         }
