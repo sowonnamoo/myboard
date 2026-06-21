@@ -1,4 +1,53 @@
-document.getElementById('search-btn').addEventListener('click', async () => {
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주문 조회 검색기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-5 bg-gray-50">
+    <div class="max-w-2xl mx-auto">
+     <div class="bg-white p-6 rounded shadow-sm mb-6">
+    <h2 class="text-xl font-bold mb-4">주문 내역 조회</h2>
+    
+    <div class="mb-4 flex items-center justify-between text-sm text-gray-500">
+        <span>* 인쇄 승인 완료된 주문만 조회 가능합니다.</span>
+        <button onclick="window.location.href='index2.html'" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs font-bold">
+            미승인 건 바로가기
+        </button>
+    </div>
+
+    <div class="flex gap-2">
+        <input type="text" id="search-name" class="border p-2 flex-grow rounded" placeholder="이름 입력">
+        <input type="text" id="search-phone" class="border p-2 w-32 rounded" placeholder="전화번호 뒤 4자리" maxlength="4">
+        <button id="search-btn" class="bg-blue-600 text-white px-4 py-2 rounded">조회</button>
+    </div>
+</div>
+        <div id="results" class="space-y-4"></div>
+    </div>
+
+<script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // 팝업 열기 함수 추가
+        window.openPopup = (url) => {
+            window.open(url, '_blank', 'width=500,height=800,scrollbars=yes');
+        };
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+ document.getElementById('search-btn').addEventListener('click', async () => {
     const name = document.getElementById('search-name').value.trim();
     const phone = document.getElementById('search-phone').value.trim();
     const resultsDiv = document.getElementById('results');
@@ -115,4 +164,7 @@ document.getElementById('search-btn').addEventListener('click', async () => {
         console.error(error);
         resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
     }
-});
+        });
+    </script>
+</body>
+</html>
