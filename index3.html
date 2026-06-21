@@ -126,59 +126,61 @@
         window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
     };
 
-   window.submitOrder = async (type) => {
-        // 입력값 가져오기
-        const price = document.getElementById('price').value;
-        const name = document.getElementById('name').value;
-        const phone = document.getElementById('phone').value;
-        const address = document.getElementById('address').value;
-        const addressDetail = document.getElementById('addressDetail').value;
+ window.submitOrder = async (type) => {
+    // 입력값 가져오기
+    const price = document.getElementById('price').value;
+    const name = document.getElementById('name').value;
+    const phone = document.getElementById('phone').value;
+    const address = document.getElementById('address').value;
+    const addressDetail = document.getElementById('addressDetail').value;
+    
+    if (!name || !price) {
+        alert("작성자명과 결제금액은 필수입니다.");
+        return;
+    }
+
+    // DB에 저장할 데이터 객체
+    const orderData = {
+        productName: document.getElementById('productName').value,
+        quantity: document.getElementById('quantity').value,
+        size: document.getElementById('size').value,
+        price: price,
+        imgCode: document.getElementById('imgCode').value,
+        type: type,
+        author: name,
+        phone: phone,
+        address: address + " " + addressDetail,
+        createdAt: new Date(),
+        status: '대기',
+        // [중요] 필터링을 위해 '재주문'을 유지하되, 
+        // app.js에서 아래 값을 정확히 비교하도록 설계할 것입니다.
+        jajoo: '재주문'
+    };
+
+    try {
+        await addDoc(collection(db, "boards"), orderData);
         
-        if (!name || !price) {
-            alert("작성자명과 결제금액은 필수입니다.");
-            return;
+        if (type === '무통장') {
+            window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
+        } else {
+            // 카드 결제 창 열기
+            window.open(
+                `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, 
+                '_blank', 
+                'width=1000,height=700,scrollbars=yes'
+            );
+
+            // 결제 완료 신호 감지
+            window.addEventListener("message", function listener(event) {
+                if (event.data === "paymentSuccess") {
+                    alert("카드 결제가 완료되었습니다.");
+                    window.location.reload();
+                    window.removeEventListener("message", listener);
+                }
+            });
         }
-
-        // DB에 저장할 데이터 객체
-       const orderData = {
-            productName: document.getElementById('productName').value,
-            quantity: document.getElementById('quantity').value,
-            size: document.getElementById('size').value,
-            price: price,
-            imgCode: document.getElementById('imgCode').value,
-            type: type,
-            author: name,
-            phone: phone,
-            address: address + " " + addressDetail,
-            createdAt: new Date(),
-            status: '대기',    // [추가] 주문 상태를 '대기'로 저장
-            jajoo: '재주문'    // [유지] 게시판 필터링용 필드
-        };
-
-try {
-            await addDoc(collection(db, "boards"), orderData);
-            
-            if (type === '무통장') {
-                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-            } else {
-                // [카드 결제 로직] 결제 창 열기
-                window.open(
-                    `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, 
-                    '_blank', 
-                    'width=1000,height=700,scrollbars=yes'
-                );
-
-                // [추가] 결제 완료 신호 감지 리스너
-                window.addEventListener("message", function listener(event) {
-                    if (event.data === "paymentSuccess") {
-                        alert("카드 결제가 최종 완료되어 주문이 접수되었습니다.");
-                        window.location.reload(); // 새로고침
-                        window.removeEventListener("message", listener); // 리스너 제거
-                    }
-                });
-            }
-        } catch (e) {
-            alert('주문 처리 중 오류 발생: ' + e.message);
+    } catch (e) {
+        alert('주문 처리 중 오류 발생: ' + e.message);
         }
     };
 </script>
