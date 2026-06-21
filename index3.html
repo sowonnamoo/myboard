@@ -122,7 +122,7 @@
         window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
     };
 
-    window.submitOrder = async (type) => {
+   window.submitOrder = async (type) => {
         const price = document.getElementById('price').value;
         const name = document.getElementById('name').value;
         const phone = document.getElementById('phone').value;
@@ -140,42 +140,25 @@
             size: document.getElementById('size').value,
             price: price,
             imgCode: document.getElementById('imgCode').value,
-            type: type,
             author: name,
             phone: phone,
             address: address + " " + addressDetail,
             createdAt: new Date(),
-            status: '대기',
+            // 카드결제면 "카드결제", 무통장이면 "무통장"으로 저장
+            status: type === '카드' ? '카드결제' : '무통장',
             isDeleted: false
         };
 
         try {
-            // [수정 완료] boards가 아닌 jjjj 컬렉션으로 저장
+            // Firestore에 주문 저장
             await addDoc(collection(db, "jjjj"), orderData);
             
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-           } else {
-            // [수정] '_blank' 대신 'success4'라는 이름을 부여합니다.
-            const paymentWindow = window.open(
-                `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, 
-                'success4', 
-                'width=1000,height=700,scrollbars=yes'
-            );
-
-            window.addEventListener("message", function listener(event) {
-                if (event.data === "paymentSuccess") {
-                    alert("카드 결제가 완료되었습니다.");
-                    
-                    // 결제 성공 시 우리가 명명한 'success4' 창을 닫습니다.
-                    if (paymentWindow && !paymentWindow.closed) {
-                        paymentWindow.close();
-                    }
-                    
-                    window.location.reload();
-                    window.removeEventListener("message", listener);
-                    }
-                });
+            } else {
+                // [카드 결제] 새 창 없이 현재 창에서 바로 이동
+                // 결제 페이지가 1000x700으로 열리도록 결제 페이지 URL로 이동합니다.
+                window.location.href = `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`;
             }
         } catch (e) {
             alert('주문 처리 중 오류 발생: ' + e.message);
