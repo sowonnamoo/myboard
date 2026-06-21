@@ -155,18 +155,27 @@
             jajoo: '재주문'    // [유지] 게시판 필터링용 필드
         };
 
-  try {
+try {
             await addDoc(collection(db, "boards"), orderData);
             
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
             } else {
-                // 카드 결제 시 새 창 열기 (URL에 가격 정보 포함)
+                // [카드 결제 로직] 결제 창 열기
                 window.open(
                     `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, 
                     '_blank', 
                     'width=1000,height=700,scrollbars=yes'
                 );
+
+                // [추가] 결제 완료 신호 감지 리스너
+                window.addEventListener("message", function listener(event) {
+                    if (event.data === "paymentSuccess") {
+                        alert("카드 결제가 최종 완료되어 주문이 접수되었습니다.");
+                        window.location.reload(); // 새로고침
+                        window.removeEventListener("message", listener); // 리스너 제거
+                    }
+                });
             }
         } catch (e) {
             alert('주문 처리 중 오류 발생: ' + e.message);
