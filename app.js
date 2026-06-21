@@ -87,7 +87,7 @@ async function loadAndRender() {
     if (data.jajoo === '재주문') return; 
 
     allOrders.push({ id: doc.id, ...data });
-            }
+         
         });
         applyFilter();
     } catch (err) { console.error(err); }
