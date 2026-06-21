@@ -77,11 +77,16 @@ async function loadAndRender() {
         const snapshot = await getDocs(q);
         allOrders = [];
         snapshot.forEach(doc => { 
-            const data = doc.data();
-            
-            // [수정] jajoo 필드가 '재주문'인 데이터는 게시판 목록에서 제외
-            if (!data.isDeleted && data.jajoo !== '재주문') {
-                allOrders.push({ id: doc.id, ...data }); 
+    const data = doc.data();
+    
+    // 1. 삭제된 글은 무조건 제외
+    if (data.isDeleted === true) return; 
+
+    // 2. '재주문'인 데이터만 목록에서 뺍니다.
+    // data.jajoo 필드가 아예 없거나 다른 값이면 모두 목록에 표시됩니다. (물귀신 방지)
+    if (data.jajoo === '재주문') return; 
+
+    allOrders.push({ id: doc.id, ...data });
             }
         });
         applyFilter();
