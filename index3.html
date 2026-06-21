@@ -161,13 +161,14 @@
         
         if (type === '무통장') {
             window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-        } else {
-            window.location.href = `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`;
+       } else {
+            // [수정] 새 창(1000x700)으로 열기
+            window.open(
+                `https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(price)}`, 
+                'paymentWindow', 
+                'width=1000,height=700,scrollbars=yes'
+            );
         }
-    } catch (e) {
-        alert('주문 처리 중 오류 발생: ' + e.message);
-        }
-    };
 </script>
 </body>
 </html>
