@@ -47,131 +47,82 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        document.getElementById('search-btn').addEventListener('click', async () => {
-            const name = document.getElementById('search-name').value.trim();
-            const phone = document.getElementById('search-phone').value.trim();
-            const resultsDiv = document.getElementById('results');
-            
-            if (!name || phone.length !== 4) {
-                alert("이름과 전화번호 뒷 4자리를 정확히 입력해주세요.");
-                return;
-            }
-
-            resultsDiv.innerHTML = "조회 중...";
-
-            try {
-                const q = query(collection(db, "boards"), where("author", "==", name));
-                const snapshot = await getDocs(q);
-                
-                const filteredData = snapshot.docs.filter(doc => {
-                    const data = doc.data();
-                    return data.phone && data.phone.slice(-4) === phone;
-                });
-
-                resultsDiv.innerHTML = "";
-                if(filteredData.length === 0) { 
-                    resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
-                    return; 
-                }
-
-filteredData.forEach(doc => {
-    const d = doc.data();
+       document.getElementById('search-btn').addEventListener('click', async () => {
+    const name = document.getElementById('search-name').value.trim();
+    const phone = document.getElementById('search-phone').value.trim();
+    const resultsDiv = document.getElementById('results');
     
-    // 1. 날짜 및 시안번호 생성 로직
-    const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
-    const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
-    const phonePrefix = phoneFull.slice(0, -2);    
-    const year = dateObj.getFullYear().toString().slice(-2);
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-    const day = dateObj.getDate().toString().padStart(2, '0');
-    const hours = dateObj.getHours().toString().padStart(2, '0');
-    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
-    
-    // [중요 수정] DB에 imgCode가 있으면 그걸 쓰고, 없으면 자동 생성된 번호(designNo)를 사용
-    const designNo = d.imgCode || `${phonePrefix}${year}${month}${day}${hours}${minutes}`;
-    
-    const dateStr = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`;
+    if (!name || phone.length !== 4) {
+        alert("이름과 전화번호 뒷 4자리를 정확히 입력해주세요.");
+        return;
+    }
 
-    // 2. 결제 상태 조건
-    const isBankTransfer = d.status === '무통장';
-    const isCard = d.status === '카드결제';
+    resultsDiv.innerHTML = "조회 중...";
 
-    // 3. 간이영수증용 URL 파라미터 (기존 유지)
-    const params = new URLSearchParams({
-        product: d.productName || '상품명 없음',
-        size: d.size || '0',
-        qty: d.quantity || '0',
-        price: d.price || '0',
-        date: `작성일: ${dateStr}`,
-        bizType: '기술서비스',
-        bizItem: '광고, 대행'
-    }).toString();
+    try {
+        // [수정] 두 컬렉션을 모두 비동기로 가져옵니다.
+        const qBoards = query(collection(db, "boards"), where("author", "==", name));
+        const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
+        
+        const [snapBoards, snapJjjj] = await Promise.all([getDocs(qBoards), getDocs(qJjjj)]);
+        
+        // 데이터를 합칩니다. (jjjj 데이터에만 isJajoo: true 마킹)
+        const allDocs = [
+            ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false })),
+            ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true }))
+        ];
 
-    // 4. [추가] 카드전표용 URL 파라미터 (간이영수증과 겹치지 않게 별도 생성)
-    const cardParams = new URLSearchParams({
-        date: `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`,
-        name: d.productName || '상품명 없음',
-        size: d.size || '0',
-        qty: d.quantity || '0',
-        price: d.price || '0'
-    }).toString();
+        // 전화번호 뒤 4자리 필터링
+        const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
 
-    resultsDiv.innerHTML += `
-        <div class="bg-white border p-6 rounded shadow-sm">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h2 class="font-bold text-lg mb-2">${d.productName || '상품명 없음'}</h2>
-                    <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
-                        <div><span class="font-semibold">작성자:</span> ${d.author}</div>
-                        <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
-                        <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
-                        <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
-                        <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
-                        <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
+        resultsDiv.innerHTML = "";
+        if(filteredData.length === 0) { 
+            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
+            return; 
+        }
+
+        filteredData.forEach(d => {
+            // 날짜 객체 생성
+            const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+            const dateStr = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`;
+
+            // [핵심] 재주문(isJajoo)이면 '재구입' 버튼을 숨깁니다.
+            const reOrderBtn = d.isJajoo ? "" : `
+                <button onclick="openPopup('index3.html?productName=${encodeURIComponent(d.author + '님 (' + (d.productName || '상품명') + '/' + (d.quantity || '0') + '/' + (d.size || '0') + ') ' + (d.price || '0') + '원')}&imgCode=${d.imgCode || ''}')" 
+                class="bg-black text-white px-6 py-2 rounded font-bold">재구입</button>
+            `;
+
+            // 배경색 처리 (재주문 건은 주황색 배경)
+            const bgClass = d.isJajoo ? "bg-orange-50" : "bg-white";
+
+            resultsDiv.innerHTML += `
+                <div class="${bgClass} border p-6 rounded shadow-sm mb-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 [재주문] ' : ''}${d.productName || '상품명 없음'}</h2>
+                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                                <div><span class="font-semibold">작성자:</span> ${d.author}</div>
+                                <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
+                                <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
+                                <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button onclick="openPopup('photo1.html?designNo=${d.imgCode || ''}')" 
+                                    class="bg-green-600 text-white px-6 py-2 rounded font-bold">시안보기</button>
+                            ${reOrderBtn}
+                        </div>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-600 border-t pt-3">
+                        <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${d.imgCode || '없음'}</div>
                     </div>
                 </div>
-             <div class="flex flex-col gap-2">
-                    <button onclick="openPopup('photo1.html?designNo=${designNo}')" 
-                            class="bg-green-600 text-white px-6 py-2 rounded font-bold">시안보기</button>
-                    
-           <button onclick="openPopup('index3.html?productName=${encodeURIComponent(d.author + '님 (' + (d.productName || '상품명') + '/' + (d.quantity || '0') + '/' + (d.size || '0') + ') ' + (d.price || '0') + '원')}&imgCode=${designNo}')" 
-        class="bg-black text-white px-6 py-2 rounded font-bold">재구입</button>
-                </div>
-            </div>
-
-            <div class="mt-3 text-sm text-gray-600 border-t pt-3">
-                <div><span class="font-semibold">작성일:</span> ${dateStr}</div>
-                <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
-                <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
-                
-                <div class="mt-2 flex items-center gap-2">
-                    <span class="font-semibold">첨부파일:</span>
-                    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
-                    ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
-                </div>
-
-                <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
-
-                <div class="mt-4 flex gap-2 flex-wrap">
-                    <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/segum')" 
-                       class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
-                    
-                    <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/print3.html?${params}')" 
-                       class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
-                    
-                    <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myjs/gum')" 
-                       class="border px-2 py-1 text-xs hover:bg-gray-100">운송장</a>
-                    
-                    <a href="javascript:void(0)" onclick="openPopup('https://myboard-delta.vercel.app/cardf.html?${cardParams}')"
-                       class="border px-2 py-1 text-xs ${isCard ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
-            </div>           </div>
-        </div>
-    `;
-});
-            } catch (error) {
-                console.error(error);
-                resultsDiv.innerHTML = "오류가 발생했습니다.";
-            }
+            `;
+        });
+    } catch (error) {
+        console.error(error);
+        resultsDiv.innerHTML = "오류가 발생했습니다.";
+    }
         });
     </script>
 </body>
