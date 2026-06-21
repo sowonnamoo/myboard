@@ -122,46 +122,51 @@
         window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
     };
 
-   window.submitOrder = async (type) => {
-        const price = document.getElementById('price').value;
-        const name = document.getElementById('name').value;
-        const phone = document.getElementById('phone').value;
-        const address = document.getElementById('address').value;
-        const addressDetail = document.getElementById('addressDetail').value;
+ window.submitOrder = async (type) => {
+    const price = document.getElementById('price').value;
+    const name = document.getElementById('name').value;
+    const phone = document.getElementById('phone').value;
+    const address = document.getElementById('address').value;
+    const addressDetail = document.getElementById('addressDetail').value;
+    // 메시지 및 파일 필드 추가 (화면 input ID에 맞춰주세요)
+    const message = document.getElementById('message')?.value || "";
+    const file1Url = document.getElementById('file1Url')?.value || "";
+    const file2Url = document.getElementById('file2Url')?.value || "";
+    
+    if (!name || !price) {
+        alert("작성자명과 결제금액은 필수입니다.");
+        return;
+    }
+
+    // 누락된 모든 필드를 포함한 데이터 객체
+    const orderData = {
+        productName: document.getElementById('productName').value,
+        quantity: document.getElementById('quantity').value,
+        size: document.getElementById('size').value,
+        price: price,
+        imgCode: document.getElementById('imgCode').value,
+        author: name,
+        phone: phone,
+        address: address + " " + addressDetail,
+        message: message,          // 메시지 복구
+        file1Url: file1Url,        // 파일1 복구
+        file2Url: file2Url,        // 파일2 복구
+        createdAt: new Date(),
+        status: type === '카드' ? '카드결제' : '무통장',
+        isDeleted: false
+    };
+
+    try {
+        await addDoc(collection(db, "jjjj"), orderData);
         
-        if (!name || !price) {
-            alert("작성자명과 결제금액은 필수입니다.");
-            return;
+        if (type === '무통장') {
+            window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
+        } else {
+            // 새 창 호출 없이 현재 창에서 결제 페이지로 이동
+            window.location.href = `https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(price)}`;
         }
-
-        const orderData = {
-            productName: document.getElementById('productName').value,
-            quantity: document.getElementById('quantity').value,
-            size: document.getElementById('size').value,
-            price: price,
-            imgCode: document.getElementById('imgCode').value,
-            author: name,
-            phone: phone,
-            address: address + " " + addressDetail,
-            createdAt: new Date(),
-            // 카드결제면 "카드결제", 무통장이면 "무통장"으로 저장
-            status: type === '카드' ? '카드결제' : '무통장',
-            isDeleted: false
-        };
-
-        try {
-            // Firestore에 주문 저장
-            await addDoc(collection(db, "jjjj"), orderData);
-            
-            if (type === '무통장') {
-                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-            } else {
-                // [카드 결제] 새 창 없이 현재 창에서 바로 이동
-                // 결제 페이지가 1000x700으로 열리도록 결제 페이지 URL로 이동합니다.
-                window.location.href = `https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(price)}`;
-            }
-        } catch (e) {
-            alert('주문 처리 중 오류 발생: ' + e.message);
+    } catch (e) {
+        alert('주문 처리 중 오류 발생: ' + e.message);
         }
     };
 </script>
