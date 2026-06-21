@@ -128,7 +128,6 @@
     const phone = document.getElementById('phone').value;
     const address = document.getElementById('address').value;
     const addressDetail = document.getElementById('addressDetail').value;
-    // 메시지 및 파일 필드 추가 (화면 input ID에 맞춰주세요)
     const message = document.getElementById('message')?.value || "";
     const file1Url = document.getElementById('file1Url')?.value || "";
     const file2Url = document.getElementById('file2Url')?.value || "";
@@ -138,7 +137,7 @@
         return;
     }
 
-    // 누락된 모든 필드를 포함한 데이터 객체
+    // [확실하게 수정] type 필드 제거, status에 직접 할당
     const orderData = {
         productName: document.getElementById('productName').value,
         quantity: document.getElementById('quantity').value,
@@ -148,22 +147,22 @@
         author: name,
         phone: phone,
         address: address + " " + addressDetail,
-        message: message,          // 메시지 복구
-        file1Url: file1Url,        // 파일1 복구
-        file2Url: file2Url,        // 파일2 복구
+        message: message,
+        file1Url: file1Url,
+        file2Url: file2Url,
         createdAt: new Date(),
-        status: type === '카드' ? '카드결제' : '무통장',
+        status: (type === '카드') ? '카드결제' : '무통장',
         isDeleted: false
     };
 
     try {
+        console.log("저장할 데이터 객체:", orderData); // 데이터 검증용
         await addDoc(collection(db, "jjjj"), orderData);
         
         if (type === '무통장') {
             window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
         } else {
-            // 새 창 호출 없이 현재 창에서 결제 페이지로 이동
-            window.location.href = `https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(price)}`;
+            window.location.href = `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`;
         }
     } catch (e) {
         alert('주문 처리 중 오류 발생: ' + e.message);
