@@ -159,16 +159,20 @@
         console.log("저장할 데이터 객체:", orderData); // 데이터 검증용
         await addDoc(collection(db, "jjjj"), orderData);
         
-        if (type === '무통장') {
-            window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-       } else {
-            // [수정] 새 창(1000x700)으로 열기
-            window.open(
-                `https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(price)}`, 
-                'paymentWindow', 
-                'width=1000,height=700,scrollbars=yes'
-            );
-        }
+       if (type === '무통장') {
+        // 기존 무통장 로직 유지 (필요 시 여기서 저장)
+        await addDoc(collection(db, "jjjj"), orderData);
+        window.location.href = `...`;
+    } else {
+        // 카드 결제는 저장하지 않고 결제 페이지로 데이터 전달
+        const queryString = new URLSearchParams(orderData).toString();
+        window.open(
+            `https://sowonnamoo.github.io/myjs/payment2?${queryString}`, 
+            'paymentWindow', 
+            'width=1000,height=700'
+        );
+    }
+}
 </script>
 </body>
 </html>
