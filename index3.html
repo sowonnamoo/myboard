@@ -155,18 +155,25 @@
             
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-            } else {
-                window.open(
-                    `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, 
-                    '_blank', 
-                    'width=1000,height=700,scrollbars=yes'
-                );
+           } else {
+            // [수정] '_blank' 대신 'success4'라는 이름을 부여합니다.
+            const paymentWindow = window.open(
+                `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, 
+                'success4', 
+                'width=1000,height=700,scrollbars=yes'
+            );
 
-                window.addEventListener("message", function listener(event) {
-                    if (event.data === "paymentSuccess") {
-                        alert("카드 결제가 완료되었습니다.");
-                        window.location.reload();
-                        window.removeEventListener("message", listener);
+            window.addEventListener("message", function listener(event) {
+                if (event.data === "paymentSuccess") {
+                    alert("카드 결제가 완료되었습니다.");
+                    
+                    // 결제 성공 시 우리가 명명한 'success4' 창을 닫습니다.
+                    if (paymentWindow && !paymentWindow.closed) {
+                        paymentWindow.close();
+                    }
+                    
+                    window.location.reload();
+                    window.removeEventListener("message", listener);
                     }
                 });
             }
