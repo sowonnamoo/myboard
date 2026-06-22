@@ -243,7 +243,13 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 
 let textInterval, barInterval; 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    // 1. 기존 유효성 검사 (침범 안 함)
+    // [추가] 파일명 중복 확인
+    const f1 = document.getElementById("file-1").files[0];
+    const f2 = document.getElementById("file-2").files[0];
+    if (f1 && f2 && f1.name === f2.name) {
+        alert("⚠️ 경고: 파일명이 동일합니다. 다른 이름의 파일로 다시 선택해주세요.");
+        return;
+    }    // 1. 기존 유효성 검사 (침범 안 함)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
     const file1 = document.getElementById("file-1");
