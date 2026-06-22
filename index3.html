@@ -20,22 +20,21 @@
 <body>
 
 <div class="box">
-    <div class="input-group"><label>제품명</label><input type="text" id="productName"></div>
-    <div style="display: flex; gap: 10px;">
-        <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity"></div>
-        <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size"></div>
+  <div class="input-group"><label>제품명</label><input type="text" id="productName" readonly></div>
+<div style="display: flex; gap: 10px;">
+    <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity" readonly></div>
+    <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size" readonly></div>
+</div>
+<div class="input-group"><label>결제금액</label><input type="text" id="price" readonly></div>
+
+<div class="input-group">
+    <label>주소</label>
+    <div style="display: flex; gap: 5px;">
+        <input type="text" id="address" placeholder="주소 검색 버튼을 눌러주세요" readonly required>
+        <button type="button" onclick="execDaumPostcode()" style="width:100px; background:#444; color:white; border:none; cursor:pointer; border-radius:4px;">주소검색</button>
     </div>
-    <div class="input-group"><label>결제금액</label><input type="text" id="price"></div>
-    <div class="input-group"><label>이미지 번호</label>
-        <div style="display:flex; gap:10px;">
-            <input type="text" id="imgCode" readonly>
-            <button type="button" onclick="openImage()" style="width:100px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">이미지 보기</button>
-        </div>
-    </div>
-    <div class="input-group"><label>작성자명</label><input type="text" id="name"></div>
-    <div class="input-group"><label>핸드폰 번호</label><input type="text" id="phone"></div>
-    <div class="input-group"><label>주소</label><input type="text" id="address"></div>
-    <div class="input-group"><label>상세주소</label><input type="text" id="addressDetail"></div>
+</div>
+<div class="input-group"><label>상세주소</label><input type="text" id="addressDetail" placeholder="상세주소를 입력하세요" required></div>
     
     <input type="hidden" id="message">
     <input type="hidden" id="file1Url">
@@ -91,11 +90,23 @@
     };
 
   window.submitOrder = async (type) => {
-        // 무통장, 카드결제 상관없이 status를 '대기'로 설정
-        const statusValue = '대기';
+    // [추가] 필수 입력값 체크 로직
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const addressDetail = document.getElementById('addressDetail').value.trim();
+    
+    // 필수 항목이 하나라도 비어있으면 경고창을 띄우고 종료
+    if (!name || !phone || !address || !addressDetail) {
+        alert("작성자명, 핸드폰 번호, 주소, 상세주소는 필수 입력 항목입니다.");
+        return;
+    }
 
-        const orderData = {
-            productName: document.getElementById('productName').value,
+    // 무통장, 카드결제 상관없이 status를 '대기'로 설정
+    const statusValue = '대기';
+
+    const orderData = {
+        productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
             size: document.getElementById('size').value,
             price: document.getElementById('price').value,
@@ -135,5 +146,19 @@
         } catch (e) { alert('오류: ' + e.message); }
     };
 </script>
+
+
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script>
+    function execDaumPostcode() {
+        new daum.Postcode({
+            oncomplete: function(data) {
+                document.getElementById("address").value = data.address;
+                document.getElementById("addressDetail").focus();
+            }
+        }).open();
+    }
+</script>
+    
 </body>
 </html>
