@@ -6,6 +6,10 @@
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
         .box { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; border: 1px solid #ddd; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; cursor: pointer; color: white; font-weight: bold; border-radius: 4px; }
+        .active { background: #e63946; }
+        .inactive { background: #adb5bd; }
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
         input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
@@ -58,17 +62,9 @@
 
     const db = getFirestore(initializeApp(firebaseConfig));
 
-    // [전역 함수 선언]
-    window.openImage = () => {
-        const imgCode = document.getElementById('imgCode').value;
-        if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
-        window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
-    };
-
-    // [데이터 불러오기] 페이지 로드 시점
-    window.addEventListener('DOMContentLoaded', () => {
+    window.onload = () => {
         const params = new URLSearchParams(window.location.search);
-        
+        // 제품 정보 매칭
         const fullTitle = params.get('productName');
         if (fullTitle) {
             const contentMatch = fullTitle.match(/\((.*?)\)/);
@@ -81,15 +77,23 @@
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch) document.getElementById('price').value = priceMatch[1].trim();
         }
-        
+        // 나머지 파라미터 매칭
         if (params.get('imgCode')) document.getElementById('imgCode').value = params.get('imgCode');
         if (params.get('message')) document.getElementById('message').value = params.get('message');
         if (params.get('file1Url')) document.getElementById('file1Url').value = params.get('file1Url');
         if (params.get('file2Url')) document.getElementById('file2Url').value = params.get('file2Url');
-    });
+    };
 
-    // [결제 로직]
+    window.openImage = () => {
+        const imgCode = document.getElementById('imgCode').value;
+        if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
+        window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
+    };
+
     window.submitOrder = async (type) => {
+        // 무통장 선택 시 '대기', 카드 선택 시 '카드결제'로 status 설정
+        const statusValue = (type === '무통장') ? '대기' : '카드결제';
+
         const orderData = {
             productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
@@ -104,28 +108,22 @@
             file2Url: document.getElementById('file2Url').value,
             type: type,
             createdAt: new Date(),
-            status: (type === '무통장') ? '대기' : '카드결제'
+            status: statusValue // 로직에 따라 동적 할당
         };
 
         if (!orderData.author || !orderData.price) { alert("작성자명과 결제금액은 필수입니다."); return; }
 
-        if (type === '무통장') {
+        try {
             await addDoc(collection(db, "jjjj"), orderData);
-            window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
-        } else {
-            // 카드결제 시 창을 열고, 결제창(payment2)에서 보내는 "PAYMENT_SUCCESS" 메시지를 대기
-            window.open(`https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
-            
-            const listener = async (e) => {
-                if (e.data && e.data.type === "PAYMENT_SUCCESS") {
-                    await addDoc(collection(db, "jjjj"), orderData);
-                    alert("결제가 확인되어 주문이 정상 접수되었습니다.");
-                    window.removeEventListener("message", listener);
-                    window.location.reload();
-                }
-            };
-            window.addEventListener("message", listener);
-        }
+            if (type === '무통장') {
+                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
+            } else {
+                window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
+                window.addEventListener("message", function listener(e) {
+                    if (e.data === "paymentSuccess") { alert("결제 완료"); window.location.reload(); window.removeEventListener("message", listener); }
+                });
+            }
+        } catch (e) { alert('오류: ' + e.message); }
     };
 </script>
 </body>
