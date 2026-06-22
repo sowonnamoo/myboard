@@ -144,11 +144,16 @@ const statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' :
             <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
             <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
             
-            <div class="mt-2 flex items-center gap-2">
-                <span class="font-semibold">첨부파일:</span>
-                ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
-                ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
-            </div>
+       <div class="mt-2 flex items-center gap-2">
+    <span class="font-semibold">첨부파일:</span>
+    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
+    ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
+    
+    ${d.status === '접수에러' ? `
+        <button onclick="openPopup('upload.html?docId=${d.id}&col=${d.isJajoo ? 'jjjj' : 'boards'}')" 
+        class="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">파일 재첨부</button>
+    ` : ''}
+</div>
 
             <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
 
