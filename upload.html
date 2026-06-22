@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>파일 재첨부</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-5">
+    <h2 class="font-bold mb-4">파일 재첨부 (제작보류 건)</h2>
+    <input type="file" id="file-input" class="mb-4">
+    <button id="upload-btn" class="bg-blue-600 text-white px-4 py-2 rounded">업로드 및 저장</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = { /* 위와 동일한 config 복사 */ };
+        const db = getFirestore(initializeApp(firebaseConfig));
+
+        const params = new URLSearchParams(window.location.search);
+        const docId = params.get('docId');
+        const col = params.get('col');
+
+        document.getElementById('upload-btn').onclick = async () => {
+            const file = document.getElementById('file-input').files[0];
+            if (!file) return alert("파일을 선택하세요.");
+
+            // R2 업로드 (worker url은 사용하시는 주소 입력)
+            const fileName = `${Date.now()}_${file.name}`;
+            const res = await fetch(`https://r2.ecogr.workers.dev/?name=${encodeURIComponent(fileName)}`, {
+                method: "PUT", body: file
+            });
+            const result = await res.json();
+
+            // Firestore 업데이트
+            await updateDoc(doc(db, col, docId), { file1Url: result.url, status: '대기' }); // 상태를 다시 '대기'로 변경
+            
+            alert("파일이 교체되었습니다.");
+            window.opener.location.reload(); // 부모창 새로고침
+            window.close(); // 창 닫기
+        };
+    </script>
+</body>
+</html>
