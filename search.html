@@ -104,8 +104,8 @@
             const isBankTransfer = d.status === '무통장';
             const isCard = d.status === '카드결제';
 const isPending = d.status === '대기';
-const statusLabel = isPending ? '(접수전/결제확인중)' : '(접수완료)';
-            
+const statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' : 
+                    (d.status === '접수에러') ? '(제작보류)' : '(접수완료)';            
             // [6] 영수증 파라미터 구성
             const params = new URLSearchParams({
                 product: d.productName || '상품명 없음', size: d.size || '0', qty: d.quantity || '0',
