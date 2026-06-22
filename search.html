@@ -75,6 +75,14 @@
         // [3] 전화번호 뒷자리 필터링
         const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
 
+        
+filteredData.sort((a, b) => {
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+    return dateB - dateA;
+});
+
+        
         resultsDiv.innerHTML = "";
         if(filteredData.length === 0) { 
             resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
