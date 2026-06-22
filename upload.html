@@ -5,39 +5,75 @@
     <title>파일 재첨부</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="p-5">
-    <h2 class="font-bold mb-4">파일 재첨부 (제작보류 건)</h2>
-    <input type="file" id="file-input" class="mb-4">
-    <button id="upload-btn" class="bg-blue-600 text-white px-4 py-2 rounded">업로드 및 저장</button>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-96">
+        <h2 class="text-xl font-bold mb-2 text-gray-800">파일 재첨부</h2>
+        <p class="text-sm text-gray-500 mb-6">제작 보류된 건의 새 파일을 업로드하세요.</p>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">파일 선택</label>
+            <input type="file" id="file-input" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+        </div>
+
+        <button id="upload-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all duration-200">
+            업로드 시작
+        </button>
+    </div>
+
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-5 rounded-2xl flex items-center space-x-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span class="font-bold text-gray-700">업로드 중입니다...</span>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = { /* 위와 동일한 config 복사 */ };
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
         const db = getFirestore(initializeApp(firebaseConfig));
 
-        const params = new URLSearchParams(window.location.search);
-        const docId = params.get('docId');
-        const col = params.get('col');
+        async function uploadToR2(file, fileName) {
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP'];
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!allowedExtensions.includes(ext)) throw new Error("허용되지 않는 형식입니다.");
 
-        document.getElementById('upload-btn').onclick = async () => {
-            const file = document.getElementById('file-input').files[0];
-            if (!file) return alert("파일을 선택하세요.");
-
-            // R2 업로드 (worker url은 사용하시는 주소 입력)
-            const fileName = `${Date.now()}_${file.name}`;
             const res = await fetch(`https://r2.ecogr.workers.dev/?name=${encodeURIComponent(fileName)}`, {
                 method: "PUT", body: file
             });
-            const result = await res.json();
+            if (!res.ok) throw new Error("업로드 실패");
+            return (await res.json()).url;
+        }
 
-            // Firestore 업데이트
-            await updateDoc(doc(db, col, docId), { file1Url: result.url, status: '대기' }); // 상태를 다시 '대기'로 변경
-            
-            alert("파일이 교체되었습니다.");
-            window.opener.location.reload(); // 부모창 새로고침
-            window.close(); // 창 닫기
+        const params = new URLSearchParams(window.location.search);
+        const [docId, col] = [params.get('docId'), params.get('col')];
+
+        document.getElementById('upload-btn').onclick = async () => {
+            const file = document.getElementById('file-input').files[0];
+            if (!file) return alert("파일을 선택해주세요.");
+
+            document.getElementById('loading-overlay').classList.remove('hidden');
+
+            try {
+                const url = await uploadToR2(file, `reupload_${Date.now()}_${file.name}`);
+                await updateDoc(doc(db, col, docId), { file1Url: url, status: '대기' });
+                
+                alert("파일이 성공적으로 교체되었습니다.");
+                window.opener.location.reload();
+                window.close();
+            } catch (err) {
+                alert("오류: " + err.message);
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
         };
     </script>
 </body>
