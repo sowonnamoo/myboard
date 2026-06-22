@@ -46,21 +46,37 @@ async function uploadToR2(fileInputId, authorName) {
 
     const file = fileInput.files[0];
     
-    // 1. 보안을 위한 확장자 필터링 (허용할 형식만 명시)
+    // 1. 용량 제한 (35MB = 35 * 1024 * 1024 bytes)
+    const MAX_SIZE = 35 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+        alert("⚠️ 파일 용량이 너무 큽니다. 35MB 이하의 파일만 업로드 가능합니다.");
+        throw new Error("파일 크기 초과: " + (file.size / (1024 * 1024)).toFixed(2) + "MB");
+    }
+
+    // 2. 보안을 위한 확장자 필터링
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP']; 
     const ext = file.name.split('.').pop().toLowerCase();
     
     if (!allowedExtensions.includes(ext)) {
-        alert("⚠️ 허용되지 않는 파일 형식입니다.\n업로드 가능: " + allowedExtensions.join(', '));
+        alert("⚠️ 허용되지 않는 파일 형식입니다.");
         throw new Error("보안상 차단된 파일 형식: " + ext);
     }
 
-    const fileName = `${authorName || "user"}_${Date.now()}_${file.name}`;
+    // 3. 중복 방지: 동일 파일명(확장자 포함) 방지
+    // 파일명과 현재 시간을 조합하여 고유한 이름을 생성합니다.
+    // 기존에 단순히 이름만 썼다면, 이제는 고유한 타임스탬프를 반드시 포함시켜 중복을 피합니다.
+    const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+    
     const WORKER_URL = "https://r2.ecogr.workers.dev/"; 
 
-    const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(fileName)}`, {
+    // 헤더에 파일 크기와 정보를 전달 (필요시 Worker에서 검사하도록 함)
+    const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, {
         method: "PUT",
-        body: file
+        body: file,
+        headers: {
+            "Content-Type": file.type,
+            "X-File-Size": file.size
+        }
     });
 
     if (!response.ok) {
