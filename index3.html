@@ -101,17 +101,24 @@
         window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
     };
 
-    window.submitOrder = async (type) => {
-        const name = document.getElementById('name').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const address = document.getElementById('address').value.trim();
-        const addressDetail = document.getElementById('addressDetail').value.trim();
-        
-        if (!name || !phone || !address || !addressDetail) {
-            alert("작성자명, 핸드폰 번호, 주소, 상세주소를 모두 입력해주세요.");
-            return;
-        }
-
+    wwindow.submitOrder = async (type) => {
+    const name = document.getElementById('name').value.trim();
+    const phoneInput = document.getElementById('phone').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const addressDetail = document.getElementById('addressDetail').value.trim();
+    
+    // [수정] 핸드폰 번호 11자리 확인 (숫자만 입력되었는지도 체크)
+    const phoneRegex = /^01([0|1|6|7|8|9])([0-9]{3,4})([0-9]{4})$/;
+    
+    if (!name || !address || !addressDetail) {
+        alert("작성자명, 주소, 상세주소는 필수 입력 항목입니다.");
+        return;
+    }
+    
+    if (!phoneRegex.test(phoneInput)) {
+        alert("핸드폰 번호를 정확히 11자리 숫자(예: 01012345678)로 입력해주세요.");
+        return;
+    }
         const orderData = {
             productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
