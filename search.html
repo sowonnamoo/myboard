@@ -103,6 +103,7 @@
 
             const isBankTransfer = d.status === '무통장';
             const isCard = d.status === '카드결제';
+            const isPending = d.status === '대기'; // '대기' 상태 확인 변수 추가
             
             // [6] 영수증 파라미터 구성
             const params = new URLSearchParams({
@@ -116,45 +117,56 @@
             }).toString();
 
             // [7] HTML 렌더링 (누락된 항목 복구 완료)
-            resultsDiv.innerHTML += `
-                <div class="${d.isJajoo ? 'bg-orange-50' : 'bg-white'} border p-6 rounded shadow-sm mb-4">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 [재주문/결제즉시 인쇄후 발송됩니다.] ' : ''}${d.productName || '상품명 없음'}</h2>
-                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
-                                <div><span class="font-semibold">작성자:</span> ${d.author}</div>
-                                <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
-                                <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
-                                <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
-                                <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
-                                <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button onclick="openPopup('photo1.html?designNo=${designNo}')" 
-                                    class="bg-green-600 text-white px-6 py-2 rounded font-bold">시안보기</button>
-                            ${reOrderBtn}
-                        </div>
-                    </div>
+          resultsDiv.innerHTML += `
+    <div class="${d.isJajoo ? 'bg-orange-50' : 'bg-white'} border p-6 rounded shadow-sm mb-4">
+        <div class="flex justify-between items-start">
+            <div>
+                <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 [재주문/결제즉시 인쇄후 발송됩니다.] ' : ''}${d.productName || '상품명 없음'}</h2>
+                <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                    <div><span class="font-semibold">작성자:</span> ${d.author}</div>
+                    <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
+                    <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
+                    <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
+                    <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
+                    <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
+                </div>
+            </div>
+            <div class="flex flex-col gap-2">
+                <button onclick="openPopup('photo1.html?designNo=${designNo}')" 
+                        class="bg-green-600 text-white px-6 py-2 rounded font-bold">시안보기</button>
+                ${reOrderBtn}
+            </div>
+        </div>
 
-                    <div class="mt-3 text-sm text-gray-600 border-t pt-3">
-                        <div><span class="font-semibold">작성일:</span> ${dateStr}</div>
-                        <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
-                        <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
-                        
-                        <div class="mt-2 flex items-center gap-2">
-                            <span class="font-semibold">첨부파일:</span>
-                            ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
-                            ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
-                        </div>
+        <div class="mt-3 text-sm text-gray-600 border-t pt-3">
+            <div><span class="font-semibold">작성일:</span> ${dateStr}</div>
+            <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
+            <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
+            
+            <div class="mt-2 flex items-center gap-2">
+                <span class="font-semibold">첨부파일:</span>
+                ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
+                ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
+            </div>
 
-                        <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
+            <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
 
-                        <div class="mt-4 flex gap-2 flex-wrap">
-                            <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/segum')" class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
-                            <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myboard/print3.html?${params}')" class="border px-2 py-1 text-xs ${isBankTransfer ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
-                            <a href="javascript:void(0)" onclick="openPopup('https://sowonnamoo.github.io/myjs/gum')" class="border px-2 py-1 text-xs hover:bg-gray-100">운송장</a>
-                            <a href="javascript:void(0)" onclick="openPopup('https://myboard-delta.vercel.app/cardf.html?${cardParams}')" class="border px-2 py-1 text-xs ${isCard ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
+            <div class="mt-4 flex gap-2 flex-wrap">
+                <a href="javascript:void(0)" 
+                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/segum')"}" 
+                   class="border px-2 py-1 text-xs ${(isBankTransfer && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
+                
+                <a href="javascript:void(0)" 
+                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + params + "')"}" 
+                   class="border px-2 py-1 text-xs ${(isBankTransfer && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
+                
+                <a href="javascript:void(0)" 
+                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myjs/gum')"}" 
+                   class="border px-2 py-1 text-xs ${isPending ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'hover:bg-gray-100'}">운송장</a>
+                
+                <a href="javascript:void(0)" 
+                   onclick="${isPending ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParams + "')"}" 
+                   class="border px-2 py-1 text-xs ${(isCard && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
                         </div>
                     </div>
                 </div>
