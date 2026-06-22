@@ -243,13 +243,9 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 
 let textInterval, barInterval; 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    // 1. 기존 유효성 검사
+    // 1. 기존 유효성 검사 (침범 안 함)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
-    
-    // [수정된 부분] 파일명 중복 체크 추가
-    if (checkDuplicateFiles()) return; 
-
     const file1 = document.getElementById("file-1");
     if (file1.files.length === 0) { alert("최소 1개의 파일을 첨부해주세요."); return; }
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
