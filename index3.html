@@ -91,37 +91,48 @@
     };
 
     window.submitOrder = async (type) => {
-        const orderData = {
-            productName: document.getElementById('productName').value,
-            quantity: document.getElementById('quantity').value,
-            size: document.getElementById('size').value,
-            price: document.getElementById('price').value,
-            imgCode: document.getElementById('imgCode').value,
-            author: document.getElementById('name').value,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
-            message: document.getElementById('message').value,
-            file1Url: document.getElementById('file1Url').value,
-            file2Url: document.getElementById('file2Url').value,
-            type: type,
-            createdAt: new Date(),
-            status: '대기',
-            jajoo: '재주문'
-        };
+    // 결제 타입에 따라 status 결정
+    const statusValue = (type === '카드') ? '카드결제' : '대기';
 
-        if (!orderData.author || !orderData.price) { alert("작성자명과 결제금액은 필수입니다."); return; }
+    const orderData = {
+        productName: document.getElementById('productName').value,
+        quantity: document.getElementById('quantity').value,
+        size: document.getElementById('size').value,
+        price: document.getElementById('price').value,
+        imgCode: document.getElementById('imgCode').value,
+        author: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
+        message: document.getElementById('message').value,
+        file1Url: document.getElementById('file1Url').value,
+        file2Url: document.getElementById('file2Url').value,
+        type: type, // '무통장' 또는 '카드'
+        createdAt: new Date(),
+        status: statusValue // 무통장은 '대기', 카드는 '카드결제'
+    };
 
-        try {
-            await addDoc(collection(db, "jjjj"), orderData);
-            if (type === '무통장') {
-                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
-            } else {
-                window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
-                window.addEventListener("message", function listener(e) {
-                    if (e.data === "paymentSuccess") { alert("결제 완료"); window.location.reload(); window.removeEventListener("message", listener); }
-                });
-            }
-        } catch (e) { alert('오류: ' + e.message); }
+    if (!orderData.author || !orderData.price) { 
+        alert("작성자명과 결제금액은 필수입니다."); 
+        return; 
+    }
+
+    try {
+        await addDoc(collection(db, "jjjj"), orderData);
+        if (type === '무통장') {
+            window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
+        } else {
+            window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
+            window.addEventListener("message", function listener(e) {
+                if (e.data === "paymentSuccess") { 
+                    alert("결제 완료"); 
+                    window.location.reload(); 
+                    window.removeEventListener("message", listener); 
+                }
+            });
+        }
+    } catch (e) { 
+        alert('오류: ' + e.message); 
+    
     };
 </script>
 </body>
