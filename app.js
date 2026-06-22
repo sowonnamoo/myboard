@@ -46,10 +46,10 @@ async function uploadToR2(fileInputId, authorName) {
 
     const file = fileInput.files[0];
     
-    // 1. 용량 제한 (35MB = 35 * 1024 * 1024 bytes)
-    const MAX_SIZE = 35 * 1024 * 1024;
+    // 1. 용량 제한 ( MB = 500 * 1024 * 1024 bytes)
+    const MAX_SIZE = 500 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-        alert("⚠️ 파일 용량이 너무 큽니다. 35MB 이하의 파일만 업로드 가능합니다.");
+        alert("⚠️ 파일 용량이 너무 큽니다. 500MB 이하의 파일만 업로드 가능합니다.");
         throw new Error("파일 크기 초과: " + (file.size / (1024 * 1024)).toFixed(2) + "MB");
     }
 
