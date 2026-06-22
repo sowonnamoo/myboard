@@ -117,10 +117,19 @@
             await addDoc(collection(db, "jjjj"), orderData);
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
-            } else {
-                window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
+           } else {
+                alert("주문서가 저장되었습니다.\n카드결제 완료 후 창을 닫아주세요.");
+                const payWindow = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
+                
                 window.addEventListener("message", function listener(e) {
-                    if (e.data === "paymentSuccess") { alert("결제 완료"); window.location.reload(); window.removeEventListener("message", listener); }
+                    if (e.data === "paymentSuccess") {
+                        alert("결제 완료되었습니다. 창을 닫습니다.");
+                        if (payWindow) payWindow.close();
+                        window.location.reload();
+                        window.removeEventListener("message", listener);
+                    }
+
+                    
                 });
             }
         } catch (e) { alert('오류: ' + e.message); }
