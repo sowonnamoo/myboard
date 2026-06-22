@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>빠른 재구입</title>
-    </head>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+        .box { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; border: 1px solid #ddd; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-group button { flex: 1; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; }
+    </style>
+</head>
 <body>
 
 <div class="box">
@@ -13,7 +22,12 @@
         <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size"></div>
     </div>
     <div class="input-group"><label>결제금액</label><input type="text" id="price"></div>
-    <div class="input-group"><label>이미지 번호</label><input type="text" id="imgCode" readonly></div>
+    <div class="input-group"><label>이미지 번호</label>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="imgCode" readonly>
+            <button type="button" onclick="openImage()" style="width:100px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">이미지 보기</button>
+        </div>
+    </div>
     <div class="input-group"><label>작성자명</label><input type="text" id="name"></div>
     <div class="input-group"><label>핸드폰 번호</label><input type="text" id="phone"></div>
     <div class="input-group"><label>주소</label><input type="text" id="address"></div>
@@ -33,8 +47,48 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-    const db = getFirestore(initializeApp({ /* 기존 설정 그대로 */ }));
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
 
+    const db = getFirestore(initializeApp(firebaseConfig));
+
+    // [전역 함수 선언]
+    window.openImage = () => {
+        const imgCode = document.getElementById('imgCode').value;
+        if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
+        window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
+    };
+
+    // [데이터 불러오기] 페이지 로드 시점
+    window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        
+        const fullTitle = params.get('productName');
+        if (fullTitle) {
+            const contentMatch = fullTitle.match(/\((.*?)\)/);
+            if (contentMatch) {
+                const parts = contentMatch[1].split('/');
+                document.getElementById('productName').value = parts[0]?.trim() || '';
+                document.getElementById('quantity').value = parts[1]?.trim() || '';
+                document.getElementById('size').value = parts[2]?.trim() || '';
+            }
+            const priceMatch = fullTitle.match(/\)\s+(\d+)/);
+            if (priceMatch) document.getElementById('price').value = priceMatch[1].trim();
+        }
+        
+        if (params.get('imgCode')) document.getElementById('imgCode').value = params.get('imgCode');
+        if (params.get('message')) document.getElementById('message').value = params.get('message');
+        if (params.get('file1Url')) document.getElementById('file1Url').value = params.get('file1Url');
+        if (params.get('file2Url')) document.getElementById('file2Url').value = params.get('file2Url');
+    });
+
+    // [결제 로직]
     window.submitOrder = async (type) => {
         const orderData = {
             productName: document.getElementById('productName').value,
@@ -53,18 +107,21 @@
             status: (type === '무통장') ? '대기' : '카드결제'
         };
 
+        if (!orderData.author || !orderData.price) { alert("작성자명과 결제금액은 필수입니다."); return; }
+
         if (type === '무통장') {
             await addDoc(collection(db, "jjjj"), orderData);
-            window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${orderData.price}`;
+            window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
         } else {
-            // 카드결제 시 메시지 수신 대기
-            window.open(`https://sowonnamoo.github.io/myjs/payment2?price=${orderData.price}`, '_blank', 'width=1000,height=700');
+            // 카드결제 시 창을 열고, 결제창(payment2)에서 보내는 "PAYMENT_SUCCESS" 메시지를 대기
+            window.open(`https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
             
             const listener = async (e) => {
                 if (e.data && e.data.type === "PAYMENT_SUCCESS") {
                     await addDoc(collection(db, "jjjj"), orderData);
                     alert("결제가 확인되어 주문이 정상 접수되었습니다.");
                     window.removeEventListener("message", listener);
+                    window.location.reload();
                 }
             };
             window.addEventListener("message", listener);
