@@ -53,7 +53,7 @@
             if (!allowedExtensions.includes(ext)) throw new Error("허용되지 않는 형식입니다.");
             
             // 용량 체크 재확인
-            if (file.size > MAX_SIZE) throw new Error("파일 용량이 35MB를 초과합니다.");
+            if (file.size > MAX_SIZE) throw new Error("파일 용량이 500MB를 초과합니다.");
 
             const res = await fetch(`https://r2.ecogr.workers.dev/?name=${encodeURIComponent(fileName)}`, {
                 method: "PUT", body: file
