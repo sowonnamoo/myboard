@@ -134,11 +134,23 @@
 
         try {
             await addDoc(collection(db, "jjjj"), orderData);
-            if (type === '무통장') {
-                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
-            } else {
-                alert("주문서 저장 완료. 결제 창으로 이동합니다.");
-                const payWindow = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
+          
+            
+           const price = document.getElementById('price').value; // 입력창 값을 직접 가져옴
+
+if (type === '무통장') {
+    // URL을 직접 확인해보세요. price가 제대로 들어가는지 확인
+    window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
+} else {
+    alert("주문서 저장 완료. 결제 창으로 이동합니다.");
+    const payWindow = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, '_blank', 'width=1000,height=700');}`, '_blank', 'width=1000,height=700');
+              
+                
+                
+                
+                
+                
+                
                 window.addEventListener("message", function listener(e) {
                     if (e.data === "paymentSuccess") {
                         alert("결제 완료되었습니다.");
