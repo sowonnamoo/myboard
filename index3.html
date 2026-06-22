@@ -115,23 +115,23 @@
                 await addDoc(collection(db, "jjjj"), orderData);
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
             } catch (e) { alert('오류: ' + e.message); }
-        } else {
-            // 카드결제: 창을 먼저 열고, 부모 창은 메시지를 대기합니다.
-            const payWin = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
-            
-            const listener = async (e) => {
-                // 결제창에서 보낸 신호가 PAYMENT_SUCCESS일 때만 실행
-                if (e.data && e.data.type === "PAYMENT_SUCCESS") {
-                    try {
-                        await addDoc(collection(db, "jjjj"), orderData); // 여기서 DB 저장
-                        alert("결제가 확인되어 주문이 저장되었습니다.");
-                        window.removeEventListener("message", listener); // 리스너 해제
-                    } catch (err) {
-                        alert('저장 오류: ' + err.message);
-                    }
-                }
-            };
-            window.addEventListener("message", listener);
+       } else {
+    // [수정] URL을 payment2로 변경
+    const payWin = window.open(`https://sowonnamoo.github.io/myjs/payment2?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
+    
+    const listener = async (e) => {
+        // 결제창(payment2)에서 보낸 신호 확인
+        if (e.data && e.data.type === "PAYMENT_SUCCESS") {
+            try {
+                await addDoc(collection(db, "jjjj"), orderData);
+                alert("결제가 확인되어 주문이 저장되었습니다.");
+                window.removeEventListener("message", listener);
+            } catch (err) {
+                alert('저장 오류: ' + err.message);
+            }
+        }
+    };
+    window.addEventListener("message", listener);
                 });
             }
         } catch (e) { alert('오류: ' + e.message); }
