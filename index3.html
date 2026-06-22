@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>빠른 재구입</title>
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
         .box { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; border: 1px solid #ddd; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 25px; }
-        .tab-btn { flex: 1; padding: 10px; border: none; cursor: pointer; color: white; font-weight: bold; border-radius: 4px; }
-        .active { background: #e63946; }
-        .inactive { background: #adb5bd; }
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
         input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        input[readonly] { background: #f0f0f0; }
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         .btn-group button { flex: 1; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; }
     </style>
@@ -20,21 +18,28 @@
 <body>
 
 <div class="box">
-  <div class="input-group"><label>제품명</label><input type="text" id="productName" readonly></div>
-<div style="display: flex; gap: 10px;">
-    <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity" readonly></div>
-    <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size" readonly></div>
-</div>
-<div class="input-group"><label>결제금액</label><input type="text" id="price" readonly></div>
-
-<div class="input-group">
-    <label>주소</label>
-    <div style="display: flex; gap: 5px;">
-        <input type="text" id="address" placeholder="주소 검색 버튼을 눌러주세요" readonly required>
-        <button type="button" onclick="execDaumPostcode()" style="width:100px; background:#444; color:white; border:none; cursor:pointer; border-radius:4px;">주소검색</button>
+    <div class="input-group"><label>제품명</label><input type="text" id="productName" readonly></div>
+    <div style="display: flex; gap: 10px;">
+        <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity" readonly></div>
+        <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size" readonly></div>
     </div>
-</div>
-<div class="input-group"><label>상세주소</label><input type="text" id="addressDetail" placeholder="상세주소를 입력하세요" required></div>
+    <div class="input-group"><label>결제금액</label><input type="text" id="price" readonly></div>
+    <div class="input-group"><label>이미지 번호</label>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="imgCode" readonly>
+            <button type="button" onclick="openImage()" style="width:100px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">이미지 보기</button>
+        </div>
+    </div>
+    <div class="input-group"><label>작성자명</label><input type="text" id="name" placeholder="필수 입력"></div>
+    <div class="input-group"><label>핸드폰 번호</label><input type="text" id="phone" placeholder="필수 입력"></div>
+    <div class="input-group">
+        <label>주소</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="address" placeholder="주소 검색 버튼 클릭" readonly>
+            <button type="button" onclick="execDaumPostcode()" style="width:100px; background:#444; color:white; border:none; cursor:pointer; border-radius:4px;">주소검색</button>
+        </div>
+    </div>
+    <div class="input-group"><label>상세주소</label><input type="text" id="addressDetail" placeholder="상세주소 입력"></div>
     
     <input type="hidden" id="message">
     <input type="hidden" id="file1Url">
@@ -61,9 +66,17 @@
 
     const db = getFirestore(initializeApp(firebaseConfig));
 
+    window.execDaumPostcode = () => {
+        new daum.Postcode({
+            oncomplete: function(data) {
+                document.getElementById("address").value = data.address;
+                document.getElementById("addressDetail").focus();
+            }
+        }).open();
+    };
+
     window.onload = () => {
         const params = new URLSearchParams(window.location.search);
-        // 제품 정보 매칭
         const fullTitle = params.get('productName');
         if (fullTitle) {
             const contentMatch = fullTitle.match(/\((.*?)\)/);
@@ -76,7 +89,6 @@
             const priceMatch = fullTitle.match(/\)\s+(\d+)/);
             if (priceMatch) document.getElementById('price').value = priceMatch[1].trim();
         }
-        // 나머지 파라미터 매칭
         if (params.get('imgCode')) document.getElementById('imgCode').value = params.get('imgCode');
         if (params.get('message')) document.getElementById('message').value = params.get('message');
         if (params.get('file1Url')) document.getElementById('file1Url').value = params.get('file1Url');
@@ -89,76 +101,52 @@
         window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
     };
 
-  window.submitOrder = async (type) => {
-    // [추가] 필수 입력값 체크 로직
-    const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const address = document.getElementById('address').value.trim();
-    const addressDetail = document.getElementById('addressDetail').value.trim();
-    
-    // 필수 항목이 하나라도 비어있으면 경고창을 띄우고 종료
-    if (!name || !phone || !address || !addressDetail) {
-        alert("작성자명, 핸드폰 번호, 주소, 상세주소는 필수 입력 항목입니다.");
-        return;
-    }
+    window.submitOrder = async (type) => {
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const address = document.getElementById('address').value.trim();
+        const addressDetail = document.getElementById('addressDetail').value.trim();
+        
+        if (!name || !phone || !address || !addressDetail) {
+            alert("작성자명, 핸드폰 번호, 주소, 상세주소를 모두 입력해주세요.");
+            return;
+        }
 
-    // 무통장, 카드결제 상관없이 status를 '대기'로 설정
-    const statusValue = '대기';
-
-    const orderData = {
-        productName: document.getElementById('productName').value,
+        const orderData = {
+            productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
             size: document.getElementById('size').value,
             price: document.getElementById('price').value,
             imgCode: document.getElementById('imgCode').value,
-            author: document.getElementById('name').value,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value + " " + document.getElementById('addressDetail').value,
+            author: name,
+            phone: phone,
+            address: address + " " + addressDetail,
             message: document.getElementById('message').value,
             file1Url: document.getElementById('file1Url').value,
             file2Url: document.getElementById('file2Url').value,
             type: type,
             createdAt: new Date(),
-            status: statusValue // 이제 모든 경우 '대기'로 저장됩니다.
+            status: '대기'
         };
-
-        if (!orderData.author || !orderData.price) { alert("작성자명과 결제금액은 필수입니다."); return; }
 
         try {
             await addDoc(collection(db, "jjjj"), orderData);
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(orderData.price)}`;
-           } else {
-                alert("주문서가 저장되었습니다.\n카드결제 완료 후 창을 닫아주세요.");
+            } else {
+                alert("주문서 저장 완료. 결제 창으로 이동합니다.");
                 const payWindow = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(orderData.price)}`, '_blank', 'width=1000,height=700');
-                
                 window.addEventListener("message", function listener(e) {
                     if (e.data === "paymentSuccess") {
-                        alert("결제 완료되었습니다. 창을 닫습니다.");
+                        alert("결제 완료되었습니다.");
                         if (payWindow) payWindow.close();
                         window.location.reload();
                         window.removeEventListener("message", listener);
                     }
-
-                    
                 });
             }
         } catch (e) { alert('오류: ' + e.message); }
     };
 </script>
-
-
-<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-<script>
-    function execDaumPostcode() {
-        new daum.Postcode({
-            oncomplete: function(data) {
-                document.getElementById("address").value = data.address;
-                document.getElementById("addressDetail").focus();
-            }
-        }).open();
-    }
-</script>
-    
 </body>
 </html>
