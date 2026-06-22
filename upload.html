@@ -9,7 +9,7 @@
 
     <div class="bg-white p-8 rounded-2xl shadow-lg w-96">
         <h2 class="text-xl font-bold mb-2 text-gray-800">파일 재첨부</h2>
-        <p class="text-sm text-gray-500 mb-6">제작 보류된 건의 새 파일을 업로드하세요.</p>
+        <p class="text-sm text-gray-500 mb-6">제작 보류된 건의 새 파일을 업로드하세요. (최대 35MB)</p>
         
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">파일 선택</label>
@@ -42,10 +42,18 @@
         };
         const db = getFirestore(initializeApp(firebaseConfig));
 
+        // 35MB 제한 변수
+        const MAX_SIZE = 35 * 1024 * 1024;
+
         async function uploadToR2(file, fileName) {
-            const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP'];
+            // 허용 확장자 목록 통일
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp'];
             const ext = file.name.split('.').pop().toLowerCase();
+            
             if (!allowedExtensions.includes(ext)) throw new Error("허용되지 않는 형식입니다.");
+            
+            // 용량 체크 재확인
+            if (file.size > MAX_SIZE) throw new Error("파일 용량이 35MB를 초과합니다.");
 
             const res = await fetch(`https://r2.ecogr.workers.dev/?name=${encodeURIComponent(fileName)}`, {
                 method: "PUT", body: file
@@ -58,8 +66,16 @@
         const [docId, col] = [params.get('docId'), params.get('col')];
 
         document.getElementById('upload-btn').onclick = async () => {
-            const file = document.getElementById('file-input').files[0];
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            
             if (!file) return alert("파일을 선택해주세요.");
+            
+            // 클라이언트 측 용량 제한 체크
+            if (file.size > MAX_SIZE) {
+                alert("⚠️ 파일 용량이 너무 큽니다. 35MB 이하의 파일만 업로드 가능합니다.");
+                return;
+            }
 
             document.getElementById('loading-overlay').classList.remove('hidden');
 
