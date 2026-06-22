@@ -103,7 +103,8 @@
 
             const isBankTransfer = d.status === '무통장';
             const isCard = d.status === '카드결제';
-            const isPending = d.status === '대기'; // '대기' 상태 확인 변수 추가
+const isPending = d.status === '대기';
+const statusLabel = isPending ? '(접수전/결제확인중)' : '(접수완료)';
             
             // [6] 영수증 파라미터 구성
             const params = new URLSearchParams({
@@ -124,8 +125,8 @@
                 <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 [재주문/결제즉시 인쇄후 발송됩니다.] ' : ''}${d.productName || '상품명 없음'}</h2>
                 <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
                     <div><span class="font-semibold">작성자:</span> ${d.author}</div>
-                    <div><span class="font-semibold">상태:</span> ${d.status || '-'}</div>
-                    <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
+<div><span class="font-semibold">상태:</span> ${d.status || '-'} <span class="text-blue-600 font-bold">${statusLabel}</span></div>
+<div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
                     <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
                     <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
                     <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
