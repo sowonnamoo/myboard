@@ -130,7 +130,7 @@ const statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' :
     <div class="${d.isJajoo ? 'bg-orange-50' : 'bg-white'} border p-6 rounded shadow-sm mb-4">
         <div class="flex justify-between items-start">
             <div>
-                <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 (재주문건_결제즉시인쇄발송) ' : ''}${d.productName || '상품명 없음'}</h2>
+                <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 재주문_결제즉시 제작시작건_ ' : ''}${d.productName || '상품명 없음'}</h2>
                 <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
                     <div><span class="font-semibold">작성자:</span> ${d.author}</div>
 <div><span class="font-semibold">상태:</span> ${d.status || '-'} <span class="text-blue-600 font-bold">${statusLabel}</span></div>
