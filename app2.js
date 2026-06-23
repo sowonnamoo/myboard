@@ -77,48 +77,46 @@ window.loadMore = async function() {
 
 function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
-    listBody.innerHTML = ""; // 기존 내용 초기화
+    listBody.innerHTML = "";
     
-    // 페이지네이션을 위한 시작 인덱스 계산
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-    const paginatedData = dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE);
-
-    paginatedData.forEach(data => {
+    // slice()를 제거하고 전체 데이터(dataToRender)를 순회하도록 변경
+    dataToRender.forEach(data => {
         const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
         
         const dateObj = data.displayDate ? 
                         (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
                         new Date();
+        
         const dateStr = dateObj.toLocaleDateString();
         
         listBody.innerHTML += `
         <tr class="hover:bg-gray-50 border-b border-gray-100"> 
             <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
-                <div class="flex items-center gap-2">
-                    <span class="whitespace-nowrap">🔒 ${data.author}님</span>
-                    <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full hover:bg-blue-700 whitespace-nowrap">상세보기</button>
-                    <span class="text-xs text-gray-500 truncate">${displayInfo}</span>
-                </div>
+                <span class="mr-2">🔒 ${data.author}님</span>
+                <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
+                <span class="text-xs text-gray-500">${displayInfo}</span>
             </td>
-            <td class="py-3 text-sm text-gray-600 text-center">에코</td>
-            <td class="py-3 text-xs text-gray-400 text-center">${dateStr}</td>
+            <td class="py-3 text-sm text-gray-600">에코</td>
+            <td class="py-3 text-xs text-gray-400">${dateStr}</td>
         </tr>`;
     });
 
-    // 페이저 로직
+    // 더보기 버튼 로직
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     
-    // 데이터가 더 있을 경우에만 '더보기' 버튼 노출
-    if (dataToRender.length > (startIndex + POSTS_PER_PAGE)) {
+    // [핵심] 데이터가 있고, 8개 단위로 끊어질 때만 더보기 버튼 노출
+    // (서버에 더 있을 가능성이 높음)
+    if (dataToRender.length > 0 && dataToRender.length % POSTS_PER_PAGE === 0) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
-                더보기
+                더보기 (현재 ${dataToRender.length}개 표시)
             </button>
         `;
     }
 }
+
 
 
 window.goToPage = (p) => { 
