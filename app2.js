@@ -77,7 +77,7 @@ window.loadMore = async function() {
 
 function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
-    listBody.innerHTML = "";
+    listBody.innerHTML = ""; // 기존 내용 초기화
     
     dataToRender.forEach(data => {
         const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
@@ -88,19 +88,24 @@ function renderTable(dataToRender = allOrders) {
                       new Date();
         let dateStr = dateObj.toLocaleDateString().replace(/\.$/, ""); 
         
-        // 괄호와 템플릿 리터럴(`)을 정확히 맞춘 코드입니다.
-        listBody.innerHTML += `
-        <tr onclick="viewDetail('${data.id}')" class="hover:bg-gray-100 border-b border-gray-100 cursor-pointer"> 
-            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate w-[450px]">
+        // 구조를 엄격하게 맞춘 tr/td 생성
+        const row = document.createElement("tr");
+        row.className = "hover:bg-gray-100 border-b border-gray-100 cursor-pointer";
+        row.onclick = () => viewDetail(data.id);
+        
+        row.innerHTML = `
+            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate" style="width: 450px;">
                 <span class="mr-2">🔒 ${data.author}님</span>
                 <button onclick="event.stopPropagation(); viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full mr-2 hover:bg-blue-700 w-20 flex items-center justify-center">상세보기</button>
                 <span class="text-xs text-gray-500">${displayInfo}</span>
             </td>
-            <td class="py-3 text-sm text-gray-600 text-center w-[150px]">에코</td>
-            <td class="py-3 text-xs text-gray-400 text-center w-[144px]">${dateStr}</td>
-        </tr>`;
+            <td class="py-3 text-sm text-gray-600 text-center" style="width: 150px;">에코</td>
+            <td class="py-3 text-xs text-gray-400 text-center" style="width: 144px;">${dateStr}</td>
+        `;
+        listBody.appendChild(row);
     });
 
+    // 페이저 로직 (데이터가 있을 때만 표시)
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     if (dataToRender.length > 0) {
