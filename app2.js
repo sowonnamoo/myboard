@@ -95,7 +95,7 @@ function renderTable(dataToRender = allOrders) {
             <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
                 <div class="flex items-center gap-2">
                     <span class="whitespace-nowrap">🔒 ${data.author}님</span>
-                    <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full hover:bg-blue-700 whitespace-nowrap">상세보기</button>
+                    <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full hover:bg-blue-700 whitespace-nowrap">시안보기 / 운송장번호 조회</button>
                     <span class="text-xs text-gray-500 truncate">${displayInfo}</span>
                 </div>
             </td>
