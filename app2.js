@@ -84,7 +84,7 @@ const dateStr = data.displayDate ? data.displayDate.toLocaleDateString() : "";
     <tr class="hover:bg-gray-50 border-b border-gray-100"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
             <span class="mr-2">🔒 ${data.author}님</span>
-            <button onclick="viewDetail('${data.id}')" class="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-480">시안요청완료 / 작업진행상황 / 운송장 </button>
+            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
             <span class="text-xs text-gray-500">${displayInfo}</span>
         </td>
         <td class="py-3 text-sm text-gray-600">에코</td>
@@ -432,24 +432,5 @@ window.copyToClipboard = (text) => {
         alert("복사에 실패했습니다.");
     });
 };
-
-
-// 1. 내 주문조회 버튼 (구글로 연결, 800x800)
-document.getElementById("my-order-btn").addEventListener("click", () => {
-    window.open("https://www.google.com", "_blank", "width=800,height=800");
-});
-
-// 2. 과거 주문조회 버튼 (구글로 연결, 800x800)
-document.getElementById("past-order-btn").addEventListener("click", () => {
-    window.open("https://www.google.com", "_blank", "width=800,height=800");
-});
-
-// 3. 기존 검색창이 사라졌으므로 goToPage 함수도 간소화
-window.goToPage = (p) => { 
-    currentPage = p; 
-    renderTable(); 
-};
-
-
 
 
