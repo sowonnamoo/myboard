@@ -79,39 +79,42 @@ function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = ""; // 기존 내용 초기화
     
-    dataToRender.forEach(data => {
+    // 페이지네이션을 위한 시작 인덱스 계산
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    const paginatedData = dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE);
+
+    paginatedData.forEach(data => {
         const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
         
-        let dateObj = data.displayDate ? 
-                      (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
-                      new Date();
-        let dateStr = dateObj.toLocaleDateString().replace(/\.$/, ""); 
+        const dateObj = data.displayDate ? 
+                        (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
+                        new Date();
+        const dateStr = dateObj.toLocaleDateString();
         
-        // 구조를 엄격하게 맞춘 tr/td 생성
-        const row = document.createElement("tr");
-        row.className = "hover:bg-gray-100 border-b border-gray-100 cursor-pointer";
-        row.onclick = () => viewDetail(data.id);
-        
-        row.innerHTML = `
-            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate" style="width: 450px;">
-                <span class="mr-2">🔒 ${data.author}님</span>
-                <button onclick="event.stopPropagation(); viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full mr-2 hover:bg-blue-700 w-20 flex items-center justify-center">상세보기</button>
-                <span class="text-xs text-gray-500">${displayInfo}</span>
+        listBody.innerHTML += `
+        <tr class="hover:bg-gray-50 border-b border-gray-100"> 
+            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
+                <div class="flex items-center gap-2">
+                    <span class="whitespace-nowrap">🔒 ${data.author}님</span>
+                    <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full hover:bg-blue-700 whitespace-nowrap">상세보기</button>
+                    <span class="text-xs text-gray-500 truncate">${displayInfo}</span>
+                </div>
             </td>
-            <td class="py-3 text-sm text-gray-600 text-center" style="width: 150px;">에코</td>
-            <td class="py-3 text-xs text-gray-400 text-center" style="width: 144px;">${dateStr}</td>
-        `;
-        listBody.appendChild(row);
+            <td class="py-3 text-sm text-gray-600 text-center">에코</td>
+            <td class="py-3 text-xs text-gray-400 text-center">${dateStr}</td>
+        </tr>`;
     });
 
-    // 페이저 로직 (데이터가 있을 때만 표시)
+    // 페이저 로직
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (dataToRender.length > 0) {
+    
+    // 데이터가 더 있을 경우에만 '더보기' 버튼 노출
+    if (dataToRender.length > (startIndex + POSTS_PER_PAGE)) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
-                더보기 (현재 ${dataToRender.length}개 표시)
+                더보기
             </button>
         `;
     }
