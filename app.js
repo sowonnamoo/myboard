@@ -141,7 +141,7 @@ async function loadAndRender() {
         });
 
         lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        applyFilter();
+        renderTable(); // 이 코드를 넣으세요
     } catch (err) { console.error(err); }
 }
 
@@ -164,8 +164,8 @@ window.loadMore = async function() {
             allOrders.push({ id: doc.id, ...data });
         });
 
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        applyFilter();
+       lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        renderTable(); // 이 코드를 넣으세요
     } catch (err) { console.error(err); }
 };
 
