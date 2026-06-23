@@ -142,7 +142,7 @@
             if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
             } else {
-                alert("주문서 저장 완료. 결제 창으로 이동합니다.");
+                alert("주문서 저장 완료. 결제 창으로 이동합니다. 재주문건은 결제 즉시 제작시작 됩니다.");
                 const payWindow = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, '_blank', 'width=1000,height=700');
                 
                 window.addEventListener("message", function listener(e) {
