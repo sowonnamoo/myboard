@@ -184,9 +184,9 @@ function renderTable() {
             const d = data.createdAt.toDate();
             const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             
+            // 김준혁 소환 코드
             let author = data.author || "김준혁";
             const diffInDays = (now - d) / (1000 * 60 * 60 * 24); 
-
             if (diffInDays >= 3 && author.length > 1) {
                 author = author.substring(0, author.length - 1) + "*";
             }
@@ -203,11 +203,9 @@ function renderTable() {
         });
     }
 
-    // 더보기 버튼 로직 (중복 제거 후 단일화)
+    // 더보기 버튼 갱신 (오류 방지를 위해 함수 내부에 통합)
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    
-    // 데이터가 8개 이상이거나, 마지막으로 가져온 문서가 있는 경우 표시
     if (allOrders.length > 0 && allOrders.length % 8 === 0) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
@@ -215,6 +213,7 @@ function renderTable() {
             </button>
         `;
     }
+}
 
 
 
