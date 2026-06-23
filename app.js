@@ -414,8 +414,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 });
 
 document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
-document.getElementById("search-btn").addEventListener("click", applyFilter);
-document.getElementById("search-reset-btn").addEventListener("click", () => { document.getElementById("search-author").value = ""; applyFilter(); });
 loadAndRender();
 
 
