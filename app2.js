@@ -79,7 +79,6 @@ function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
     
-    // 1. 전체 데이터를 순회하며 렌더링
     dataToRender.forEach(data => {
         const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
@@ -89,22 +88,21 @@ function renderTable(dataToRender = allOrders) {
                       new Date();
         let dateStr = dateObj.toLocaleDateString().replace(/\.$/, ""); 
         
+        // 괄호와 템플릿 리터럴(`)을 정확히 맞춘 코드입니다.
         listBody.innerHTML += `
         <tr onclick="viewDetail('${data.id}')" class="hover:bg-gray-100 border-b border-gray-100 cursor-pointer"> 
             <td class="py-3 px-4 text-left font-medium text-gray-900 truncate w-[450px]">
                 <span class="mr-2">🔒 ${data.author}님</span>
-                <button onclick="event.stopPropagation(); viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full mr-2 hover:bg-blue-700 w-16 flex items-center justify-center">상세보기</button>
+                <button onclick="event.stopPropagation(); viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-3 py-1 rounded-full mr-2 hover:bg-blue-700 w-20 flex items-center justify-center">상세보기</button>
                 <span class="text-xs text-gray-500">${displayInfo}</span>
             </td>
             <td class="py-3 text-sm text-gray-600 text-center w-[150px]">에코</td>
             <td class="py-3 text-xs text-gray-400 text-center w-[144px]">${dateStr}</td>
         </tr>`;
-    }); // <--- forEach 끝 괄호
+    });
 
-    // 2. 페이저 표시 (forEach 외부로 정확히 분리)
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    
     if (dataToRender.length > 0) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
@@ -112,7 +110,7 @@ function renderTable(dataToRender = allOrders) {
             </button>
         `;
     }
-} // <--- renderTable 함수 끝 괄호
+}
 
 
 window.goToPage = (p) => { 
