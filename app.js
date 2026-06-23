@@ -25,6 +25,7 @@ let allOrders = [];
 let filteredOrders = [];  
 let lastVisible = null; // 마지막 문서 저장용
 let currentPage = 1;      
+let currentViewId = null;
 const POSTS_PER_PAGE = 8; 
 
 
@@ -40,19 +41,38 @@ window.switchView = function(viewName) {
 
 
 
-// 비밀글기능
+// 비밀글
 window.viewDetail = function(id) {
-    currentViewId = id; // 클릭된 게시글 ID를 저장
-    const modal = document.getElementById("password-modal");
-    if (modal) {
-        modal.classList.remove("hidden"); // 모달 표시
-        document.getElementById("modal-password-input").focus(); // 입력창 포커스
-    } else {
-        alert("비밀번호 입력창을 찾을 수 없습니다.");
-    }
+    currentViewId = id;
+    document.getElementById("password-modal").classList.remove("hidden");
+    document.getElementById("modal-password-input").focus();
 };
 
+// 3. 확인 버튼 클릭 시 로직
+document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
+    const inputPwd = document.getElementById("modal-password-input").value;
+    const snap = await getDoc(doc(db, "boards", currentViewId));
+    
+    // 비밀번호 비교 (데이터의 폰번호 뒤 4자리와 일치하는지)
+    const storedPwd = snap.data().phone.slice(-4);
+    
+    if (inputPwd !== storedPwd) {
+        alert("비밀번호가 일치하지 않습니다.");
+        return;
+    }
 
+    // 성공 시 모달 닫고 상세 정보 렌더링
+    document.getElementById("password-modal").classList.add("hidden");
+    document.getElementById("modal-password-input").value = "";
+    
+    // 여기서 상세 정보를 보여주는 로직 실행
+    renderDetail(snap.data()); 
+});
+
+// 4. 취소 버튼
+document.getElementById("modal-cancel-btn").addEventListener("click", () => {
+    document.getElementById("password-modal").classList.add("hidden");
+});
 
 
 
