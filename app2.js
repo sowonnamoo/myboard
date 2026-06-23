@@ -78,39 +78,41 @@ window.loadMore = async function() {
 function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    const totalPages = Math.ceil(dataToRender.length / POSTS_PER_PAGE);
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
-dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
-    });
-    const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
+    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+        const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
-const dateStr = data.displayDate ? data.displayDate.toLocaleDateString() : "";
-    
+        
+        // [핵심] 날짜가 없으면 오늘 날짜(new Date)를 사용
+        // data.displayDate가 Firestore Timestamp라면 toDate()를 사용하고, 아니면 오늘 날짜
+        const dateObj = data.displayDate ? 
+                        (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
+                        new Date(); // 여기서 오늘 날짜가 할당됩니다.
+        
+        const dateStr = dateObj.toLocaleDateString();
+        
         listBody.innerHTML += `
-    <tr class="hover:bg-gray-50 border-b border-gray-100"> 
-        <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
-            <span class="mr-2">🔒 ${data.author}님</span>
-            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
-            <span class="text-xs text-gray-500">${displayInfo}</span>
-        </td>
-        <td class="py-3 text-sm text-gray-600">에코</td>
-        <td class="py-3 text-xs text-gray-400">${dateStr}</td>
-    </tr>`;
-});
+        <tr class="hover:bg-gray-50 border-b border-gray-100"> 
+            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
+                <span class="mr-2">🔒 ${data.author}님</span>
+                <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
+                <span class="text-xs text-gray-500">${displayInfo}</span>
+            </td>
+            <td class="py-3 text-sm text-gray-600">에코</td>
+            <td class="py-3 text-xs text-gray-400">${dateStr}</td>
+        </tr>`;
+    }); // 괄호 개수도 정확히 맞췄습니다.
 
-  
-    
-    
-    // 더보
-const pager = document.getElementById("pagination");
-pager.innerHTML = "";
-if (allOrders.length > 0 && allOrders.length % 8 === 0) {
-    pager.innerHTML = `
-        <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
-            더보기 (현재 ${allOrders.length}개 표시)
-        </button>
-    `;
+    const pager = document.getElementById("pagination");
+    pager.innerHTML = "";
+    if (dataToRender.length > 0 && dataToRender.length > POSTS_PER_PAGE) {
+        pager.innerHTML = `
+            <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+                더보기 (현재 ${dataToRender.length}개 표시)
+            </button>
+        `;
+    }
 }
 
 
