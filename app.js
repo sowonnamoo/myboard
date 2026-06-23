@@ -122,49 +122,68 @@ function applyFilter() {
     renderTable();
 }
 
+
+
+
 function renderTable() {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
+    
     if (filteredOrders.length === 0) {
         listBody.innerHTML = `<tr><td colspan="3" class="py-8 text-gray-400 text-center text-sm">내역이 존재하지 않습니다.</td></tr>`;
         document.getElementById("pagination").innerHTML = "";
         return;
     }
-    const totalPages = Math.ceil(filteredOrders.length / POSTS_PER_PAGE);
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+
+    // 현재 페이지까지의 데이터 개수 계산 (currentPage * 8)
+    const displayCount = currentPage * POSTS_PER_PAGE;
+    const displayData = filteredOrders.slice(0, displayCount);
     const now = new Date();
-    filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+
+    displayData.forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const diffInHours = (now - d) / (1000 * 60 * 60);
         const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
         let displayTitle = data.title || data.productName;
         if (displayTitle.length > 5) displayTitle = displayTitle.substring(0, 10) + "***";
+        
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
             <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료) ${newBadge}</td>
             <td class="py-3 text-sm text-gray-600">${data.author || "김준혁"}</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
     });
+
+    // 더보기 버튼 렌더링
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage-1})">이전</span>`;
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 5);
-    if (endPage - startPage < 5 && totalPages > 5) startPage = Math.max(1, endPage - 5);
-    for (let i = startPage; i <= endPage; i++) {
-        const activeClass = i === currentPage ? "bg-blue-600 text-white" : "bg-white hover:bg-gray-100";
-        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded text-sm mx-0.5 ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
+    
+    if (displayCount < filteredOrders.length) {
+        pager.innerHTML = `
+            <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+                더보기 (${displayCount} / ${filteredOrders.length})
+            </button>
+        `;
     }
-    if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage+1})">다음</span>`;
 }
+window.loadMore = function() {
+    currentPage += 1;
+    renderTable();
+};
 
-window.goToPage = function(pageNum) { currentPage = pageNum; renderTable(); }
 let currentViewId = ""; 
 window.viewDetail = async function(id) {
     currentViewId = id;
     document.getElementById("password-modal").classList.remove("hidden");
     document.getElementById("modal-password-input").focus();
 };
+
+
+
+
+
+
+
 
 document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
     const inputPwd = document.getElementById("modal-password-input").value;
