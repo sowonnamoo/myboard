@@ -1,3 +1,5 @@
+// 🔑 구글 앱스 스크립트 웹 앱 URL
+const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 const firebaseConfig = {
@@ -27,7 +29,15 @@ let filteredOrders = [];
 let currentPage = 1;      
 const POSTS_PER_PAGE = 8; 
 
-
+function createDownloadUrl(url) {
+    if (!url) return null;
+    try {
+        let fileId = "";
+        if (url.includes('/d/')) { fileId = url.split('/d/')[1].split('/')[0]; }
+        else if (url.includes('id=')) { fileId = url.split('id=')[1].split('&')[0]; }
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    } catch (e) { return url; }
+}
 
 window.switchView = function(viewName) {
     document.getElementById("view-list").classList.add("hidden");
@@ -38,72 +48,37 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-
-// [R2 업로드 함수] 업로드 및 보안 검사 포함
-async function uploadToR2(fileInputId, authorName) {
+async function uploadToGoogleDrive(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null;
-
     const file = fileInput.files[0];
-    
-    // 1. 용량 제한 ( MB = 500 * 1024 * 1024 bytes)
-    const MAX_SIZE = 500 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-        alert("⚠️ 파일 용량이 너무 큽니다. 500MB 이하의 파일만 업로드 가능합니다.");
-        throw new Error("파일 크기 초과: " + (file.size / (1024 * 1024)).toFixed(2) + "MB");
-    }
-
-    // 2. 보안을 위한 확장자 필터링
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP']; 
-    const ext = file.name.split('.').pop().toLowerCase();
-    
-    if (!allowedExtensions.includes(ext)) {
-        alert("⚠️ 허용되지 않는 파일 형식입니다.");
-        throw new Error("보안상 차단된 파일 형식: " + ext);
-    }
-
-    // 3. 중복 방지: 동일 파일명(확장자 포함) 방지
-    // 파일명과 현재 시간을 조합하여 고유한 이름을 생성합니다.
-    // 기존에 단순히 이름만 썼다면, 이제는 고유한 타임스탬프를 반드시 포함시켜 중복을 피합니다.
-    const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
-    
-    const WORKER_URL = "https://r2.ecogr.workers.dev/"; 
-
-    // 헤더에 파일 크기와 정보를 전달 (필요시 Worker에서 검사하도록 함)
-    const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, {
-        method: "PUT",
-        body: file,
-        headers: {
-            "Content-Type": file.type,
-            "X-File-Size": file.size
-        }
+    const fileName = `${authorName || ""}_${file.name}`;
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const base64Data = e.target.result.split(',')[1];
+                const body = new URLSearchParams({ data: base64Data, filename: fileName, mimetype: file.type });
+                const res = await fetch(GOOGLE_WEB_APP_URL, { method: 'POST', body });
+                const data = await res.json();
+                resolve(data && data.url ? data.url : null);
+            } catch (error) { resolve(null); }
+        };
+        reader.readAsDataURL(file);
     });
-
-    if (!response.ok) {
-        throw new Error("업로드 실패: " + response.statusText);
-    }
-
-    const result = await response.json();
-    return result.url;
 }
 
 async function loadAndRender() {
     try {
+        // 최근 20개만 불러오도록 limit(20) 추가 쿼리아끼기
         const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(20)); 
         const snapshot = await getDocs(q);
         allOrders = [];
         snapshot.forEach(doc => { 
-    const data = doc.data();
-    
-    // 1. 삭제된 글은 무조건 제외
-    if (data.isDeleted === true) return; 
-
-    // 2. '재주문'인 데이터만 목록에서 뺍니다.
-    // data.jajoo 필드가 아예 없거나 다른 값이면 모두 목록에 표시됩니다. (물귀신 방지)
-    if (data.jajoo === '재주문') return; 
-
-    allOrders.push({ id: doc.id, ...data });
-         
+            const data = doc.data();
+            if (!data.isDeleted) {
+                allOrders.push({ id: doc.id, ...data }); 
+            }
         });
         applyFilter();
     } catch (err) { console.error(err); }
@@ -197,43 +172,17 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         };
     }
     
-   
- const filesDiv = document.getElementById("detail-files"); 
+    const filesDiv = document.getElementById("detail-files"); 
     filesDiv.innerHTML = "";
-    
-    if(data.file1Url) {
-       const a = document.createElement('a');
-       // 이모지를 회색으로 만들기 위해 grayscale 필터 클래스 추가
-       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 1 (다운로드)';
-       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-       a.onclick = () => window.downloadFile(data.file1Url, "file1_download.png");
-       filesDiv.appendChild(a);
-   }
-   if(data.file2Url) {
-       const a = document.createElement('a');
-       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 2 (다운로드)';
-       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-       a.onclick = () => window.downloadFile(data.file2Url, "file2_download.png");
-       filesDiv.appendChild(a);
-    }
-
-    // 삭제 버튼 설정
+    if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
+    if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
     document.getElementById("detail-delete-btn").onclick = async () => { 
         if(confirm("삭제하시겠습니까?")) { 
-            try { 
-                await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
-                alert("삭제되었습니다."); 
-                switchView('list'); 
-            } catch (e) { 
-                alert("삭제 실패: " + e.message); 
-            }
+            try { await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); alert("삭제되었습니다."); switchView('list'); } catch (e) { alert("삭제 실패: " + e.message); }
         } 
     };
-
-    // 상세화면으로 전환
     switchView('detail');
-
-}); // <--- 이것이 modal-confirm-btn의 click 이벤트 리스너를 닫는 괄호입니다.
+});
 
 // ... 나머지는 기존 코드와 동일 (생략) ...
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
@@ -243,13 +192,7 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 
 let textInterval, barInterval; 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    // [추가] 파일명 중복 확인
-    const f1 = document.getElementById("file-1").files[0];
-    const f2 = document.getElementById("file-2").files[0];
-    if (f1 && f2 && f1.name === f2.name) {
-        alert("⚠️ 경고: 파일명이 동일합니다. 다른 이름의 파일로 다시 선택해주세요.");
-        return;
-    }    // 1. 기존 유효성 검사 (침범 안 함)
+    // 1. 기존 유효성 검사 (침범 안 함)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
     const file1 = document.getElementById("file-1");
@@ -279,38 +222,35 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     }, 3000); // 3초 간격
 
     // 3. 기존 글쓰기 로직 (침범 안 함)
-  try {
-    // 1. 파일 업로드 실행
-    const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value);
-    const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value);
+    try {
+        const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
+        const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
         
-    // 2. 파이어베이스에 모든 정보 저장 (누락 없이 합침)
-  await addDoc(collection(db, "boards"), { 
-    author: document.getElementById('input-author').value,
-    productName: document.getElementById('product-name').value,
-    quantity: document.getElementById('quantity').value,
-    size: document.getElementById('size').value,
-    phone: document.getElementById('phone').value,
+        await addDoc(collection(db, "boards"), { 
+    author: document.getElementById('input-author').value, 
+    productName: document.getElementById('product-name').value, 
+    quantity: document.getElementById('quantity').value, 
+    size: document.getElementById('size').value, 
+    phone: document.getElementById('phone').value, 
     price: document.getElementById('price').value,
-    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
-    password: document.getElementById('phone').value.slice(-4),
-    message: document.getElementById('message').value,
-    file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
-    file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
-    views: 0,
-    createdAt: new Date(),
+    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
+    password: phoneVal.slice(-4), 
+    message: document.getElementById('message').value, 
+    file1Url, 
+    file2Url, 
+    views: 0, 
+    createdAt: new Date(), 
     isDeleted: false,
-    status: '대기'
-    });
-
-    alert("접수되었습니다.");
-    switchView('list');
-} catch (e) {
-    console.error(e);
-    alert("오류: " + e.message);
-} finally {
-    // 4. 로딩바 종료
-    clearInterval(interval);
+    status: '대기' // <--- 이 한 줄을 반드시 추가해야 합니다!
+});
+        
+        alert("접수되었습니다."); 
+        switchView('list');
+    } catch (e) { 
+        alert("오류: " + e.message); 
+    } finally { 
+        // 4. 로딩바 종료
+        clearInterval(interval);
         spinner.classList.add("hidden");
         bar.style.width = "0%";
     }
@@ -689,25 +629,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// 파일 다운로드 강제 실행 함수
-window.downloadFile = async (url, filename) => {
-    try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(blobUrl);
-        document.body.removeChild(a);
-    } catch (e) {
-        alert("다운로드 중 오류가 발생했습니다.");
-        console.error(e);
-    }
-};
+
 
 
 
