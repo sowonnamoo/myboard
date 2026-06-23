@@ -185,6 +185,16 @@ function renderTable() {
     allOrders.forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        
+        // --- [수정 시작] 작성자 이름 마스킹 로직 ---
+        let author = data.author || "김준혁";
+        const diffInDays = (now - d) / (1000 * 60 * 60 * 24); // 날짜 차이 계산
+
+        if (diffInDays >= 3 && author.length > 1) {
+            author = author.substring(0, author.length - 1) + "*";
+        }
+        // --- [수정 끝] ---
+
         const diffInHours = (now - d) / (1000 * 60 * 60);
         const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
         let displayTitle = data.title || data.productName;
@@ -192,7 +202,7 @@ function renderTable() {
         
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
             <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료) ${newBadge}</td>
-            <td class="py-3 text-sm text-gray-600">${data.author || "김준혁"}</td>
+            <td class="py-3 text-sm text-gray-600">${author}</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
     });
 
