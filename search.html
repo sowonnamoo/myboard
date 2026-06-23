@@ -144,7 +144,7 @@ const statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' :
             ${
     (!d.isJajoo && d.sian !== 'done') 
     ? `<button onclick="window.open('https://sowonnamoo.github.io/myboard/index2', '_blank', 'width=864,height=700,scrollbars=yes')" 
-               class="bg-yellow-500 text-white px-6 py-2 rounded font-bold">시안확인요청</button>`
+               class="bg-yellow-500 text-white px-6 py-2 rounded font-bold">인쇄승인대기중</button>`
     : `<button onclick="openPopup('photo1.html?designNo=${designNo}')" 
                class="bg-green-600 text-white px-6 py-2 rounded font-bold">시안보기</button>`
 }
