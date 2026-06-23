@@ -134,11 +134,12 @@ async function loadAndRender() {
         const snapshot = await getDocs(q);
         
         allOrders = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.isDeleted === true || data.jajoo === '재주문') return;
-            allOrders.push({ id: doc.id, ...data });
-        });
+      snapshot.forEach(doc => {
+    const data = doc.data();
+    // 삭제된 글만 걸러내고, 재주문은 그대로 통과시킵니다.
+    if (data.isDeleted === true) return; 
+    allOrders.push({ id: doc.id, ...data });
+});
 
         lastVisible = snapshot.docs[snapshot.docs.length - 1];
         renderTable(); // 이 코드를 넣으세요
