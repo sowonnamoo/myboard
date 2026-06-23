@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-const firebaseConfig = {
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
@@ -24,7 +23,9 @@ window.execDaumPostcode = function() {
 
 let allOrders = [];        
 let filteredOrders = [];  
+let lastVisible = null; // 마지막 문서 저장용
 let currentPage = 1;      
+let currentViewId = null;
 const POSTS_PER_PAGE = 8; 
 
 
@@ -37,6 +38,46 @@ window.switchView = function(viewName) {
     else if (viewName === 'write') { document.getElementById("view-write").classList.remove("hidden"); }
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
+
+
+
+// 비밀글
+window.viewDetail = function(id) {
+    currentViewId = id;
+    document.getElementById("password-modal").classList.remove("hidden");
+    document.getElementById("modal-password-input").focus();
+};
+
+// 3. 확인 버튼 클릭 시 로직
+document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
+    const inputPwd = document.getElementById("modal-password-input").value;
+    const snap = await getDoc(doc(db, "boards", currentViewId));
+    
+    // 비밀번호 비교 (데이터의 폰번호 뒤 4자리와 일치하는지)
+    const storedPwd = snap.data().phone.slice(-4);
+    
+    if (inputPwd !== storedPwd) {
+        alert("비밀번호가 일치하지 않습니다.");
+        return;
+    }
+
+    // 성공 시 모달 닫고 상세 정보 렌더링
+    document.getElementById("password-modal").classList.add("hidden");
+    document.getElementById("modal-password-input").value = "";
+    
+    // 여기서 상세 정보를 보여주는 로직 실행
+    renderDetail(snap.data()); 
+});
+
+// 4. 취소 버튼
+document.getElementById("modal-cancel-btn").addEventListener("click", () => {
+    document.getElementById("password-modal").classList.add("hidden");
+});
+
+
+
+
+
 
 
 // [R2 업로드 함수] 업로드 및 보안 검사 포함
@@ -89,82 +130,138 @@ async function uploadToR2(fileInputId, authorName) {
 
 async function loadAndRender() {
     try {
-        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(20)); 
+        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(8));
         const snapshot = await getDocs(q);
+        
         allOrders = [];
-        snapshot.forEach(doc => { 
-    const data = doc.data();
-    
-    // 1. 삭제된 글은 무조건 제외
-    if (data.isDeleted === true) return; 
-
-    // 2. '재주문'인 데이터만 목록에서 뺍니다.
-    // data.jajoo 필드가 아예 없거나 다른 값이면 모두 목록에 표시됩니다. (물귀신 방지)
-    if (data.jajoo === '재주문') return; 
-
-    allOrders.push({ id: doc.id, ...data });
-         
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.isDeleted === true || data.jajoo === '재주문') return;
+            allOrders.push({ id: doc.id, ...data });
         });
+
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
         applyFilter();
     } catch (err) { console.error(err); }
 }
 
-function applyFilter() {
-    const searchVal = document.getElementById("search-author").value.trim().toLowerCase();
-    if (searchVal) {
-        filteredOrders = allOrders.filter(order => (order.author || "").toLowerCase().includes(searchVal));
-        document.getElementById("search-reset-btn").classList.remove("hidden");
-    } else {
-        filteredOrders = [...allOrders];
-        document.getElementById("search-reset-btn").classList.add("hidden");
-    }
-    currentPage = 1; 
-    renderTable();
-}
+// 2. 더보기 클릭 시 다음 8개 가져오기
+window.loadMore = async function() {
+    if (!lastVisible) return;
+
+    try {
+        const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
+        const snapshot = await getDocs(nextQ);
+        
+        if (snapshot.empty) {
+            alert("더 이상 게시글이 없습니다.");
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.isDeleted === true || data.jajoo === '재주문') return;
+            allOrders.push({ id: doc.id, ...data });
+        });
+
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        applyFilter();
+    } catch (err) { console.error(err); }
+};
+
+
+
 
 function renderTable() {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    if (filteredOrders.length === 0) {
+    
+    if (allOrders.length === 0) {
         listBody.innerHTML = `<tr><td colspan="3" class="py-8 text-gray-400 text-center text-sm">내역이 존재하지 않습니다.</td></tr>`;
-        document.getElementById("pagination").innerHTML = "";
         return;
     }
-    const totalPages = Math.ceil(filteredOrders.length / POSTS_PER_PAGE);
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+
     const now = new Date();
-    filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    allOrders.forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const diffInHours = (now - d) / (1000 * 60 * 60);
         const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
         let displayTitle = data.title || data.productName;
         if (displayTitle.length > 5) displayTitle = displayTitle.substring(0, 10) + "***";
+        
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
             <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료) ${newBadge}</td>
             <td class="py-3 text-sm text-gray-600">${data.author || "김준혁"}</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
     });
+
+    // 더보기 버튼 표시 로직
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage-1})">이전</span>`;
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 5);
-    if (endPage - startPage < 5 && totalPages > 5) startPage = Math.max(1, endPage - 5);
-    for (let i = startPage; i <= endPage; i++) {
-        const activeClass = i === currentPage ? "bg-blue-600 text-white" : "bg-white hover:bg-gray-100";
-        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded text-sm mx-0.5 ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
+    
+    // 가져온 데이터가 8의 배수일 경우에만 더보기 버튼을 보여주는 것이 일반적입니다.
+    if (allOrders.length >= 8) {
+        pager.innerHTML = `
+            <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+                더보기 (현재 ${allOrders.length}개 표시)
+            </button>
+        `;
     }
-    if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage+1})">다음</span>`;
 }
 
-window.goToPage = function(pageNum) { currentPage = pageNum; renderTable(); }
-let currentViewId = ""; 
-window.viewDetail = async function(id) {
-    currentViewId = id;
-    document.getElementById("password-modal").classList.remove("hidden");
-    document.getElementById("modal-password-input").focus();
-};
+
+
+
+
+function applyFilter() {
+    const searchVal = document.getElementById("search-author").value.trim().toLowerCase();
+    
+    // 검색어가 있다면 필터링된 결과만 보여줌
+    if (searchVal) {
+        filteredOrders = allOrders.filter(order => (order.author || "").toLowerCase().includes(searchVal));
+        document.getElementById("search-reset-btn").classList.remove("hidden");
+        
+        // 검색 결과를 화면에 바로 그리기 위해 renderTable 호출 시 filteredOrders 사용하도록 변경
+        renderFilteredTable(filteredOrders); 
+    } else {
+        document.getElementById("search-reset-btn").classList.add("hidden");
+        renderTable(); // 검색어 없으면 전체 allOrders 사용
+    }
+}
+
+
+
+
+
+
+const pager = document.getElementById("pagination");
+pager.innerHTML = "";
+
+// 8개씩 가져왔을 때만 더보기 버튼 표시 (snapshot.size가 8 미만이면 끝)
+if (allOrders.length > 0 && allOrders.length % 8 === 0) {
+    pager.innerHTML = `
+        <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+            더보기 (현재 ${allOrders.length}개 표시)
+        </button>
+    `;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
     const inputPwd = document.getElementById("modal-password-input").value;
