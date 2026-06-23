@@ -78,18 +78,15 @@ window.loadMore = async function() {
 function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-
-    dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    
+    // 1. 전체 데이터를 렌더링
+    dataToRender.forEach(data => {
         const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
         
-        // [핵심] 날짜가 없으면 오늘 날짜(new Date)를 사용
-        // data.displayDate가 Firestore Timestamp라면 toDate()를 사용하고, 아니면 오늘 날짜
         const dateObj = data.displayDate ? 
                         (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
-                        new Date(); // 여기서 오늘 날짜가 할당됩니다.
-        
+                        new Date();
         const dateStr = dateObj.toLocaleDateString();
         
         listBody.innerHTML += `
@@ -102,11 +99,16 @@ function renderTable(dataToRender = allOrders) {
             <td class="py-3 text-sm text-gray-600">에코</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td>
         </tr>`;
-    }); // 괄호 개수도 정확히 맞췄습니다.
+    });
 
+    // 2. 더보기 버튼 로직 수정
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (dataToRender.length > 0 && dataToRender.length > POSTS_PER_PAGE) {
+    
+    // 더보기 표시 조건: 
+    // 최소 8개 이상 로드되었고, 현재 게시글의 총 개수가 8의 배수일 때만 버튼 노출
+    // (서버에 더 있을 가능성이 있는 경우)
+    if (dataToRender.length > 0 && dataToRender.length >= POSTS_PER_PAGE && dataToRender.length % POSTS_PER_PAGE === 0) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
                 더보기 (현재 ${dataToRender.length}개 표시)
@@ -114,7 +116,6 @@ function renderTable(dataToRender = allOrders) {
         `;
     }
 }
-
 
 
 
