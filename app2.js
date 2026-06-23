@@ -433,18 +433,3 @@ window.copyToClipboard = (text) => {
     });
 };
 
-// 1. 내 주문조회 버튼 (구글로 연결, 800x800)
-document.getElementById("my-order-btn").addEventListener("click", () => {
-    window.open("https://www.google.com", "_blank", "width=800,height=800");
-});
-
-// 2. 과거 주문조회 버튼 (구글로 연결, 800x800)
-document.getElementById("past-order-btn").addEventListener("click", () => {
-    window.open("https://www.google.com", "_blank", "width=800,height=800");
-});
-
-// 3. 기존 검색창이 사라졌으므로 goToPage 함수도 간소화
-window.goToPage = (p) => { 
-    currentPage = p; 
-    renderTable(); 
-};
