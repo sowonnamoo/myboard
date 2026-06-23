@@ -39,6 +39,27 @@ window.switchView = function(viewName) {
 }
 
 
+
+// 비밀글기능
+window.viewDetail = function(id) {
+    currentViewId = id; // 클릭된 게시글 ID를 저장
+    const modal = document.getElementById("password-modal");
+    if (modal) {
+        modal.classList.remove("hidden"); // 모달 표시
+        document.getElementById("modal-password-input").focus(); // 입력창 포커스
+    } else {
+        alert("비밀번호 입력창을 찾을 수 없습니다.");
+    }
+};
+
+
+
+
+
+
+
+
+
 // [R2 업로드 함수] 업로드 및 보안 검사 포함
 async function uploadToR2(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
