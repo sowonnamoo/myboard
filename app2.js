@@ -84,7 +84,7 @@ const dateStr = data.displayDate ? data.displayDate.toLocaleDateString() : "";
     <tr class="hover:bg-gray-50 border-b border-gray-100"> 
         <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
             <span class="mr-2">🔒 ${data.author}님</span>
-            <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
+            <button onclick="viewDetail('${data.id}')" class="bg-blue-400 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-380">시안요청완료 / 작업진행상황 / 운송장 </button>
             <span class="text-xs text-gray-500">${displayInfo}</span>
         </td>
         <td class="py-3 text-sm text-gray-600">에코</td>
