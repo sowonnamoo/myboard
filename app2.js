@@ -16,6 +16,7 @@ const db = getFirestore(app);
 let allOrders = [];
 let currentPage = 1;
 let currentViewId = ""; 
+let lastVisible = null;
 const POSTS_PER_PAGE = 8;
 
 async function loadMemo(boardId) {
@@ -35,39 +36,44 @@ async function loadMemo(boardId) {
     }
 }
 
-async function loadData() {
-    const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(20));
-    const snapshot = await getDocs(q);
-    
-    // 1. 데이터를 배열로 변환
-    let items = [];
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        if (!data.isDeleted) items.push({ id: doc.id, ...data });
-    });
-
-    // 2. [정렬 로직] done이 아닌 건을 맨 위로, 나머지는 날짜 최신순
-    const today = new Date();
-    items.sort((a, b) => {
-        const aActive = a.sian !== 'done';
-        const bActive = b.sian !== 'done';
+async function loadOrders() {
+    try {
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(8));
+        const snapshot = await getDocs(q);
         
-        if (aActive !== bActive) return aActive ? -1 : 1; // 활성건 우선
-        
-        // 상태가 같다면 기존 날짜순
-        const aDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-        const bDate = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-        return bDate - aDate;
-    });
+        allOrders = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.isDeleted === true) return;
+            allOrders.push({ id: doc.id, ...data });
+        });
 
-    // 3. 화면 표시용 날짜 부여 (sian이 done이 아니면 오늘 날짜로 강제)
-    allOrders = items.map(item => ({
-        ...item,
-        displayDate: (item.sian !== 'done') ? today : (item.createdAt?.toDate ? item.createdAt.toDate() : new Date())
-    }));
-
-    renderTable(allOrders);
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        renderTable(); 
+    } catch (err) { console.error(err); }
 }
+
+window.loadMore = async function() {
+    if (!lastVisible) return;
+    try {
+        const nextQ = query(collection(db, "boards"), orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
+        const snapshot = await getDocs(nextQ);
+        
+        if (snapshot.empty) {
+            alert("더 이상 게시글이 없습니다.");
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.isDeleted === true) return;
+            allOrders.push({ id: doc.id, ...data });
+        });
+        
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        renderTable();
+    } catch (err) { console.error(err); }
+};
 
 function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
@@ -76,6 +82,7 @@ function renderTable(dataToRender = allOrders) {
     const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
 
 dataToRender.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    });
     const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
 const dateStr = data.displayDate ? data.displayDate.toLocaleDateString() : "";
@@ -92,21 +99,23 @@ const dateStr = data.displayDate ? data.displayDate.toLocaleDateString() : "";
     </tr>`;
 });
 
-    const pager = document.getElementById("pagination");
-    pager.innerHTML = "";
-    if (totalPages <= 1) return;
-
-    const range = 5;
-    const startPage = Math.floor((currentPage - 1) / range) * range + 1;
-    const endPage = Math.min(startPage + range - 1, totalPages);
-
-    if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100" onclick="goToPage(${currentPage - 1})">이전</span>`;
-    for (let i = startPage; i <= endPage; i++) {
-        const active = i === currentPage ? "bg-blue-600 text-white" : "bg-white";
-        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded mx-0.5 ${active}" onclick="goToPage(${i})">${i}</span>`;
-    }
-    if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100" onclick="goToPage(${currentPage + 1})">다음</span>`;
+  
+    
+    
+    // 더보
+const pager = document.getElementById("pagination");
+pager.innerHTML = "";
+if (allOrders.length > 0 && allOrders.length % 8 === 0) {
+    pager.innerHTML = `
+        <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+            더보기 (현재 ${allOrders.length}개 표시)
+        </button>
+    `;
 }
+
+
+
+
 
 window.goToPage = (p) => { 
     currentPage = p; 
@@ -339,8 +348,7 @@ document.getElementById("delete-memo-btn").addEventListener("click", async () =>
     alert("메모가 삭제되었습니다.");
 }); // <-- 이벤트 리스너를 닫는 괄호는 딱 여기까지만 있어야 합니다.
 
-loadData();
-
+loadOrders();
 
 
 
