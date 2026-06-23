@@ -215,7 +215,7 @@ function renderTable() {
             </button>
         `;
     }
-}
+
 
 
 
