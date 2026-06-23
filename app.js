@@ -185,6 +185,20 @@ function renderTable() {
     allOrders.forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        
+        // --- [수정 시작] 소환 코드는 유지하되, 마스킹만 적용 ---
+        // 만약 데이터가 없으면 '김준혁'이 소환됨!
+        let author = data.author || "김준혁";
+        
+        // 3일(72시간)이 지났는지 계산
+        const diffInDays = (now - d) / (1000 * 60 * 60 * 24); 
+
+        // 3일이 지났다면 마지막 글자만 *로 변경 (준혁이 소환된 경우 '김준*'이 됨)
+        if (diffInDays >= 3 && author.length > 1) {
+            author = author.substring(0, author.length - 1) + "*";
+        }
+        // --- [수정 끝] ---
+
         const diffInHours = (now - d) / (1000 * 60 * 60);
         const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
         let displayTitle = data.title || data.productName;
@@ -192,15 +206,13 @@ function renderTable() {
         
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
             <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료) ${newBadge}</td>
-            <td class="py-3 text-sm text-gray-600">${data.author || "김준혁"}</td>
+            <td class="py-3 text-sm text-gray-600">${author}</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
     });
 
-    // 더보기 버튼 표시 로직
+    // 더보기 버튼 로직 (기존 유지)
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    
-    // 가져온 데이터가 8의 배수일 경우에만 더보기 버튼을 보여주는 것이 일반적입니다.
     if (allOrders.length >= 8) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
@@ -209,7 +221,6 @@ function renderTable() {
         `;
     }
 }
-
 
 
 
