@@ -42,18 +42,13 @@
                     </div>
 
                 <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-    <div class="flex space-x-2">
-        <button onclick="window.open('https://google.com', '_blank', 'width=800,height=800')" 
-                class="bg-gray-700 text-white text-sm px-4 py-2 rounded font-bold hover:bg-gray-800 transition">
-            내 주문조회
-        </button>
-        <button onclick="window.open('https://google.com', '_blank', 'width=800,height=800')" 
-                class="bg-gray-700 text-white text-sm px-4 py-2 rounded font-bold hover:bg-gray-800 transition">
-            2012~2026년 6월 전 주문조회
-        </button>
-    </div>
-    <button id="go-write-btn" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
-</div>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="search-author" class="border px-3 py-1.5 text-sm rounded bg-white w-48 focus:border-gray-400 focus:outline-none" placeholder="작성자 이름 검색...">
+                        <button id="search-btn" class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700">검색</button>
+                        <button id="search-reset-btn" class="border text-gray-500 text-sm px-3 py-1.5 rounded bg-gray-50 hover:bg-gray-100 hidden">초기화</button>
+                    </div>
+                    <button id="go-write-btn" class="bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">글쓰기</button>
+                </div>
             </section>
 
             <section id="view-write" class="hidden w-full">
