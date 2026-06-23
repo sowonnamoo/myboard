@@ -1,8 +1,5 @@
-// 🔑 구글 앱스 스크립트 웹 앱 URL
-const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw280zJ4s7AjMmkPvPg3g3JmQRbB2qk3t_lgbzm_qLZP-TUWFsa6e4MdHo1FpglaulV3w/exec";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-const firebaseConfig = {
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
@@ -26,18 +23,12 @@ window.execDaumPostcode = function() {
 
 let allOrders = [];        
 let filteredOrders = [];  
+let lastVisible = null; // 마지막 문서 저장용
 let currentPage = 1;      
+let currentViewId = null;
 const POSTS_PER_PAGE = 8; 
 
-function createDownloadUrl(url) {
-    if (!url) return null;
-    try {
-        let fileId = "";
-        if (url.includes('/d/')) { fileId = url.split('/d/')[1].split('/')[0]; }
-        else if (url.includes('id=')) { fileId = url.split('id=')[1].split('&')[0]; }
-        return `https://drive.google.com/uc?export=download&id=${fileId}`;
-    } catch (e) { return url; }
-}
+
 
 window.switchView = function(viewName) {
     document.getElementById("view-list").classList.add("hidden");
@@ -48,98 +39,215 @@ window.switchView = function(viewName) {
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
 }
 
-async function uploadToGoogleDrive(fileInputId, authorName) {
+
+
+// 비밀글
+window.viewDetail = function(id) {
+    currentViewId = id;
+    document.getElementById("password-modal").classList.remove("hidden");
+    document.getElementById("modal-password-input").focus();
+};
+
+// 3. 확인 버튼 클릭 시 로직
+document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
+    const inputPwd = document.getElementById("modal-password-input").value;
+    const snap = await getDoc(doc(db, "boards", currentViewId));
+    
+    // 비밀번호 비교 (데이터의 폰번호 뒤 4자리와 일치하는지)
+    const storedPwd = snap.data().phone.slice(-4);
+    
+    if (inputPwd !== storedPwd) {
+        alert("비밀번호가 일치하지 않습니다.");
+        return;
+    }
+
+    // 성공 시 모달 닫고 상세 정보 렌더링
+    document.getElementById("password-modal").classList.add("hidden");
+    document.getElementById("modal-password-input").value = "";
+    
+    // 여기서 상세 정보를 보여주는 로직 실행
+    renderDetail(snap.data()); 
+});
+
+// 4. 취소 버튼
+document.getElementById("modal-cancel-btn").addEventListener("click", () => {
+    document.getElementById("password-modal").classList.add("hidden");
+});
+
+
+
+
+
+
+
+// [R2 업로드 함수] 업로드 및 보안 검사 포함
+async function uploadToR2(fileInputId, authorName) {
     const fileInput = document.getElementById(fileInputId);
     if (!fileInput || fileInput.files.length === 0) return null;
+
     const file = fileInput.files[0];
-    const fileName = `${authorName || ""}_${file.name}`;
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const base64Data = e.target.result.split(',')[1];
-                const body = new URLSearchParams({ data: base64Data, filename: fileName, mimetype: file.type });
-                const res = await fetch(GOOGLE_WEB_APP_URL, { method: 'POST', body });
-                const data = await res.json();
-                resolve(data && data.url ? data.url : null);
-            } catch (error) { resolve(null); }
-        };
-        reader.readAsDataURL(file);
+    
+    // 1. 용량 제한 ( MB = 500 * 1024 * 1024 bytes)
+    const MAX_SIZE = 500 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+        alert("⚠️ 파일 용량이 너무 큽니다. 500MB 이하의 파일만 업로드 가능합니다.");
+        throw new Error("파일 크기 초과: " + (file.size / (1024 * 1024)).toFixed(2) + "MB");
+    }
+
+    // 2. 보안을 위한 확장자 필터링
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP']; 
+    const ext = file.name.split('.').pop().toLowerCase();
+    
+    if (!allowedExtensions.includes(ext)) {
+        alert("⚠️ 허용되지 않는 파일 형식입니다.");
+        throw new Error("보안상 차단된 파일 형식: " + ext);
+    }
+
+    // 3. 중복 방지: 동일 파일명(확장자 포함) 방지
+    // 파일명과 현재 시간을 조합하여 고유한 이름을 생성합니다.
+    // 기존에 단순히 이름만 썼다면, 이제는 고유한 타임스탬프를 반드시 포함시켜 중복을 피합니다.
+    const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+    
+    const WORKER_URL = "https://r2.ecogr.workers.dev/"; 
+
+    // 헤더에 파일 크기와 정보를 전달 (필요시 Worker에서 검사하도록 함)
+    const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, {
+        method: "PUT",
+        body: file,
+        headers: {
+            "Content-Type": file.type,
+            "X-File-Size": file.size
+        }
     });
+
+    if (!response.ok) {
+        throw new Error("업로드 실패: " + response.statusText);
+    }
+
+    const result = await response.json();
+    return result.url;
 }
 
 async function loadAndRender() {
     try {
-        // 최근 20개만 불러오도록 limit(20) 추가 쿼리아끼기
-        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(20)); 
+        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(8));
         const snapshot = await getDocs(q);
+        
         allOrders = [];
-        snapshot.forEach(doc => { 
+        snapshot.forEach(doc => {
             const data = doc.data();
-            if (!data.isDeleted) {
-                allOrders.push({ id: doc.id, ...data }); 
-            }
+            if (data.isDeleted === true || data.jajoo === '재주문') return;
+            allOrders.push({ id: doc.id, ...data });
         });
-        applyFilter();
+
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        renderTable(); // 이 코드를 넣으세요
     } catch (err) { console.error(err); }
 }
 
-function applyFilter() {
-    const searchVal = document.getElementById("search-author").value.trim().toLowerCase();
-    if (searchVal) {
-        filteredOrders = allOrders.filter(order => (order.author || "").toLowerCase().includes(searchVal));
-        document.getElementById("search-reset-btn").classList.remove("hidden");
-    } else {
-        filteredOrders = [...allOrders];
-        document.getElementById("search-reset-btn").classList.add("hidden");
-    }
-    currentPage = 1; 
-    renderTable();
-}
+// 2. 더보기 클릭 시 다음 8개 가져오기
+window.loadMore = async function() {
+    if (!lastVisible) return;
+
+    try {
+        const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
+        const snapshot = await getDocs(nextQ);
+        
+        if (snapshot.empty) {
+            alert("더 이상 게시글이 없습니다.");
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.isDeleted === true || data.jajoo === '재주문') return;
+            allOrders.push({ id: doc.id, ...data });
+        });
+
+       lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        renderTable(); // 이 코드를 넣으세요
+    } catch (err) { console.error(err); }
+};
+
+
+
 
 function renderTable() {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
-    if (filteredOrders.length === 0) {
+    
+    if (allOrders.length === 0) {
         listBody.innerHTML = `<tr><td colspan="3" class="py-8 text-gray-400 text-center text-sm">내역이 존재하지 않습니다.</td></tr>`;
-        document.getElementById("pagination").innerHTML = "";
         return;
     }
-    const totalPages = Math.ceil(filteredOrders.length / POSTS_PER_PAGE);
-    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+
     const now = new Date();
-    filteredOrders.slice(startIndex, startIndex + POSTS_PER_PAGE).forEach(data => {
+    allOrders.forEach(data => {
         const d = data.createdAt.toDate();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const diffInHours = (now - d) / (1000 * 60 * 60);
         const newBadge = diffInHours <= 24 ? '<span class="new-badge">NEW</span>' : '';
         let displayTitle = data.title || data.productName;
         if (displayTitle.length > 5) displayTitle = displayTitle.substring(0, 10) + "***";
+        
         listBody.innerHTML += `<tr class="hover:bg-gray-50 border-b cursor-pointer text-center text-gray-700" onclick="viewDetail('${data.id}')">
             <td class="py-3 px-4 text-left font-medium text-gray-900 hover:underline">🔒 ${displayTitle} (접수완료) ${newBadge}</td>
             <td class="py-3 text-sm text-gray-600">${data.author || "김준혁"}</td>
             <td class="py-3 text-xs text-gray-400">${dateStr}</td></tr>`;
     });
+
+    // 더보기 버튼 표시 로직
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (currentPage > 1) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage-1})">이전</span>`;
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 5);
-    if (endPage - startPage < 5 && totalPages > 5) startPage = Math.max(1, endPage - 5);
-    for (let i = startPage; i <= endPage; i++) {
-        const activeClass = i === currentPage ? "bg-blue-600 text-white" : "bg-white hover:bg-gray-100";
-        pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded text-sm mx-0.5 ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
+    
+    // 가져온 데이터가 8의 배수일 경우에만 더보기 버튼을 보여주는 것이 일반적입니다.
+    if (allOrders.length >= 8) {
+        pager.innerHTML = `
+            <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+                더보기 (현재 ${allOrders.length}개 표시)
+            </button>
+        `;
     }
-    if (currentPage < totalPages) pager.innerHTML += `<span class="cursor-pointer px-3 py-1 border rounded bg-white hover:bg-gray-100 text-sm" onclick="goToPage(${currentPage+1})">다음</span>`;
 }
 
-window.goToPage = function(pageNum) { currentPage = pageNum; renderTable(); }
-let currentViewId = ""; 
-window.viewDetail = async function(id) {
-    currentViewId = id;
-    document.getElementById("password-modal").classList.remove("hidden");
-    document.getElementById("modal-password-input").focus();
-};
+
+
+
+
+
+
+
+
+
+
+
+const pager = document.getElementById("pagination");
+pager.innerHTML = "";
+
+// 8개씩 가져왔을 때만 더보기 버튼 표시 (snapshot.size가 8 미만이면 끝)
+if (allOrders.length > 0 && allOrders.length % 8 === 0) {
+    pager.innerHTML = `
+        <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+            더보기 (현재 ${allOrders.length}개 표시)
+        </button>
+    `;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
     const inputPwd = document.getElementById("modal-password-input").value;
@@ -172,17 +280,43 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         };
     }
     
-    const filesDiv = document.getElementById("detail-files"); 
+   
+ const filesDiv = document.getElementById("detail-files"); 
     filesDiv.innerHTML = "";
-    if(data.file1Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file1Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 1 (다운로드)</a>`;
-    if(data.file2Url) filesDiv.innerHTML += `<a href="${createDownloadUrl(data.file2Url)}" target="_blank" class="block text-xs text-blue-600 hover:underline">📁 첨부파일 2 (다운로드)</a>`;
+    
+    if(data.file1Url) {
+       const a = document.createElement('a');
+       // 이모지를 회색으로 만들기 위해 grayscale 필터 클래스 추가
+       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 1 (다운로드)';
+       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
+       a.onclick = () => window.downloadFile(data.file1Url, "file1_download.png");
+       filesDiv.appendChild(a);
+   }
+   if(data.file2Url) {
+       const a = document.createElement('a');
+       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 2 (다운로드)';
+       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
+       a.onclick = () => window.downloadFile(data.file2Url, "file2_download.png");
+       filesDiv.appendChild(a);
+    }
+
+    // 삭제 버튼 설정
     document.getElementById("detail-delete-btn").onclick = async () => { 
         if(confirm("삭제하시겠습니까?")) { 
-            try { await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); alert("삭제되었습니다."); switchView('list'); } catch (e) { alert("삭제 실패: " + e.message); }
+            try { 
+                await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
+                alert("삭제되었습니다."); 
+                switchView('list'); 
+            } catch (e) { 
+                alert("삭제 실패: " + e.message); 
+            }
         } 
     };
+
+    // 상세화면으로 전환
     switchView('detail');
-});
+
+}); // <--- 이것이 modal-confirm-btn의 click 이벤트 리스너를 닫는 괄호입니다.
 
 // ... 나머지는 기존 코드와 동일 (생략) ...
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
@@ -192,7 +326,13 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
 
 let textInterval, barInterval; 
 document.getElementById("save-btn").addEventListener("click", async () => {
-    // 1. 기존 유효성 검사 (침범 안 함)
+    // [추가] 파일명 중복 확인
+    const f1 = document.getElementById("file-1").files[0];
+    const f2 = document.getElementById("file-2").files[0];
+    if (f1 && f2 && f1.name === f2.name) {
+        alert("⚠️ 경고: 파일명이 동일합니다. 다른 이름의 파일로 다시 선택해주세요.");
+        return;
+    }    // 1. 기존 유효성 검사 (침범 안 함)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
     const file1 = document.getElementById("file-1");
@@ -222,44 +362,53 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     }, 3000); // 3초 간격
 
     // 3. 기존 글쓰기 로직 (침범 안 함)
-    try {
-        const file1Url = await uploadToGoogleDrive("file-1", document.getElementById('input-author').value);
-        const file2Url = await uploadToGoogleDrive("file-2", document.getElementById('input-author').value);
+  try {
+    // 1. 파일 업로드 실행
+    const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value);
+    const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value);
         
-        await addDoc(collection(db, "boards"), { 
-    author: document.getElementById('input-author').value, 
-    productName: document.getElementById('product-name').value, 
-    quantity: document.getElementById('quantity').value, 
-    size: document.getElementById('size').value, 
-    phone: document.getElementById('phone').value, 
+    // 2. 파이어베이스에 모든 정보 저장 (누락 없이 합침)
+  await addDoc(collection(db, "boards"), { 
+    author: document.getElementById('input-author').value,
+    productName: document.getElementById('product-name').value,
+    quantity: document.getElementById('quantity').value,
+    size: document.getElementById('size').value,
+    phone: document.getElementById('phone').value,
     price: document.getElementById('price').value,
-    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value, 
-    password: phoneVal.slice(-4), 
-    message: document.getElementById('message').value, 
-    file1Url, 
-    file2Url, 
-    views: 0, 
-    createdAt: new Date(), 
+    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
+    password: document.getElementById('phone').value.slice(-4),
+    message: document.getElementById('message').value,
+    file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
+    file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
+    views: 0,
+    createdAt: new Date(),
     isDeleted: false,
-    status: '대기' // <--- 이 한 줄을 반드시 추가해야 합니다!
-});
-        
-        alert("접수되었습니다."); 
-        switchView('list');
-    } catch (e) { 
-        alert("오류: " + e.message); 
-    } finally { 
-        // 4. 로딩바 종료
-        clearInterval(interval);
+    status: '대기'
+    });
+
+    alert("접수되었습니다.");
+    switchView('list');
+} catch (e) {
+    console.error(e);
+    alert("오류: " + e.message);
+} finally {
+    // 4. 로딩바 종료
+    clearInterval(interval);
         spinner.classList.add("hidden");
         bar.style.width = "0%";
     }
 });
 
+
+
+
 document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
-document.getElementById("search-btn").addEventListener("click", applyFilter);
-document.getElementById("search-reset-btn").addEventListener("click", () => { document.getElementById("search-author").value = ""; applyFilter(); });
+
+
+
 loadAndRender();
+
+
 
 
 // 장바구니 담기 + 팝업 열기 통합 코드
@@ -629,7 +778,24 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-
-
+// 파일 다운로드 강제 실행 함수
+window.downloadFile = async (url, filename) => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+    } catch (e) {
+        alert("다운로드 중 오류가 발생했습니다.");
+        console.error(e);
+    }
+};
 
 
