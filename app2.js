@@ -79,7 +79,7 @@ function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
     
-    // 1. 전체 데이터를 렌더링
+    // slice()를 제거하고 전체 데이터(dataToRender)를 순회하도록 변경
     dataToRender.forEach(data => {
         const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
@@ -87,6 +87,7 @@ function renderTable(dataToRender = allOrders) {
         const dateObj = data.displayDate ? 
                         (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
                         new Date();
+        
         const dateStr = dateObj.toLocaleDateString();
         
         listBody.innerHTML += `
@@ -101,14 +102,13 @@ function renderTable(dataToRender = allOrders) {
         </tr>`;
     });
 
-    // 2. 더보기 버튼 로직 수정
+    // 더보기 버튼 로직
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     
-    // 더보기 표시 조건: 
-    // 최소 8개 이상 로드되었고, 현재 게시글의 총 개수가 8의 배수일 때만 버튼 노출
-    // (서버에 더 있을 가능성이 있는 경우)
-    if (dataToRender.length > 0 && dataToRender.length >= POSTS_PER_PAGE && dataToRender.length % POSTS_PER_PAGE === 0) {
+    // [핵심] 데이터가 있고, 8개 단위로 끊어질 때만 더보기 버튼 노출
+    // (서버에 더 있을 가능성이 높음)
+    if (dataToRender.length > 0 && dataToRender.length % POSTS_PER_PAGE === 0) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
                 더보기 (현재 ${dataToRender.length}개 표시)
@@ -116,7 +116,6 @@ function renderTable(dataToRender = allOrders) {
         `;
     }
 }
-
 
 
 
