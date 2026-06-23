@@ -225,34 +225,6 @@ function renderTable() {
 
 
 
-const pager = document.getElementById("pagination");
-pager.innerHTML = "";
-
-// 8개씩 가져왔을 때만 더보기 버튼 표시 (snapshot.size가 8 미만이면 끝)
-if (allOrders.length > 0 && allOrders.length % 8 === 0) {
-        pager.innerHTML = `
-            <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
-                더보기 (현재 ${allOrders.length}개 표시)
-            </button>
-        `;
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
     const inputPwd = document.getElementById("modal-password-input").value;
