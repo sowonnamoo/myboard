@@ -214,21 +214,7 @@ function renderTable() {
 
 
 
-function applyFilter() {
-    const searchVal = document.getElementById("search-author").value.trim().toLowerCase();
-    
-    // 검색어가 있다면 필터링된 결과만 보여줌
-    if (searchVal) {
-        filteredOrders = allOrders.filter(order => (order.author || "").toLowerCase().includes(searchVal));
-        document.getElementById("search-reset-btn").classList.remove("hidden");
-        
-        // 검색 결과를 화면에 바로 그리기 위해 renderTable 호출 시 filteredOrders 사용하도록 변경
-        renderFilteredTable(filteredOrders); 
-    } else {
-        document.getElementById("search-reset-btn").classList.add("hidden");
-        renderTable(); // 검색어 없으면 전체 allOrders 사용
-    }
-}
+
 
 
 
@@ -413,10 +399,16 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     }
 });
 
+
+
+
 document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
-document.getElementById("search-btn").addEventListener("click", applyFilter);
-document.getElementById("search-reset-btn").addEventListener("click", () => { document.getElementById("search-author").value = ""; applyFilter(); });
+
+
+
 loadAndRender();
+
+
 
 
 // 장바구니 담기 + 팝업 열기 통합 코드
