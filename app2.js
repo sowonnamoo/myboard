@@ -93,17 +93,16 @@ function renderTable(dataToRender = allOrders) {
         let dateStr = dateObj.toLocaleDateString().replace(/\.$/, ""); 
         
         // 표 행 생성
-        listBody.innerHTML += `
-        <tr class="hover:bg-gray-50 border-b border-gray-100"> 
+       listBody.innerHTML += `
+        <tr onclick="viewDetail('${data.id}')" class="hover:bg-gray-100 border-b border-gray-100 cursor-pointer"> 
             <td class="py-3 px-4 text-left font-medium text-gray-900 truncate w-[450px]">
                 <span class="mr-2">🔒 ${data.author}님</span>
-                <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">상세보기</button>
+                <button onclick="event.stopPropagation(); viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안보기 / 운송장확인</button>
                 <span class="text-xs text-gray-500">${displayInfo}</span>
             </td>
             <td class="py-3 text-sm text-gray-600 text-center w-[150px]">에코</td>
             <td class="py-3 text-xs text-gray-400 text-center w-[144px]">${dateStr}</td>
         </tr>`;
-    });
 
     // 페이저 표시
     const pager = document.getElementById("pagination");
