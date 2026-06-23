@@ -79,36 +79,36 @@ function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
     
-    // slice()를 제거하고 전체 데이터(dataToRender)를 순회하도록 변경
+    // 전체 데이터를 순회하며 렌더링
     dataToRender.forEach(data => {
+        // 데이터 정제
         const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
         const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
         
-        const dateObj = data.displayDate ? 
-                        (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
-                        new Date();
+        // 날짜 처리: .toLocaleDateString()은 환경에 따라 끝에 점(.)이 붙을 수 있습니다.
+        // replace(/\.$/, "")를 사용하여 끝에 있는 점을 제거합니다.
+        let dateObj = data.displayDate ? 
+                      (data.displayDate.toDate ? data.displayDate.toDate() : new Date(data.displayDate)) : 
+                      new Date();
+        let dateStr = dateObj.toLocaleDateString().replace(/\.$/, ""); 
         
-        const dateStr = dateObj.toLocaleDateString();
-        
+        // 표 행 생성
         listBody.innerHTML += `
         <tr class="hover:bg-gray-50 border-b border-gray-100"> 
-            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
+            <td class="py-3 px-4 text-left font-medium text-gray-900 truncate w-[450px]">
                 <span class="mr-2">🔒 ${data.author}님</span>
-                <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">시안요청완료 / 작업진행상황 / 운송장 </button>
+                <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full mr-2 hover:bg-blue-700">상세보기</button>
                 <span class="text-xs text-gray-500">${displayInfo}</span>
             </td>
-            <td class="py-3 text-sm text-gray-600">에코</td>
-            <td class="py-3 text-xs text-gray-400">${dateStr}</td>
+            <td class="py-3 text-sm text-gray-600 text-center w-[150px]">에코</td>
+            <td class="py-3 text-xs text-gray-400 text-center w-[144px]">${dateStr}</td>
         </tr>`;
     });
 
-    // 더보기 버튼 로직
+    // 페이저 표시
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    
-    // [핵심] 데이터가 있고, 8개 단위로 끊어질 때만 더보기 버튼 노출
-    // (서버에 더 있을 가능성이 높음)
-    if (dataToRender.length > 0 && dataToRender.length % POSTS_PER_PAGE === 0) {
+    if (dataToRender.length > 0) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
                 더보기 (현재 ${dataToRender.length}개 표시)
@@ -116,7 +116,6 @@ function renderTable(dataToRender = allOrders) {
         `;
     }
 }
-
 
 
 window.goToPage = (p) => { 
