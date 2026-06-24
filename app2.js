@@ -82,28 +82,39 @@ function renderTable(dataToRender = allOrders) {
     const now = new Date();
     const FOUR_DAYS_IN_MS = 4 * 24 * 60 * 60 * 1000;
 
-    dataToRender.forEach(data => {
-        // [수정] 강제 날짜 할당 로직 제거, data.createdAt 원본 사용
-        // 만약 createdAt이 없다면 현재 시간으로 처리하되, 있는 경우 DB의 값을 우선함
-        let dateObj;
-        if (data.createdAt) {
-            dateObj = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-        } else {
-            dateObj = new Date();
-        }
-        
-        // 작성자 이름 블라인드 처리 (4일 기준)
-        let author = data.author || "고객님";
-        if ((now - dateObj) > FOUR_DAYS_IN_MS && author.length > 1) {
-            author = author.substring(0, author.length - 1) + "*";
-        }
+  dataToRender.forEach(data => {
+    let dateObj;
 
-        const rawInfo = `${data.productName}/${data.quantity}/${data.size}`;
-        const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
-        
-        // 날짜를 YYYY-MM-DD 형식으로 깔끔하게 표시
-        const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-        
+    // 파이어베이스 Timestamp 객체라면 .toDate()로 변환
+    if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+        dateObj = data.createdAt.toDate();
+    } 
+    // 혹은 문자열이나 이미 Date 형태라면 그대로 사용
+    else {
+        dateObj = new Date(data.createdAt);
+    }
+
+    // [중요] 만약 날짜 변환이 실패해서 오늘 날짜가 되는 것을 방지
+    // 날짜가 정상적이지 않으면(Invalid Date) 그냥 오늘로 처리
+    if (isNaN(dateObj.getTime())) {
+        dateObj = new Date();
+    }
+
+    // 작성자 이름 블라인드 처리 (4일 지난 경우)
+    const now = new Date();
+    const FOUR_DAYS_IN_MS = 4 * 24 * 60 * 60 * 1000;
+    let author = data.author || "고객님";
+    
+    if ((now - dateObj) > FOUR_DAYS_IN_MS && author.length > 1) {
+        author = author.substring(0, author.length - 1) + "*";
+    }
+
+    // YYYY-MM-DD 포맷
+    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+
+
+
+    
         listBody.innerHTML += `
         <tr class="hover:bg-gray-50 border-b border-gray-100"> 
             <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
