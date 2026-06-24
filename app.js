@@ -283,9 +283,15 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
             try { 
                 await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
                 alert("삭제되었습니다."); 
+                
+                // 데이터를 다시 처음부터 불러와서 배열과 버튼 상태를 완벽히 갱신
+                allOrders = []; 
+                lastVisible = null;
+                await loadAndRender(); 
+                
                 switchView('list'); 
             } catch (e) { 
-                alert("삭제 실패: " + e.message); 
+                alert("삭제 실패: " + e.message);
             }
         } 
     };
