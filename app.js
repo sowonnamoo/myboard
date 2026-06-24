@@ -134,10 +134,9 @@ async function loadAndRender() {
         const snapshot = await getDocs(q);
         
         allOrders = [];
-      snapshot.forEach(doc => {
+     snapshot.forEach(doc => {
     const data = doc.data();
-    // 삭제된 글만 걸러내고, 재주문은 그대로 통과시킵니다.
-    if (data.isDeleted === true) return; 
+    // isDeleted 조건문을 제거합니다.
     allOrders.push({ id: doc.id, ...data });
 });
 
@@ -277,14 +276,15 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
 
     // 삭제 버튼 설정
-    document.getElementById("detail-delete-btn").onclick = async () => { 
-        if(confirm("삭제하시겠습니까?")) { 
-            try { 
-                await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
-                alert("삭제되었습니다."); 
-                switchView('list'); 
-            } catch (e) { 
-                alert("삭제 실패: " + e.message); 
+  document.getElementById("detail-delete-btn").onclick = async () => { 
+    if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
+        try { 
+            // isDeleted 업데이트 대신 deleteDoc을 사용하여 DB에서 완전히 삭제합니다.
+            await deleteDoc(doc(db, "boards", currentViewId)); 
+            alert("삭제되었습니다."); 
+            switchView('list'); 
+        } catch (e) { 
+            alert("삭제 실패: " + e.message);
             }
         } 
     };
