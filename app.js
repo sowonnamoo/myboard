@@ -128,23 +128,44 @@ async function uploadToR2(fileInputId, authorName) {
     return result.url;
 }
 
+async function loadAndRender() {
+    try {
+        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(8));
+        const snapshot = await getDocs(q);
+        
+        allOrders = [];
+      snapshot.forEach(doc => {
+    const data = doc.data();
+    // 삭제된 글만 걸러내고, 재주문은 그대로 통과시킵니다.
+    if (data.isDeleted === true) return; 
+    allOrders.push({ id: doc.id, ...data });
+});
+
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        renderTable(); // 이 코드를 넣으세요
+    } catch (err) { console.error(err); }
+}
+
+// 2. 더보기 클릭 시 다음 8개 가져오기
 window.loadMore = async function() {
     if (!lastVisible) return;
     try {
-        // 기존의 isDeleted 필터링 로직이 아예 없어야 합니다.
         const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
         const snapshot = await getDocs(nextQ);
         
         if (snapshot.empty) {
-            lastVisible = null;
-        } else {
-            lastVisible = snapshot.docs[snapshot.docs.length - 1];
+            alert("더 이상 게시글이 없습니다.");
+            return;
         }
 
         snapshot.forEach(doc => {
-            allOrders.push({ id: doc.id, ...doc.data() });
+            const data = doc.data();
+            if (data.isDeleted === true) return;
+            allOrders.push({ id: doc.id, ...data });
         });
-        renderTable();
+        
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        renderTable(); // 여기서 다시 렌더링하며 버튼을 갱신합니다.
     } catch (err) { console.error(err); }
 };
 
@@ -163,7 +184,6 @@ function renderTable() {
             const d = data.createdAt.toDate();
             const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             
-            // 김준혁 소환 코드
             let author = data.author || "김준혁";
             const diffInDays = (now - d) / (1000 * 60 * 60 * 24); 
             if (diffInDays >= 3 && author.length > 1) {
@@ -182,15 +202,14 @@ function renderTable() {
         });
     }
 
-    // 더보기 버튼 갱신 (오류 방지를 위해 함수 내부에 통합)
-  const pager = document.getElementById("pagination");
+    // 더보기 버튼 갱신 (항상 보이고, 숫자 표시 제거)
+    const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    // 수정: 데이터가 8개 이상이고, 다음 페이지가 존재할 가능성이 있다면 버튼 표시
-    if (lastVisible) {
-    pager.innerHTML = `
-        <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
-            더보기
-        </button>
+    if (allOrders.length > 0) {
+        pager.innerHTML = `
+            <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+                더보기
+            </button>
         `;
     }
 }
@@ -258,21 +277,14 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
 
     // 삭제 버튼 설정
- document.getElementById("detail-delete-btn").onclick = async () => { 
-    if(confirm("정말로 이 글을 삭제하시겠습니까? (복구 불가)")) { 
-        try { 
-            // isDeleted 업데이트 대신 실제 문서 삭제
-            await deleteDoc(doc(db, "boards", currentViewId)); 
-            alert("완전히 삭제되었습니다."); 
-            
-            // 데이터 초기화 후 새로고침
-            allOrders = []; 
-            lastVisible = null;
-            await loadAndRender(); 
-            
-            switchView('list'); 
-        } catch (e) { 
-            alert("삭제 실패: " + e.message);
+    document.getElementById("detail-delete-btn").onclick = async () => { 
+        if(confirm("삭제하시겠습니까?")) { 
+            try { 
+                await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
+                alert("삭제되었습니다."); 
+                switchView('list'); 
+            } catch (e) { 
+                alert("삭제 실패: " + e.message); 
             }
         } 
     };
