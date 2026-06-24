@@ -47,14 +47,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-document.getElementById('search-btn').addEventListener('click', async () => {
-    // 1. 차단 상태 확인
-    const blockUntil = localStorage.getItem('search_block_time');
-    if (blockUntil && Date.now() < parseInt(blockUntil)) {
-        alert("시도 횟수 초과로 인해 3시간 동안 조회가 차단되었습니다.");
-        return;
-    }
-
+ document.getElementById('search-btn').addEventListener('click', async () => {
     const name = document.getElementById('search-name').value.trim();
     const phone = document.getElementById('search-phone').value.trim();
     const resultsDiv = document.getElementById('results');
@@ -67,47 +60,34 @@ document.getElementById('search-btn').addEventListener('click', async () => {
     resultsDiv.innerHTML = "조회 중...";
 
     try {
+        // [1] 두 컬렉션을 각각 쿼리합니다.
         const qBoards = query(collection(db, "boards"), where("author", "==", name));
         const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
         
         const [snapBoards, snapJjjj] = await Promise.all([getDocs(qBoards), getDocs(qJjjj)]);
         
+        // [2] 데이터 병합 (jjjj 데이터에 isJajoo: true 플래그 부여)
         const allDocs = [
             ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false })),
             ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true }))
         ];
 
+        // [3] 전화번호 뒷자리 필터링
         const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
 
-        if(filteredData.length === 0) {
-            // [실패 카운트 증가]
-       if(filteredData.length === 0) {
-            // [실패 카운트 증가]
-            let failCount = parseInt(localStorage.getItem('search_fail_count') || '0') + 1;
-            
-            if (failCount >= 10) {
-                localStorage.setItem('search_block_time', Date.now() + (3 * 60 * 60 * 1000));
-                localStorage.setItem('search_fail_count', '0');
-                alert("10회 조회 실패로 3시간 동안 차단됩니다.");
-            } else {
-                localStorage.setItem('search_fail_count', failCount.toString()); // 문자열로 저장
-                alert(`주문 정보를 찾을 수 없습니다. (${failCount}/10)`);
-            }
-            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다.";
-            return; 
-        } else {
-            // 데이터가 있을 때만 성공으로 간주하여 초기화
-            localStorage.setItem('search_fail_count', '0');
+        
+filteredData.sort((a, b) => {
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+    return dateB - dateA;
+});
 
-        // ... 이후 기존의 렌더링 코드 (filteredData.sort 부터 시작)
-        filteredData.sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-            return dateB - dateA;
-        });
         
         resultsDiv.innerHTML = "";
-      
+        if(filteredData.length === 0) { 
+            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
+            return; 
+        }
 
         filteredData.forEach(d => {
             // [4] 날짜 및 이미지 번호 로직
