@@ -82,39 +82,29 @@ function renderTable(dataToRender = allOrders) {
     const now = new Date();
     const FOUR_DAYS_IN_MS = 4 * 24 * 60 * 60 * 1000;
 
-  dataToRender.forEach(data => {
-    let dateObj;
+    dataToRender.forEach(data => {
+        let dateObj;
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            dateObj = data.createdAt.toDate();
+        } else {
+            dateObj = new Date(data.createdAt);
+        }
 
-    // 파이어베이스 Timestamp 객체라면 .toDate()로 변환
-    if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-        dateObj = data.createdAt.toDate();
-    } 
-    // 혹은 문자열이나 이미 Date 형태라면 그대로 사용
-    else {
-        dateObj = new Date(data.createdAt);
-    }
+        if (isNaN(dateObj.getTime())) {
+            dateObj = new Date();
+        }
 
-    // [중요] 만약 날짜 변환이 실패해서 오늘 날짜가 되는 것을 방지
-    // 날짜가 정상적이지 않으면(Invalid Date) 그냥 오늘로 처리
-    if (isNaN(dateObj.getTime())) {
-        dateObj = new Date();
-    }
+        let author = data.author || "고객님";
+        if ((now - dateObj) > FOUR_DAYS_IN_MS && author.length > 1) {
+            author = author.substring(0, author.length - 1) + "*";
+        }
 
-    // 작성자 이름 블라인드 처리 (4일 지난 경우)
-    const now = new Date();
-    const FOUR_DAYS_IN_MS = 4 * 24 * 60 * 60 * 1000;
-    let author = data.author || "고객님";
-    
-    if ((now - dateObj) > FOUR_DAYS_IN_MS && author.length > 1) {
-        author = author.substring(0, author.length - 1) + "*";
-    }
+        // [오류 수정 시작] 변수 선언을 forEach 루프 안으로 확실히 넣었습니다.
+        const rawInfo = `${data.productName || ''}/${data.quantity || ''}/${data.size || ''}`;
+        const displayInfo = rawInfo.length > 5 ? rawInfo.substring(0, 5) + "****" : rawInfo;
+        
+        const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
-    // YYYY-MM-DD 포맷
-    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-
-
-
-    
         listBody.innerHTML += `
         <tr class="hover:bg-gray-50 border-b border-gray-100"> 
             <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
@@ -127,6 +117,7 @@ function renderTable(dataToRender = allOrders) {
             <td class="py-3 text-sm text-gray-600 text-center whitespace-nowrap">에코</td>
             <td class="py-3 text-xs text-gray-400 text-center whitespace-nowrap">${dateStr}</td>
         </tr>`;
+        // [오류 수정 끝]
     });
 
     const pager = document.getElementById("pagination");
