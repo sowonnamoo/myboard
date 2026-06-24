@@ -183,8 +183,11 @@ function renderTable() {
             const d = data.createdAt.toDate();
             const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             
+            // 작성자 이름 끝자리 블라인드 처리 로직
             let author = data.author || "김준혁";
             const diffInDays = (now - d) / (1000 * 60 * 60 * 24); 
+            
+            // 3일(72시간)이 지났으면 이름의 마지막 글자를 *로 변경
             if (diffInDays >= 3 && author.length > 1) {
                 author = author.substring(0, author.length - 1) + "*";
             }
@@ -201,7 +204,6 @@ function renderTable() {
         });
     }
 
-    // 더보기 버튼 갱신 (항상 보이고, 숫자 표시 제거)
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     if (allOrders.length > 0) {
