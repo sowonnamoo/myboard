@@ -276,13 +276,16 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
 
     // 삭제 버튼 설정
-  document.getElementById("detail-delete-btn").onclick = async () => { 
+ document.getElementById("detail-delete-btn").onclick = async () => { 
     if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
         try { 
-            // isDeleted 업데이트 대신 deleteDoc을 사용하여 DB에서 완전히 삭제합니다.
+            // 1. 데이터베이스에서 문서 영구 삭제
             await deleteDoc(doc(db, "boards", currentViewId)); 
+            
+            // 2. 알림 후 페이지 새로고침
             alert("삭제되었습니다."); 
-            switchView('list'); 
+            location.reload(); 
+            
         } catch (e) { 
             alert("삭제 실패: " + e.message);
             }
