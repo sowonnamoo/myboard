@@ -153,19 +153,19 @@ window.loadMore = async function() {
         const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
         const snapshot = await getDocs(nextQ);
         
-       if (snapshot.docs.length < 8) {
-            lastVisible = null; 
-        } else {
-            lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        }
+if (snapshot.empty) {
+    lastVisible = null;
+} else {
+    lastVisible = snapshot.docs[snapshot.docs.length - 1];
+}
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.isDeleted === true) return;
-            allOrders.push({ id: doc.id, ...data });
-        });
-        
-        renderTable();
+snapshot.forEach(doc => {
+    const data = doc.data();
+    if (data.isDeleted === true) return;
+    allOrders.push({ id: doc.id, ...data });
+});
+renderTable();
+
     } catch (err) { console.error(err); }
 };
 
@@ -207,11 +207,11 @@ function renderTable() {
   const pager = document.getElementById("pagination");
     pager.innerHTML = "";
     // 수정: 데이터가 8개 이상이고, 다음 페이지가 존재할 가능성이 있다면 버튼 표시
-    if (lastVisible && allOrders.length >= 8) {
-        pager.innerHTML = `
-            <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
-                더보기 (현재 ${allOrders.length}개 표시)
-            </button>
+    if (lastVisible) {
+    pager.innerHTML = `
+        <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
+            더보기
+        </button>
         `;
     }
 }
