@@ -53,7 +53,7 @@ document.getElementById('search-btn').addEventListener('click', async () => {
     // [추가] 봇 방지 로직: 10회 실패 시 입력값 변조
     let failCount = parseInt(localStorage.getItem('searchFailCount') || '0');
     const phoneInput = document.getElementById('search-phone');
-    if (failCount >= 10) {
+    if (failCount >= 15) {
         const randomDigit = Math.floor(Math.random() * 3) + 1;
         phoneInput.value = phoneInput.value.slice(0, -1) + randomDigit;
     }
