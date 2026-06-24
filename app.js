@@ -813,7 +813,7 @@ window.downloadFile = async (url, filename) => {
 
 
 
-let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림
+let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
 
 // 비밀번호 확인 버튼 클릭 시 카운트 로직
 confirmBtn.onclick = async () => {
