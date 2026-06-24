@@ -81,20 +81,23 @@ document.getElementById('search-btn').addEventListener('click', async () => {
 
         if(filteredData.length === 0) {
             // [실패 카운트 증가]
+       if(filteredData.length === 0) {
+            // [실패 카운트 증가]
             let failCount = parseInt(localStorage.getItem('search_fail_count') || '0') + 1;
+            
             if (failCount >= 10) {
                 localStorage.setItem('search_block_time', Date.now() + (3 * 60 * 60 * 1000));
                 localStorage.setItem('search_fail_count', '0');
                 alert("10회 조회 실패로 3시간 동안 차단됩니다.");
             } else {
-                localStorage.setItem('search_fail_count', failCount);
+                localStorage.setItem('search_fail_count', failCount.toString()); // 문자열로 저장
                 alert(`주문 정보를 찾을 수 없습니다. (${failCount}/10)`);
             }
             resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다.";
-        }
-
-        // 성공 시 실패 카운트 초기화
-        localStorage.setItem('search_fail_count', '0');
+            return; 
+        } else {
+            // 데이터가 있을 때만 성공으로 간주하여 초기화
+            localStorage.setItem('search_fail_count', '0');
 
         // ... 이후 기존의 렌더링 코드 (filteredData.sort 부터 시작)
         filteredData.sort((a, b) => {
