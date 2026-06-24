@@ -50,61 +50,30 @@ window.viewDetail = function(id) {
 
 
 
-// 3. 확인 버튼 클릭 시 로직 (비밀번호 10회 실패 시 3시간 차단 적용)
+// 3. 확인 버튼 클릭 시 로직
 document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
-    // 1. 차단 시간 체크
-    const blockUntil = localStorage.getItem("blockUntil");
-    const now = new Date().getTime();
-
-    if (blockUntil && now < parseInt(blockUntil)) {
-        const remainingSec = Math.ceil((parseInt(blockUntil) - now) / 1000);
-        const min = Math.floor(remainingSec / 60);
-        const sec = remainingSec % 60;
-        alert(`너무 많이 틀려 ${min}분 ${sec}초 동안 접속이 제한됩니다.`);
-        return;
-    }
-
     const inputPwd = document.getElementById("modal-password-input").value;
     const snap = await getDoc(doc(db, "boards", currentViewId));
     
-    if (!snap.exists()) {
-        alert("데이터를 찾을 수 없습니다.");
-        return;
-    }
-
-    const data = snap.data();
     // 비밀번호 비교 (데이터의 폰번호 뒤 4자리와 일치하는지)
-    const storedPwd = data.phone.slice(-4);
+    const storedPwd = snap.data().phone.slice(-4);
     
-    // 2. 비밀번호 검증
     if (inputPwd !== storedPwd) {
-        let failCount = parseInt(localStorage.getItem("failCount") || "0") + 1;
-        
-        if (failCount >= 10) {
-            // 3시간 차단 (3 * 60 * 60 * 1000 밀리초)
-            const blockDuration = 3 * 60 * 60 * 1000; 
-            localStorage.setItem("blockUntil", now + blockDuration);
-            localStorage.setItem("failCount", "0"); // 카운트 초기화
-            alert("비밀번호를 10회 이상 틀려 3시간 동안 접속이 제한됩니다.");
-        } else {
-            localStorage.setItem("failCount", failCount.toString());
-            alert(`비밀번호가 일치하지 않습니다. (${failCount}/10회)`);
-        }
+        alert("비밀번호가 일치하지 않습니다.");
         return;
     }
 
-    // 3. 성공 시 초기화 및 상세 정보 렌더링
-    localStorage.setItem("failCount", "0");
+    // 성공 시 모달 닫고 상세 정보 렌더링
     document.getElementById("password-modal").classList.add("hidden");
     document.getElementById("modal-password-input").value = "";
     
-    renderDetail(data); 
+    // 여기서 상세 정보를 보여주는 로직 실행
+    renderDetail(snap.data()); 
 });
 
 // 4. 취소 버튼
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("password-modal").classList.add("hidden");
-    document.getElementById("modal-password-input").value = ""; // 입력창 초기화
 });
 
 
@@ -275,22 +244,11 @@ function renderTable() {
 document.getElementById("modal-confirm-btn").addEventListener("click", async () => {
     const inputPwd = document.getElementById("modal-password-input").value;
     const snap = await getDoc(doc(db, "boards", currentViewId));
-    
-    // 1. 비밀번호 검증 (실패 시 여기서 종료)
-    if (!snap.exists() || inputPwd !== snap.data().password) {
-        alert("비밀번호가 다릅니다.");
-        return;
-    }
-
-    // 2. 모달 닫기 및 초기화
+    if (!snap.exists() || inputPwd !== snap.data().password) { alert("비밀번호가 다릅니다."); return; }
     document.getElementById("password-modal").classList.add("hidden");
     document.getElementById("modal-password-input").value = "";
-    
-    // 3. 상세 정보 렌더링 준비
     const data = snap.data();
     await updateDoc(doc(db, "boards", currentViewId), { views: increment(1) });
-    
-    // 4. 상세 화면 데이터 뿌리기
     document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
     const d = data.createdAt.toDate();
@@ -298,6 +256,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-views").innerText = `조회: ${data.views + 1}`;
     document.getElementById("detail-qty").innerText = data.quantity;
     document.getElementById("detail-size").innerText = data.size;
+
     document.getElementById("detail-price").innerText = data.price ? data.price.toLocaleString() + '원' : '0원';
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
