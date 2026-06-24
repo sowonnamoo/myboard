@@ -810,3 +810,32 @@ window.downloadFile = async (url, filename) => {
 };
 
 
+
+
+
+let failCount = 0; // 전역 변수로 관리
+
+// 비밀번호 확인 버튼 클릭 시 카운트 로직
+if (inputVal !== passToCompare) {
+    failCount++;
+    
+    // 횟수 업데이트 및 화면 표시
+    const failDisplay = document.getElementById("fail-count-display");
+    const failNum = document.getElementById("fail-num");
+    
+    failNum.innerText = failCount; // 숫자 갱신 (0 -> 1, 2...)
+    failDisplay.classList.remove("hidden"); // 문구 보여주기
+    
+    if (failCount >= 10) {
+        alert("10회 이상 비밀번호가 틀려 3시간 동안 접수 및 조회가 차단됩니다.");
+        // 여기에 로컬 스토리지 등에 3시간 차단 기록 저장 로직 추가
+        modal.classList.add("hidden"); 
+    } else {
+        alert(`비밀번호가 일치하지 않습니다. (${failCount}/10)`);
+    }
+} else {
+    // 성공 시 초기화
+    failCount = 0;
+    document.getElementById("fail-count-display").classList.add("hidden");
+    // ... 성공 처리
+}
