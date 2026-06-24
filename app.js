@@ -153,9 +153,10 @@ window.loadMore = async function() {
         const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
         const snapshot = await getDocs(nextQ);
         
-        if (snapshot.empty) {
-            alert("더 이상 게시글이 없습니다.");
-            return;
+       if (snapshot.docs.length < 8) {
+            lastVisible = null; 
+        } else {
+            lastVisible = snapshot.docs[snapshot.docs.length - 1];
         }
 
         snapshot.forEach(doc => {
@@ -164,8 +165,7 @@ window.loadMore = async function() {
             allOrders.push({ id: doc.id, ...data });
         });
         
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        renderTable(); // 여기서 다시 렌더링하며 버튼을 갱신합니다.
+        renderTable();
     } catch (err) { console.error(err); }
 };
 
@@ -204,9 +204,10 @@ function renderTable() {
     }
 
     // 더보기 버튼 갱신 (오류 방지를 위해 함수 내부에 통합)
-    const pager = document.getElementById("pagination");
+  const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (allOrders.length > 0 && allOrders.length % 8 === 0) {
+    // 수정: 데이터가 8개 이상이고, 다음 페이지가 존재할 가능성이 있다면 버튼 표시
+    if (lastVisible && allOrders.length >= 8) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
                 더보기 (현재 ${allOrders.length}개 표시)
