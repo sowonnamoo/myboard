@@ -131,6 +131,7 @@ async function uploadToR2(fileInputId, authorName) {
 window.loadMore = async function() {
     if (!lastVisible) return;
     try {
+        // 기존의 isDeleted 필터링 로직이 아예 없어야 합니다.
         const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
         const snapshot = await getDocs(nextQ);
         
@@ -141,33 +142,9 @@ window.loadMore = async function() {
         }
 
         snapshot.forEach(doc => {
-            // 삭제 체크 로직 제거
             allOrders.push({ id: doc.id, ...doc.data() });
         });
         renderTable();
-    } catch (err) { console.error(err); }
-}
-
-// 2. 더보기 클릭 시 다음 8개 가져오기
-window.loadMore = async function() {
-    if (!lastVisible) return;
-    try {
-        const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
-        const snapshot = await getDocs(nextQ);
-        
-if (snapshot.empty) {
-    lastVisible = null;
-} else {
-    lastVisible = snapshot.docs[snapshot.docs.length - 1];
-}
-
-snapshot.forEach(doc => {
-    const data = doc.data();
-    if (data.isDeleted === true) return;
-    allOrders.push({ id: doc.id, ...data });
-});
-renderTable();
-
     } catch (err) { console.error(err); }
 };
 
