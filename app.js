@@ -128,21 +128,23 @@ async function uploadToR2(fileInputId, authorName) {
     return result.url;
 }
 
-async function loadAndRender() {
+window.loadMore = async function() {
+    if (!lastVisible) return;
     try {
-        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(8));
-        const snapshot = await getDocs(q);
+        const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
+        const snapshot = await getDocs(nextQ);
         
-        allOrders = [];
-      snapshot.forEach(doc => {
-    const data = doc.data();
-    // 삭제된 글만 걸러내고, 재주문은 그대로 통과시킵니다.
-    if (data.isDeleted === true) return; 
-    allOrders.push({ id: doc.id, ...data });
-});
+        if (snapshot.empty) {
+            lastVisible = null;
+        } else {
+            lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        }
 
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        renderTable(); // 이 코드를 넣으세요
+        snapshot.forEach(doc => {
+            // 삭제 체크 로직 제거
+            allOrders.push({ id: doc.id, ...doc.data() });
+        });
+        renderTable();
     } catch (err) { console.error(err); }
 }
 
@@ -279,20 +281,21 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
 
     // 삭제 버튼 설정
-    document.getElementById("detail-delete-btn").onclick = async () => { 
-        if(confirm("삭제하시겠습니까?")) { 
-            try { 
-                await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true, deletedAt: new Date() }); 
-                alert("삭제되었습니다."); 
-                
-                // 데이터를 다시 처음부터 불러와서 배열과 버튼 상태를 완벽히 갱신
-                allOrders = []; 
-                lastVisible = null;
-                await loadAndRender(); 
-                
-                switchView('list'); 
-            } catch (e) { 
-                alert("삭제 실패: " + e.message);
+ document.getElementById("detail-delete-btn").onclick = async () => { 
+    if(confirm("정말로 이 글을 삭제하시겠습니까? (복구 불가)")) { 
+        try { 
+            // isDeleted 업데이트 대신 실제 문서 삭제
+            await deleteDoc(doc(db, "boards", currentViewId)); 
+            alert("완전히 삭제되었습니다."); 
+            
+            // 데이터 초기화 후 새로고침
+            allOrders = []; 
+            lastVisible = null;
+            await loadAndRender(); 
+            
+            switchView('list'); 
+        } catch (e) { 
+            alert("삭제 실패: " + e.message);
             }
         } 
     };
