@@ -189,7 +189,7 @@ function renderTable() {
             
             // 3일(72시간)이 지났으면 이름의 마지막 글자를 *로 변경
             if (diffInDays >= 3 && author.length > 1) {
-                author = author.substring(0, author.length - 1) + "*(개인정보 보호중)";
+                author = author.substring(0, author.length - 1) + "*(개인정보보호)";
             }
 
             const diffInHours = (now - d) / (1000 * 60 * 60);
