@@ -220,9 +220,11 @@
 <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
         <h3 class="text-base font-bold text-gray-800 mb-2">🔒 비밀글(헨드폰번호 뒷 4자리)</h3>
-        <p class="text-xs text-gray-500 mb-4">
-            휴대폰 뒷 4자리를 입력하세요.
-            <span id="fail-count-display" class="text-red-500 font-bold ml-1 hidden">(틀린 횟수: 0)</span>
+       <p class="text-xs text-gray-500 mb-4">
+    휴대폰 뒷자리 4자리를 입력하세요.
+    <span id="fail-count-display" class="text-red-500 font-bold ml-1 hidden">
+        (틀린 횟수: <span id="fail-num">0</span>/10)
+    </span>
         </p>
         
         <input type="text" id="modal-password-input" maxlength="4" style="-webkit-text-security: disc;"
