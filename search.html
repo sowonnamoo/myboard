@@ -49,12 +49,22 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
- document.getElementById('search-btn').addEventListener('click', async () => {
+document.getElementById('search-btn').addEventListener('click', async () => {
+    // [추가] 봇 방지 로직: 10회 실패 시 입력값 변조
+    let failCount = parseInt(localStorage.getItem('searchFailCount') || '0');
+    const phoneInput = document.getElementById('search-phone');
+    if (failCount >= 10) {
+        const randomDigit = Math.floor(Math.random() * 3) + 1;
+        phoneInput.value = phoneInput.value.slice(0, -1) + randomDigit;
+    }
+
     const name = document.getElementById('search-name').value.trim();
-    const phone = document.getElementById('search-phone').value.trim();
+    const phone = phoneInput.value.trim(); // 수정된 phoneInput 값 사용
     const resultsDiv = document.getElementById('results');
     
     if (!name || phone.length !== 4) {
+        // [추가] 입력 오류 시 카운트 증가
+        localStorage.setItem('searchFailCount', parseInt(localStorage.getItem('searchFailCount') || '0') + 1);
         alert("이름과 전화번호 뒷 4자리를 정확히 입력해주세요.");
         return;
     }
@@ -62,20 +72,27 @@
     resultsDiv.innerHTML = "조회 중...";
 
     try {
-        // [1] 두 컬렉션을 각각 쿼리합니다.
         const qBoards = query(collection(db, "boards"), where("author", "==", name));
         const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
         
         const [snapBoards, snapJjjj] = await Promise.all([getDocs(qBoards), getDocs(qJjjj)]);
         
-        // [2] 데이터 병합 (jjjj 데이터에 isJajoo: true 플래그 부여)
         const allDocs = [
             ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false })),
             ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true }))
         ];
 
-        // [3] 전화번호 뒷자리 필터링
         const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
+
+        if(filteredData.length === 0) {
+            // [추가] 조회 결과 없을 시 카운트 증가
+            localStorage.setItem('searchFailCount', parseInt(localStorage.getItem('searchFailCount') || '0') + 1);
+            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
+            return; 
+        }
+
+        // [추가] 성공 시 카운트 초기화
+        localStorage.setItem('searchFailCount', '0');
 
         
 filteredData.sort((a, b) => {
