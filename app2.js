@@ -31,7 +31,7 @@ async function loadMemo(boardId) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
         memoStatus.classList.remove("hidden");
     } else {
-        memoDisplay.innerText = "작성된 수정요청 없습니다.";
+        memoDisplay.innerText = "작성된 수정요청 없습니다.(인쇄승인 가능 상)";
         memoStatus.classList.add("hidden");
     }
 }
