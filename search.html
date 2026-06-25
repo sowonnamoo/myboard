@@ -132,7 +132,7 @@ filteredData.sort((a, b) => {
             const isCard = d.status === '카드결제';
 const isPending = d.status === '대기';
 let statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' : 
-                  (d.status === '접수에러') ? '(제작보류)' : '(주문서 접수완료)';
+                  (d.status === '접수에러') ? '(제작보류)' : '(접수완료)';
 
 // [추가된 로직] 시안 완료/출고 상태에 따른 문구 자동 변경
 if (d.status !== '대기' && d.status !== '접수에러') {
