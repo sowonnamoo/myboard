@@ -214,7 +214,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoDisplay.innerText = snapshot.docs[0].data().text;
         memoStatus.classList.remove("hidden");
     } else {
-        memoDisplay.innerText = isDone ? "조판 완료로 인해 수정 요청이 불가능합니다." : "작성된 수정요청 없습니다.";
+        memoDisplay.innerText = isDone ? "조판 완료로 인해 수정 요청이 불가능합니다." : "작성된 수정요청 없습니다.(인쇄승인 가능상태)";
         memoStatus.classList.add("hidden");
     }
 
