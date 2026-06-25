@@ -206,12 +206,23 @@ ${
                    class="border px-2 py-1 text-xs ${(isBankTransfer && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
                 
                 <a href="javascript:void(0)" 
-                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myjs/gum')"}" 
-                   class="border px-2 py-1 text-xs ${isPending ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'hover:bg-gray-100'}">운송장</a>
-                
-                <a href="javascript:void(0)" 
                    onclick="${isPending ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParams + "')"}" 
                    class="border px-2 py-1 text-xs ${(isCard && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
+         
+         <a href="${d.woonso1 || 'javascript:void(0)'}" 
+   target="${d.woonso1 ? '_blank' : '_self'}"
+   onclick="${!d.woonso1 && !isPending ? "openPopup('https://sowonnamoo.github.io/myjs/gum')" : ''}"
+   class="border px-2 py-1 text-xs transition-colors duration-300 
+   ${d.woonso1 
+       ? 'bg-red-500 text-white border-red-500 hover:bg-red-600 font-bold' 
+       : (isPending ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'bg-gray-100 hover:bg-gray-200')
+   }">
+   ${d.woonso1 ? '출고완료/운송장보기' : '운송장'}
+</a>               
+                        
+                        
+                        
+                        
                         </div>
                     </div>
                 </div>
