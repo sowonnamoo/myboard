@@ -315,7 +315,7 @@ const dImage = document.getElementById("detail-image");
         </a>
     </div>
     <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px; display: flex; align-items: center; gap: 10px;">
-        재구입 이미지번호 : ${finalCode}
+        시안 이미지 번호 : ${finalCode}
         <button onclick="copyToClipboard('${finalCode}')" style="cursor:pointer; font-size: 8pt; padding: 2px 6px; background: #eee; border: 1px solid #ccc; border-radius: 3px;">복사</button>
     </div>`;
             }
