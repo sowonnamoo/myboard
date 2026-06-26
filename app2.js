@@ -525,3 +525,16 @@ async function autoViewDetail(id) {
             </div>`;
     }
 }
+
+
+
+// 시안보기 직행 버튼 클릭 이벤트 연결
+document.getElementById("view-sian-btn").addEventListener("click", () => {
+    if (!currentViewId) {
+        alert("게시글을 먼저 선택해주세요.");
+        return;
+    }
+    // 게시판 2(index2)의 URL에 현재 게시글의 ID(currentViewId)를 autoId로 전달
+    const url = `https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`;
+    window.open(url, '_blank', 'width=864,height=700,scrollbars=yes');
+});
