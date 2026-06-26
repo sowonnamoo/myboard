@@ -526,10 +526,3 @@ async function autoViewDetail(id) {
     }
 }
 
-
-// app2.js 안의 상세정보 로드 로직(viewDetail 함수 내부 혹은 상세 보기 전환 직후)에 추가:
-const sianBtn = document.getElementById("detail-sian-btn");
-sianBtn.onclick = () => {
-    // 현재 보고 있는 currentViewId를 가지고 index2로 이동
-    window.open(`https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`, '_blank', 'width=864,height=1000,scrollbars=yes');
-};
