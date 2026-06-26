@@ -14,8 +14,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let allOrders = [];
-const urlParams = new URLSearchParams(window.location.search);
-const sortMode = urlParams.get('sort') === 'true';
 let currentPage = 1;
 let currentViewId = ""; 
 let lastVisible = null;
@@ -40,38 +38,17 @@ async function loadMemo(boardId) {
 
 async function loadOrders() {
     try {
-        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"));
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(8));
         const snapshot = await getDocs(q);
         
-        let tempOrders = [];
+        allOrders = [];
         snapshot.forEach(doc => {
             const data = doc.data();
             if (data.isDeleted === true) return;
-            tempOrders.push({ id: doc.id, ...data });
+            allOrders.push({ id: doc.id, ...data });
         });
 
-        // [추가된 로직] search.html에서 ?sort=true로 들어올 때만 작동
-        if (sortMode) {
-            const tenDaysAgo = new Date();
-            tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-            
-            // 1. 10일 이내 데이터만 필터링
-            tempOrders = tempOrders.filter(d => {
-                const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
-                return dateObj >= tenDaysAgo;
-            });
-
-            // 2. sian 필드가 없는 것(승인대기)을 위로 정렬
-            tempOrders.sort((a, b) => {
-                const aPending = !a.hasOwnProperty('sian');
-                const bPending = !b.hasOwnProperty('sian');
-                if (aPending && !bPending) return -1;
-                if (!aPending && bPending) return 1;
-                return 0;
-            });
-        }
-
-        allOrders = tempOrders;
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
         renderTable(); 
     } catch (err) { console.error(err); }
 }
@@ -102,10 +79,10 @@ function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
     
-    // 최초 8개만 보여주기 위한 슬라이싱 (sortMode일 때는 전체를 다 보여주거나, 그대로 8개 유지)
-    const displayData = sortMode ? dataToRender : dataToRender.slice(0, POSTS_PER_PAGE);
+    const now = new Date();
+    const FOUR_DAYS_IN_MS = 4 * 24 * 60 * 60 * 1000;
 
-    displayData.forEach(data => {
+    dataToRender.forEach(data => {
         let dateObj;
         if (data.createdAt && typeof data.createdAt.toDate === 'function') {
             dateObj = data.createdAt.toDate();
