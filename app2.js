@@ -457,3 +457,71 @@ window.copyToClipboard = (text) => {
     });
 };
 
+// --- [추가] URL 파라미터(autoId) 감지하여 자동 상세 보기 ---
+window.addEventListener('load', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const autoId = params.get('autoId');
+    
+    if (autoId) {
+        const checkInterval = setInterval(async () => {
+            if (allOrders.length > 0) {
+                clearInterval(checkInterval);
+                await autoViewDetail(autoId);
+            }
+        }, 300);
+    }
+});
+
+async function autoViewDetail(id) {
+    const snap = await getDoc(doc(db, "boards", id));
+    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
+    
+    const data = snap.data();
+    currentViewId = id;
+
+    // 화면 전환
+    document.getElementById("view-list").classList.add("hidden");
+    document.getElementById("view-detail").classList.remove("hidden");
+
+    // 메모 및 버튼 상태 설정
+    await checkMemoAndSetButton(id, data.sian);
+
+    // 제목 표시
+    const dTitle = document.getElementById("detail-title");
+    if (dTitle) {
+        const priceVal = data.price ? `${data.price.toLocaleString()}원` : "가격 미정";
+        dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size}) ${priceVal}`;
+    }
+
+    // 이미지 로드 로직
+    const dImage = document.getElementById("detail-image");
+    if (dImage) {
+        const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+        const yy = String(createdAt.getFullYear()).slice(-2);
+        const mm = String(createdAt.getMonth() + 1).padStart(2, '0');
+        const dd = String(createdAt.getDate()).padStart(2, '0');
+        const hh = String(createdAt.getHours()).padStart(2, '0');
+        const mi = String(createdAt.getMinutes()).padStart(2, '0');
+        const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
+        const rawPhone = data.phone || "00000000000";
+        const phonePrefix = rawPhone.slice(0, -2);
+        const finalCode = phonePrefix + timeCode;
+        const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
+        const timestamp = new Date().getTime();
+
+        dImage.innerHTML = `
+            <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
+                <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
+                <a href="water.html?url=${encodeURIComponent(imgUrl + '?t=' + timestamp)}" target="_blank" style="display: grid; width: 100%; height: 100%; text-decoration: none; position: relative;">
+                    <img src="${imgUrl}?t=${timestamp}" alt="시안 이미지" 
+                         onerror="this.style.display='none'; document.getElementById('loading-msg').style.display='block';"
+                         onload="document.getElementById('loading-msg').style.display='none';"
+                         style="grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; cursor: pointer; display: block; z-index: 1;">
+                </a>
+            </div>
+            <div style="text-align: left; margin-top: 5px; font-size: 9pt; font-weight: bold; color: black; padding-left: 5px; display: flex; align-items: center; gap: 10px;">
+                시안 이미지 번호 : ${finalCode}
+                <button onclick="copyToClipboard('${finalCode}')" style="cursor:pointer; font-size: 8pt; padding: 2px 6px; background: #eee; border: 1px solid #ccc; border-radius: 3px;">복사</button>
+            </div>`;
+    }
+}
