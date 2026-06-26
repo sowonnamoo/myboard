@@ -12,8 +12,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const urlParams = new URLSearchParams(window.location.search);
-const sortMode = urlParams.get('sort') === 'true';
 
 let allOrders = [];
 let currentPage = 1;
@@ -40,7 +38,6 @@ async function loadMemo(boardId) {
 
 async function loadOrders() {
     try {
-        // [수정] 쿼리는 항상 limit(8)을 유지하여 데이터 낭비를 막습니다.
         const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(8));
         const snapshot = await getDocs(q);
         
@@ -50,17 +47,6 @@ async function loadOrders() {
             if (data.isDeleted === true) return;
             allOrders.push({ id: doc.id, ...data });
         });
-
-        // [핵심] sortMode일 때만 승인 대기 건을 우선 정렬 (전체 데이터를 가져오는 게 아님)
-        if (sortMode) {
-            allOrders.sort((a, b) => {
-                const aPending = !a.hasOwnProperty('sian');
-                const bPending = !b.hasOwnProperty('sian');
-                if (aPending && !bPending) return -1;
-                if (!aPending && bPending) return 1;
-                return 0;
-            });
-        }
 
         lastVisible = snapshot.docs[snapshot.docs.length - 1];
         renderTable(); 
