@@ -2,218 +2,145 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>빠른 재구입</title>
-    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
-        .box { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; border: 1px solid #ddd; }
-        .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        input[readonly] { background: #f0f0f0; }
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
-        .btn-group button { flex: 1; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; }
-    </style>
+    <title>시안 확인 게시판</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 10px;">
-    <h2 style="margin: 0; font-size: 18px; color: #333;">재주문</h2>
-    <p style="margin: 0; font-size: 12px; color: #d32f2f; font-weight: bold;">※ 재주문건은 결제 즉시 제작 시작됩니다.</p>
-</div>
-<div class="box">
-    <div class="input-group"><label>제품명</label><input type="text" id="productName" readonly></div>
-    <div style="display: flex; gap: 10px;">
-        <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity" readonly></div>
-        <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size" readonly></div>
-    </div>
-    <div class="input-group"><label>결제금액</label><input type="text" id="price" readonly></div>
-    <div class="input-group"><label>이미지 번호</label>
-        <div style="display:flex; gap:10px;">
-            <input type="text" id="imgCode" readonly>
-            <button type="button" onclick="openImage()" style="width:100px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">이미지 보기</button>
-        </div>
-    </div>
-    <div class="input-group"><label>작성자명</label><input type="text" id="name" placeholder="필수 입력"></div>
-    <div class="input-group"><label>핸드폰 번호</label><input type="text" id="phone" placeholder="숫자 11자리 입력" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
-    <div class="input-group">
-        <label>주소</label>
-        <div style="display: flex; gap: 5px;">
-            <input type="text" id="address" placeholder="주소 검색 버튼 클릭" readonly>
-            <button type="button" onclick="execDaumPostcode()" style="width:100px; background:#444; color:white; border:none; cursor:pointer; border-radius:4px;">주소검색</button>
-        </div>
-    </div>
-    <div class="input-group"><label>상세주소</label><input type="text" id="addressDetail" placeholder="상세주소 입력"></div>
+<body class="bg-white" oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
     
-    <input type="hidden" id="message">
-    <input type="hidden" id="file1Url">
-    <input type="hidden" id="file2Url">
+    <div class="w-[744px] mx-auto min-h-screen">
+        
+        <header class="w-full flex justify-center pb-4">
+            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+            <map name="Map">
+                <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
+                <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo.github.io/myboard/index2" target="_self">
+                <area shape="rect" coords="383,-1,572,58" href="https://isecogr.cafe24.com/front/php/b/board_list.php?board_no=1002" target="_self">
+                <area shape="rect" coords="572,-3,742,58" href="https://sowonnamoo1004.cafe24.com/front/php/b/board_list.php?board_no=1" target="_self">
+            </map>
+        </header>
 
-    <div class="btn-group">
-        <button onclick="submitOrder('무통장')" style="background-color: #15803d;">무통장결제</button>
-        <button onclick="submitOrder('카드')" style="background-color: #1e3a8a;">카드결제</button>
+        <section id="view-list" class="space-y-4">
+            <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
+                🎁 <strong>시안 확인 게시판</strong> &nbsp;고객님의 시안을 확인해 주세요.
+            </div>
+
+<table class="w-full text-sm border-t-2 border-gray-400 table-fixed">
+    <thead>
+                    <tr class="bg-gray-50 text-gray-600 border-b">
+                        <th class="py-3 px-4 text-left w-[450px]">시안목록</th> 
+                        <th class="py-3 w-[150px] text-center">시스템</th>
+                        <th class="py-3 w-[144px] text-center">시안갱신일</th>
+                    </tr>
+                </thead>
+<tbody id="list-body"></tbody>
+</table>
+            
+<div id="pagination" class="flex justify-center items-center py-4 text-sm font-medium text-gray-600"></div>
+            
+<div class="flex justify-end items-center space-x-2 py-4 border-t border-gray-100">
+    <button onclick="window.open('https://sowonnamoo.github.io/myboard/search', '_blank', 'width=800,height=800')" 
+            id="my-order-btn" 
+            class="bg-gray-600 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-700 transition-colors">
+        내 주문조회
+    </button>
+    
+    <button onclick="window.open('https://sowonnamoo1005.cafe24.com/front/php/b/board_list.php?board_no=7', '_blank', 'width=741,height=800')" 
+            id="past-order-btn" 
+            class="bg-gray-50 border border-black text-black text-sm px-4 py-1.5 rounded hover:bg-gray-200 transition-colors">
+        2012~2026.06 이전 주문조회
+    </button>
+</div>
+        </section>
+
+        <section id="view-detail" class="hidden w-[744px] mx-auto mt-5">
+            <div id="detail-title" class="font-bold text-lg text-gray-700 py-2 border-b mb-4"></div>
+            <div id="detail-image" class="w-full"></div>
+
+            <div id="info-and-actions" class="flex justify-between items-center mt-4 px-2">
+                <div id="image-code" class="text-xs font-bold text-gray-600"></div>
+               <div class="flex gap-2">
+
+<button 
+    onclick="window.open('https://sowonnamoo.github.io/myboard/search', '_blank', 'width=700,height=830,left=100,top=100');"
+    class="bg-gray-500 text-white px-6 py-2 rounded font-bold hover:bg-gray-600">
+    제작상황/운송장
+</button>
+
+                   
+    <button id="approve-btn" class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
+</div>
+            </div>
+
+
+
+
+<div id="memo-container" class="p-4 rounded bg-gray-50 mt-4 relative">
+    
+<div id="done-overlay" class="hidden absolute z-50" style="top: -7px; left: -7px; border: 2px solid white; box-sizing: content-box;">
+    <img src="https://sowonnamoo1005.cafe24.com/web/1new/daggle.jpg?45" style="width: calc(100% + 14px); height: calc(100% + 14px);">
+</div>
+
+    <h3 class="font-bold text-sm mb-2">
+        📝 댓글 
+        <span id="memo-status" class="text-red-500 font-normal ml-2 hidden"> - 🔊 수정요청이 등록되셨습니다. [교정 제작중/잠시 기다려주세요]</span>
+    </h3>
+    <div id="memo-display" class="text-sm text-gray-700 mb-3 italic"></div>
+    <div class="flex gap-2">
+        <input type="text" id="memo-input" class="flex-grow border p-2 rounded text-sm" placeholder="수정내용을 입력하세요">
+        <button id="save-memo-btn" class="bg-gray-600 text-white px-6 py-2 text-sm rounded hover:bg-gray-700">등록</button>
+        <button id="delete-memo-btn" class="bg-red-500 text-white px-6 py-2 text-sm rounded hover:bg-red-600">삭제</button>
     </div>
 </div>
+            
+          <button onclick="window.location.href='https://sowonnamoo.github.io/myboard'" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100 mt-4">
+    주문게시판
+</button>
+        </section>
+    </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-80 shadow-xl text-center">
+            <h3 class="text-base font-bold text-gray-800 mb-2">🔒 핸드폰번호 뒷 네자리</h3>
+            <input type="text" id="modal-password-input" maxlength="20" class="w-full border border-gray-300 rounded p-2 text-center text-lg mb-4 focus:outline-none" placeholder="비밀번호 입력">
+            <div class="flex gap-2">
+                <button id="modal-cancel-btn" class="flex-1 py-2 bg-gray-100 rounded">취소</button>
+                <button id="modal-confirm-btn" class="flex-1 py-2 bg-blue-600 text-white rounded">확인</button>
+            </div>
+        </div>
+    </div>
 
-    const firebaseConfig = { 
-        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-        authDomain: "board-291e3.firebaseapp.com",
-        projectId: "board-291e3",
-        storageBucket: "board-291e3.firebasestorage.app",
-        messagingSenderId: "25881766316",
-        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-    };
+    <script type="module" src="app2.js"></script>
 
-    const db = getFirestore(initializeApp(firebaseConfig));
 
-    window.execDaumPostcode = () => {
-        new daum.Postcode({
-            oncomplete: function(data) {
-                document.getElementById("address").value = data.address;
-                document.getElementById("addressDetail").focus();
-            }
-        }).open();
-    };
+<script>
+    // 1. 페이지가 로드되고 1초 뒤에 정렬 실행 (데이터가 불러와질 시간을 줌)
+    window.addEventListener('load', () => {
+        setTimeout(forceSortBySian, 1000); 
+    });
 
-    window.onload = () => {
-        const params = new URLSearchParams(window.location.search);
-        const fullTitle = params.get('productName');
-        if (fullTitle) {
-            const contentMatch = fullTitle.match(/\((.*?)\)/);
-            if (contentMatch) {
-                const parts = contentMatch[1].split('/');
-                document.getElementById('productName').value = parts[0]?.trim() || '';
-                document.getElementById('quantity').value = parts[1]?.trim() || '';
-                document.getElementById('size').value = parts[2]?.trim() || '';
-            }
-            const priceMatch = fullTitle.match(/\)\s+(\d+)/);
-            if (priceMatch) document.getElementById('price').value = priceMatch[1].trim();
-        }
-        if (params.get('imgCode')) document.getElementById('imgCode').value = params.get('imgCode');
-        if (params.get('message')) document.getElementById('message').value = params.get('message');
-        if (params.get('file1Url')) document.getElementById('file1Url').value = params.get('file1Url');
-        if (params.get('file2Url')) document.getElementById('file2Url').value = params.get('file2Url');
-    };
+    function forceSortBySian() {
+        const tbody = document.getElementById('list-body');
+        if (!tbody) return;
 
-    window.openImage = () => {
-        const imgCode = document.getElementById('imgCode').value;
-        if (!imgCode) { alert("이미지 번호가 없습니다."); return; }
-        window.open(`photo1.html?designNo=${imgCode}`, '_blank', 'width=744,height=600,scrollbars=yes');
-    };
-
-    window.submitOrder = async (type) => {
-        const name = document.getElementById('name').value.trim();
-        const phoneInput = document.getElementById('phone').value.trim();
-        const address = document.getElementById('address').value.trim();
-        const addressDetail = document.getElementById('addressDetail').value.trim();
-        const price = document.getElementById('price').value;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
         
-        const phoneRegex = /^01([0|1|6|7|8|9])([0-9]{3,4})([0-9]{4})$/;
-        
-        if (!name || !address || !addressDetail) {
-            alert("작성자명, 주소, 상세주소는 필수 입력 항목입니다.");
-            return;
-        }
-        
-        if (!phoneRegex.test(phoneInput)) {
-            alert("핸드폰 번호를 정확히 11자리 숫자로 입력해주세요.");
-            return;
-        }
-
-        const orderData = {
-            productName: document.getElementById('productName').value,
-            quantity: document.getElementById('quantity').value,
-            size: document.getElementById('size').value,
-            price: price,
-            imgCode: document.getElementById('imgCode').value,
-            author: name,
-            phone: phoneInput,
-            address: address + " " + addressDetail,
-            message: document.getElementById('message').value,
-            file1Url: document.getElementById('file1Url').value,
-            file2Url: document.getElementById('file2Url').value,
-            type: type,
-            createdAt: new Date(),
-            status: '대기'
-        };
-
-        try {
-            await addDoc(collection(db, "jjjj"), orderData);
-            if (type === '무통장') {
-                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-            } else {
-                alert("주문서 저장 완료. 결제 창으로 이동합니다.");
-                const payWindow = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, '_blank', 'width=1000,height=700');
-                
-                window.addEventListener("message", function listener(e) {
-                    if (e.data === "paymentSuccess") {
-                        alert("결제 완료되었습니다.");
-                        if (payWindow) payWindow.close();
-                        window.location.reload();
-                        window.removeEventListener("message", listener);
-                    }
-                });
-            }
-        } catch (e) { alert('오류: ' + e.message); }
-    };
-
-
-<div id="board-list" class="box mt-6">
-    <h3 style="font-size: 14px; margin-bottom: 10px;">📋 최근 주문현황 (인쇄승인 대기)</h3>
-    <div id="data-body" style="font-size: 12px; line-height: 2;">조회 중...</div>
-</div>
-
-<script type="module">
-    import { getFirestore, collection, query, where, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-    const db = getFirestore();
-
-    async function loadData() {
-        const dataBody = document.getElementById("data-body");
-        const tenDaysAgo = new Date();
-        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-
-        // 1. 10일 이내 데이터만 가져오기
-        const q = query(
-            collection(db, "boards"), 
-            where("createdAt", ">=", tenDaysAgo),
-            orderBy("createdAt", "desc")
-        );
-        
-        const snap = await getDocs(q);
-        let allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // 2. sian: "done"이 아닌 것을 맨 위로 (정렬)
-        allDocs.sort((a, b) => {
-            const aDone = a.sian === "done";
-            const bDone = b.sian === "done";
-            if (aDone && !bDone) return 1;
-            if (!aDone && bDone) return -1;
+        // 2. 인쇄승인대기 건을 맨 위로 정렬 (sian이 'done'이 아닌 것)
+        // 만약 버튼 텍스트가 '인쇄승인'이면 done이 아니라고 판단
+        rows.sort((a, b) => {
+            const aIsPending = a.innerHTML.includes('인쇄승인');
+            const bIsPending = b.innerHTML.includes('인쇄승인');
+            
+            if (aIsPending && !bIsPending) return -1; // 승인대기가 앞으로
+            if (!aIsPending && bIsPending) return 1;
             return 0;
         });
 
-        // 3. 화면 렌더링
-        dataBody.innerHTML = allDocs.length === 0 ? "최근 10일 내 데이터가 없습니다." : "";
-        allDocs.forEach(d => {
-            const isDone = d.sian === "done";
-            const color = isDone ? "#999" : "#d32f2f";
-            const fontWeight = isDone ? "normal" : "bold";
-            
-            dataBody.innerHTML += `
-                <div style="border-bottom:1px solid #eee; padding:5px 0; color:${color}; font-weight:${fontWeight}">
-                    ${isDone ? "✅" : "📢"} ${d.author || '고객'}님 - ${d.productName || '상품'}
-                </div>
-            `;
-        });
+        // 3. 정렬된 순서대로 다시 배치
+        rows.forEach(row => tbody.appendChild(row));
     }
-    loadData();
 </script>
 
-
-
-  
+    
 </body>
 </html>
