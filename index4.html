@@ -110,35 +110,36 @@
         </div>
     </div>
 
-    <script type="module" src="app2.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <script type="module">
-    // app2.js가 로드되고 데이터를 그릴 시간을 주기 위해 약간의 지연 시간을 둠
-    window.addEventListener('load', () => {
-        setTimeout(reSortBoardForIndex4, 500);
-    });
+    const db = getFirestore(initializeApp({ /* 기존 firebaseConfig 동일하게 입력 */ }));
 
-    function reSortBoardForIndex4() {
-        const listBody = document.getElementById("list-body");
-        if (!listBody) return;
-
-        // 현재 화면에 그려진 행(tr)들을 가져옴
-        const rows = Array.from(listBody.querySelectorAll('tr'));
-
-        // 데이터를 다시 정렬하기 위해, 각 tr에서 sian 정보를 알 수 없다면 
-        // 아예 데이터를 새로 가져오거나, DOM 요소의 속성을 비교해야 함.
-        // 가장 확실한 방법: 페이지 전체를 다시 정렬
-        rows.sort((a, b) => {
-            // 여기서는 sian 필드가 없는 경우(예: 글자가 덜 복잡함 등)를 
-            // 구분하기 어렵다면, 데이터를 직접 조회하는 대신 
-            // 정렬 로직이 포함된 별도의 커스텀 함수를 실행하는 것이 좋습니다.
-            return 0; // 로직 적용
-        });
+    async function loadIndex4Orders() {
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
         
-        // 하지만 더 간단한 방법은, index4 전용 스크립트에서 
-        // 직접 파이어베이스를 조회하여 리스트를 다시 그리는 것입니다.
-        console.log("index4 전용 정렬 실행 준비 완료");
+        let orders = [];
+        snap.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
+
+        // [핵심] sian 필드가 없는 데이터가 가장 먼저 오도록 정렬
+        orders.sort((a, b) => {
+            const aHasSian = a.hasOwnProperty('sian');
+            const bHasSian = b.hasOwnProperty('sian');
+            if (!aHasSian && bHasSian) return -1;
+            if (aHasSian && !bHasSian) return 1;
+            return 0;
+        });
+
+        // 리스트 그리기 (기존 app2.js의 renderTable을 복제하거나 단순 innerHTML로 구현)
+        const listBody = document.getElementById("list-body");
+        listBody.innerHTML = "";
+        orders.forEach(data => {
+            listBody.innerHTML += `<tr><td>${data.productName || '상품'}</td>...</tr>`;
+        });
     }
+    loadIndex4Orders();
 </script>
     
 </body>
