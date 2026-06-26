@@ -861,16 +861,3 @@ confirmBtn.onclick = async () => {
 };
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    const sianBtn = document.getElementById('detail-sian-btn');
-    if (sianBtn) {
-        sianBtn.addEventListener('click', () => {
-            // currentViewId는 현재 상세 화면에 떠 있는 글의 ID입니다.
-            if (currentViewId) {
-                window.open(`https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`, '_blank', 'width=864,height=1000,scrollbars=yes');
-            } else {
-                alert("게시글 정보를 찾을 수 없습니다.");
-            }
-        });
-    }
-});
