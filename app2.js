@@ -527,17 +527,11 @@ async function autoViewDetail(id) {
 }
 
 
-// 시안 바로가기
-document.addEventListener('DOMContentLoaded', () => {
-    const sianBtn = document.getElementById('detail-sian-btn');
-    if (sianBtn) {
-        sianBtn.addEventListener('click', () => {
-            // 현재 상세창에 떠 있는 글의 ID(currentViewId)를 그대로 사용
-            if (currentViewId) {
-                window.open(`https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`, '_blank', 'width=864,height=1000,scrollbars=yes');
-            } else {
-                alert("상세 정보를 불러올 수 없습니다.");
-            }
-        });
+// 버튼 클릭 이벤트 함수를 아예 별도로 하나 만드세요
+window.openSianPage = function() {
+    if (typeof currentViewId !== 'undefined' && currentViewId) {
+        window.open(`https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`, '_blank', 'width=864,height=1000,scrollbars=yes');
+    } else {
+        alert("상세 정보를 먼저 불러와주세요.");
     }
-});
+};
