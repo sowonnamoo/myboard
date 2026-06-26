@@ -525,13 +525,3 @@ async function autoViewDetail(id) {
             </div>`;
     }
 }
-
-
-// 버튼 클릭 이벤트 함수를 아예 별도로 하나 만드세요
-window.openSianPage = function() {
-    if (typeof currentViewId !== 'undefined' && currentViewId) {
-        window.open(`https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`, '_blank', 'width=864,height=1000,scrollbars=yes');
-    } else {
-        alert("상세 정보를 먼저 불러와주세요.");
-    }
-};
