@@ -144,8 +144,8 @@
     
 <button id="sian-view-btn" 
     onclick="
-        if (currentViewId) {
-            window.open('https://sowonnamoo.github.io/myboard/index2?autoId=' + currentViewId, '_blank', 'width=864,height=1000,scrollbars=yes');
+        if (window.currentViewId) {
+            window.open('https://sowonnamoo.github.io/myboard/index2?autoId=' + window.currentViewId, '_blank', 'width=864,height=1000,scrollbars=yes');
         } else {
             alert('주문 정보가 로드되지 않았습니다.');
         }
@@ -153,7 +153,6 @@
     class="flex-1 py-3 bg-gray-600 text-white font-bold rounded text-sm hover:bg-gray-700 transition">
     시안보기
 </button>
-    
     
     
     
