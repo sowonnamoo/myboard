@@ -40,41 +40,18 @@ async function loadMemo(boardId) {
 
 async function loadOrders() {
     try {
-        // [핵심] 10일 전 날짜 계산
-        const tenDaysAgo = new Date();
-        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-
-        // search.html에서 넘겨받은 sortMode가 true일 때만 10일 필터 쿼리 적용
-        let q;
-        if (sortMode) {
-            // 10일 이내 데이터만 불러오도록 쿼리 수정 (인덱스 필요할 수 있음)
-            q = query(
-                collection(db, "boards"), 
-                orderBy("createdAt", "desc")
-                // 여기서 10일 필터를 걸려면 파이어베이스 복합 인덱스가 필요할 수 있습니다.
-                // 만약 에러가 나면 아래의 '전체 가져오기' 방식을 사용하세요.
-            );
-        } else {
-            q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(8));
-        }
-
+        // [수정] 쿼리는 항상 limit(8)을 유지하여 데이터 낭비를 막습니다.
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(8));
         const snapshot = await getDocs(q);
         
         allOrders = [];
         snapshot.forEach(doc => {
             const data = doc.data();
             if (data.isDeleted === true) return;
-            
-            // 만약 sortMode라면 여기서 직접 10일치만 걸러냄 (쿼리 에러 방지용)
-            if (sortMode) {
-                const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-                if (dateObj < tenDaysAgo) return;
-            }
-            
             allOrders.push({ id: doc.id, ...data });
         });
 
-        // 정렬 모드라면 승인 대기 건을 위로 올림
+        // [핵심] sortMode일 때만 승인 대기 건을 우선 정렬 (전체 데이터를 가져오는 게 아님)
         if (sortMode) {
             allOrders.sort((a, b) => {
                 const aPending = !a.hasOwnProperty('sian');
