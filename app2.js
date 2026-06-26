@@ -102,10 +102,10 @@ function renderTable(dataToRender = allOrders) {
     const listBody = document.getElementById("list-body");
     listBody.innerHTML = "";
     
-    const now = new Date();
-    const FOUR_DAYS_IN_MS = 4 * 24 * 60 * 60 * 1000;
+    // 최초 8개만 보여주기 위한 슬라이싱 (sortMode일 때는 전체를 다 보여주거나, 그대로 8개 유지)
+    const displayData = sortMode ? dataToRender : dataToRender.slice(0, POSTS_PER_PAGE);
 
-    dataToRender.forEach(data => {
+    displayData.forEach(data => {
         let dateObj;
         if (data.createdAt && typeof data.createdAt.toDate === 'function') {
             dateObj = data.createdAt.toDate();
