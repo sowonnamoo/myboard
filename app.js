@@ -25,7 +25,6 @@ let allOrders = [];
 let filteredOrders = [];  
 let lastVisible = null; // 마지막 문서 저장용
 let currentPage = 1;      
-window.currentViewId = ""; // 이렇게 window에 붙여주세요
 let currentViewId = null;
 const POSTS_PER_PAGE = 8; 
 
