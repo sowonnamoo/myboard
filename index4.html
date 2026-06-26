@@ -111,36 +111,5 @@
     </div>
 
     <script type="module" src="app2.js"></script>
-
-
-<script>
-    // 1. 페이지가 로드되고 1초 뒤에 정렬 실행 (데이터가 불러와질 시간을 줌)
-    window.addEventListener('load', () => {
-        setTimeout(forceSortBySian, 1000); 
-    });
-
-    function forceSortBySian() {
-        const tbody = document.getElementById('list-body');
-        if (!tbody) return;
-
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        
-        // 2. 인쇄승인대기 건을 맨 위로 정렬 (sian이 'done'이 아닌 것)
-        // 만약 버튼 텍스트가 '인쇄승인'이면 done이 아니라고 판단
-        rows.sort((a, b) => {
-            const aIsPending = a.innerHTML.includes('인쇄승인');
-            const bIsPending = b.innerHTML.includes('인쇄승인');
-            
-            if (aIsPending && !bIsPending) return -1; // 승인대기가 앞으로
-            if (!aIsPending && bIsPending) return 1;
-            return 0;
-        });
-
-        // 3. 정렬된 순서대로 다시 배치
-        rows.forEach(row => tbody.appendChild(row));
-    }
-</script>
-
-    
 </body>
 </html>
