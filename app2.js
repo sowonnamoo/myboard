@@ -14,6 +14,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let allOrders = [];
+const urlParams = new URLSearchParams(window.location.search);
+const sortMode = urlParams.get('sort') === 'true';
 let currentPage = 1;
 let currentViewId = ""; 
 let lastVisible = null;
@@ -38,17 +40,38 @@ async function loadMemo(boardId) {
 
 async function loadOrders() {
     try {
-        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(8));
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
         
-        allOrders = [];
+        let tempOrders = [];
         snapshot.forEach(doc => {
             const data = doc.data();
             if (data.isDeleted === true) return;
-            allOrders.push({ id: doc.id, ...data });
+            tempOrders.push({ id: doc.id, ...data });
         });
 
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        // [추가된 로직] search.html에서 ?sort=true로 들어올 때만 작동
+        if (sortMode) {
+            const tenDaysAgo = new Date();
+            tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+            
+            // 1. 10일 이내 데이터만 필터링
+            tempOrders = tempOrders.filter(d => {
+                const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+                return dateObj >= tenDaysAgo;
+            });
+
+            // 2. sian 필드가 없는 것(승인대기)을 위로 정렬
+            tempOrders.sort((a, b) => {
+                const aPending = !a.hasOwnProperty('sian');
+                const bPending = !b.hasOwnProperty('sian');
+                if (aPending && !bPending) return -1;
+                if (!aPending && bPending) return 1;
+                return 0;
+            });
+        }
+
+        allOrders = tempOrders;
         renderTable(); 
     } catch (err) { console.error(err); }
 }
