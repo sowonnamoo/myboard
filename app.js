@@ -859,5 +859,3 @@ confirmBtn.onclick = async () => {
         }
     }
 };
-
-
