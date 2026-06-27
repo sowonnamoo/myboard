@@ -813,6 +813,64 @@ window.downloadFile = async (url, filename) => {
 
 
 
+
+
+// ip차단기능
+async function applyIpSecurity() {
+    try {
+        const response = await fetch("https://api.ipify.org?format=json");
+        const data = await response.json();
+        const userIp = data.ip;
+
+        const docSnap = await getDoc(doc(db, "blocked_ips", userIp));
+        
+        if (docSnap.exists()) {
+            console.log("⚠️ 차단된 IP입니다. UI를 제거합니다.");
+            
+            // 1. 버튼 숨기기
+            const hideButtons = () => {
+                const writeBtn = document.getElementById("go-write-btn");
+                if (writeBtn) writeBtn.style.display = "none";
+            };
+
+            // 2. 즉시 실행 및 화면이 바뀔 때마다 체크(MutationObserver)
+            hideButtons();
+            const observer = new MutationObserver(hideButtons);
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+    } catch (e) {
+        console.error("보안 체크 오류:", e);
+    }
+}
+
+// 페이지 로드 완료 시 실행
+window.addEventListener('DOMContentLoaded', applyIpSecurity
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
 
 // 비밀번호 확인 버튼 클릭 시 카운트 로직
@@ -862,33 +920,4 @@ confirmBtn.onclick = async () => {
 
 
 
-// [보안] 버튼 감시 및 강제 숨김
-async function applyIpSecurity() {
-    try {
-        const response = await fetch("https://api.ipify.org?format=json");
-        const data = await response.json();
-        const userIp = data.ip;
-
-        const docSnap = await getDoc(doc(db, "blocked_ips", userIp));
-        
-        if (docSnap.exists()) {
-            console.log("⚠️ 차단된 IP입니다. UI를 제거합니다.");
-            
-            // 1. 버튼 숨기기
-            const hideButtons = () => {
-                const writeBtn = document.getElementById("go-write-btn");
-                if (writeBtn) writeBtn.style.display = "none";
-            };
-
-            // 2. 즉시 실행 및 화면이 바뀔 때마다 체크(MutationObserver)
-            hideButtons();
-            const observer = new MutationObserver(hideButtons);
-            observer.observe(document.body, { childList: true, subtree: true });
-        }
-    } catch (e) {
-        console.error("보안 체크 오류:", e);
-    }
-}
-
-// 페이지 로드 완료 시 실행
-window.addEventListener('DOMContentLoaded', applyIpSecurity);
+);
