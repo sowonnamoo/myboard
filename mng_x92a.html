@@ -2,13 +2,13 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 전용 보안 페이지</title>
+    <title>관리자 전용 보안 및 최적화 페이지</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="p-6 bg-gray-100">
 
 <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
-    <h2 class="text-xl font-bold mb-6 text-gray-800">🛠️ 관리자 보안 작업창</h2>
+    <h2 class="text-xl font-bold mb-6 text-gray-800">🛠️ 관리자 보안 및 작업창</h2>
     
     <div class="mb-8 p-4 border bg-red-50 rounded">
         <h3 class="font-bold text-sm mb-2 text-red-800">🚫 IP 차단 관리</h3>
@@ -17,16 +17,19 @@
     </div>
 
     <div class="p-4 border bg-gray-50 rounded">
-        <h3 class="font-bold text-sm mb-2 text-gray-800">🗑️ 데이터 정리</h3>
-        <button onclick="permanentDeleteOldPosts()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm w-full hover:bg-black">
-            30일 지난 삭제 건 영구 삭제
+        <h3 class="font-bold text-sm mb-2 text-gray-800">🗑️ 데이터 정밀 정리</h3>
+        <button onclick="deleteOldFiles()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm w-full mb-2 hover:bg-blue-700">
+            30일 지난 파일(URL) 삭제
+        </button>
+        <button onclick="deleteOldPersonalInfo()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm w-full hover:bg-purple-700">
+            1년 지난 개인정보(메시지/IP/주소) 삭제
         </button>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, deleteDoc, doc, query, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -40,11 +43,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // IP 차단 기능
+    // 1. IP 차단 기능
     window.blockIp = async function() {
         const ip = document.getElementById("ip-to-block").value.trim();
         if (!ip) return alert("IP를 입력해주세요.");
-        // 독립 컬렉션 blocked_ips 사용
         await setDoc(doc(db, "blocked_ips", ip), {
             blockedAt: new Date(),
             reason: "관리자 수동 차단"
@@ -53,27 +55,49 @@
         document.getElementById("ip-to-block").value = "";
     };
 
-    // 영구 삭제 기능
-window.permanentDeleteOldPosts = async function() {
-    if (!confirm("30일이 경과한 '삭제된 글'을 데이터베이스에서 영구 삭제하시겠습니까?")) return;
+    // 2. 30일 지난 파일(URL) 삭제 기능
+    window.deleteOldFiles = async function() {
+        if (!confirm("30일이 경과한 게시물의 파일 정보를 초기화하시겠습니까? (복구 불가)")) return;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const q = query(collection(db, "boards"));
-    const snapshot = await getDocs(q);
-    
-    let count = 0;
-    for (const docSnapshot of snapshot.docs) {
-        const data = docSnapshot.data();
-        // [수정된 부분] deletedAt이 없어도 createdAt이 30일 지났고, isDeleted가 true인 경우 삭제
-        if (data.isDeleted === true && data.createdAt && data.createdAt.toDate() < thirtyDaysAgo) {
-            await deleteDoc(doc(db, "boards", docSnapshot.id));
-            count++;
+        const collections = ["boards", "jjjj"];
+        let count = 0;
+        for (const colName of collections) {
+            const snapshot = await getDocs(collection(db, colName));
+            for (const docSnapshot of snapshot.docs) {
+                const data = docSnapshot.data();
+                if (data.createdAt && data.createdAt.toDate() < thirtyDaysAgo && (data.file1Url || data.file2Url)) {
+                    await setDoc(doc(db, colName, docSnapshot.id), { file1Url: null, file2Url: null }, { merge: true });
+                    count++;
+                }
+            }
         }
-    }
-    alert(count > 0 ? `${count}개의 글이 영구 삭제되었습니다.` : "30일 지난 삭제 건이 없습니다.");
-};
+        alert(count > 0 ? `${count}개 게시물의 파일 정보가 삭제되었습니다.` : "삭제할 파일 정보가 없습니다.");
+    };
+
+    // 3. 1년 지난 개인정보 삭제 기능
+    window.deleteOldPersonalInfo = async function() {
+        if (!confirm("1년이 경과한 게시물의 개인정보를 삭제하시겠습니까?")) return;
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+        const collections = ["boards", "jjjj"];
+        let count = 0;
+        for (const colName of collections) {
+            const snapshot = await getDocs(collection(db, colName));
+            for (const docSnapshot of snapshot.docs) {
+                const data = docSnapshot.data();
+                if (data.createdAt && data.createdAt.toDate() < oneYearAgo) {
+                    await setDoc(doc(db, colName, docSnapshot.id), { 
+                        message: null, ip: null, address: null 
+                    }, { merge: true });
+                    count++;
+                }
+            }
+        }
+        alert(count > 0 ? `${count}개 게시물의 개인정보가 삭제되었습니다.` : "삭제할 대상이 없습니다.");
+    };
 </script>
 </body>
 </html>
