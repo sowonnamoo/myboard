@@ -872,3 +872,69 @@ async function getIpAddress() {
         return "0.0.0.0"; // IP 조회 실패 시 기본값
     }
 }
+
+
+
+// 1. IP 차단 확인 함수
+async function checkIpBlock() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const userIp = data.ip;
+
+        const ipDoc = await getDoc(doc(db, "blocked_ips", userIp));
+
+        if (ipDoc.exists()) {
+            document.body.innerHTML = `
+                <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; background:#fee2e2;">
+                    <div style="text-align:center; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                        <h1 style="color:#dc2626; font-size:24px; margin-bottom:10px;">error</h1>
+                        <p style="color:#4b5563;">error-에러코드0121</p>
+                    </div>
+                </div>
+            `;
+            throw new Error("ACCESS_BLOCKED");
+        }
+    } catch (e) {
+        if (e.message !== "ACCESS_BLOCKED") {
+            console.warn("보안 점검 완료:", e.message);
+        }
+    }
+}
+
+// 2. 페이지 로드 시 ip차단 실시 통합 실행 (기존 로직 포함)
+window.addEventListener('DOMContentLoaded', async () => {
+    // 보안 체크 우선 실행
+    await checkIpBlock();
+
+    // 기존 데이터 로드
+    initBoard();
+
+    // 기존 쿼리스트링 처리
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('product')) {
+        const prodInput = document.getElementById('product-name');
+        const qtyInput = document.getElementById('quantity');
+        const sizeInput = document.getElementById('size');
+        const priceInput = document.getElementById('price');
+        
+        if(prodInput) {
+            prodInput.value = params.get('product');
+            qtyInput.value = params.get('qty');
+            sizeInput.value = params.get('size');
+            priceInput.value = params.get('price');
+            
+            [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
+                el.readOnly = true;
+                el.style.backgroundColor = "#f3f4f6";
+                el.style.cursor = "not-allowed";
+            });
+            switchView('write');
+        }
+    }
+});
+
+
+
+
+
