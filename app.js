@@ -862,37 +862,40 @@ confirmBtn.onclick = async () => {
 
 
 
-// [보안] IP 차단 확인 및 접수 버튼 제어
+// [보안] IP 차단 확인 및 접수 버튼 제어 (강력 버전)
 async function checkIpAndBlockAccess() {
     try {
-        // 1. 접속자의 IP를 가져오는 외부 서비스 호출 (무료 API)
+        // 1. 접속자의 IP를 가져옵니다.
         const response = await fetch("https://api.ipify.org?format=json");
         const data = await response.json();
         const userIp = data.ip;
 
-        // 2. Firebase에서 차단 목록 확인
+        // 2. Firebase에서 해당 IP가 차단 목록에 있는지 확인
         const blockedDoc = await getDoc(doc(db, "blocked_ips", userIp));
         
         if (blockedDoc.exists()) {
-            console.log("⚠️ 차단된 IP입니다. 접수 기능을 제한합니다.");
+            console.log("⚠️ 차단된 IP입니다.");
+            
+            // [방법 A] ID로 찾아서 숨김
             const writeBtn = document.getElementById("go-write-btn");
-            if (writeBtn) {
-                // 버튼 제거 또는 숨김 처리
-                writeBtn.style.display = "none";
-                // 혹은 완전히 제거
-                // writeBtn.remove();
+            if (writeBtn) writeBtn.style.display = "none";
+
+            // [방법 B] 만약 ID가 다르다면, 버튼의 텍스트나 특정 속성으로 찾아 숨김
+            // 스크린샷의 버튼을 직접 타겟팅합니다.
+            const buttons = document.getElementsByTagName("button");
+            for (let btn of buttons) {
+                if (btn.innerText.includes("접수하기")) {
+                    btn.style.display = "none";
+                }
             }
-            // 필요 시 알림창 추가
-            // alert("보안 정책에 의해 접수 기능이 제한되었습니다.");
         }
     } catch (e) {
         console.error("IP 확인 중 오류 발생:", e);
     }
 }
 
-// 페이지 로드 시 IP 체크 실행
-checkIpAndBlockAccess();
-
+// 페이지가 완전히 로드된 후 실행되도록 보장합니다.
+window.addEventListener('load', checkIpAndBlockAccess);
 
 
 
