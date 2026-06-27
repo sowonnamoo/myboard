@@ -851,6 +851,34 @@ document.getElementById("save-btn").addEventListener("click", async (event) => {
 
 
 
+/ 차단글 글접수차단
+let isIpChecked = false;
+let isBlockedIp = false;
+
+document.getElementById("save-btn").addEventListener("click", async (event) => {
+    // 1. 아직 IP 체크를 안 했다면 한 번만 체크 (데이터 소모 방지)
+    if (!isIpChecked) {
+        try {
+            const response = await fetch("https://api.ipify.org?format=json");
+            const data = await response.json();
+            const docSnap = await getDoc(doc(db, "blocked_ips", data.ip));
+            isBlockedIp = docSnap.exists();
+            isIpChecked = true; // 체크 완료 표시
+        } catch (e) {
+            console.error("IP 보안 체크 실패, 저장 진행", e);
+        }
+    }
+
+    // 2. 차단된 IP라면 저장 로직 실행 중단
+    if (isBlockedIp) {
+        alert("접수가 차단되었습니다.");
+        return; // 여기서 함수 종료 -> 아래의 데이터 저장 코드(addDoc)가 실행되지 않음
+    }
+
+    // 3. 차단되지 않았다면 아래에 기존 접수하기 저장 로직(addDoc 등)을 그대로 두세요.
+    // (이 아래의 기존 코드들은 수정할 필요가 없습니다)
+});
+
 
 
 
