@@ -373,8 +373,12 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     }, 3000); // 3초 간격
 
     // 3. 기존 글쓰기 로직 (침범 안 함)
-  try {
-    // 1. 파일 업로드 실행
+ try {
+    // 1. IP 추출 (저장 전 호출)
+    const ipResponse = await fetch("https://api.ipify.org?format=json");
+    const ipData = await ipResponse.json();
+    const userIp = ipData.ip; 
+
     const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value);
     const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value);
         
@@ -391,6 +395,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     message: document.getElementById('message').value,
     file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
     file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
+      ip: userIp,
     views: 0,
     createdAt: new Date(),
     isDeleted: false,
