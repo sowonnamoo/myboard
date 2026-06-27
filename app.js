@@ -846,7 +846,7 @@ async function applyIpSecurity() {
 // 페이지 로드 완료 시 실행
 window.addEventListener('DOMContentLoaded', applyIpSecurity
 
-
+);
 
 
 
@@ -920,4 +920,4 @@ confirmBtn.onclick = async () => {
 
 
 
-);
+
