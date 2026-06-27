@@ -812,10 +812,7 @@ window.downloadFile = async (url, filename) => {
 
 
 
-
-
-
-// ip차단기능
+// ip차단 기능
 async function applyIpSecurity() {
     try {
         const response = await fetch("https://api.ipify.org?format=json");
@@ -825,16 +822,26 @@ async function applyIpSecurity() {
         const docSnap = await getDoc(doc(db, "blocked_ips", userIp));
         
         if (docSnap.exists()) {
-            console.log("⚠️ 차단된 IP입니다. UI를 제거합니다.");
+            console.log("차단된 IP입니다. UI를 제거합니다.");
             
-            // 1. 버튼 숨기기
+            // 1. 버튼을 숨기는 함수 정의
             const hideButtons = () => {
-                const writeBtn = document.getElementById("go-write-btn");
-                if (writeBtn) writeBtn.style.display = "none";
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    #go-write-btn { display: none !important; }
+                    #save-btn { display: none !important; }
+                `;
+                // 스타일이 이미 있으면 추가하지 않음
+                if (!document.getElementById('security-style')) {
+                    style.id = 'security-style';
+                    document.head.appendChild(style);
+                }
             };
 
-            // 2. 즉시 실행 및 화면이 바뀔 때마다 체크(MutationObserver)
+            // 2. 즉시 실행
             hideButtons();
+
+            // 3. 화면이 바뀔 때마다 다시 숨기기 (MutationObserver)
             const observer = new MutationObserver(hideButtons);
             observer.observe(document.body, { childList: true, subtree: true });
         }
