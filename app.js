@@ -877,15 +877,28 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
 
 
-let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
+// 1. 버튼 개인정보 보호기능 10회/3타임로직
+let failCount = 0; 
 
-// 비밀번호 확인 버튼 클릭 시 카운트 로직
-confirmBtn.onclick = async () => {
-    const inputVal = input.value;
+// 2. 버튼 클릭 이벤트 내부 수정
+// confirmBtn이 이벤트 등록 전이라면 document.getElementById로 직접 가져오는 게 확실합니다.
+const modalConfirmBtn = document.getElementById("modal-confirm-btn"); 
+
+modalConfirmBtn.onclick = async () => {
+    // modal, input, id, storedPass, data 등은 이 함수가 속한 
+    // 기존의 문맥(Context) 안에서 이미 정의되어 있어야 합니다.
+    const inputVal = document.getElementById("modal-password-input").value;
+    
+    // storedPass가 undefined일 경우를 대비한 안전장치
+    if (typeof storedPass === 'undefined') {
+        alert("데이터를 불러오는 중입니다. 잠시만 기다려주세요.");
+        return;
+    }
+
     const isNumeric = /^\d+$/.test(storedPass);
     const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
-    // [추가된 로직] 3시간 차단 체크
+    // [3시간 차단 체크]
     const blockUntil = localStorage.getItem(`block_${id}`);
     if (blockUntil && Date.now() < parseInt(blockUntil)) {
         alert("비밀번호 10회 오류로 인해 3시간 동안 차단되었습니다.");
@@ -903,21 +916,23 @@ confirmBtn.onclick = async () => {
         document.getElementById("view-detail").classList.remove("hidden");
         
         await checkMemoAndSetButton(id, data.sian);
-        // ... (이후 제목 및 이미지 로드 로직 동일)
     } else {
         failCount++;
+        
         // 화면에 틀린 횟수 업데이트
         const failDisplay = document.getElementById("fail-count-display");
         const failNum = document.getElementById("fail-num");
-        failNum.innerText = failCount;
-        failDisplay.classList.remove("hidden");
+        if (failDisplay && failNum) {
+            failNum.innerText = failCount;
+            failDisplay.classList.remove("hidden");
+        }
 
         if (failCount >= 10) {
             // 3시간(10800000ms) 후 차단 해제
             localStorage.setItem(`block_${id}`, Date.now() + 10800000);
             alert("10회 이상 비밀번호가 틀려 3시간 동안 조회가 차단됩니다.");
             modal.classList.add("hidden");
-            failCount = 0; // 횟수 초기화
+            failCount = 0; 
         } else {
             alert(`비밀번호가 일치하지 않습니다. (${failCount}/10)`);
         }
