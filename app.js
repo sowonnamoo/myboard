@@ -862,44 +862,33 @@ confirmBtn.onclick = async () => {
 
 
 
-// [보안] IP 차단 확인 및 접수 버튼 제어 (즉시 실행 함수)
-async function initSecurityCheck() {
+// [보안] 버튼 감시 및 강제 숨김
+async function applyIpSecurity() {
     try {
-        // 1. IP 가져오기
         const response = await fetch("https://api.ipify.org?format=json");
         const data = await response.json();
         const userIp = data.ip;
 
-        // 2. Firebase에서 차단 여부 확인
-        const docRef = doc(db, "blocked_ips", userIp);
-        const docSnap = await getDoc(docRef);
-
+        const docSnap = await getDoc(doc(db, "blocked_ips", userIp));
+        
         if (docSnap.exists()) {
+            console.log("⚠️ 차단된 IP입니다. UI를 제거합니다.");
             
-            console.log("⚠️ 접근 차단된 IP입니다.");
-            
-            // 3. 버튼 숨김 처리 (가장 확실한 방법)
-            // 글쓰기 버튼
+            // 1. 버튼 숨기기
+            const hideButtons = () => {
+                const writeBtn = document.getElementById("go-write-btn");
+                if (writeBtn) writeBtn.style.display = "none";
+            };
 
-
-            const style = document.createElement('style');
-style.innerHTML = '#go-write-btn, #save-btn { display: none !important; }';
-document.head.appendChild(style);
-            
-            const writeBtn = document.getElementById("go-write-btn");
-            if (writeBtn) writeBtn.style.display = "none";
-            
-            // 만약 글쓰기 화면 내의 '접수하기' 버튼도 숨기고 싶다면
-            const saveBtn = document.getElementById("save-btn");
-            if (saveBtn) saveBtn.style.display = "none";
+            // 2. 즉시 실행 및 화면이 바뀔 때마다 체크(MutationObserver)
+            hideButtons();
+            const observer = new MutationObserver(hideButtons);
+            observer.observe(document.body, { childList: true, subtree: true });
         }
     } catch (e) {
-        console.error("IP 보안 체크 오류:", e);
+        console.error("보안 체크 오류:", e);
     }
 }
 
-// DOM이 완전히 로드된 후 실행
-window.addEventListener('DOMContentLoaded', initSecurityCheck);
-
-
-
+// 페이지 로드 완료 시 실행
+window.addEventListener('DOMContentLoaded', applyIpSecurity);
