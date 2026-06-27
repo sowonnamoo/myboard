@@ -851,7 +851,7 @@ document.getElementById("save-btn").addEventListener("click", async (event) => {
 
 
 
-/ 차단글 글접수차단
+// 차단글 글접수차단
 let isIpChecked = false;
 let isBlockedIp = false;
 
