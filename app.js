@@ -389,6 +389,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
     password: document.getElementById('phone').value.slice(-4),
     message: document.getElementById('message').value,
+    ip: await getIpAddress(),
     file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
     file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
     views: 0,
@@ -859,3 +860,15 @@ confirmBtn.onclick = async () => {
         }
     }
 };
+
+
+// IP 수집용
+async function getIpAddress() {
+    try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip;
+    } catch (e) {
+        return "0.0.0.0"; // IP 조회 실패 시 기본값
+    }
+}
