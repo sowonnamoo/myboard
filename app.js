@@ -887,7 +887,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
 
 // 비밀번호 확인 버튼 클릭 시 카운트 로직
-confirmBtn.onclick = async () => {
+modalConfirmBtn.onclick = async () => {
     const inputVal = input.value;
     const isNumeric = /^\d+$/.test(storedPass);
     const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
