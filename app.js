@@ -817,6 +817,8 @@ window.downloadFile = async (url, filename) => {
 let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
 
 // 비밀번호 확인 버튼 클릭 시 카운트 로직
+const confirmBtn = document.getElementById("modal-confirm-btn");
+if (confirmBtn) {
 confirmBtn.onclick = async () => {
     const inputVal = input.value;
     const isNumeric = /^\d+$/.test(storedPass);
@@ -881,42 +883,46 @@ async function getIpAddress() {
 // 1. IP 차단 확인 함수
 async function checkIpBlock() {
     try {
-        // IP 확인 시 캐시를 완전히 무시하도록 수정
         const response = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
         const data = await response.json();
         const userIp = data.ip;
         
-        console.log("현재 접속 IP:", userIp); // F12 개발자 도구 콘솔에서 확인
+        console.log("현재 접속 IP:", userIp);
 
-        const ipDoc = await getDoc(doc(db, "blocked_ips", userIp));
+        const q = query(collection(db, "blocked_ips"));
+        const snapshot = await getDocs(q);
+        
+        let isBlocked = false;
+        snapshot.forEach((doc) => {
+            if (doc.id === userIp || doc.data().ip === userIp) {
+                isBlocked = true;
+            }
+        });
 
-        if (ipDoc.exists()) {
-            // 차단된 경우 처리
+        if (isBlocked) {
             document.body.innerHTML = `
                 <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; background:#fee2e2;">
-                    <div style="text-align:center; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                        <h1 style="color:#dc2626; font-size:24px; margin-bottom:10px;">🚫 접근이 제한된 IP입니다.</h1>
+                    <div style="text-align:center; padding:20px; background:white; border-radius:10px;">
+                        <h1 style="color:#dc2626;">🚫 접근이 제한된 IP입니다.</h1>
                     </div>
                 </div>
             `;
             throw new Error("ACCESS_BLOCKED");
         }
     } catch (e) {
-        if (e.message !== "ACCESS_BLOCKED") {
-            console.error("IP 체크 실패:", e);
-        }
+        if (e.message !== "ACCESS_BLOCKED") console.error("IP 체크 실패:", e);
     }
-} // <--- 여기가 중요! 이 괄호가 꼭 있어야 합니다.
+}
 
-// 2. 페이지 로드 시 ip차단 실시 통합 실행
+// 2. 통합 로드 이벤트 (가장 하단에 위치)
 window.addEventListener('DOMContentLoaded', async () => {
-    // 보안 체크 우선 실행
+    // 1. 보안 체크 우선 실행
     await checkIpBlock();
 
-    // 기존 데이터 로드
+    // 2. 기존 데이터 로드
     initBoard();
 
-    // 기존 쿼리스트링 처리
+    // 3. 쿼리스트링 상품 정보 처리
     const params = new URLSearchParams(window.location.search);
     if (params.has('product')) {
         const prodInput = document.getElementById('product-name');
@@ -931,15 +937,16 @@ window.addEventListener('DOMContentLoaded', async () => {
             priceInput.value = params.get('price');
             
             [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
-                el.readOnly = true;
-                el.style.backgroundColor = "#f3f4f6";
-                el.style.cursor = "not-allowed";
+                if(el) {
+                    el.readOnly = true;
+                    el.style.backgroundColor = "#f3f4f6";
+                    el.style.cursor = "not-allowed";
+                }
             });
             switchView('write');
         }
     }
 });
-
 
 
 
