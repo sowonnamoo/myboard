@@ -859,3 +859,41 @@ confirmBtn.onclick = async () => {
         }
     }
 };
+
+
+
+// [보안] IP 차단 확인 및 접수 버튼 제어
+async function checkIpAndBlockAccess() {
+    try {
+        // 1. 접속자의 IP를 가져오는 외부 서비스 호출 (무료 API)
+        const response = await fetch("https://api.ipify.org?format=json");
+        const data = await response.json();
+        const userIp = data.ip;
+
+        // 2. Firebase에서 차단 목록 확인
+        const blockedDoc = await getDoc(doc(db, "blocked_ips", userIp));
+        
+        if (blockedDoc.exists()) {
+            console.log("⚠️ 차단된 IP입니다. 접수 기능을 제한합니다.");
+            const writeBtn = document.getElementById("go-write-btn");
+            if (writeBtn) {
+                // 버튼 제거 또는 숨김 처리
+                writeBtn.style.display = "none";
+                // 혹은 완전히 제거
+                // writeBtn.remove();
+            }
+            // 필요 시 알림창 추가
+            // alert("보안 정책에 의해 접수 기능이 제한되었습니다.");
+        }
+    } catch (e) {
+        console.error("IP 확인 중 오류 발생:", e);
+    }
+}
+
+// 페이지 로드 시 IP 체크 실행
+checkIpAndBlockAccess();
+
+
+
+
+
