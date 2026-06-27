@@ -813,113 +813,15 @@ window.downloadFile = async (url, filename) => {
 
 
 
+let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
 
-
-// [보안] IP 차단 확인 (페이지 로드 시 딱 한 번만 실행)
-async function applyIpSecurity() {
-    try {
-        const response = await fetch("https://api.ipify.org?format=json");
-        const data = await response.json();
-        const docSnap = await getDoc(doc(db, "blocked_ips", data.ip));
-        
-        if (docSnap.exists()) {
-            const style = document.createElement('style');
-            style.innerHTML = '#save-btn { display: none !important; }';
-            document.head.appendChild(style);
-        }
-    } catch (e) {
-        console.log("보안 체크 생략");
-    }
-}
-
-// 1회 실행
-applyIpSecurity();
-
-// 아이피차단글 원천 작성금지 (저장 시점 재검증)
-document.getElementById("save-btn").addEventListener("click", async (event) => {
-    // 버튼 누르는 시점에만 확인 (평소엔 가만히 있음)
-    const response = await fetch("https://api.ipify.org?format=json");
-    const data = await response.json();
-    const docSnap = await getDoc(doc(db, "blocked_ips", data.ip));
-    
-    if (docSnap.exists()) {
-        alert("접수가 차단된 IP입니다.");
-        event.stopImmediatePropagation(); // 저장 로직 중단
-        return;
-    }
-});
-
-
-
-// 차단글 글접수차단
-let isIpChecked = false;
-let isBlockedIp = false;
-
-document.getElementById("save-btn").addEventListener("click", async (event) => {
-    // 1. 아직 IP 체크를 안 했다면 한 번만 체크 (데이터 소모 방지)
-    if (!isIpChecked) {
-        try {
-            const response = await fetch("https://api.ipify.org?format=json");
-            const data = await response.json();
-            const docSnap = await getDoc(doc(db, "blocked_ips", data.ip));
-            isBlockedIp = docSnap.exists();
-            isIpChecked = true; // 체크 완료 표시
-        } catch (e) {
-            console.error("IP 보안 체크 실패, 저장 진행", e);
-        }
-    }
-
-    // 2. 차단된 IP라면 저장 로직 실행 중단
-    if (isBlockedIp) {
-        alert("접수가 차단되었습니다.");
-        return; // 여기서 함수 종료 -> 아래의 데이터 저장 코드(addDoc)가 실행되지 않음
-    }
-
-    // 3. 차단되지 않았다면 아래에 기존 접수하기 저장 로직(addDoc 등)을 그대로 두세요.
-    // (이 아래의 기존 코드들은 수정할 필요가 없습니다)
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// 1. 버튼 개인정보 보호기능 10회/3타임로직
-let failCount = 0; 
-
-const modalConfirmBtn = document.getElementById("modal-confirm-btn"); 
-
-modalConfirmBtn.onclick = async () => {
-    const inputVal = document.getElementById("modal-password-input").value;
-    
-    // [수정] 데이터가 비어있으면 즉시 재조회 (알림창 뜨는 현상 제거)
-    if (typeof storedPass === 'undefined' || !storedPass) {
-        try {
-            const snap = await getDoc(doc(db, "boards", currentViewId));
-            if (snap.exists()) {
-                storedPass = snap.data().password;
-            } else {
-                alert("데이터를 찾을 수 없습니다.");
-                return;
-            }
-        } catch (e) {
-            alert("조회 중 오류가 발생했습니다.");
-            return;
-        }
-    }
-
+// 비밀번호 확인 버튼 클릭 시 카운트 로직
+confirmBtn.onclick = async () => {
+    const inputVal = input.value;
     const isNumeric = /^\d+$/.test(storedPass);
     const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
+    // [추가된 로직] 3시간 차단 체크
     const blockUntil = localStorage.getItem(`block_${id}`);
     if (blockUntil && Date.now() < parseInt(blockUntil)) {
         alert("비밀번호 10회 오류로 인해 3시간 동안 차단되었습니다.");
@@ -927,28 +829,33 @@ modalConfirmBtn.onclick = async () => {
     }
 
     if (inputVal === passToCompare) {
-        failCount = 0;
+        failCount = 0; // 성공 시 횟수 초기화
         document.getElementById("fail-count-display").classList.add("hidden");
+        
         modal.classList.add("hidden");
-        // ... (이후 성공 로직 그대로 유지)
+        currentViewId = id;
+
+        document.getElementById("view-list").classList.add("hidden");
+        document.getElementById("view-detail").classList.remove("hidden");
+        
+        await checkMemoAndSetButton(id, data.sian);
+        // ... (이후 제목 및 이미지 로드 로직 동일)
     } else {
         failCount++;
+        // 화면에 틀린 횟수 업데이트
         const failDisplay = document.getElementById("fail-count-display");
         const failNum = document.getElementById("fail-num");
-        if (failDisplay && failNum) {
-            failNum.innerText = failCount;
-            failDisplay.classList.remove("hidden");
-        }
+        failNum.innerText = failCount;
+        failDisplay.classList.remove("hidden");
+
         if (failCount >= 10) {
+            // 3시간(10800000ms) 후 차단 해제
             localStorage.setItem(`block_${id}`, Date.now() + 10800000);
             alert("10회 이상 비밀번호가 틀려 3시간 동안 조회가 차단됩니다.");
             modal.classList.add("hidden");
-            failCount = 0; 
+            failCount = 0; // 횟수 초기화
         } else {
             alert(`비밀번호가 일치하지 않습니다. (${failCount}/10)`);
         }
     }
 };
-
-
-
