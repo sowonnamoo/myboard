@@ -812,7 +812,7 @@ window.downloadFile = async (url, filename) => {
 
 
 
-// ip차단 기능
+// [보안] IP 차단 확인 및 '접수하기' 버튼만 숨기기
 async function applyIpSecurity() {
     try {
         const response = await fetch("https://api.ipify.org?format=json");
@@ -822,33 +822,22 @@ async function applyIpSecurity() {
         const docSnap = await getDoc(doc(db, "blocked_ips", userIp));
         
         if (docSnap.exists()) {
-            console.log("차단된 IP입니다. UI를 제거합니다.");
+            console.log("차단된 IP입니다. 접수하기 버튼을 제거합니다.");
             
-            // 1. 버튼을 숨기는 함수 정의
-            const hideButtons = () => {
-                const style = document.createElement('style');
-                style.innerHTML = `
-                    #go-write-btn { display: none !important; }
-                    #save-btn { display: none !important; }
-                `;
-                // 스타일이 이미 있으면 추가하지 않음
-                if (!document.getElementById('security-style')) {
-                    style.id = 'security-style';
-                    document.head.appendChild(style);
-                }
-            };
-
-            // 2. 즉시 실행
-            hideButtons();
-
-            // 3. 화면이 바뀔 때마다 다시 숨기기 (MutationObserver)
-            const observer = new MutationObserver(hideButtons);
-            observer.observe(document.body, { childList: true, subtree: true });
+            // #save-btn (주문작성 화면의 접수하기 버튼)만 숨김
+            const style = document.createElement('style');
+            style.innerHTML = `
+                #save-btn { display: none !important; }
+            `;
+            document.head.appendChild(style);
         }
     } catch (e) {
         console.error("보안 체크 오류:", e);
     }
 }
+
+// 코드 최상단 혹은 적절한 위치에서 실행
+applyIpSecurity();
 
 // 페이지 로드 완료 시 실행
 window.addEventListener('DOMContentLoaded', applyIpSecurity
@@ -856,10 +845,20 @@ window.addEventListener('DOMContentLoaded', applyIpSecurity
 );
 
 
+// 아이피차단글 원천 작성금지
+document.getElementById("save-btn").addEventListener("click", async () => {
+    // 1. 여기서 다시 한번 IP 확인 (사용자가 버튼을 억지로 살려내서 클릭했더라도 여기서 컷!)
+    const response = await fetch("https://api.ipify.org?format=json");
+    const data = await response.json();
+    const docSnap = await getDoc(doc(db, "blocked_ips", data.ip));
+    
+    if (docSnap.exists()) {
+        alert("접수가 차단된 IP입니다.");
+        return; // 여기서 함수 종료 (데이터 저장 안 됨)
+    }
 
-
-
-
+    // 2. 이후 원래 있던 데이터 저장 코드 실행...
+});
 
 
 
