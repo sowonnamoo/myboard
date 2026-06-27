@@ -389,7 +389,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
     password: document.getElementById('phone').value.slice(-4),
     message: document.getElementById('message').value,
-    ip: await getIpAddress(),
     file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
     file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
     views: 0,
@@ -817,8 +816,6 @@ window.downloadFile = async (url, filename) => {
 let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
 
 // 비밀번호 확인 버튼 클릭 시 카운트 로직
-const confirmBtn = document.getElementById("modal-confirm-btn");
-if (confirmBtn) {
 confirmBtn.onclick = async () => {
     const inputVal = input.value;
     const isNumeric = /^\d+$/.test(storedPass);
@@ -862,91 +859,3 @@ confirmBtn.onclick = async () => {
         }
     }
 };
-
-
-// IP 수집용
-async function getIpAddress() {
-    try {
-        const res = await fetch("https://api.ipify.org?format=json");
-        const data = await res.json();
-        return data.ip;
-    } catch (e) {
-        return "0.0.0.0"; // IP 조회 실패 시 기본값
-    }
-}
-
-
-
-
-
-
-// 1. IP 차단 확인 함수
-async function checkIpBlock() {
-    try {
-        const response = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
-        const data = await response.json();
-        const userIp = data.ip;
-        
-        console.log("현재 접속 IP:", userIp);
-
-        const q = query(collection(db, "blocked_ips"));
-        const snapshot = await getDocs(q);
-        
-        let isBlocked = false;
-        snapshot.forEach((doc) => {
-            if (doc.id === userIp || doc.data().ip === userIp) {
-                isBlocked = true;
-            }
-        });
-
-        if (isBlocked) {
-            document.body.innerHTML = `
-                <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; background:#fee2e2;">
-                    <div style="text-align:center; padding:20px; background:white; border-radius:10px;">
-                        <h1 style="color:#dc2626;">🚫 접근이 제한된 IP입니다.</h1>
-                    </div>
-                </div>
-            `;
-            throw new Error("ACCESS_BLOCKED");
-        }
-    } catch (e) {
-        if (e.message !== "ACCESS_BLOCKED") console.error("IP 체크 실패:", e);
-    }
-}
-
-// 2. 통합 로드 이벤트 (가장 하단에 위치)
-window.addEventListener('DOMContentLoaded', async () => {
-    // 1. 보안 체크 우선 실행
-    await checkIpBlock();
-
-    // 2. 기존 데이터 로드
-    initBoard();
-
-    // 3. 쿼리스트링 상품 정보 처리
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('product')) {
-        const prodInput = document.getElementById('product-name');
-        const qtyInput = document.getElementById('quantity');
-        const sizeInput = document.getElementById('size');
-        const priceInput = document.getElementById('price');
-        
-        if(prodInput) {
-            prodInput.value = params.get('product');
-            qtyInput.value = params.get('qty');
-            sizeInput.value = params.get('size');
-            priceInput.value = params.get('price');
-            
-            [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
-                if(el) {
-                    el.readOnly = true;
-                    el.style.backgroundColor = "#f3f4f6";
-                    el.style.cursor = "not-allowed";
-                }
-            });
-            switchView('write');
-        }
-    }
-});
-
-
-
