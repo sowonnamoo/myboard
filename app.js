@@ -824,100 +824,42 @@ window.downloadFile = async (url, filename) => {
 
 
 // [보안] IP 차단 확인 및 '접수하기' 버튼만 숨기기
-
 async function applyIpSecurity() {
-
     try {
-
         const response = await fetch("https://api.ipify.org?format=json");
-
         const data = await response.json();
-
         const userIp = data.ip;
-
-
-
         const docSnap = await getDoc(doc(db, "blocked_ips", userIp));
-
-        
-
         if (docSnap.exists()) {
-
             console.log("차단된 IP입니다. 접수하기 버튼을 제거합니다.");
-
-            
-
             // #save-btn (주문작성 화면의 접수하기 버튼)만 숨김
-
             const style = document.createElement('style');
-
             style.innerHTML = `
-
                 #save-btn { display: none !important; }
-
             `;
-
             document.head.appendChild(style);
-
         }
-
     } catch (e) {
-
         console.error("보안 체크 오류:", e);
-
     }
-
 }
-
-
-
 // 코드 최상단 혹은 적절한 위치에서 실행
-
 applyIpSecurity();
-
-
-
 // 페이지 로드 완료 시 실행
-
 window.addEventListener('DOMContentLoaded', applyIpSecurity
-
-
-
 );
 
 
-
-
-
-
-
-
-
-
 // 아이피차단글 원천 작성금지
-
 document.getElementById("save-btn").addEventListener("click", async () => {
-
     // 1. 여기서 다시 한번 IP 확인 (사용자가 버튼을 억지로 살려내서 클릭했더라도 여기서 컷!)
-
     const response = await fetch("https://api.ipify.org?format=json");
-
     const data = await response.json();
-
     const docSnap = await getDoc(doc(db, "blocked_ips", data.ip));
-
-    
-
     if (docSnap.exists()) {
-
         alert("접수가 차단된 IP입니다.");
-
         return; // 여기서 함수 종료 (데이터 저장 안 됨)
-
     }
-
-
-
     // 2. 이후 원래 있던 데이터 저장 코드 실행...
 
 });
