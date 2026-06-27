@@ -878,18 +878,21 @@ async function getIpAddress() {
 // 1. IP 차단 확인 함수
 async function checkIpBlock() {
     try {
-        const response = await fetch('https://api.ipify.org?format=json');
+        // IP 확인 시 캐시를 완전히 무시하도록 수정
+        const response = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
         const data = await response.json();
         const userIp = data.ip;
+        
+        console.log("현재 접속 IP:", userIp); // F12 개발자 도구 콘솔에서 확인
 
         const ipDoc = await getDoc(doc(db, "blocked_ips", userIp));
 
         if (ipDoc.exists()) {
+            // 차단된 경우 처리
             document.body.innerHTML = `
                 <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; background:#fee2e2;">
                     <div style="text-align:center; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                        <h1 style="color:#dc2626; font-size:24px; margin-bottom:10px;">error</h1>
-                        <p style="color:#4b5563;">error-에러코드0121</p>
+                        <h1 style="color:#dc2626; font-size:24px; margin-bottom:10px;">🚫 접근이 제한된 IP입니다.</h1>
                     </div>
                 </div>
             `;
@@ -897,12 +900,12 @@ async function checkIpBlock() {
         }
     } catch (e) {
         if (e.message !== "ACCESS_BLOCKED") {
-            console.warn("보안 점검 완료:", e.message);
+            console.error("IP 체크 실패:", e);
         }
     }
-}
+} // <--- 여기가 중요! 이 괄호가 꼭 있어야 합니다.
 
-// 2. 페이지 로드 시 ip차단 실시 통합 실행 (기존 로직 포함)
+// 2. 페이지 로드 시 ip차단 실시 통합 실행
 window.addEventListener('DOMContentLoaded', async () => {
     // 보안 체크 우선 실행
     await checkIpBlock();
@@ -933,7 +936,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
-
 
 
 
