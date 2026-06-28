@@ -1,25 +1,24 @@
-<button onclick="addToCart()">장바구니 담기</button>
-
-<script>
-window.addToCart = function() {
-    // 1. 저장할 상품 데이터 (키값이 index5와 완벽 일치해야 함)
-    const product = {
-        item: "테스트 명함", 
-        width: 90,
-        height: 50,
-        qty: 1,
-        price: 15000
-    };
-
-    // 2. 장바구니 배열 가져오기
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
-    
-    // 3. 상품 추가
-    cart.push(product);
-    
-    // 4. 저장 후 이동
-    localStorage.setItem("cart", JSON.stringify(cart));
-    alert("담겼습니다! 주문 페이지로 이동합니다.");
-    window.location.href = "index5.html"; 
-};
-</script>
+<!DOCTYPE html>
+<html lang="ko">
+<body>
+    <button onclick="addToCart()">장바구니 담기</button>
+    <script>
+    function addToCart() {
+        const product = {
+            productName: "테스트 명함",
+            gaa: 90,
+            seee: 50,
+            quantity: 1,
+            price: 15000,
+            hoo: "금박",
+            file1Url: "",
+            file2Url: ""
+        };
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        cart.push(product);
+        localStorage.setItem("cart", JSON.stringify(cart));
+        location.href = "index5.html";
+    }
+    </script>
+</body>
+</html>
