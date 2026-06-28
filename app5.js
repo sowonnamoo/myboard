@@ -3,9 +3,20 @@ import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/fir
 
 const cart = JSON.parse(localStorage.getItem("cart")) || [];
 
-// 화면에 장바구니 리스트 렌더링
+
+
+
+
+// 장바구니
 function renderCart() {
     const list = document.getElementById("cart-list");
+    const cart = JSON.parse(localStorage.getItem("cart")) || []; // 여기서 데이터를 불러옴
+    
+    if (cart.length === 0) {
+        list.innerHTML = "<p>장바구니가 비어 있습니다.</p>";
+        return;
+    }
+
     let total = 0;
     list.innerHTML = "";
     
@@ -14,14 +25,22 @@ function renderCart() {
         total += price;
         list.innerHTML += `
         <div class="cart-item">
-            <div style="font-weight:bold; font-size:1rem;">${item.item || "상품"}</div>
-            <div style="margin-top:5px; color:#64748b; font-size:0.9rem;">
-                사이즈: ${item.width} x ${item.height}mm | 수량: ${item.qty}개 | 금액: ${price.toLocaleString()}원
-            </div>
+            <b>${item.item}</b> | 사이즈: ${item.width}x${item.height} | 수량: ${item.qty}개 | ${price.toLocaleString()}원
         </div>`;
     });
     document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
 }
+
+// 페이지가 로드되면 무조건 실행되게 함
+renderCart();
+
+
+
+
+
+
+
+
 
 // 접수 처리 (상품별 개별 문서 저장)
 window.submitOrder = async function() {
