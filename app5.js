@@ -61,3 +61,31 @@ window.submitOrder = async function() {
 window.execDaumPostcode = function() {
     new daum.Postcode({ oncomplete: (data) => document.getElementById('address').value = data.address }).open();
 };
+
+
+function renderCart() {
+    // localStorage에서 데이터를 가져옴
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const list = document.getElementById("cart-list");
+    let total = 0;
+    
+    list.innerHTML = ""; // 기존 내용 초기화
+    
+    cart.forEach(item => {
+        const price = Number(item.price) || 0;
+        total += price;
+        
+        list.innerHTML += `
+        <div class="cart-item">
+            <div style="font-weight:bold;">${item.item || "상품명 없음"}</div>
+            <div style="font-size:0.9rem; color:#666; margin-top:5px;">
+                사이즈: ${item.width || 0} x ${item.height || 0}mm | 
+                수량: ${item.qty || 0}개 | 
+                금액: ${price.toLocaleString()}원
+            </div>
+        </div>`;
+    });
+    
+    document.getElementById("total-price").innerText = "총 결제금액 : " + total.toLocaleString() + "원";
+}
+
