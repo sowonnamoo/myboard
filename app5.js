@@ -4,7 +4,7 @@ import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/fir
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     
-    // 쿼리 데이터 매핑
+    // 1. 자동 입력값 처리
     const gaa = params.get('width') || 0;
     const seee = params.get('height') || 0;
     
@@ -17,6 +17,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hoo').value = params.get('hoo') || '';
     document.getElementById('message').value = params.get('message') || '';
 
+    // 2. 시안 링크 처리
     if(params.get('f1')) { document.getElementById('file1Link').href = params.get('f1'); document.getElementById('file1Link').style.display = 'inline-block'; }
     if(params.get('f2')) { document.getElementById('file2Link').href = params.get('f2'); document.getElementById('file2Link').style.display = 'inline-block'; }
 });
@@ -26,7 +27,7 @@ window.submitOrder = async function() {
     const author = document.getElementById('author').value;
     const params = new URLSearchParams(window.location.search);
 
-    if(!author || !phone) return alert("성함과 연락처를 모두 입력해주세요.");
+    if(!author || !phone) return alert("성함과 연락처는 필수입니다.");
 
     const data = {
         createdAt: serverTimestamp(),
@@ -37,7 +38,7 @@ window.submitOrder = async function() {
         quantity: parseInt(params.get('qty')),
         price: parseInt(params.get('price')),
         hoo: params.get('hoo'),
-        message: params.get('message'),
+        message: document.getElementById('message').value, // 사용자가 수정한 메시지 반영
         file1Url: params.get('f1'),
         file2Url: params.get('f2'),
         author: author,
@@ -60,22 +61,3 @@ window.submitOrder = async function() {
 window.execDaumPostcode = function() {
     new daum.Postcode({ oncomplete: (data) => document.getElementById('address').value = data.address }).open();
 };
-
-/* 수정 가능 영역 (상품명/사이즈 등을 제외한 나머지 모두) */
-input, select, textarea { 
-    flex: 1; 
-    padding: 10px; 
-    border: 1px solid #e2e8f0; 
-    border-radius: 6px; 
-    box-sizing: border-box; 
-    background: white; /* 입력창은 항상 흰색 */
-    font-size: 1rem;
-}
-
-/* 고정(readonly) 영역만 회색 처리 */
-input[readonly] {
-    background: #f1f5f9; 
-    border-color: #e2e8f0;
-    color: #64748b;
-    cursor: not-allowed;
-}
