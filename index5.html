@@ -9,53 +9,31 @@
         :root { --primary: #4f46e5; }
         body { background: #f8fafc; font-family: 'Pretendard', sans-serif; display: flex; justify-content: center; padding: 20px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
-        h2 { margin-top: 0; text-align: center; color: #1e293b; margin-bottom: 25px; }
+        h2 { text-align: center; color: #1e293b; margin-bottom: 20px; }
         .form-row { display: flex; align-items: center; margin-bottom: 12px; }
         label { width: 100px; font-size: 0.85rem; color: #64748b; font-weight: 600; flex-shrink: 0; }
-        
-        /* 모든 입력창 기본 스타일 */
-        input, select, textarea { flex: 1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; background: white; }
-        
-        /* readonly 전용 회색 스타일 */
-        input[readonly] { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
-        
-        .btn-link { display: inline-block; padding: 8px 12px; background: #eee; text-decoration: none; color: #333; border-radius: 4px; font-size: 0.8rem; margin-right: 5px; }
-        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        input, select, textarea { flex: 1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: white; }
+        input[readonly] { background: #f1f5f9; color: #64748b; }
+        .cart-item { background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 0.9rem; border: 1px solid #eee; }
+        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>주문 확인 및 접수</h2>
-    <form id="orderForm">
-        <div class="form-row"><label>상품명</label><input type="text" id="productName" readonly></div>
-        <div class="form-row"><label>사이즈(mm)</label><input type="text" id="sizeCombined" readonly></div>
-        <input type="hidden" id="gaa">
-        <input type="hidden" id="seee">
-        <div class="form-row"><label>수량/단가</label>
-            <div style="flex:1; display:flex; gap:5px;">
-                <input type="text" id="quantity" readonly>
-                <input type="text" id="price" readonly>
-            </div>
-        </div>
-        <div class="form-row"><label>추가 옵션(hoo)</label><input type="text" id="hoo" readonly></div>
-        
-        <div class="form-row"><label>시안 확인</label>
-            <div>
-                <a id="file1Link" href="#" target="_blank" class="btn-link" style="display:none;">앞면 확인</a>
-                <a id="file2Link" href="#" target="_blank" class="btn-link" style="display:none;">뒷면 확인</a>
-            </div>
-        </div>
+    <h2>🛒 장바구니</h2>
+    <div id="cart-list"></div>
+    <div id="total-price" style="text-align:right; font-weight:bold; margin-bottom:20px;"></div>
 
-        <div class="form-row"><label>작업 메시지</label><textarea id="message" rows="2" placeholder="요청 사항을 입력하세요"></textarea></div>
+    <form id="orderForm">
         <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-        <div class="form-row"><label>접수자 성함</label><input type="text" id="author" placeholder="성함을 입력하세요"></div>
+        <div class="form-row"><label>작업 메시지</label><textarea id="message" rows="2" placeholder="요청 사항을 입력하세요"></textarea></div>
+        <div class="form-row"><label>접수자 성함</label><input type="text" id="author" placeholder="성함"></div>
         <div class="form-row"><label>전화번호</label><input type="tel" id="phone" placeholder="010-0000-0000"></div>
         <div class="form-row"><label>주소</label><input type="text" id="address" onclick="execDaumPostcode()" readonly placeholder="주소 검색(클릭)"></div>
         <div class="form-row"><label>결제 방식</label>
             <select id="paymentMethod"><option value="카드">카드결제</option><option value="무통장">무통장입금</option></select>
         </div>
-        
         <button type="button" onclick="submitOrder()">접수 완료</button>
     </form>
 </div>
