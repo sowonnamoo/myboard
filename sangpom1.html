@@ -1,34 +1,37 @@
-<button onclick="addToCart()">장바구니 담기</button>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>상품 테스트 페이지</title>
+</head>
+<body>
 
-<script>
-window.addToCart = function() {
-    // 1. 상품 데이터 정의
-    const product = {
-        item: "명함 인쇄",
-        width: 90,
-        height: 50,
-        qty: 1,
-        hoo: "금박",
-        price: 15000 
-    };
+    <button onclick="addToCart()">장바구니 담기</button>
 
-    try {
-        // 2. localStorage에서 기존 장바구니 가져오기
+    <script>
+    function addToCart() {
+        // 1. 상품 데이터 생성
+        const product = {
+            item: "테스트 명함",
+            width: 90,
+            height: 50,
+            qty: 1,
+            price: 15000
+        };
+
+        // 2. localStorage 읽기
         let cart = JSON.parse(localStorage.getItem("cart")) || [];
         
         // 3. 상품 추가
         cart.push(product);
         
-        // 4. 저장 (제대로 저장되었는지 확인)
+        // 4. localStorage 저장
         localStorage.setItem("cart", JSON.stringify(cart));
         
-        // 5. 성공 확인 및 페이지 이동
-        alert("장바구니에 담겼습니다!");
-        window.location.href = "index5.html"; // 자동으로 이동
-        
-    } catch (e) {
-        console.error("장바구니 저장 에러:", e);
-        alert("저장 중 문제가 발생했습니다.");
+        // 5. 확인 및 이동
+        alert("장바구니 담김!");
+        location.href = "index5.html"; 
     }
-};
-</script>
+    </script>
+</body>
+</html>
