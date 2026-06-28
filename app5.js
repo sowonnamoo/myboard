@@ -60,3 +60,22 @@ window.submitOrder = async function() {
 window.execDaumPostcode = function() {
     new daum.Postcode({ oncomplete: (data) => document.getElementById('address').value = data.address }).open();
 };
+
+/* 수정 가능 영역 (상품명/사이즈 등을 제외한 나머지 모두) */
+input, select, textarea { 
+    flex: 1; 
+    padding: 10px; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 6px; 
+    box-sizing: border-box; 
+    background: white; /* 입력창은 항상 흰색 */
+    font-size: 1rem;
+}
+
+/* 고정(readonly) 영역만 회색 처리 */
+input[readonly] {
+    background: #f1f5f9; 
+    border-color: #e2e8f0;
+    color: #64748b;
+    cursor: not-allowed;
+}
