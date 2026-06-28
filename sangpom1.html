@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>상품 테스트 페이지</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f7; }
+        .product-card { background: white; padding: 20px; border-radius: 12px; max-width: 400px; margin: auto; }
+        button { width: 100%; padding: 15px; background: #22c55e; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="product-card">
+    <h3>상품명: 명함 인쇄</h3>
+    <p>사이즈: 90 x 50 (mm)</p>
+    <p>후가공: 금박 (+2,000원)</p>
+    <hr>
+    <p><strong>총 금액: 15,000원</strong></p>
+    
+    <button onclick="addToCart()">장바구니 담기</button>
+    <button onclick="location.href='index5.html'" style="background:#64748b;">주문 접수 페이지로 이동</button>
+</div>
+
+<script>
+window.addToCart = function() {
+    // 1. 저장할 상품 데이터 객체
+    const product = {
+        item: "명함 인쇄",
+        width: 90,
+        height: 50,
+        qty: 1,
+        hoo: "금박",
+        price: 15000 // 배송비 포함된 최종 금액
+    };
+
+    // 2. 기존 장바구니 가져오기 (없으면 빈 배열)
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    
+    // 3. 상품 추가
+    cart.push(product);
+    
+    // 4. 저장 및 알림
+    localStorage.setItem("cart", JSON.stringify(cart));
+    alert("장바구니에 담겼습니다!");
+};
+</script>
+
+</body>
+</html>
