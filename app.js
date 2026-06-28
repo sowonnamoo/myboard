@@ -377,7 +377,12 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     // 1. 파일 업로드 실행
     const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value);
     const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value);
-        
+
+
+// [수정] IP 정보 가져오기
+    const userIp = await getUserIp();
+      
+      
     // 2. 파이어베이스에 모든 정보 저장 (누락 없이 합침)
   await addDoc(collection(db, "boards"), { 
     author: document.getElementById('input-author').value,
@@ -391,6 +396,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     message: document.getElementById('message').value,
     file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
     file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
+    ip: userIp, // <--- IP 주소 저장 추가
     views: 0,
     createdAt: new Date(),
     isDeleted: false,
@@ -867,6 +873,21 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
 
 
+
+
+
+
+// IP 주소를 가져오는 함수 추가
+async function getUserIp() {
+    try {
+        const response = await fetch("https://api.ipify.org?format=json");
+        const data = await response.json();
+        return data.ip;
+    } catch (e) {
+        console.error("IP 조회 실패:", e);
+        return "unknown";
+    }
+}
 
 
 
