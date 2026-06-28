@@ -3,8 +3,15 @@ import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/fir
 
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
+    
+    // 쿼리 데이터 매핑
+    const gaa = params.get('width') || 0;
+    const seee = params.get('height') || 0;
+    
     document.getElementById('productName').value = params.get('product') || '';
-    document.getElementById('sizeDisplay').value = `${params.get('width') || 0} x ${params.get('height') || 0}`;
+    document.getElementById('sizeCombined').value = `${gaa} x ${seee}`;
+    document.getElementById('gaa').value = gaa;
+    document.getElementById('seee').value = seee;
     document.getElementById('quantity').value = (params.get('qty') || 0) + '개';
     document.getElementById('price').value = (params.get('price') || 0) + '원';
     document.getElementById('hoo').value = params.get('hoo') || '';
@@ -16,21 +23,24 @@ window.addEventListener('DOMContentLoaded', () => {
 
 window.submitOrder = async function() {
     const phone = document.getElementById('phone').value;
+    const author = document.getElementById('author').value;
     const params = new URLSearchParams(window.location.search);
 
-    if(!document.getElementById('author').value || !phone) return alert("성함과 연락처는 필수입니다.");
+    if(!author || !phone) return alert("성함과 연락처를 모두 입력해주세요.");
 
     const data = {
         createdAt: serverTimestamp(),
         productName: params.get('product'),
-        size: { width: params.get('width'), height: params.get('height') },
+        size: document.getElementById('sizeCombined').value,
+        gaa: parseInt(document.getElementById('gaa').value),
+        seee: parseInt(document.getElementById('seee').value),
         quantity: parseInt(params.get('qty')),
         price: parseInt(params.get('price')),
         hoo: params.get('hoo'),
         message: params.get('message'),
         file1Url: params.get('f1'),
         file2Url: params.get('f2'),
-        author: document.getElementById('author').value,
+        author: author,
         phone: phone,
         address: document.getElementById('address').value,
         password: phone.slice(-4),
@@ -41,8 +51,9 @@ window.submitOrder = async function() {
     try {
         await addDoc(collection(db, "iiii"), data);
         alert("접수가 완료되었습니다.");
+        window.location.reload();
     } catch (e) {
-        alert("저장 실패");
+        alert("저장 실패: " + e.message);
     }
 };
 
