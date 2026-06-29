@@ -33,8 +33,10 @@
 
      const params = new URLSearchParams(window.location.search);
     const price = params.get('price'); // 여기서 price를 가져옴
-    const orderId = params.get('orderId'); 
-
+const orderId = params.get('orderId'); // jaecard가 URL에서 ID를 이미 가지고 있다고 가정
+const payUrl = `https://sowonnamoo.github.io/myjs/payment2?price=${price}&orderId=${orderId}`;
+window.open(payUrl, '_blank', ...);
+        
     // 콘솔로 찍어서 실제로 값이 들어오는지 확인 (F12 누르고 콘솔 탭 확인하세요)
     console.log("확인된 Price:", price);
     console.log("확인된 OrderId:", orderId);
