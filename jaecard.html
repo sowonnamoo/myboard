@@ -11,37 +11,47 @@
         <p class="text-gray-500 text-sm mb-6">카드 결제를 진행해 주세요.</p>
         <div class="bg-gray-100 p-4 rounded-lg mb-6">
             <p class="text-gray-600 text-xs uppercase tracking-wider mb-1">결제 금액</p>
-            <p id="priceDisplay" class="text-3xl font-black text-blue-600">0원</p>
+            <p id="priceDisplay" class="text-3xl font-black text-blue-600">계산 중...</p>
         </div>
         <button id="payBtn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg hover:bg-blue-700">카드결제 진행</button>
     </div>
 
     <script type="module">
-        const params = new URLSearchParams(window.location.search);
-        const price = params.get('price'); 
-        const orderId = params.get('orderId');
+        // 1. URL 파라미터 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const price = urlParams.get('price');
+        const orderId = urlParams.get('orderId');
 
-        console.log("확인된 Price:", price, "확인된 OrderId:", orderId);
+        console.log("받아온 가격 값:", price);
+        console.log("받아온 주문 ID:", orderId);
 
-        // 금액 표시 (오류 방지)
-        const priceDisplay = document.getElementById('priceDisplay');
+        // 2. 금액 표시 로직
+        const display = document.getElementById('priceDisplay');
         if (price) {
-            priceDisplay.innerText = parseInt(price).toLocaleString() + "원";
+            // 가격 표시 (숫자화 처리)
+            const numericPrice = parseInt(price);
+            display.innerText = numericPrice.toLocaleString() + "원";
         } else {
-            priceDisplay.innerText = "금액 오류";
+            display.innerText = "금액 확인 불가";
         }
 
+        // 3. 결제 버튼 이벤트
         document.getElementById('payBtn').onclick = function() {
-            if (!price) return alert("결제 금액 정보가 없습니다.");
+            if (!price) {
+                alert("결제 금액 정보를 가져올 수 없습니다.");
+                return;
+            }
 
-            // 결제창 호출 (payment2로 변경)
+            // payment2 창 열기
             const payUrl = `https://sowonnamoo.github.io/myjs/payment2?price=${price}&orderId=${orderId}`;
             const payWin = window.open(payUrl, '_blank', 'width=1000,height=700');
             
-            // 메시지 수신 이벤트 (결제 완료 신호 기다림)
+            // 결제 완료 메시지 수신
             window.addEventListener("message", function listener(e) {
                 if (e.data === "paymentSuccess") {
+                    // success5 페이지로 이동
                     window.location.href = `success5?price=${price}&orderId=${orderId}`;
+                    
                     if (payWin) payWin.close();
                     window.removeEventListener("message", listener);
                 }
