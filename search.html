@@ -249,7 +249,7 @@ ${
 
 window.deleteOrder = async (docId, isJajoo) => {
     // 경고 메시지 내용 변경
-    if (confirm("정말로 이 주문을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.")) {
+    if (confirm("정말로 이 주문을 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) {
         try {
             // isJajoo 값에 따라 컬렉션 경로를 다르게 설정
             const collectionName = isJajoo ? "jjjj" : "boards";
