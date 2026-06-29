@@ -28,7 +28,7 @@
 
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // 팝업 열기 함수 추가
         window.openPopup = (url) => {
@@ -217,7 +217,7 @@ ${
                    onclick="${isPending ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParams + "')"}" 
                    class="border px-2 py-1 text-xs ${(isCard && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
          
-   <a href="javascript:void(0)" 
+ <a href="javascript:void(0)" 
    onclick="${d.woonso1 ? "openPopup('" + d.woonso1 + "')" : ""}"
    class="border px-2 py-1 text-xs transition-colors duration-300 
    ${d.woonso1 
@@ -226,7 +226,13 @@ ${
    }">
    ${d.woonso1 ? '출고완료/운송장보기' : '운송장'}
 </a>
-                        
+
+${
+    (d.isJajoo && d.status === '대기') 
+    ? `<button onclick="deleteOrder('${d.id}')" 
+        class="border px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-700">주문삭제</button>` 
+    : ''
+}      
                         
                         
                         
@@ -240,6 +246,21 @@ ${
         resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
     }
         });
+
+window.deleteOrder = async (docId) => {
+    if (confirm("정말로 이 주문을 삭제하시겠습니까?")) {
+        try {
+            await deleteDoc(doc(db, "jjjj", docId));
+            alert("삭제되었습니다.");
+            // 새로고침하여 목록 갱신
+            document.getElementById('search-btn').click();
+        } catch (error) {
+            console.error("삭제 실패:", error);
+            alert("삭제 중 오류가 발생했습니다.");
+        }
+    }
+};
+    
     </script>
 </body>
 </html>
