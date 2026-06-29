@@ -36,20 +36,21 @@
                     <div><label class="block text-sm font-medium text-gray-600 mb-1">세로 (mm)</label><input type="number" id="height_jpg" value="100" class="w-full p-2 border border-gray-300 rounded outline-none"></div>
                 </div>
                 <button onclick="downloadJPG()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg">CMYK JPG 다운로드</button>
-                <p class="text-xs text-gray-400 mt-3 text-center">* 500 DPI 고해상도 칼선 이미지입니다.</p>
             </section>
         </div>
     </div>
 
     <script>
-        // EPS 다운로드 로직 (기존)
         function downloadEPS() {
             const w = parseFloat(document.getElementById('width_eps').value);
             const h = parseFloat(document.getElementById('height_eps').value);
             const f = 2.83465;
             const o = 3 * f;
             const tw = (w + 6) * f, th = (h + 6) * f;
-            let eps = `%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 ${tw} ${th}\n0.5 setlinewidth\n0 0 0 1 setcmykcolor\n0 0 moveto ${tw} 0 lineto ${tw} ${th} lineto 0 ${th} lineto closepath stroke\n${o} ${o} moveto ${tw-o} ${o} lineto ${tw-o} ${th-o} lineto ${o} ${th-o} lineto closepath stroke\nshowpage`;
+            
+            // 안쪽 테두리 붉은색(CMYK 0 1 1 0) 적용
+            let eps = `%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 ${tw} ${th}\n0.5 setlinewidth\n% 바깥 테두리 (검정)\n0 0 0 1 setcmykcolor\n0 0 moveto ${tw} 0 lineto ${tw} ${th} lineto 0 ${th} lineto closepath stroke\n% 안쪽 테두리 (빨강)\n0 1 1 0 setcmykcolor\n${o} ${o} moveto ${tw-o} ${o} lineto ${tw-o} ${th-o} lineto ${o} ${th-o} lineto closepath stroke\nshowpage`;
+            
             const blob = new Blob([eps], {type: 'application/postscript'});
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -57,7 +58,6 @@
             link.click();
         }
 
-        // JPG 다운로드 로직 (500 DPI)
         function downloadJPG() {
             const w = parseFloat(document.getElementById('width_jpg').value);
             const h = parseFloat(document.getElementById('height_jpg').value);
@@ -72,12 +72,14 @@
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, pxW, pxH);
-            ctx.strokeStyle = "black";
             ctx.lineWidth = Math.round(0.2 * (dpi / 25.4));
             
-            // 바깥 테두리
+            // 바깥 테두리 (검정)
+            ctx.strokeStyle = "black";
             ctx.strokeRect(0, 0, pxW, pxH);
-            // 안쪽 테두리
+            
+            // 안쪽 테두리 (빨강)
+            ctx.strokeStyle = "red";
             ctx.strokeRect(offset, offset, pxW - (offset * 2), pxH - (offset * 2));
 
             const link = document.createElement('a');
