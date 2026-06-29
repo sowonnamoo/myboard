@@ -2,154 +2,25 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>주문조회</title>
-    <style>
-        body { margin:0; background:#f5f5f7; font-family:'Apple SD Gothic Neo',sans-serif; }
-        .wrap { max-width:800px; margin:0 auto; padding:40px 20px; }
-        .box { background:#fff; padding:30px; border-radius:20px; }
-        input { width:100%; padding:15px; border:1px solid #ddd; border-radius:12px; font-size:16px; margin-bottom:15px; box-sizing: border-box; }
-        button { width:100%; padding:18px; border:none; border-radius:12px; background:#007AFF; color:#fff; font-size:18px; font-weight:bold; cursor:pointer; }
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-        .btn-group button { flex: 1 1 calc(50% - 10px); padding: 12px; font-size: 14px; }
-        .btn-secondary { background: #555; }
-        .result { margin-top:30px; }
-        .order-card { background:#fff; border-radius:20px; padding:20px; margin-top:20px; box-shadow:0 5px 20px rgba(0,0,0,0.05); }
-        .item { border-top:1px solid #eee; padding:15px 0; }
-        .price { color:#e31e23; font-weight:bold; }
-        .bad { color:#999; margin-top:20px; text-align: center; }
-    </style>
+    <title>주문작성 게시판 (PC 전용)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="bg-white">
 
-<div class="wrap">
-    <div class="box">
-        <h2>📦 주문조회</h2>
-        <input id="phone" placeholder="전화번호 입력 (01012345678)">
-        <button onclick="searchOrder()">조회하기</button>
-        <div id="result" class="result"></div>
-    </div>
-</div>
+    <div class="w-[744px] mx-auto min-h-screen">
+        
+<header class="w-full flex justify-center pb-4">           <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+            <map name="Map">
+                <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
+                <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo.github.io/myboard/index2" target="_self">
+                <area shape="rect" coords="383,-1,572,58" href="https://isecogr.cafe24.com/front/php/b/board_list.php?board_no=1002" target="_self">
+                <area shape="rect" coords="572,-3,742,58" href="https://sowonnamoo1004.cafe24.com/front/php/b/board_list.php?board_no=1" target="_self">
+            </map>
+        </header>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
-        authDomain: "ecogr-636c6.firebaseapp.com",
-        projectId: "ecogr-636c6",
-        storageBucket: "ecogr-636c6.firebasestorage.app",
-        messagingSenderId: "95745358447",
-        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    window.searchOrder = async function(){
-        const phone = document.getElementById("phone").value.trim();
-        const resultBox = document.getElementById("result");
-        resultBox.innerHTML = "";
-
-        if(phone.length < 10){
-            resultBox.innerHTML = `<div class="bad">전화번호 10자리를 입력하세요</div>`;
-            return;
-        }
-
-        try{
-            const q = query(collection(db, "orders"), where("phone", "==", phone));
-            const snap = await getDocs(q);
-
-            if(snap.empty){
-                resultBox.innerHTML = `<div class="bad">주문이 없습니다</div>`;
-                return;
-            }
-
-            snap.forEach(docSnap => {
-                const data = docSnap.data();
-                const docId = docSnap.id; // 문서 ID 획득
-                const safeDataStr = encodeURIComponent(JSON.stringify(data));
-                const payMethod = data.payMethod || "";
-                
-                let payButtons = "";
-                
-                // 상태가 '결제취소'가 아닐 때만 버튼 노출
-                if (data.status !== "결제취소") {
-                    if (payMethod.includes("bank") || payMethod.includes("무통장")) {
-                        payButtons = `
-                            <button class="btn-secondary" onclick="openReceipt('tax', '${safeDataStr}')">세금계산서</button>
-                            <button class="btn-secondary" onclick="openReceipt('delivery', '${safeDataStr}')">거래명세서</button>
-                            <button class="btn-secondary" onclick="openReceipt('simple', '${safeDataStr}')">간이영수증</button>
-                            <button class="btn-secondary" onclick="openReceipt('cash', '${safeDataStr}')">현금영수증</button>
-                        `;
-                    } else {
-                        payButtons = `
-                            <button class="btn-secondary" onclick="openReceipt('card', '${safeDataStr}')">카드전표 발행</button>
-                            <button class="btn-secondary" onclick="openReceipt('delivery', '${safeDataStr}')">거래명세서</button>
-                            <button class="btn-secondary" style="background:#ff3b30;" onclick="cancelPayment('${docId}')">결제 취소</button>
-                        `;
-                    }
-                    payButtons += `<button onclick="reOrder('${safeDataStr}')">🛒 재주문하기</button>`;
-                }
-
-                let itemsHtml = "";
-                data.items.forEach(item=>{
-                    itemsHtml += `
-                    <div class="item">
-                        <b>${item.item}</b><br>
-                        수량 : ${item.qty}<br>
-                        사이즈 : ${item.width} × ${item.height}<br>
-                        <div class="price">${Number(item.price).toLocaleString()}원</div>
-                    </div>`;
-                });
-
-                resultBox.innerHTML += `
-                <div class="order-card">
-                    <h3>주문번호 : ${data.orderId}</h3>
-                    <p>상태 : ${data.status}</p>
-                    <p>총 결제금액 : <b style="color:#e31e23">${data.total.toLocaleString()}원</b></p>
-                    <p>주소 : ${data.address}</p>
-                    ${itemsHtml}
-                    <div class="btn-group">
-                        ${payButtons}
-                    </div>
-                </div>`;
-            });
-        } catch(e) {
-            console.log(e);
-            resultBox.innerHTML = `<div class="bad">조회 오류 발생</div>`;
-        }
-    }
-
-    window.cancelPayment = async function(docId) {
-        if(confirm("정말 결제를 취소하시겠습니까?")) {
-            try {
-                const orderRef = doc(db, "orders", docId);
-                await updateDoc(orderRef, { status: "결제취소" });
-                alert("결제가 취소되었습니다.");
-                searchOrder(); // 목록 새로고침
-            } catch (e) {
-                alert("취소 처리 중 오류가 발생했습니다.");
-            }
-        }
-    }
-
-    window.openReceipt = function(type, encodedDataStr) {
-        const data = JSON.parse(decodeURIComponent(encodedDataStr));
-        alert(type + " 처리 페이지로 이동 (주문번호: " + data.orderId + ")");
-    }
-
-    window.reOrder = function(encodedDataStr){
-        const data = JSON.parse(decodeURIComponent(encodedDataStr));
-        const reOrderItems = data.items.map(item => ({
-            item: item.item, qty: item.qty, width: item.width, height: item.height
-        }));
-        localStorage.setItem("cartItems", JSON.stringify(reOrderItems));
-        localStorage.setItem("reOrderAddress", data.address);
-        location.href = "cart.html"; 
-    }
-</script>
-
-</body>
-</html>
+        <div class="py-0">
+            
+<section id="view-list" class="space-y-4">
+    <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
+        <h2 class="text-xl font-bold mb-4">칼선 다운로드</h2>
