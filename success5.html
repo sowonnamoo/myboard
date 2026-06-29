@@ -25,50 +25,39 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        async function processPaymentStatus() {
-            const statusText = document.getElementById("status-text");
-            const price = new URLSearchParams(window.location.search).get('price');
+       async function processPaymentStatus() {
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('orderId'); // 이제 여기서 ID를 제대로 받습니다.
 
-            if (!price) {
-                statusText.innerText = "결제 정보 오류";
-                return;
-            }
-
-            try {
-                // 1. 상태가 '대기'인 문서들 조회
-                const q = query(collection(db, "boards"), where("status", "==", "대기"));
-                const querySnapshot = await getDocs(q);
-
-                let found = false;
-                
-                // 2. 가격 비교 및 업데이트
-                for (const doc of querySnapshot.docs) {
-                    if (String(doc.data().price) === String(price)) {
-                        await updateDoc(doc.ref, { status: "카드결제" });
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (found) {
-                    statusText.innerText = "결제가 완료되었습니다!";
-                    
-                    // 3. 부모창 새로고침 후 닫기
-                    if (window.opener && !window.opener.closed) {
-                        window.opener.location.reload();
-                    }
-                    setTimeout(() => window.close(), 1000);
-                } else {
-                    statusText.innerText = "결제전송완료";
-                }
-            } catch (err) {
-                console.error(err);
-                statusText.innerText = "결제전송완료";
-            }
+        if (!orderId) {
+            document.getElementById("status-text").innerText = "결제 정보 오류 (ID 없음)";
+            return;
         }
 
-        // 실행
-        processPaymentStatus();
-    </script>
+        try {
+            // boards 또는 jjjj 컬렉션에서 해당 orderId 찾기
+            const docRefBoards = doc(db, "boards", orderId);
+            const docRefJjjj = doc(db, "jjjj", orderId);
+            
+            // 병렬로 확인하거나 하나씩 확인
+            let docSnap = await getDoc(docRefBoards);
+            let finalDocRef = docRefBoards;
+
+            if (!docSnap.exists()) {
+                docSnap = await getDoc(docRefJjjj);
+                finalDocRef = docRefJjjj;
+            }
+
+            if (docSnap.exists()) {
+                await updateDoc(finalDocRef, { status: "카드결제" });
+                document.getElementById("status-text").innerText = "결제가 완료되었습니다!";
+                // ... (이후 닫기 로직)
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    processPaymentStatus();
+</script>
 </body>
 </html>
