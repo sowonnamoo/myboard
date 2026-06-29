@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카드 결제 안내</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center h-screen">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm text-center">
+        <h2 class="text-xl font-bold text-gray-800 mb-2">접수가 완료되었습니다.</h2>
+        <p class="text-gray-500 text-sm mb-6">아래 버튼을 눌러 결제를 진행해주세요.</p>
+
+        <div class="bg-gray-100 p-4 rounded-lg mb-6">
+            <p class="text-gray-600 text-xs uppercase tracking-wider mb-1">결제 예정 금액</p>
+            <p id="priceDisplay" class="text-3xl font-black text-blue-600">0원</p>
+        </div>
+
+        <button id="payBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg transition duration-200">
+            카드결제 진행
+        </button>
+
+        <div id="completeMsg" class="hidden mt-6">
+            <p class="text-green-600 font-bold text-lg">결제 성공!</p>
+            <p class="text-gray-500 text-sm mt-1">창을 닫아주세요.</p>
+        </div>
+    </div>
+
+    <script>
+        // URL 파라미터에서 price 가져오기
+        const params = new URLSearchParams(window.location.search);
+        const price = params.get('price') || "0";
+        document.getElementById('priceDisplay').innerText = parseInt(price).toLocaleString() + "원";
+
+        document.getElementById('payBtn').onclick = function() {
+            // 결제 창 호출 (실제 결제 URL로 변경하세요)
+            const payWin = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${price}`, '_blank', 'width=1000,height=700');
+            
+            // 결제 완료 메시지 수신 (결제 창에서 postMessage를 보내야 함)
+            window.addEventListener("message", function(e) {
+                if (e.data === "paymentSuccess") {
+                    document.getElementById('payBtn').classList.add('hidden');
+                    document.getElementById('completeMsg').classList.remove('hidden');
+                    if (payWin) payWin.close();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
