@@ -31,26 +31,26 @@
         };
         const db = getFirestore(initializeApp(firebaseConfig));
 
-        const params = new URLSearchParams(window.location.search);
-        const price = params.get('price');
-        const orderId = params.get('orderId');
+      const params = new URLSearchParams(window.location.search);
+    const price = params.get('price');
+    const orderId = params.get('orderId'); // 여기서 ID를 가져오고 있어야 합니다!
 
-        document.getElementById('priceDisplay').innerText = parseInt(price || 0).toLocaleString() + "원";
-
-        document.getElementById('payBtn').onclick = function() {
-            const payWin = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${price}`, '_blank', 'width=1000,height=700');
-            
-           window.addEventListener("message", async function listener(e) {
-    if (e.data === "paymentSuccess") {
-        // [수정] 결제 완료 후 success4로 이동할 때 orderId를 붙여서 이동
-        const targetUrl = `success4?price=${price}&orderId=${orderId}`;
-        window.location.href = targetUrl;
+    document.getElementById('payBtn').onclick = function() {
+        // [중요 수정] 결제창을 열 때 orderId를 URL 파라미터에 포함시킵니다.
+        const payUrl = `https://sowonnamoo.github.io/myjs/payment?price=${price}&orderId=${orderId}`;
+        const payWin = window.open(payUrl, '_blank', 'width=1000,height=700');
         
-        if (payWin) payWin.close();
-                    window.location.href = "index.html"; // 결제 후 돌아갈 페이지 주소
-                }
-            });
-        };
-    </script>
+        window.addEventListener("message", async function listener(e) {
+            // [중요 수정] 결제 성공 시 success4로 이동할 때도 orderId를 함께 넘깁니다.
+            if (e.data === "paymentSuccess") {
+                const targetUrl = `success4?price=${price}&orderId=${orderId}`;
+                window.location.href = targetUrl;
+                
+                if (payWin) payWin.close();
+                window.removeEventListener("message", listener);
+            }
+        });
+    };
+</script>
 </body>
 </html>
