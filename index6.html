@@ -44,29 +44,30 @@
         </div>
     </div>
 
-    <script>
-        function downloadEPS() {
-            const w_mm = parseFloat(document.getElementById('width').value);
-            const h_mm = parseFloat(document.getElementById('height').value);
-            const factor = 2.83465;
-            // 8mm에서 6mm로 수정
-            const totalW_pt = (w_mm + 6) * factor;
-            const totalH_pt = (h_mm + 6) * factor;
-            const offset = 2 * factor;
+   <script>
+    function downloadEPS() {
+        const w_mm = parseFloat(document.getElementById('width').value);
+        const h_mm = parseFloat(document.getElementById('height').value);
+        const factor = 2.83465;
 
-            let eps = `%!PS-Adobe-3.0 EPSF-3.0
+        // 안쪽 테두리(입력값)에서 양옆으로 3mm씩 여유를 주어 바깥쪽을 106mm(입력+6)로 만듦
+        const offset = 3 * factor; 
+        const totalW_pt = (w_mm + 6) * factor; // 바깥쪽: 106mm
+        const totalH_pt = (h_mm + 6) * factor; // 바깥쪽: 106mm
+
+        let eps = `%!PS-Adobe-3.0 EPSF-3.0
 %%BoundingBox: 0 0 ${totalW_pt} ${totalH_pt}
 %%Creator: CMYK EPS Generator
 %%EndComments
 0.5 setlinewidth
 0 0 0 1 setcmykcolor
-% 첫 번째 테두리
+% 첫 번째(바깥) 테두리: 106mm
 0 0 moveto
 ${totalW_pt} 0 lineto
 ${totalW_pt} ${totalH_pt} lineto
 0 ${totalH_pt} lineto
 closepath stroke
-% 두 번째 테두리
+% 두 번째(안쪽) 테두리: 100mm (입력값)
 ${offset} ${offset} moveto
 ${totalW_pt - offset} ${offset} lineto
 ${totalW_pt - offset} ${totalH_pt - offset} lineto
@@ -75,20 +76,20 @@ closepath stroke
 showpage
 %%EOF`;
 
-            const blob = new Blob([eps], {type: 'application/postscript'});
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            link.href = url;
-            link.download = 'frame_cmyk.eps';
-            document.body.appendChild(link);
-            link.click();
-            
-            setTimeout(() => {
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-        }
-    </script>
+        const blob = new Blob([eps], {type: 'application/postscript'});
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.href = url;
+        link.download = 'frame_cmyk.eps';
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }, 100);
+    }
+</script>
 </body>
 </html>
