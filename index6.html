@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-white">
+<body class="bg-gray-50 min-h-screen">
 
-    <div class="w-[744px] mx-auto min-h-screen">
+    <div class="w-[744px] mx-auto bg-white min-h-screen shadow-lg border-x">
         
-<header class="w-full flex justify-center pb-4">           <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+        <header class="w-full flex justify-center pb-4">
+            <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
             <map name="Map">
                 <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
                 <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo.github.io/myboard/index2" target="_self">
@@ -19,9 +19,76 @@
             </map>
         </header>
 
-        <div class="py-0">
+        <div class="p-6">
+            <section id="view-list" class="space-y-4">
+                <div class="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">칼선 EPS 파일 생성기</h2>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">가로 (mm)</label>
+                            <input type="number" id="width" value="100" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">세로 (mm)</label>
+                            <input type="number" id="height" value="100" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-400 outline-none">
+                        </div>
+                    </div>
+
+                    <button onclick="downloadEPS()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200">
+                        CMYK EPS 다운로드
+                    </button>
+                    <p class="text-xs text-gray-400 mt-3 text-center">* 입력한 사이즈에 8mm 여유분을 더한 칼선이 생성됩니다.</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        function downloadEPS() {
+            const w_mm = parseFloat(document.getElementById('width').value);
+            const h_mm = parseFloat(document.getElementById('height').value);
+            const factor = 2.83465;
+            const totalW_pt = (w_mm + 8) * factor;
+            const totalH_pt = (h_mm + 8) * factor;
+            const offset = 2 * factor;
+
+            // EPS 파일 문법 구성 (줄바꿈 \n 필수)
+            let eps = `%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 ${totalW_pt} ${totalH_pt}
+%%Creator: CMYK EPS Generator
+%%EndComments
+0.5 setlinewidth
+0 0 0 1 setcmykcolor
+% 첫 번째 테두리
+0 0 moveto
+${totalW_pt} 0 lineto
+${totalW_pt} ${totalH_pt} lineto
+0 ${totalH_pt} lineto
+closepath stroke
+% 두 번째 테두리
+${offset} ${offset} moveto
+${totalW_pt - offset} ${offset} lineto
+${totalW_pt - offset} ${totalH_pt - offset} lineto
+${offset} ${totalH_pt - offset} lineto
+closepath stroke
+showpage
+%%EOF`;
+
+            const blob = new Blob([eps], {type: 'application/postscript'});
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
             
-<section id="view-list" class="space-y-4">
-    <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
-        <h2 class="text-xl font-bold mb-4">칼선 다운로드</h2>
-<!DOCTYPE html><html lang="ko"><head>    <meta charset="UTF-8">    <title>CMYK EPS 테두리 생성기</title></head><body>    <div style="max-width: 400px; margin: auto; padding: 20px;">        <h2>CMYK EPS 생성기</h2>        <label>가로 (mm): <input type="number" id="width" value="100"></label><br>        <label>세로 (mm): <input type="number" id="height" value="100"></label><br><br>        <button onclick="downloadEPS()" style="padding: 10px 20px; cursor: pointer;">CMYK EPS 다운로드</button>    </div>    <script>        function downloadEPS() {            const w_mm = parseFloat(document.getElementById('width').value);            const h_mm = parseFloat(document.getElementById('height').value);            const factor = 2.83465;            const totalW_pt = (w_mm + 8) * factor;            const totalH_pt = (h_mm + 8) * factor;            const offset = 2 * factor;            // CMYK 검정(0 0 0 1) 설정과 선 두께(0.5pt) 추가            let eps = `%!PS-Adobe-3.0 EPSF-3.0%%BoundingBox: 0 0 ${totalW_pt} ${totalH_pt}%%Creator: CMYK EPS Generator%%EndComments0.5 setlinewidth0 0 0 1 setcmykcolor% 첫 번째 테두리0 0 moveto${totalW_pt} 0 lineto${totalW_pt} ${totalH_pt} lineto0 ${totalH_pt} linetoclosepathstroke% 두 번째 테두리${offset} ${offset} moveto${totalW_pt - offset} ${offset} lineto${totalW_pt - offset} ${totalH_pt - offset} lineto${offset} ${totalH_pt - offset} linetoclosepathstrokeshowpage%%EOF`;            const blob = new Blob([eps], {type: 'application/postscript'});            const link = document.createElement('a');            link.href = URL.createObjectURL(blob);            link.download = 'frame_cmyk.eps';            link.click();        }    </script></body></html>
+            link.href = url;
+            link.download = 'frame_cmyk.eps';
+            document.body.appendChild(link);
+            link.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        }
+    </script>
+</body>
+</html>
