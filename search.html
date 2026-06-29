@@ -217,7 +217,7 @@ ${
                    onclick="${isPending ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParams + "')"}" 
                    class="border px-2 py-1 text-xs ${(isCard && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
          
- <a href="javascript:void(0)" 
+<a href="javascript:void(0)" 
    onclick="${d.woonso1 ? "openPopup('" + d.woonso1 + "')" : ""}"
    class="border px-2 py-1 text-xs transition-colors duration-300 
    ${d.woonso1 
@@ -228,9 +228,9 @@ ${
 </a>
 
 ${
-    (d.isJajoo && d.status === '대기') 
-    ? `<button onclick="deleteOrder('${d.id}')" 
-        class="border px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-700">주문삭제</button>` 
+    (d.status === '대기') 
+    ? `<button onclick="deleteOrder('${d.id}', ${d.isJajoo})" 
+        class="border px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-700">주문삭제</button>`
     : ''
 }      
                         
@@ -247,12 +247,14 @@ ${
     }
         });
 
-window.deleteOrder = async (docId) => {
+window.deleteOrder = async (docId, isJajoo) => {
     if (confirm("정말로 이 주문을 삭제하시겠습니까?")) {
         try {
-            await deleteDoc(doc(db, "jjjj", docId));
+            // isJajoo 값에 따라 컬렉션 경로를 다르게 설정
+            const collectionName = isJajoo ? "jjjj" : "boards";
+            await deleteDoc(doc(db, collectionName, docId));
+            
             alert("삭제되었습니다.");
-            // 새로고침하여 목록 갱신
             document.getElementById('search-btn').click();
         } catch (error) {
             console.error("삭제 실패:", error);
