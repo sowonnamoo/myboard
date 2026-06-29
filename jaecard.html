@@ -17,56 +17,36 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        const params = new URLSearchParams(window.location.search);
+        const price = params.get('price'); 
+        const orderId = params.get('orderId');
 
-        // 기존 firebaseConfig를 여기에 넣어주세요
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-            authDomain: "board-291e3.firebaseapp.com",
-            projectId: "board-291e3",
-            storageBucket: "board-291e3.firebasestorage.app",
-            messagingSenderId: "25881766316",
-            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        console.log("확인된 Price:", price, "확인된 OrderId:", orderId);
+
+        // 금액 표시 (오류 방지)
+        const priceDisplay = document.getElementById('priceDisplay');
+        if (price) {
+            priceDisplay.innerText = parseInt(price).toLocaleString() + "원";
+        } else {
+            priceDisplay.innerText = "금액 오류";
+        }
+
+        document.getElementById('payBtn').onclick = function() {
+            if (!price) return alert("결제 금액 정보가 없습니다.");
+
+            // 결제창 호출 (payment2로 변경)
+            const payUrl = `https://sowonnamoo.github.io/myjs/payment2?price=${price}&orderId=${orderId}`;
+            const payWin = window.open(payUrl, '_blank', 'width=1000,height=700');
+            
+            // 메시지 수신 이벤트 (결제 완료 신호 기다림)
+            window.addEventListener("message", function listener(e) {
+                if (e.data === "paymentSuccess") {
+                    window.location.href = `success5?price=${price}&orderId=${orderId}`;
+                    if (payWin) payWin.close();
+                    window.removeEventListener("message", listener);
+                }
+            });
         };
-        const db = getFirestore(initializeApp(firebaseConfig));
-
-     const params = new URLSearchParams(window.location.search);
-    const price = params.get('price'); // 여기서 price를 가져옴
-const orderId = params.get('orderId'); // jaecard가 URL에서 ID를 이미 가지고 있다고 가정
-const payUrl = `https://sowonnamoo.github.io/myjs/payment2?price=${price}&orderId=${orderId}`;
-window.open(payUrl, '_blank', ...);
-        
-    // 콘솔로 찍어서 실제로 값이 들어오는지 확인 (F12 누르고 콘솔 탭 확인하세요)
-    console.log("확인된 Price:", price);
-    console.log("확인된 OrderId:", orderId);
-
-    // [중요 수정] 화면에 뿌려줄 때 null 체크를 명확히 합니다.
-    const priceDisplay = document.getElementById('priceDisplay');
-    if (price) {
-        priceDisplay.innerText = parseInt(price).toLocaleString() + "원";
-    } else {
-        priceDisplay.innerText = "금액 오류";
-    }
-
-    document.getElementById('payBtn').onclick = function() {
-        // 여기서도 price가 비어있지 않은지 다시 확인
-        const finalPrice = price || "0";
-        
-        // 결제창 호출 시 ID와 금액 전달
-        const payUrl = `https://sowonnamoo.github.io/myjs/payment?price=${finalPrice}&orderId=${orderId}`;
-        const payWin = window.open(payUrl, '_blank', 'width=1000,height=700');
-        
-        window.addEventListener("message", async function listener(e) {
-            if (e.data === "paymentSuccess") {
-                // success5로 이동할 때도 명확하게 전달
-                window.location.href = `success5?price=${finalPrice}&orderId=${orderId}`;
-                
-                if (payWin) payWin.close();
-                window.removeEventListener("message", listener);
-            }
-        });
-    };
-</script>
+    </script>
 </body>
 </html>
