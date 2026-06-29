@@ -34,15 +34,17 @@
         document.getElementById('priceDisplay').innerText = parseInt(price).toLocaleString() + "원";
 
         document.getElementById('payBtn').onclick = function() {
-            // 결제 창 호출 (실제 결제 URL로 변경하세요)
-            const payWin = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${price}`, '_blank', 'width=1000,height=700');
+    const payWin = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${price}`, '_blank', 'width=1000,height=700');
+    
+    window.addEventListener("message", function(e) {
+        if (e.data === "paymentSuccess") {
+            document.getElementById('payBtn').classList.add('hidden');
+            document.getElementById('completeMsg').classList.remove('hidden');
             
-            // 결제 완료 메시지 수신 (결제 창에서 postMessage를 보내야 함)
-            window.addEventListener("message", function(e) {
-                if (e.data === "paymentSuccess") {
-                    document.getElementById('payBtn').classList.add('hidden');
-                    document.getElementById('completeMsg').classList.remove('hidden');
-                    if (payWin) payWin.close();
+            // 핵심: 부모 페이지(재주문 페이지)로 결제 완료 신호를 보냄
+            window.opener.postMessage("paymentSuccess", "*");
+            
+            if (payWin) payWin.close();
                 }
             });
         };
