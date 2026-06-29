@@ -5,9 +5,9 @@
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-white min-h-screen">
 
-    <div class="w-[744px] mx-auto bg-white min-h-screen shadow-lg border-x">
+    <div class="w-full">
         
         <header class="w-full flex justify-center pb-4">
             <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
@@ -19,7 +19,7 @@
             </map>
         </header>
 
-        <div class="p-6">
+        <div class="max-w-[744px] mx-auto p-6">
             <section id="view-list" class="space-y-4">
                 <div class="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
                     <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">칼선 EPS 파일 생성기</h2>
@@ -38,7 +38,7 @@
                     <button onclick="downloadEPS()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200">
                         CMYK EPS 다운로드
                     </button>
-                    <p class="text-xs text-gray-400 mt-3 text-center">* 입력한 사이즈에 8mm 여유분을 더한 칼선이 생성됩니다.</p>
+                    <p class="text-xs text-gray-400 mt-3 text-center">* 입력한 사이즈에 6mm 여유분을 더한 칼선이 생성됩니다.</p>
                 </div>
             </section>
         </div>
@@ -49,11 +49,11 @@
             const w_mm = parseFloat(document.getElementById('width').value);
             const h_mm = parseFloat(document.getElementById('height').value);
             const factor = 2.83465;
-            const totalW_pt = (w_mm + 8) * factor;
-            const totalH_pt = (h_mm + 8) * factor;
+            // 8mm에서 6mm로 수정
+            const totalW_pt = (w_mm + 6) * factor;
+            const totalH_pt = (h_mm + 6) * factor;
             const offset = 2 * factor;
 
-            // EPS 파일 문법 구성 (줄바꿈 \n 필수)
             let eps = `%!PS-Adobe-3.0 EPSF-3.0
 %%BoundingBox: 0 0 ${totalW_pt} ${totalH_pt}
 %%Creator: CMYK EPS Generator
