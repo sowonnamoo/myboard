@@ -40,17 +40,13 @@
         document.getElementById('payBtn').onclick = function() {
             const payWin = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${price}`, '_blank', 'width=1000,height=700');
             
-            window.addEventListener("message", async function listener(e) {
-                if (e.data === "paymentSuccess") {
-                    if (orderId) {
-                        try {
-                            await updateDoc(doc(db, "jjjj", orderId), { status: "카드결제" });
-                            alert("결제가 완료되었습니다.");
-                        } catch (err) {
-                            alert("상태 업데이트 실패: " + err.message);
-                        }
-                    }
-                    if (payWin) payWin.close();
+           window.addEventListener("message", async function listener(e) {
+    if (e.data === "paymentSuccess") {
+        // [수정] 결제 완료 후 success4로 이동할 때 orderId를 붙여서 이동
+        const targetUrl = `success4?price=${price}&orderId=${orderId}`;
+        window.location.href = targetUrl;
+        
+        if (payWin) payWin.close();
                     window.location.href = "index.html"; // 결제 후 돌아갈 페이지 주소
                 }
             });
