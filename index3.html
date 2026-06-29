@@ -143,17 +143,18 @@
 
         try {
             await addDoc(collection(db, "jjjj"), orderData);
-            if (type === '무통장') {
+           if (type === '무통장') {
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
             } else {
-                alert("주문서 저장 완료. 결제 창으로 이동합니다.");
-                const payWindow = window.open(`https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`, '_blank', 'width=1000,height=700');
+                // jaecard.html을 팝업으로 오픈 (가격 정보 전달)
+                const jaeCardWin = window.open(`jaecard.html?price=${encodeURIComponent(price)}`, '_blank', 'width=450,height=600');
                 
+                // 팝업창에서 결제 완료 메시지를 보내면 상태 업데이트 로직 실행
                 window.addEventListener("message", function listener(e) {
                     if (e.data === "paymentSuccess") {
-                        alert("결제 완료되었습니다.");
-                        if (payWindow) payWindow.close();
-                        window.location.reload();
+                        // 여기서 파이어베이스 status를 '카드결제'로 업데이트하는 로직 추가
+                        // (기존 코드에 있던 status 업데이트 로직을 여기에 넣으시면 됩니다)
+                        alert("결제가 확인되었습니다.");
                         window.removeEventListener("message", listener);
                     }
                 });
