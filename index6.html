@@ -19,7 +19,6 @@
         </header>
 
         <div class="max-w-[744px] mx-auto p-6 space-y-8">
-            
             <section class="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
                 <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">공통 작업선 다운로드</h2>
                 <div class="grid grid-cols-2 gap-4 mb-6">
@@ -41,6 +40,12 @@
     </div>
 
     <script>
+        // 1. 우클릭 차단
+        document.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        }, false);
+
+        // 2. EPS 다운로드 로직
         function downloadEPS() {
             const w = parseFloat(document.getElementById('width_eps').value);
             const h = parseFloat(document.getElementById('height_eps').value);
@@ -48,7 +53,6 @@
             const o = 3 * f;
             const tw = (w + 6) * f, th = (h + 6) * f;
             
-            // 안쪽 테두리 붉은색(CMYK 0 1 1 0) 적용
             let eps = `%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 ${tw} ${th}\n0.5 setlinewidth\n% 바깥 테두리 (검정)\n0 0 0 1 setcmykcolor\n0 0 moveto ${tw} 0 lineto ${tw} ${th} lineto 0 ${th} lineto closepath stroke\n% 안쪽 테두리 (빨강)\n0 1 1 0 setcmykcolor\n${o} ${o} moveto ${tw-o} ${o} lineto ${tw-o} ${th-o} lineto ${o} ${th-o} lineto closepath stroke\nshowpage`;
             
             const blob = new Blob([eps], {type: 'application/postscript'});
@@ -58,6 +62,7 @@
             link.click();
         }
 
+        // 3. JPG 다운로드 로직
         function downloadJPG() {
             const w = parseFloat(document.getElementById('width_jpg').value);
             const h = parseFloat(document.getElementById('height_jpg').value);
@@ -74,11 +79,9 @@
             ctx.fillRect(0, 0, pxW, pxH);
             ctx.lineWidth = Math.round(0.2 * (dpi / 25.4));
             
-            // 바깥 테두리 (검정)
             ctx.strokeStyle = "black";
             ctx.strokeRect(0, 0, pxW, pxH);
             
-            // 안쪽 테두리 (빨강)
             ctx.strokeStyle = "red";
             ctx.strokeRect(offset, offset, pxW - (offset * 2), pxH - (offset * 2));
 
@@ -88,32 +91,5 @@
             link.click();
         }
     </script>
-
-
-
-    
-<script>
-        // 우클릭 차단
-        document.addEventListener('contextmenu', function(event) {
-            event.preventDefault();
-        }, false);
-
-        // EPS 다운로드 로직
-        function downloadEPS() {
-            // ... (기존 코드)
-        }
-
-        // JPG 다운로드 로직
-        function downloadJPG() {
-            // ... (기존 코드)
-        }
-    </script>
-
-
-
-
-
-
-    
 </body>
 </html>
