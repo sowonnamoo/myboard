@@ -9,66 +9,56 @@
     <h2 id="status-text" class="text-xl font-bold">결제 처리 중입니다...</h2>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        // Firebase 설정 (board-291e3 프로젝트 전용)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-            authDomain: "board-291e3.firebaseapp.com",
-            projectId: "board-291e3",
-            storageBucket: "board-291e3.firebasestorage.app",
-            messagingSenderId: "25881766316",
-            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-        };
+    // ... (firebaseConfig 및 초기화 동일)
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    async function processPaymentStatus() {
+        const statusText = document.getElementById("status-text");
+        const price = new URLSearchParams(window.location.search).get('price');
 
-        async function processPaymentStatus() {
-            const statusText = document.getElementById("status-text");
-            const price = new URLSearchParams(window.location.search).get('price');
+        if (!price) {
+            statusText.innerText = "결제 정보 오류";
+            return;
+        }
 
-            if (!price) {
-                statusText.innerText = "결제 정보 오류";
-                return;
-            }
+        try {
+            // [추가] 두 컬렉션(boards, jjjj)을 모두 확인하는 배열
+            const collections = ["boards", "jjjj"];
+            let found = false;
 
-            try {
-                // 1. 상태가 '대기'인 문서들 조회
-                const q = query(collection(db, "boards"), where("status", "==", "대기"));
+            for (const colName of collections) {
+                const q = query(collection(db, colName), where("status", "==", "대기"));
                 const querySnapshot = await getDocs(q);
 
-                let found = false;
-                
-                // 2. 가격 비교 및 업데이트
                 for (const doc of querySnapshot.docs) {
+                    // price 값 비교 (문자열 변환하여 비교)
                     if (String(doc.data().price) === String(price)) {
                         await updateDoc(doc.ref, { status: "카드결제" });
                         found = true;
-                        break;
+                        break; // jjjj에서 찾았으면 완료
                     }
                 }
+                if (found) break; // boards에서 찾았어도 완료
+            }
 
-                if (found) {
-                    statusText.innerText = "결제가 완료되었습니다!";
-                    
-                    // 3. 부모창 새로고침 후 닫기
-                    if (window.opener && !window.opener.closed) {
-                        window.opener.location.reload();
-                    }
-                    setTimeout(() => window.close(), 1000);
-                } else {
-                    statusText.innerText = "결제전송완료";
+            if (found) {
+                statusText.innerText = "결제가 완료되었습니다!";
+                if (window.opener && !window.opener.closed) {
+                    window.opener.location.reload();
                 }
-            } catch (err) {
-                console.error(err);
+                setTimeout(() => window.close(), 1000);
+            } else {
                 statusText.innerText = "결제전송완료";
             }
+        } catch (err) {
+            console.error(err);
+            statusText.innerText = "결제전송완료";
         }
+    }
 
-        // 실행
-        processPaymentStatus();
-    </script>
+    processPaymentStatus();
+</script>
 </body>
 </html>
