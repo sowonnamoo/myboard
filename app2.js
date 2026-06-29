@@ -114,7 +114,7 @@ function renderTable(dataToRender = allOrders) {
                     <span class="text-xs text-gray-500 truncate">${displayInfo}</span>
                 </div>
             </td>
-            <td class="py-3 text-sm text-gray-600 text-center whitespace-nowrap">에코</td>
+            <td class="py-3 text-sm text-gray-600 text-center whitespace-nowrap">에코그래픽스</td>
             <td class="py-3 text-xs text-gray-400 text-center whitespace-nowrap">${dateStr}</td>
         </tr>`;
         // [오류 수정 끝]
