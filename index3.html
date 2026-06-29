@@ -136,7 +136,7 @@
             message: document.getElementById('message').value,
             file1Url: document.getElementById('file1Url').value,
             file2Url: document.getElementById('file2Url').value,
-            type: type,
+type: (type === '카드') ? '재주문' : type,
             createdAt: new Date(),
             status: '대기'
         };
