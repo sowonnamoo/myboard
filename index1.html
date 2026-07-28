@@ -57,6 +57,10 @@
             </section>
 
 <section id="view-write" class="w-full">
+    <div id="cart-queue-banner" class="hidden mb-4 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 flex items-center justify-between">
+        <span id="cart-queue-text" class="text-sm font-bold text-blue-700"></span>
+        <span class="text-xs text-blue-400">장바구니에 담긴 상품을 순서대로 작성합니다</span>
+    </div>
     <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>                
               <table class="w-full text-sm border-collapse">
                     <tr class="form-row">
@@ -70,6 +74,10 @@
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
                         <td><input type="text" id="size" class="form-input"></td>
+</tr>
+<tr class="form-row">
+    <td class="font-bold text-gray-700 py-3">후가공</td>
+    <td><input type="text" id="finishing" class="form-input" placeholder="선택안함"></td>
 </tr>
 <tr class="form-row">
     <td class="font-bold text-gray-700 py-3">결제금액 <span class="text-red-500">*</span></td>

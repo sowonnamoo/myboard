@@ -28,6 +28,60 @@ let currentPage = 1;
 let currentViewId = null;
 const POSTS_PER_PAGE = 8; 
 
+// ---- 장바구니(01my.html 등에서 담은 여러 상품) 순차 주문작성 큐 ----
+let cartQueue = [];       // localStorage 'myCart'에서 불러온 상품 목록
+let cartQueueIndex = 0;   // 현재 작성 중인 상품의 인덱스
+
+// 큐의 idx번째 상품 정보를 주문작성 폼에 채워 넣습니다.
+function loadCartQueueItem(idx) {
+    const item = cartQueue[idx];
+    if (!item) return;
+
+    const prodInput = document.getElementById('product-name');
+    const qtyInput = document.getElementById('quantity');
+    const sizeInput = document.getElementById('size');
+    const priceInput = document.getElementById('price');
+    const finishInput = document.getElementById('finishing');
+
+    prodInput.value = item.productName || item.name || "";
+
+    const qtyPart = item.qty || "";
+    const countPart = (item.count && item.count !== "1") ? ` x ${item.count}건` : "";
+    qtyInput.value = qtyPart ? `${qtyPart}매${countPart}` : (item.qty || "");
+
+    if (item.width && item.height) {
+        sizeInput.value = `${item.width}x${item.height}mm`;
+    } else {
+        sizeInput.value = item.size || "";
+    }
+
+    priceInput.value = item.price || "";
+
+    if (finishInput) {
+        finishInput.value = item.finishings || item.finishing || "";
+        finishInput.readOnly = true;
+        finishInput.style.backgroundColor = "#f3f4f6";
+        finishInput.style.cursor = "not-allowed";
+    }
+
+    [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
+        el.readOnly = true;
+        el.style.backgroundColor = "#f3f4f6";
+        el.style.cursor = "not-allowed";
+    });
+
+    const banner = document.getElementById('cart-queue-banner');
+    const bannerText = document.getElementById('cart-queue-text');
+    if (banner && bannerText) {
+        if (cartQueue.length > 1) {
+            banner.classList.remove('hidden');
+            bannerText.textContent = `장바구니 주문 작성 중 (${idx + 1} / ${cartQueue.length}) - ${item.productName || item.name || ""}`;
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+}
+
 
 
 window.switchView = function(viewName) {
@@ -404,7 +458,23 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     });
 
     alert("접수되었습니다.");
-    switchView('list');
+
+    // 장바구니 순차 작성 모드였다면 다음 상품으로 이어서 진행, 아니면 목록으로 이동
+    if (cartQueue.length > 0 && cartQueueIndex < cartQueue.length - 1) {
+        cartQueueIndex++;
+
+        // 파일/메시지는 상품마다 다를 수 있으므로 초기화 (작성자/연락처/배송지는 유지)
+        document.getElementById('message').value = "";
+        document.getElementById('file-1').value = "";
+        document.getElementById('file-2').value = "";
+
+        loadCartQueueItem(cartQueueIndex);
+    } else {
+        localStorage.removeItem('myCart');
+        cartQueue = [];
+        cartQueueIndex = 0;
+        switchView('list');
+    }
 } catch (e) {
     console.error(e);
     alert("오류: " + e.message);
@@ -771,7 +841,23 @@ window.addEventListener('DOMContentLoaded', () => {
     // 1. 기존 데이터 로드 실행
     initBoard();
 
-    // 2. 쿼리스트링 상품 정보 처리
+    // 2. 장바구니에 담긴 상품이 있으면 우선적으로 순차 작성 모드로 진입
+    let storedCart = [];
+    try {
+        storedCart = JSON.parse(localStorage.getItem('myCart') || '[]');
+    } catch (e) {
+        storedCart = [];
+    }
+
+    if (Array.isArray(storedCart) && storedCart.length > 0) {
+        cartQueue = storedCart;
+        cartQueueIndex = 0;
+        loadCartQueueItem(0);
+        switchView('write');
+        return;
+    }
+
+    // 3. 쿼리스트링 상품 정보 처리 (단일 상품, 장바구니가 없을 때만)
     const params = new URLSearchParams(window.location.search);
     if (params.has('product')) {
         const prodInput = document.getElementById('product-name');
