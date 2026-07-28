@@ -190,6 +190,20 @@ function renderCombinedCartOrder() {
     switchView('write');
 }
 
+// 상품 하나를 장바구니(pendingCartOrders)에 추가합니다. (렌더링은 호출하는 쪽에서 필요할 때 처리)
+function addItemToCart(item) {
+    let cart = [];
+    try {
+        cart = JSON.parse(localStorage.getItem(CART_QUEUE_KEY) || '[]');
+    } catch (e) {
+        cart = [];
+    }
+    if (!Array.isArray(cart)) cart = [];
+    cart.push(item);
+    localStorage.setItem(CART_QUEUE_KEY, JSON.stringify(cart));
+    return cart;
+}
+
 // "담긴 상품" 카드에서 개별 상품 삭제 → 저장 후 다시 렌더링
 function removePendingCartItem(idx) {
     let cart = [];
@@ -949,72 +963,51 @@ window.addEventListener('DOMContentLoaded', () => {
     // 1. 기존 데이터 로드 실행
     initBoard();
 
-    // 2. 장바구니(여러 상품)를 하나의 주문으로 합쳐서 보여주기 (index1.html에만 있는 요소일 때만 동작)
-    renderCombinedCartOrder();
-
-    // 3. 쿼리스트링 상품 정보 처리 (단일 상품, #cart-summary-card가 없는 페이지거나 장바구니가 비어있을 때만)
+    // 2. 01my.html의 "주문하기"가 쿼리스트링으로 보낸 상품이 있으면 장바구니(pendingCartOrders)에 "추가"합니다.
+    //    (01my.html은 매번 새로 이 페이지로 이동/새창 열기를 하며 상품 1개 정보를 통째로 넘겨줄 뿐이라,
+    //     여기서 받을 때마다 기존 장바구니에 쌓아야 "여러 상품 담기"가 됩니다.)
     const params = new URLSearchParams(window.location.search);
 
     if (params.has('productId')) {
-        // 01my.html의 "주문하기" 버튼이 실제로 보내는 형식:
+        // 01my.html이 실제로 보내는 형식:
         // ?productId=01my&options={"options1":"명함",...}&qty=200&count=1&width=90&height=50&price=5,500원&weight=0.225&finishings=...
-        const prodInput = document.getElementById('product-name');
-        const qtyInput = document.getElementById('quantity');
-        const sizeInput = document.getElementById('size');
-        const priceInput = document.getElementById('price');
-
         let optionsObj = {};
         try {
             optionsObj = JSON.parse(params.get('options') || '{}');
         } catch (e) {
             optionsObj = {};
         }
-        const optionValues = Object.values(optionsObj).filter(Boolean);
-        const productName = optionValues.length ? optionValues.join(' / ') : (params.get('productId') || '상품');
 
-        const qty = params.get('qty') || '';
-        const count = params.get('count') || '1';
-        const width = params.get('width') || '';
-        const height = params.get('height') || '';
-        const finishings = params.get('finishings') || '';
-        const price = params.get('price') || '';
+        const newItem = {
+            productId: params.get('productId') || '',
+            options: optionsObj,
+            qty: params.get('qty') || '',
+            count: params.get('count') || '1',
+            width: params.get('width') || '',
+            height: params.get('height') || '',
+            price: params.get('price') || '',
+            weight: params.get('weight') || '',
+            finishings: params.get('finishings') || ''
+        };
 
-        prodInput.value = productName;
-        qtyInput.value = (count && count !== '1') ? `${qty}개 x ${count}건` : `${qty}개`;
+        addItemToCart(newItem);
 
-        let sizeText = (width && height) ? `${width} x ${height}mm` : '';
-        if (finishings) sizeText += (sizeText ? ' ' : '') + `(후가공: ${finishings})`;
-        sizeInput.value = sizeText;
-
-        priceInput.value = price;
-
-        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
-            el.readOnly = true;
-            el.style.backgroundColor = "#f3f4f6";
-            el.style.cursor = "not-allowed";
-        });
-
-        switchView('write');
+        // 새로고침해도 같은 상품이 중복으로 다시 담기지 않도록 주소의 쿼리스트링을 제거
+        window.history.replaceState(null, '', window.location.pathname);
     } else if (params.has('product')) {
-        // 예전 방식(?product=...&size=...) 호환용으로 남겨둠
-        const prodInput = document.getElementById('product-name');
-        const qtyInput = document.getElementById('quantity');
-        const sizeInput = document.getElementById('size');
-        const priceInput = document.getElementById('price');
-        
-        prodInput.value = params.get('product');
-        qtyInput.value = params.get('qty');
-        sizeInput.value = params.get('size');
-        priceInput.value = params.get('price');
-        
-        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
-            el.readOnly = true;
-            el.style.backgroundColor = "#f3f4f6";
-            el.style.cursor = "not-allowed";
-        });
-        
-        switchView('write');
+        // 예전 방식(?product=...&size=...) 호환용 - 마찬가지로 장바구니에 추가
+        const newItem = {
+            productName: params.get('product') || '',
+            qty: params.get('qty') || '',
+            size: params.get('size') || '',
+            price: params.get('price') || ''
+        };
+        addItemToCart(newItem);
+        window.history.replaceState(null, '', window.location.pathname);
     }
+
+    // 3. 장바구니에 쌓인 상품들을 "담긴 상품" 카드 + 폼에 합쳐서 보여줍니다 (index1.html에만 있는 요소일 때만 동작)
+    renderCombinedCartOrder();
 });
 
 
