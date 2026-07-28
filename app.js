@@ -74,6 +74,81 @@ function buildExtraOptionsText(item) {
     return parts.join(', ');
 }
 
+// item의 options/finishings 원문을 전부 모읍니다 (상품명으로 이미 쓰였는지 여부와 무관하게).
+// 파일 확장자 제한처럼, productName에 옵션이 녹아들어갔더라도 놓치면 안 되는 정보를 찾을 때 씁니다.
+function getItemRawOptionsText(item) {
+    const parts = [];
+    if (item.finishings) parts.push(item.finishings);
+    if (item.options && typeof item.options === 'object') {
+        const optionValues = Object.values(item.options).filter(Boolean);
+        if (optionValues.length) parts.push(optionValues.join(', '));
+    } else if (item.optionsText) {
+        parts.push(item.optionsText);
+    }
+    return parts.join(', ');
+}
+
+// 옵션/후가공 텍스트에서 "(ai, eps, pdf)" 같은 괄호 안 파일 확장자 목록을 찾아 배열로 반환합니다.
+// 예: "파일접수 (ai, eps)" -> ["ai", "eps"]. 없으면 null.
+function extractAllowedFileExtensions(text) {
+    if (!text) return null;
+    const match = String(text).match(/\(([a-zA-Z0-9,\s.]+)\)/);
+    if (!match) return null;
+    const exts = match[1]
+        .split(',')
+        .map(s => s.trim().toLowerCase().replace(/^\./, ''))
+        .filter(s => /^[a-z0-9]{1,6}$/.test(s)); // 확장자처럼 생긴 것만 (너무 길거나 이상한 값 제외)
+    return exts.length ? exts : null;
+}
+
+// file-1 / file-2 입력란에 허용 확장자를 적용(또는 해제)합니다.
+function applyFileAcceptRestriction(allowedExts) {
+    const file1 = document.getElementById('file-1');
+    const file2 = document.getElementById('file-2');
+    const hint = document.getElementById('file-accept-hint');
+
+    [file1, file2].forEach(input => {
+        if (!input) return;
+        if (allowedExts && allowedExts.length) {
+            input.setAttribute('accept', allowedExts.map(e => `.${e}`).join(','));
+            input.dataset.allowedExts = allowedExts.join(',');
+        } else {
+            input.removeAttribute('accept');
+            delete input.dataset.allowedExts;
+        }
+    });
+
+    if (hint) {
+        if (allowedExts && allowedExts.length) {
+            hint.textContent = `※ 이 상품은 ${allowedExts.map(e => '.' + e).join(', ')} 파일만 첨부 가능합니다.`;
+            hint.classList.remove('hidden');
+        } else {
+            hint.textContent = '';
+            hint.classList.add('hidden');
+        }
+    }
+}
+
+// file-1 / file-2에서 파일을 고를 때, 허용된 확장자가 아니면 선택을 취소합니다.
+// (accept 속성은 파일 선택창에서 필터로만 동작하고 "전체 파일"로 우회 선택이 가능해서, 실제 첨부 단계에서 한 번 더 막습니다)
+function setupFileExtensionGuard() {
+    ['file-1', 'file-2'].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener('change', () => {
+            const allowedExts = input.dataset.allowedExts ? input.dataset.allowedExts.split(',') : null;
+            if (!allowedExts || !allowedExts.length) return;
+            const file = input.files[0];
+            if (!file) return;
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!allowedExts.includes(ext)) {
+                alert(`이 상품은 ${allowedExts.map(e => '.' + e).join(', ')} 파일만 첨부할 수 있습니다.\n선택한 파일(.${ext})은 첨부할 수 없어 선택이 취소됩니다.`);
+                input.value = '';
+            }
+        });
+    });
+}
+
 // 장바구니에 담긴 여러 상품을 하나의 주문으로 합쳐 "담긴 상품" 카드 + 폼에 채워 넣습니다.
 function renderCombinedCartOrder() {
     const summaryCard = document.getElementById('cart-summary-card');
@@ -96,6 +171,7 @@ function renderCombinedCartOrder() {
         // 장바구니가 비어있으면(또는 전부 삭제됐으면) 카드/합계 숨기고, 폼은 직접 입력 가능하도록 초기화
         summaryCard.classList.add('hidden');
         if (totalLine) totalLine.classList.add('hidden');
+        applyFileAcceptRestriction(null); // 파일 확장자 제한도 해제
 
         [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
             if (!el) return;
@@ -176,6 +252,11 @@ function renderCombinedCartOrder() {
     const qtys = cart.map(it => `${it.qty || ''}개`);
     const sizes = cart.map(it => (it.width && it.height) ? `${it.width} x ${it.height}mm` : (it.size || ''));
     const extras = cart.map(it => buildExtraOptionsText(it));
+
+    // 옵션/후가공 텍스트("파일접수 (ai, eps, pdf)" 등)에서 허용 확장자를 찾아 파일첨부에 적용
+    // (productName에 옵션이 이미 녹아든 경우까지 놓치지 않도록 원문 옵션 텍스트를 따로 모아서 검사)
+    const allowedExts = extractAllowedFileExtensions(cart.map(it => getItemRawOptionsText(it)).join(' '));
+    applyFileAcceptRestriction(allowedExts);
 
     prodInput.value = names.join(' / ');
     qtyInput.value = qtys.join(' / ');
@@ -988,6 +1069,7 @@ initBoard();
 window.addEventListener('DOMContentLoaded', () => {
     // 1. 기존 데이터 로드 실행
     initBoard();
+    setupFileExtensionGuard(); // 첨부파일 확장자 제한 감시 시작 (index.html에는 file-1/file-2가 없어서 조용히 무시됨)
 
     // 2. 01my.html의 "주문하기"가 쿼리스트링으로 보낸 상품이 있으면 장바구니(pendingCartOrders)에 "추가"합니다.
     //    (01my.html은 매번 새로 이 페이지로 이동/새창 열기를 하며 상품 1개 정보를 통째로 넘겨줄 뿐이라,
