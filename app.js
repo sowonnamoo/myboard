@@ -33,7 +33,8 @@ const POSTS_PER_PAGE = 8;
 // index.html에는 이 요소 자체가 없으므로, pendingCartOrders에 값이 남아있더라도
 // index.html 쪽 동작(목록 우선 표시 등)에는 절대 영향을 주지 않습니다.
 const CART_QUEUE_KEY = 'pendingCartOrders'; // 기존 '장바구니담기'(myCart) 기능과는 별개의 키
-const SHIPPING_FEE = 3000; // 배송비 (필요시 여기 숫자만 수정)
+// 배송비 계산은 shipping.js의 calculateShippingFee()가 담당합니다.
+// (묶음배송 가능 품목/무게 구간별 요금표는 전부 shipping.js에서만 관리하면 됩니다)
 
 // item에 담긴 후가공 + 그 외 추가 선택옵션들을 하나의 문자열로 합칩니다.
 function buildExtraOptionsText(item) {
@@ -128,9 +129,21 @@ function renderCombinedCartOrder() {
 
     summaryCard.classList.remove('hidden');
 
-    const total = subtotal + SHIPPING_FEE;
+    // shipping.js의 calculateShippingFee()로 묶음배송 여부 + 무게 구간을 반영해 배송비 계산
+    const shippingResult = (typeof calculateShippingFee === 'function')
+        ? calculateShippingFee(cart)
+        : { totalFee: 0, breakdown: [] };
+    const shippingFee = shippingResult.totalFee;
+    const total = subtotal + shippingFee;
+
     if (totalLine) {
-        totalLine.textContent = `${subtotal}원 + 배송비 ${SHIPPING_FEE} 총결제액 : ${total}원`;
+        let shippingText = `배송비 ${shippingFee}`;
+        if (shippingResult.breakdown.length > 1) {
+            // 묶음배송으로 여러 건으로 나뉜 경우 상세 내역도 함께 표시
+            const detail = shippingResult.breakdown.map(b => `${b.label} ${b.fee}원`).join(' + ');
+            shippingText = `배송비 ${shippingFee}(${detail})`;
+        }
+        totalLine.textContent = `${subtotal}원 + ${shippingText} 총결제액 : ${total}원`;
         totalLine.classList.remove('hidden');
     }
 
