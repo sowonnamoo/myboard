@@ -289,6 +289,7 @@ function addItemToCart(item) {
 }
 
 // "담긴 상품" 카드에서 개별 상품 삭제 → 저장 후 다시 렌더링
+// 마지막 상품까지 다 지워서 장바구니가 완전히 비면, 빈 글쓰기 창을 보여주는 대신 창을 자동으로 닫습니다.
 function removePendingCartItem(idx) {
     let cart = [];
     try {
@@ -298,6 +299,14 @@ function removePendingCartItem(idx) {
     }
     cart.splice(idx, 1);
     localStorage.setItem(CART_QUEUE_KEY, JSON.stringify(cart));
+
+    if (cart.length === 0) {
+        // 01my.html이 window.open(..., "orderCartWindow", ...)으로 연 창이라 스스로 닫을 수 있습니다.
+        // (사용자가 이 페이지를 직접 새 탭으로 연 경우라면 브라우저 정책상 닫히지 않고 무시됩니다)
+        window.close();
+        return;
+    }
+
     renderCombinedCartOrder();
 }
 
