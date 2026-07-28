@@ -465,6 +465,21 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
     window.syncStatusOverlay(data.status);
+
+    // 장바구니(01my.html 쿼리 등)로 자동 입력되어 저장된 주문이면 "장바구니담기" 버튼을 숨기고 클릭도 막습니다.
+    // 작성자가 제품명/수량/사이즈를 직접 입력해서 작성한 주문일 때만 이 버튼이 보이고 클릭됩니다.
+    const addCartBtn = document.getElementById("add-cart-btn");
+    if (addCartBtn) {
+        if (data.fromCart) {
+            addCartBtn.classList.add("hidden");
+            addCartBtn.disabled = true;
+            addCartBtn.style.pointerEvents = "none";
+        } else {
+            addCartBtn.classList.remove("hidden");
+            addCartBtn.disabled = false;
+            addCartBtn.style.pointerEvents = "";
+        }
+    }
     
     // 수정 버튼 안전하게 연결
     const editBtn = document.getElementById("detail-edit-btn");
@@ -562,6 +577,10 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     // 3. 기존 글쓰기 로직 (침범 안 함)
   try {
+    // 장바구니에서 자동으로 채워진 주문인지(제품명/수량/사이즈가 읽기전용이면 장바구니발), 아니면
+    // 작성자가 직접 입력한 주문인지 여기서 판별해서 함께 저장합니다.
+    const isFromCart = document.getElementById('product-name').readOnly === true;
+
     // 1. 파일 업로드 실행
     const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value);
     const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value);
@@ -588,7 +607,8 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     views: 0,
     createdAt: new Date(),
     isDeleted: false,
-    status: '대기'
+    status: '대기',
+    fromCart: isFromCart // true: 장바구니 자동입력 주문 / false: 작성자가 직접 입력한 주문
     });
 
     alert("접수되었습니다.");
@@ -610,7 +630,10 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
 
 
-document.getElementById("go-write-btn").addEventListener("click", () => switchView('write'));
+document.getElementById("go-write-btn").addEventListener("click", () => {
+    renderCombinedCartOrder();
+    switchView('write');
+});
 
 
 
