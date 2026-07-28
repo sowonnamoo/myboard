@@ -110,17 +110,22 @@
 <tr class="form-row">
     <td class="font-bold text-gray-700 py-3">결제금액 <span class="text-red-500">*</span></td>
     <td><input type="text" id="price" class="form-input" placeholder="숫자만 입력하세요" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></td>
-</tr>                  <tr class="form-row">
-
-
-
-    
-<td class="font-bold text-gray-700 py-3">파일1 (필수) <span class="text-red-500">*</span></td>
-                      <td><input type="file" id="file-1"></td>
 </tr>
+
 <tr class="form-row">
-    <td class="font-bold text-gray-700 py-3">파일2</td>
-    <td><input type="file" id="file-2"></td>
+    <td class="font-bold text-gray-700 py-3">첨부파일</td>
+    <td>
+        <div class="flex items-center gap-5 flex-wrap">
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500 whitespace-nowrap">파일1(필수)<span class="text-red-500">*</span></span>
+                <input type="file" id="file-1">
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500 whitespace-nowrap">파일2</span>
+                <input type="file" id="file-2">
+            </div>
+        </div>
+    </td>
 </tr>
                     <tr class="form-row">
                         <td class="font-bold text-gray-700 py-3 align-top">작업메시지</td>
@@ -129,18 +134,16 @@
 
                                       <tr class="form-row">
                         <td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td>
-                        <td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 회사명"></td>
+                        <td>
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <input type="text" id="input-author" class="form-input flex-1 min-w-[140px]" placeholder="이름 또는 회사명">
+                                <span class="font-bold text-gray-700 whitespace-nowrap">접수자핸드폰 <span class="text-red-500">*</span></span>
+                                <input type="text" id="phone" class="form-input flex-1 min-w-[150px]" placeholder="010-XXXX-XXXX"
+                                       maxlength="11"
+                                       oninput="this.value = this.value.replace(/[^0-9-]/g, '')">
+                            </div>
+                        </td>
                     </tr>
-                  
-        <tr class="form-row">
-<tr class="form-row">
-    <td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td>
-    <td>
-        <input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" 
-               maxlength="11" 
-               oninput="this.value = this.value.replace(/[^0-9-]/g, '')">
-    </td>
-</tr>
 <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
 <tr class="form-row">
