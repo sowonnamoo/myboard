@@ -19,8 +19,9 @@
         .cart-summary-name { font-weight: bold; color: #222; font-size: 15px; margin-top: 2px; }
         .cart-summary-sub { font-size: 12px; color: #888; margin-top: 2px; }
         .cart-summary-price { font-weight: bold; color: #111; font-size: 15px; margin-top: 6px; }
+        .cart-summary-price-inline { font-weight: bold; color: #111; }
         .cart-summary-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
-        .cart-summary-qty { font-size: 13px; color: #666; white-space: nowrap; }
+        .cart-summary-qty { font-size: 13px; color: #333; font-weight: bold; white-space: nowrap; }
         .cart-summary-remove {
             border: 1px solid #e5e5e5;
             background: #fafafa;
@@ -88,7 +89,7 @@
     <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 주문작성</h2>
 
     <div id="cart-summary-card" class="hidden bg-white rounded-xl shadow border border-gray-100 p-5 mb-4">
-        <div class="font-bold text-gray-800 mb-3">담긴 상품</div>
+        <div class="font-bold text-gray-800 mb-3">장바구니</div>
         <div id="cart-summary-items"></div>
     </div>
     <div id="cart-total-line" class="hidden text-center text-lg font-bold text-gray-800 mb-6"></div>

@@ -119,12 +119,11 @@ function renderCombinedCartOrder() {
         row.className = 'cart-summary-row';
 
         const info = document.createElement('div');
+        const metaLine = [sizeText, weightText].filter(Boolean).join(' / ');
         info.innerHTML = `
             <div class="cart-summary-no">No.${String(idx + 1).padStart(2, '0')}</div>
             <div class="cart-summary-name">${getItemProductName(item)}</div>
-            ${sizeText ? `<div class="cart-summary-sub">${sizeText}</div>` : ''}
-            ${weightText ? `<div class="cart-summary-sub">${weightText}</div>` : ''}
-            <div class="cart-summary-price">${priceNum.toLocaleString()}원</div>
+            <div class="cart-summary-sub">${metaLine}${metaLine ? ' · ' : ''}<span class="cart-summary-price-inline">${priceNum.toLocaleString()}원</span></div>
         `;
 
         const right = document.createElement('div');
