@@ -36,15 +36,36 @@ const CART_QUEUE_KEY = 'pendingCartOrders'; // 기존 '장바구니담기'(myCar
 // 배송비 계산은 shipping.js의 calculateShippingFee()가 담당합니다.
 // (묶음배송 가능 품목/무게 구간별 요금표는 전부 shipping.js에서만 관리하면 됩니다)
 
-// item에 담긴 후가공 + 그 외 추가 선택옵션들을 하나의 문자열로 합칩니다.
-function buildExtraOptionsText(item) {
-    const parts = [];
-    if (item.finishings) parts.push(item.finishings);
+// item의 상품명을 구합니다. productName(또는 name)이 없으면 01my.html이 실제로 보내는
+// options 객체(예: {"options1":"명함","options3":"파일접수 (ai, eps, pdf)"})의 값들을 합쳐서 대신 사용합니다.
+function getItemProductName(item) {
+    if (item.productName) return item.productName;
+    if (item.name) return item.name;
     if (item.options && typeof item.options === 'object') {
         const optionValues = Object.values(item.options).filter(Boolean);
-        if (optionValues.length) parts.push(optionValues.join(', '));
-    } else if (item.optionsText) {
-        parts.push(item.optionsText);
+        if (optionValues.length) return optionValues.join(' / ');
+    }
+    if (item.optionsText) return item.optionsText;
+    return '상품';
+}
+
+// item에 담긴 후가공 + 그 외 추가 선택옵션들을 하나의 문자열로 합칩니다.
+function buildExtraOptionsText(item) {
+    // productName/name이 없어서 options 값을 이미 상품명으로 대신 썼다면,
+    // 여기서 또 넣으면 "명함 파일접수(...) / 명함 파일접수(...)" 처럼 중복되므로 건너뜁니다.
+    const optionsAlreadyUsedAsName = !item.productName && !item.name
+        && item.options && typeof item.options === 'object'
+        && Object.values(item.options).filter(Boolean).length > 0;
+
+    const parts = [];
+    if (item.finishings) parts.push(item.finishings);
+    if (!optionsAlreadyUsedAsName) {
+        if (item.options && typeof item.options === 'object') {
+            const optionValues = Object.values(item.options).filter(Boolean);
+            if (optionValues.length) parts.push(optionValues.join(', '));
+        } else if (item.optionsText) {
+            parts.push(item.optionsText);
+        }
     }
     return parts.join(', ');
 }
@@ -100,7 +121,7 @@ function renderCombinedCartOrder() {
         const info = document.createElement('div');
         info.innerHTML = `
             <div class="cart-summary-no">No.${String(idx + 1).padStart(2, '0')}</div>
-            <div class="cart-summary-name">${item.productName || item.name || '상품'}</div>
+            <div class="cart-summary-name">${getItemProductName(item)}</div>
             ${sizeText ? `<div class="cart-summary-sub">${sizeText}</div>` : ''}
             ${weightText ? `<div class="cart-summary-sub">${weightText}</div>` : ''}
             <div class="cart-summary-price">${priceNum.toLocaleString()}원</div>
@@ -148,7 +169,7 @@ function renderCombinedCartOrder() {
     }
 
     // ---- 폼 필드: 여러 상품 값을 "/"로 구획해서 하나로 합쳐 넣기 ----
-    const names = cart.map(it => it.productName || it.name || '상품');
+    const names = cart.map(it => getItemProductName(it));
     const qtys = cart.map(it => `${it.qty || ''}개`);
     const sizes = cart.map(it => (it.width && it.height) ? `${it.width} x ${it.height}mm` : (it.size || ''));
     const extras = cart.map(it => buildExtraOptionsText(it));
@@ -933,7 +954,49 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // 3. 쿼리스트링 상품 정보 처리 (단일 상품, #cart-summary-card가 없는 페이지거나 장바구니가 비어있을 때만)
     const params = new URLSearchParams(window.location.search);
-    if (params.has('product')) {
+
+    if (params.has('productId')) {
+        // 01my.html의 "주문하기" 버튼이 실제로 보내는 형식:
+        // ?productId=01my&options={"options1":"명함",...}&qty=200&count=1&width=90&height=50&price=5,500원&weight=0.225&finishings=...
+        const prodInput = document.getElementById('product-name');
+        const qtyInput = document.getElementById('quantity');
+        const sizeInput = document.getElementById('size');
+        const priceInput = document.getElementById('price');
+
+        let optionsObj = {};
+        try {
+            optionsObj = JSON.parse(params.get('options') || '{}');
+        } catch (e) {
+            optionsObj = {};
+        }
+        const optionValues = Object.values(optionsObj).filter(Boolean);
+        const productName = optionValues.length ? optionValues.join(' / ') : (params.get('productId') || '상품');
+
+        const qty = params.get('qty') || '';
+        const count = params.get('count') || '1';
+        const width = params.get('width') || '';
+        const height = params.get('height') || '';
+        const finishings = params.get('finishings') || '';
+        const price = params.get('price') || '';
+
+        prodInput.value = productName;
+        qtyInput.value = (count && count !== '1') ? `${qty}개 x ${count}건` : `${qty}개`;
+
+        let sizeText = (width && height) ? `${width} x ${height}mm` : '';
+        if (finishings) sizeText += (sizeText ? ' ' : '') + `(후가공: ${finishings})`;
+        sizeInput.value = sizeText;
+
+        priceInput.value = price;
+
+        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
+            el.readOnly = true;
+            el.style.backgroundColor = "#f3f4f6";
+            el.style.cursor = "not-allowed";
+        });
+
+        switchView('write');
+    } else if (params.has('product')) {
+        // 예전 방식(?product=...&size=...) 호환용으로 남겨둠
         const prodInput = document.getElementById('product-name');
         const qtyInput = document.getElementById('quantity');
         const sizeInput = document.getElementById('size');

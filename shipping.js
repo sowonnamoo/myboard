@@ -78,7 +78,10 @@ function getShippingFeeByWeight(weightKg) {
 
 // 상품 하나가 어떤 묶음배송 그룹에 속하는지 찾습니다. 없으면 null(=개별배송).
 function findShippingGroupId(item) {
-    const text = `${item.productId || ""} ${item.productName || item.name || ""}`.toLowerCase();
+    const optionsText = (item.options && typeof item.options === 'object')
+        ? Object.values(item.options).filter(Boolean).join(' ')
+        : '';
+    const text = `${item.productId || ""} ${item.productName || item.name || ""} ${optionsText}`.toLowerCase();
     for (const group of SHIPPING_BUNDLE_GROUPS) {
         const hit = group.matchKeywords.some(keyword => text.includes(String(keyword).toLowerCase()));
         if (hit) return group.groupId;
