@@ -65,7 +65,6 @@ function renderCombinedCartOrder() {
     const qtyInput = document.getElementById('quantity');
     const sizeInput = document.getElementById('size');
     const priceInput = document.getElementById('price');
-    const finishInput = document.getElementById('finishing');
 
     if (!Array.isArray(cart) || cart.length === 0) {
         // 장바구니가 비어있으면(또는 전부 삭제됐으면) 카드/합계 숨기고, 폼은 직접 입력 가능하도록 초기화
@@ -79,12 +78,6 @@ function renderCombinedCartOrder() {
             el.style.backgroundColor = '';
             el.style.cursor = '';
         });
-        if (finishInput) {
-            finishInput.value = '';
-            finishInput.readOnly = false;
-            finishInput.style.backgroundColor = '';
-            finishInput.style.cursor = '';
-        }
         return;
     }
 
@@ -153,18 +146,12 @@ function renderCombinedCartOrder() {
         ? `${sizes.join(' / ')} (후가공: ${extras.join(' / ')})`
         : sizes.join(' / ');
     priceInput.value = `${total}원`;
-    if (finishInput) finishInput.value = extras.join(' / ');
 
     [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
         el.readOnly = true;
         el.style.backgroundColor = "#f3f4f6";
         el.style.cursor = "not-allowed";
     });
-    if (finishInput) {
-        finishInput.readOnly = true;
-        finishInput.style.backgroundColor = "#f3f4f6";
-        finishInput.style.cursor = "not-allowed";
-    }
 
     switchView('write');
 }
