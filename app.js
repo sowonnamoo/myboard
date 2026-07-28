@@ -36,6 +36,29 @@ const CART_QUEUE_KEY = 'pendingCartOrders'; // 기존 '장바구니담기'(myCar
 // 배송비 계산은 shipping.js의 calculateShippingFee()가 담당합니다.
 // (묶음배송 가능 품목/무게 구간별 요금표는 전부 shipping.js에서만 관리하면 됩니다)
 
+// ---- 01my.html에서 "구입하기"를 여러 번 눌러 index1.html 새 창이 계속 뜨는 것 방지 ----
+// 브라우저 특성상 새 창(나중에 열린 창)이 이전 창을 직접 닫을 수는 없어서,
+// "내가 제일 최근에 열린 창이다"라는 신호를 localStorage로 보내고,
+// 그 신호를 받은 이전 창들이 스스로 닫는 방식으로 처리합니다.
+// index1.html에만 있는 #cart-summary-card가 있을 때만 동작하므로 index.html에는 영향이 없습니다.
+(function preventDuplicateCartPopups() {
+    if (!document.getElementById('cart-summary-card')) return;
+
+    const SIGNAL_KEY = '__cartPopupSignal';
+    const myTabId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    // "내가 최신 창이다"라고 알림 (이 알림을 쓰는 순간 자기 자신은 storage 이벤트를 못 받고,
+    // 이미 열려있던 다른 창들만 이 이벤트를 받습니다)
+    localStorage.setItem(SIGNAL_KEY, myTabId);
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === SIGNAL_KEY && e.newValue && e.newValue !== myTabId) {
+            // 나보다 더 나중에 열린 창이 생겼다는 뜻 -> 이 창(이전 창)은 스스로 닫음
+            window.close();
+        }
+    });
+})();
+
 // item의 상품명을 구합니다. productName(또는 name)이 없으면 01my.html이 실제로 보내는
 // options 객체(예: {"options1":"명함","options3":"파일접수 (ai, eps, pdf)"})의 값들을 합쳐서 대신 사용합니다.
 function getItemProductName(item) {
