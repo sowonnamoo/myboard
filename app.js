@@ -28,58 +28,158 @@ let currentPage = 1;
 let currentViewId = null;
 const POSTS_PER_PAGE = 8; 
 
-// ---- 장바구니(01my.html 등에서 담은 여러 상품) 순차 주문작성 큐 ----
-let cartQueue = [];       // localStorage 'myCart'에서 불러온 상품 목록
-let cartQueueIndex = 0;   // 현재 작성 중인 상품의 인덱스
+// ---- 장바구니(01my.html 등에서 담은 여러 상품) 통합 주문작성 ----
+// 이 기능은 index1.html에만 있는 #cart-summary-card 요소가 있을 때만 동작합니다.
+// index.html에는 이 요소 자체가 없으므로, pendingCartOrders에 값이 남아있더라도
+// index.html 쪽 동작(목록 우선 표시 등)에는 절대 영향을 주지 않습니다.
+const CART_QUEUE_KEY = 'pendingCartOrders'; // 기존 '장바구니담기'(myCart) 기능과는 별개의 키
+const SHIPPING_FEE = 3000; // 배송비 (필요시 여기 숫자만 수정)
 
-// 큐의 idx번째 상품 정보를 주문작성 폼에 채워 넣습니다.
-function loadCartQueueItem(idx) {
-    const item = cartQueue[idx];
-    if (!item) return;
+// item에 담긴 후가공 + 그 외 추가 선택옵션들을 하나의 문자열로 합칩니다.
+function buildExtraOptionsText(item) {
+    const parts = [];
+    if (item.finishings) parts.push(item.finishings);
+    if (item.options && typeof item.options === 'object') {
+        const optionValues = Object.values(item.options).filter(Boolean);
+        if (optionValues.length) parts.push(optionValues.join(', '));
+    } else if (item.optionsText) {
+        parts.push(item.optionsText);
+    }
+    return parts.join(', ');
+}
 
+// 장바구니에 담긴 여러 상품을 하나의 주문으로 합쳐 "담긴 상품" 카드 + 폼에 채워 넣습니다.
+function renderCombinedCartOrder() {
+    const summaryCard = document.getElementById('cart-summary-card');
+    if (!summaryCard) return; // index1.html이 아니면 여기서 조용히 종료
+
+    let cart = [];
+    try {
+        cart = JSON.parse(localStorage.getItem(CART_QUEUE_KEY) || '[]');
+    } catch (e) {
+        cart = [];
+    }
+
+    const totalLine = document.getElementById('cart-total-line');
     const prodInput = document.getElementById('product-name');
     const qtyInput = document.getElementById('quantity');
     const sizeInput = document.getElementById('size');
     const priceInput = document.getElementById('price');
     const finishInput = document.getElementById('finishing');
 
-    prodInput.value = item.productName || item.name || "";
+    if (!Array.isArray(cart) || cart.length === 0) {
+        // 장바구니가 비어있으면(또는 전부 삭제됐으면) 카드/합계 숨기고, 폼은 직접 입력 가능하도록 초기화
+        summaryCard.classList.add('hidden');
+        if (totalLine) totalLine.classList.add('hidden');
 
-    const qtyPart = item.qty || "";
-    const countPart = (item.count && item.count !== "1") ? ` x ${item.count}건` : "";
-    qtyInput.value = qtyPart ? `${qtyPart}매${countPart}` : (item.qty || "");
-
-    if (item.width && item.height) {
-        sizeInput.value = `${item.width}x${item.height}mm`;
-    } else {
-        sizeInput.value = item.size || "";
+        [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
+            if (!el) return;
+            el.value = '';
+            el.readOnly = false;
+            el.style.backgroundColor = '';
+            el.style.cursor = '';
+        });
+        if (finishInput) {
+            finishInput.value = '';
+            finishInput.readOnly = false;
+            finishInput.style.backgroundColor = '';
+            finishInput.style.cursor = '';
+        }
+        return;
     }
 
-    priceInput.value = item.price || "";
+    // ---- "담긴 상품" 카드 렌더링 (개별 삭제 버튼 포함) ----
+    const itemsContainer = document.getElementById('cart-summary-items');
+    itemsContainer.innerHTML = '';
+    let subtotal = 0;
 
-    if (finishInput) {
-        finishInput.value = item.finishings || item.finishing || "";
-        finishInput.readOnly = true;
-        finishInput.style.backgroundColor = "#f3f4f6";
-        finishInput.style.cursor = "not-allowed";
+    cart.forEach((item, idx) => {
+        const priceNum = parseInt(String(item.price).replace(/[^0-9]/g, ''), 10) || 0;
+        subtotal += priceNum;
+
+        const sizeText = (item.width && item.height) ? `${item.width} x ${item.height}mm` : (item.size || '');
+        const weightText = (item.weight !== undefined && item.weight !== '' && item.weight !== null) ? `무게: 약 ${item.weight}kg` : '';
+
+        const row = document.createElement('div');
+        row.className = 'cart-summary-row';
+
+        const info = document.createElement('div');
+        info.innerHTML = `
+            <div class="cart-summary-no">No.${String(idx + 1).padStart(2, '0')}</div>
+            <div class="cart-summary-name">${item.productName || item.name || '상품'}</div>
+            ${sizeText ? `<div class="cart-summary-sub">${sizeText}</div>` : ''}
+            ${weightText ? `<div class="cart-summary-sub">${weightText}</div>` : ''}
+            <div class="cart-summary-price">${priceNum.toLocaleString()}원</div>
+        `;
+
+        const right = document.createElement('div');
+        right.className = 'cart-summary-right';
+
+        const qtyEl = document.createElement('div');
+        qtyEl.className = 'cart-summary-qty';
+        qtyEl.textContent = `${item.qty || ''}개`;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'cart-summary-remove';
+        removeBtn.textContent = '삭제';
+        removeBtn.addEventListener('click', () => removePendingCartItem(idx));
+
+        right.appendChild(qtyEl);
+        right.appendChild(removeBtn);
+
+        row.appendChild(info);
+        row.appendChild(right);
+        itemsContainer.appendChild(row);
+    });
+
+    summaryCard.classList.remove('hidden');
+
+    const total = subtotal + SHIPPING_FEE;
+    if (totalLine) {
+        totalLine.textContent = `${subtotal}원 + 배송비 ${SHIPPING_FEE} 총결제액 : ${total}원`;
+        totalLine.classList.remove('hidden');
     }
+
+    // ---- 폼 필드: 여러 상품 값을 "/"로 구획해서 하나로 합쳐 넣기 ----
+    const names = cart.map(it => it.productName || it.name || '상품');
+    const qtys = cart.map(it => `${it.qty || ''}개`);
+    const sizes = cart.map(it => (it.width && it.height) ? `${it.width} x ${it.height}mm` : (it.size || ''));
+    const extras = cart.map(it => buildExtraOptionsText(it));
+
+    prodInput.value = names.join(' / ');
+    qtyInput.value = qtys.join(' / ');
+    sizeInput.value = extras.some(Boolean)
+        ? `${sizes.join(' / ')} (후가공: ${extras.join(' / ')})`
+        : sizes.join(' / ');
+    priceInput.value = `${total}원`;
+    if (finishInput) finishInput.value = extras.join(' / ');
 
     [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
         el.readOnly = true;
         el.style.backgroundColor = "#f3f4f6";
         el.style.cursor = "not-allowed";
     });
-
-    const banner = document.getElementById('cart-queue-banner');
-    const bannerText = document.getElementById('cart-queue-text');
-    if (banner && bannerText) {
-        if (cartQueue.length > 1) {
-            banner.classList.remove('hidden');
-            bannerText.textContent = `장바구니 주문 작성 중 (${idx + 1} / ${cartQueue.length}) - ${item.productName || item.name || ""}`;
-        } else {
-            banner.classList.add('hidden');
-        }
+    if (finishInput) {
+        finishInput.readOnly = true;
+        finishInput.style.backgroundColor = "#f3f4f6";
+        finishInput.style.cursor = "not-allowed";
     }
+
+    switchView('write');
+}
+
+// "담긴 상품" 카드에서 개별 상품 삭제 → 저장 후 다시 렌더링
+function removePendingCartItem(idx) {
+    let cart = [];
+    try {
+        cart = JSON.parse(localStorage.getItem(CART_QUEUE_KEY) || '[]');
+    } catch (e) {
+        cart = [];
+    }
+    cart.splice(idx, 1);
+    localStorage.setItem(CART_QUEUE_KEY, JSON.stringify(cart));
+    renderCombinedCartOrder();
 }
 
 
@@ -459,22 +559,9 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     alert("접수되었습니다.");
 
-    // 장바구니 순차 작성 모드였다면 다음 상품으로 이어서 진행, 아니면 목록으로 이동
-    if (cartQueue.length > 0 && cartQueueIndex < cartQueue.length - 1) {
-        cartQueueIndex++;
-
-        // 파일/메시지는 상품마다 다를 수 있으므로 초기화 (작성자/연락처/배송지는 유지)
-        document.getElementById('message').value = "";
-        document.getElementById('file-1').value = "";
-        document.getElementById('file-2').value = "";
-
-        loadCartQueueItem(cartQueueIndex);
-    } else {
-        localStorage.removeItem('myCart');
-        cartQueue = [];
-        cartQueueIndex = 0;
-        switchView('list');
-    }
+    // 장바구니를 하나의 주문으로 합쳐 접수한 경우, 장바구니 비우기
+    localStorage.removeItem('pendingCartOrders');
+    switchView('list');
 } catch (e) {
     console.error(e);
     alert("오류: " + e.message);
@@ -841,23 +928,10 @@ window.addEventListener('DOMContentLoaded', () => {
     // 1. 기존 데이터 로드 실행
     initBoard();
 
-    // 2. 장바구니에 담긴 상품이 있으면 우선적으로 순차 작성 모드로 진입
-    let storedCart = [];
-    try {
-        storedCart = JSON.parse(localStorage.getItem('myCart') || '[]');
-    } catch (e) {
-        storedCart = [];
-    }
+    // 2. 장바구니(여러 상품)를 하나의 주문으로 합쳐서 보여주기 (index1.html에만 있는 요소일 때만 동작)
+    renderCombinedCartOrder();
 
-    if (Array.isArray(storedCart) && storedCart.length > 0) {
-        cartQueue = storedCart;
-        cartQueueIndex = 0;
-        loadCartQueueItem(0);
-        switchView('write');
-        return;
-    }
-
-    // 3. 쿼리스트링 상품 정보 처리 (단일 상품, 장바구니가 없을 때만)
+    // 3. 쿼리스트링 상품 정보 처리 (단일 상품, #cart-summary-card가 없는 페이지거나 장바구니가 비어있을 때만)
     const params = new URLSearchParams(window.location.search);
     if (params.has('product')) {
         const prodInput = document.getElementById('product-name');
