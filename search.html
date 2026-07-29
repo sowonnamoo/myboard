@@ -4,8 +4,48 @@
     <meta charset="UTF-8">
     <title>주문 조회 검색기</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ---------- 시안보기 모달 (새 창 대신 같은 페이지 안에서 열림 —
+           브라우저 주소창/탭 높이 때문에 생기던 여백 문제를 원천적으로 없앰) ---------- */
+        .sian-modal{
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(10,14,18,0.92);
+            z-index:1000;
+            align-items:center;
+            justify-content:center;
+            padding:24px;
+            cursor:zoom-out;
+        }
+        .sian-modal.active{ display:flex; }
+        .sian-modal img{
+            max-width:100%;
+            max-height:100%;
+            display:block;
+            cursor:default;
+        }
+        .sian-modal-close{
+            position:fixed;
+            top:18px; right:20px;
+            background:rgba(255,255,255,0.12);
+            color:#fff;
+            border:1px solid rgba(255,255,255,0.25);
+            border-radius:8px;
+            padding:8px 14px;
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+        }
+        .sian-modal-close:hover{ background:rgba(255,255,255,0.2); }
+    </style>
 </head>
 <body class="p-5 bg-gray-50">
+    <div class="sian-modal" id="sian-modal" onclick="closeSianImage()">
+        <button type="button" class="sian-modal-close" onclick="event.stopPropagation(); closeSianImage()">닫기 ✕</button>
+        <img id="sian-modal-img" src="" alt="시안 이미지" onclick="event.stopPropagation()">
+    </div>
+
     <div class="max-w-2xl mx-auto">
      <div class="bg-white p-6 rounded shadow-sm mb-6">
     <h2 class="text-xl font-bold mb-4">주문 내역 조회</h2>
@@ -35,6 +75,21 @@
             window.open(url, '_blank', 'width=590,height=830,scrollbars=yes');
         };
 
+        // 시안보기 — 새 창 대신 같은 페이지 안 모달로 열어서, 브라우저 주소창/탭
+        // 높이 때문에 생기던 회색 여백 문제를 원천적으로 없앰
+        window.viewSianImage = (url) => {
+            if(!url) return;
+            document.getElementById('sian-modal-img').src = url;
+            document.getElementById('sian-modal').classList.add('active');
+        };
+        window.closeSianImage = () => {
+            document.getElementById('sian-modal').classList.remove('active');
+            document.getElementById('sian-modal-img').src = '';
+        };
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'Escape') window.closeSianImage();
+        });
+
         const firebaseConfig = {
             apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
             authDomain: "board-291e3.firebaseapp.com",
@@ -46,6 +101,20 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        // cart.html이 저장하는 Firebase 프로젝트(orders 컬렉션) — 원래 검색기가 보던
+        // "boards"/"jjjj"와는 완전히 다른 프로젝트라 앱 이름을 따로 줘서 같이 초기화함.
+        const cartFirebaseConfig = {
+            apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+            authDomain: "ecogr-636c6.firebaseapp.com",
+            projectId: "ecogr-636c6",
+            storageBucket: "ecogr-636c6.firebasestorage.app",
+            messagingSenderId: "95745358447",
+            appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+        };
+
+        const cartApp = initializeApp(cartFirebaseConfig, "cartApp");
+        const cartDb = getFirestore(cartApp);
 
 document.getElementById('search-btn').addEventListener('click', async () => {
     // [추가] 봇 방지 로직: 10회 실패 시 입력값 변조
@@ -72,12 +141,26 @@ document.getElementById('search-btn').addEventListener('click', async () => {
     try {
         const qBoards = query(collection(db, "boards"), where("author", "==", name));
         const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
-        
-        const [snapBoards, snapJjjj] = await Promise.all([getDocs(qBoards), getDocs(qJjjj)]);
-        
+        const qCart = query(collection(cartDb, "orders"), where("name", "==", name));
+
+        const [snapBoards, snapJjjj, snapCart] = await Promise.all([getDocs(qBoards), getDocs(qJjjj), getDocs(qCart)]);
+
         const allDocs = [
-            ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false })),
-            ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true }))
+            ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false, source: 'board' })),
+            ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true, source: 'board' })),
+            // cart.html의 orders 컬렉션은 필드 구조가 완전히 달라서(author 대신 name,
+            // 단일 상품 대신 items 배열) 렌더링에서 쓸 공통 필드만 맞춰서 정규화함.
+            ...snapCart.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    ...data,
+                    id: doc.id,
+                    isJajoo: false,
+                    source: 'cart',
+                    author: data.name,
+                    phone: data.phone
+                };
+            })
         ];
 
         const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
@@ -107,6 +190,105 @@ filteredData.sort((a, b) => {
         }
 
         filteredData.forEach(d => {
+            // cart.html(장바구니/결제) 쪽에서 넘어온 주문은 필드 구조가 완전히 달라서
+            // (단일 상품이 아니라 items 배열) 따로 간소화된 카드로 렌더링함.
+            if (d.source === 'cart') {
+                const dateObjCart = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+                const dateStrCart = `${dateObjCart.getFullYear()}년 ${dateObjCart.getMonth() + 1}월 ${dateObjCart.getDate()}일`;
+                const items = Array.isArray(d.items) ? d.items : [];
+                const totalNumber = Number(String(d.total).replace(/[^0-9.-]/g, '')) || 0;
+
+                const itemRows = items.map(it => {
+                    const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
+                    const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
+                    const sianLink = it.compositeImage
+                        ? `<a href="javascript:void(0)" onclick="viewSianImage('${it.compositeImage}')" class="text-blue-500 underline">시안보기</a>`
+                        : '<span class="text-gray-400">시안없음</span>';
+                    return `
+                        <div class="flex items-center justify-between text-xs bg-white border rounded px-2 py-1.5 mt-1">
+                            <span>${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
+                            ${sianLink}
+                        </div>`;
+                }).join('');
+
+                // cart.html의 saveOrderToFirestore가 저장하는 상태값: "입금대기"(무통장, 확인 전)
+                // 또는 "결제완료"(카드결제는 결제 성공 시 바로 이 상태로 저장됨)
+                const isPendingCart = d.status === '입금대기';
+                const isBankTransferCart = d.payment === '무통장입금';
+                const isCardCart = d.payment === '카드결제';
+
+                // 여러 상품이 한 주문에 담기므로, 영수증/카드전표용 상품명·사이즈·수량은
+                // 상품들을 합쳐서 하나의 문자열로 구성함
+                const productNamesCart = items.map(it => it.item).filter(Boolean).join(', ') || '상품명 없음';
+                const sizeLabelCart = items.map(it => (it.width && it.height) ? `${it.width}×${it.height}mm` : '').filter(Boolean).join(', ') || '-';
+                const totalQtyCart = items.reduce((sum, it) => sum + ((Number(it.qty) || 1) * (Number(it.count) || 1)), 0);
+
+                const paramsCart = new URLSearchParams({
+                    product: productNamesCart, size: sizeLabelCart, qty: String(totalQtyCart || 0),
+                    price: String(totalNumber), date: `작성일: ${dateStrCart}`, bizType: '기술서비스', bizItem: '광고, 대행'
+                }).toString();
+
+                const cardParamsCart = new URLSearchParams({
+                    date: `${dateObjCart.getFullYear()}-${(dateObjCart.getMonth() + 1).toString().padStart(2, '0')}-${dateObjCart.getDate().toString().padStart(2, '0')}`,
+                    name: productNamesCart, size: sizeLabelCart, qty: String(totalQtyCart || 0), price: String(totalNumber)
+                }).toString();
+
+                resultsDiv.innerHTML += `
+                <div class="bg-blue-50 border p-6 rounded shadow-sm mb-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="font-bold text-lg mb-2">🛒 장바구니 주문 (${items.length}건)</h2>
+                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                                <div><span class="font-semibold">작성자:</span> ${d.author || '-'}</div>
+                                <div><span class="font-semibold">상태:</span> ${d.status || d.payment || '-'}</div>
+                                <div><span class="font-semibold">결제방법:</span> ${d.payment || '-'}</div>
+                                <div><span class="font-semibold">총 금액:</span> ${totalNumber.toLocaleString()}원</div>
+                                <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-600 border-t pt-3">
+                        <div><span class="font-semibold">작성일:</span> ${dateStrCart}</div>
+                        <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
+                        <div class="mt-2"><span class="font-semibold">주문 상품:</span>${itemRows}</div>
+
+                        ${isPendingCart ? `
+                        <div class="mt-3 text-sm font-bold text-red-600 bg-red-50 p-2 rounded">
+                            *무통장 계좌 : 국민 782301-01-547234 에코그래픽스 ㅣ  * 농협 352-0130-9995-53 최대환
+                        </div>` : ''}
+
+                        <div class="mt-4 flex gap-2 flex-wrap">
+                            <a href="javascript:void(0)"
+                               onclick="${isPendingCart ? '' : "openPopup('https://sowonnamoo.github.io/myboard/segum')"}"
+                               class="border px-2 py-1 text-xs ${(isBankTransferCart && !isPendingCart) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
+
+                            <a href="javascript:void(0)"
+                               onclick="${isPendingCart ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + paramsCart + "')"}"
+                               class="border px-2 py-1 text-xs ${(isBankTransferCart && !isPendingCart) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
+
+                            <a href="javascript:void(0)"
+                               onclick="${isPendingCart ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParamsCart + "')"}"
+                               class="border px-2 py-1 text-xs ${(isCardCart && !isPendingCart) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
+
+                            <a href="javascript:void(0)"
+                               onclick="${d.woonso1 ? "openPopup('" + d.woonso1 + "')" : ""}"
+                               class="border px-2 py-1 text-xs transition-colors duration-300
+                               ${d.woonso1
+                                   ? 'bg-red-500 text-white border-red-500 hover:bg-red-600 font-bold'
+                                   : 'bg-gray-100 text-gray-400 pointer-events-none'
+                               }">
+                               ${d.woonso1 ? '출고완료/운송장보기' : '운송장'}
+                            </a>
+
+                            ${isPendingCart ? `
+                            <button onclick="deleteCartOrder('${d.id}')"
+                                class="border px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-700">주문삭제</button>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+                return;
+            }
+
             // [4] 날짜 및 이미지 번호 로직
             const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
             const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
@@ -255,6 +437,22 @@ window.deleteOrder = async (docId, isJajoo) => {
             const collectionName = isJajoo ? "jjjj" : "boards";
             await deleteDoc(doc(db, collectionName, docId));
             
+            alert("삭제되었습니다.");
+            document.getElementById('search-btn').click();
+        } catch (error) {
+            console.error("삭제 실패:", error);
+            alert("삭제 중 오류가 발생했습니다.");
+        }
+    }
+};
+
+// 장바구니(cart.html) 쪽 주문은 별도 Firebase 프로젝트(cartDb)의 "orders" 컬렉션에
+// 저장돼 있어서, 위 deleteOrder와는 별개로 따로 삭제함
+window.deleteCartOrder = async (docId) => {
+    if (confirm("정말로 이 주문을 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) {
+        try {
+            await deleteDoc(doc(cartDb, "orders", docId));
+
             alert("삭제되었습니다.");
             document.getElementById('search-btn').click();
         } catch (error) {
