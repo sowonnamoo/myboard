@@ -95,7 +95,7 @@ function renderTable(dataToRender = allOrders) {
         }
 
         let author = data.author || "고객님";
-        if ((now - dateObj) > FOUR_DAYS_IN_MS && author.length > 1) {
+        if (author.length > 1) {
             author = author.substring(0, author.length - 1) + "*";
         }
 
@@ -254,21 +254,42 @@ window.viewDetail = async function(id) {
     
     const data = snap.data();
     const storedPass = String(data.password || "");
+    const storedAuthor = String(data.author || "").trim();
     const modal = document.getElementById("password-modal");
+    const nameInput = document.getElementById("modal-name-input");
     const input = document.getElementById("modal-password-input");
     const confirmBtn = document.getElementById("modal-confirm-btn");
     const cancelBtn = document.getElementById("modal-cancel-btn");
 
     modal.classList.remove("hidden");
+    if (nameInput) nameInput.value = "";
     input.value = "";
-    input.focus();
+    (nameInput || input).focus();
 
     confirmBtn.onclick = async () => {
+        // 봇 방지: 비밀번호 10회 이상 틀리면 3시간 동안 조회 차단 (app.js의 방식과 동일)
+        const blockUntil = localStorage.getItem("sianBlockUntil");
+        const nowTime = new Date().getTime();
+        if (blockUntil && nowTime < parseInt(blockUntil)) {
+            const remainingSec = Math.ceil((parseInt(blockUntil) - nowTime) / 1000);
+            const min = Math.floor(remainingSec / 60);
+            const sec = remainingSec % 60;
+            alert(`비밀번호를 너무 많이 틀려 ${min}분 ${sec}초 동안 접속이 제한됩니다.`);
+            return;
+        }
+
+        const inputName = nameInput ? nameInput.value.trim() : "";
         const inputVal = input.value;
         const isNumeric = /^\d+$/.test(storedPass);
         const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
-        if (inputVal === passToCompare) {
+        const nameMatches = inputName !== "" && inputName === storedAuthor;
+        const pwdMatches = inputVal === passToCompare;
+
+        if (nameMatches && pwdMatches) {
+    // 성공 시 실패 횟수 초기화
+    localStorage.setItem("sianFailCount", "0");
+
     modal.classList.add("hidden");
     currentViewId = id;
 
@@ -320,10 +341,21 @@ const dImage = document.getElementById("detail-image");
     </div>`;
             }
         } else {
-            alert("비밀번호가 일치하지 않습니다.");
+            let failCount = parseInt(localStorage.getItem("sianFailCount") || "0") + 1;
+            if (failCount >= 10) {
+                localStorage.setItem("sianBlockUntil", (nowTime + (3 * 60 * 60 * 1000)).toString());
+                localStorage.setItem("sianFailCount", "0");
+                alert("비밀번호를 10회 틀려 3시간 동안 접속이 제한됩니다.");
+            } else {
+                localStorage.setItem("sianFailCount", failCount.toString());
+                alert(`작성자명 또는 전화번호가 일치하지 않습니다. (${failCount}/10회)`);
+            }
         }
     };
-    cancelBtn.onclick = () => modal.classList.add("hidden");
+    cancelBtn.onclick = () => {
+        modal.classList.add("hidden");
+        if (nameInput) nameInput.value = "";
+    };
 };
 
 document.getElementById("save-memo-btn").addEventListener("click", async () => {

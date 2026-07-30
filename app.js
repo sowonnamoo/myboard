@@ -327,7 +327,11 @@ window.switchView = function(viewName) {
 window.viewDetail = function(id) {
     currentViewId = id;
     document.getElementById("password-modal").classList.remove("hidden");
-    document.getElementById("modal-password-input").focus();
+    const nameInput = document.getElementById("modal-name-input");
+    const pwdInput = document.getElementById("modal-password-input");
+    if (nameInput) nameInput.value = "";
+    pwdInput.value = "";
+    (nameInput || pwdInput).focus();
 };
 
 
@@ -456,12 +460,10 @@ function renderTable() {
             const d = data.createdAt.toDate();
             const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             
-            // 작성자 이름 끝자리 블라인드 처리 로직
+            // 작성자 이름 끝자리 블라인드 처리 로직 (예전엔 3일 지난 글만 가렸는데,
+            // 신규로 작성되는 글도 처음부터 똑같이 가려지도록 통일함)
             let author = data.author || "김준혁";
-            const diffInDays = (now - d) / (1000 * 60 * 60 * 24); 
-            
-            // 3일(72시간)이 지났으면 이름의 마지막 글자를 *로 변경
-            if (diffInDays >= 3 && author.length > 1) {
+            if (author.length > 1) {
                 author = author.substring(0, author.length - 1) + "*(정보보호)";
             }
 
@@ -513,6 +515,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         return;
     }
 
+    const inputName = document.getElementById("modal-name-input").value.trim();
     const inputPwd = document.getElementById("modal-password-input").value;
     const snap = await getDoc(doc(db, "boards", currentViewId));
     
@@ -523,8 +526,11 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
 
     const data = snap.data();
     
-    // 2. 비밀번호 검증
-    if (inputPwd !== data.password) {
+    // 2. 작성자명 + 비밀번호(전화번호 뒷4자리) 둘 다 검증
+    const nameMatches = inputName !== "" && inputName === String(data.author || "").trim();
+    const pwdMatches = inputPwd === data.password;
+
+    if (!nameMatches || !pwdMatches) {
         let failCount = parseInt(localStorage.getItem("failCount") || "0") + 1;
         
         if (failCount >= 10) {
@@ -534,7 +540,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
             alert("비밀번호를 10회 틀려 3시간 동안 접속이 제한됩니다.");
         } else {
             localStorage.setItem("failCount", failCount.toString());
-            alert(`비밀번호가 일치하지 않습니다. (${failCount}/10회)`);
+            alert(`작성자명 또는 전화번호가 일치하지 않습니다. (${failCount}/10회)`);
         }
         return;
     }
@@ -542,6 +548,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     // 3. 인증 성공 시 카운트 초기화 및 상세 화면 렌더링
     localStorage.setItem("failCount", "0");
     document.getElementById("password-modal").classList.add("hidden");
+    document.getElementById("modal-name-input").value = "";
     document.getElementById("modal-password-input").value = "";
     
     // 기존에 작동하던 상세 렌더링 로직 (데이터 뿌리기, 수정 버튼, 파일, 삭제 등)
@@ -629,6 +636,8 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
 // ... 나머지는 기존 코드와 동일 (생략) ...
 document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("password-modal").classList.add("hidden");
+    const nameInput = document.getElementById("modal-name-input");
+    if (nameInput) nameInput.value = "";
     document.getElementById("modal-password-input").value = "";
 });
 
