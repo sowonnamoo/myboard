@@ -2,9 +2,15 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <!-- 이름·전화번호·주소 등 개인 주문정보가 노출되는 페이지라 검색엔진에 안 걸리게 막음 -->
+    <meta name="robots" content="noindex, nofollow, noarchive">
     <title>주문 조회 검색기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* 우클릭(및 우클릭으로 여는 메뉴)으로 이미지/텍스트를 쉽게 저장 못 하게 최소한의 방어 */
+        body{ -webkit-touch-callout: none; }
+
         /* ---------- 시안보기 모달 (새 창 대신 같은 페이지 안에서 열림 —
            브라우저 주소창/탭 높이 때문에 생기던 여백 문제를 원천적으로 없앰) ---------- */
         .sian-modal{
@@ -40,28 +46,30 @@
         .sian-modal-close:hover{ background:rgba(255,255,255,0.2); }
     </style>
 </head>
-<body class="p-5 bg-gray-50">
+<body class="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-blue-50 p-4 sm:p-6" oncontextmenu="return false;">
     <div class="sian-modal" id="sian-modal" onclick="closeSianImage()">
         <button type="button" class="sian-modal-close" onclick="event.stopPropagation(); closeSianImage()">닫기 ✕</button>
         <img id="sian-modal-img" src="" alt="시안 이미지" onclick="event.stopPropagation()">
     </div>
 
     <div class="max-w-2xl mx-auto">
-     <div class="bg-white p-6 rounded shadow-sm mb-6">
-    <h2 class="text-xl font-bold mb-4">주문 내역 조회</h2>
-    
-    <div class="mb-4 flex items-center justify-between text-sm text-gray-500">
-        <span>* 구입완료건 조회 / 제작상황</span>
-  
-    </div>
+     <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
+        <div class="flex items-center gap-3 mb-1">
+            <div class="w-10 h-10 shrink-0 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shadow-blue-200">ECO</div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900">주문 내역 조회</h2>
+        </div>
 
-  <div class="flex gap-2">
-    <input type="text" id="search-name" class="border p-2 flex-grow-[2] rounded" placeholder="이름 입력">
-    
-    <input type="text" id="search-phone" class="border p-2 w-48 rounded" placeholder="전화번호 뒤 4자리" maxlength="4">
-    
-    <button id="search-btn" class="bg-blue-600 text-white px-4 py-2 rounded">조회</button>
-</div>
+        <div class="mb-5 text-xs sm:text-sm text-slate-400">
+            * 구입완료건 조회 / 제작상황
+        </div>
+
+      <div class="flex flex-col sm:flex-row gap-2.5">
+        <input type="text" id="search-name" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:flex-grow-[2]" placeholder="이름 입력">
+
+        <input type="text" id="search-phone" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44" placeholder="전화번호 뒤 4자리" maxlength="4">
+
+        <button id="search-btn" class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
+    </div>
 </div>
         <div id="results" class="space-y-4"></div>
     </div>
@@ -69,6 +77,11 @@
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // 우클릭(및 모바일 길게 눌러서 뜨는 메뉴) 방지 — 개인 주문정보라 이미지/텍스트를
+        // 쉽게 저장/복사하지 못하도록 최소한의 방어 차원. (개발자도구 등 완전 차단은 불가능하지만
+        // 일반적인 우클릭 메뉴는 막아둠)
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
 
         // 팝업 열기 함수 추가
         window.openPopup = (url) => {
@@ -234,11 +247,11 @@ filteredData.sort((a, b) => {
                 }).toString();
 
                 resultsDiv.innerHTML += `
-                <div class="bg-blue-50 border p-6 rounded shadow-sm mb-4">
-                    <div class="flex justify-between items-start">
+                <div class="bg-blue-50 border border-blue-100 p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                         <div>
                             <h2 class="font-bold text-lg mb-2">🛒 장바구니 주문 (${items.length}건)</h2>
-                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                            <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-700">
                                 <div><span class="font-semibold">작성자:</span> ${d.author || '-'}</div>
                                 <div><span class="font-semibold">상태:</span> ${d.status || d.payment || '-'}</div>
                                 <div><span class="font-semibold">결제방법:</span> ${d.payment || '-'}</div>
@@ -336,11 +349,11 @@ if (d.status !== '대기' && d.status !== '접수에러') {
 
             // [7] HTML 렌더링 (누락된 항목 복구 완료)
           resultsDiv.innerHTML += `
-    <div class="${d.isJajoo ? 'bg-orange-50' : 'bg-white'} border p-6 rounded shadow-sm mb-4">
-        <div class="flex justify-between items-start">
+    <div class="${d.isJajoo ? 'bg-orange-50' : 'bg-white'} border border-slate-200 p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
             <div>
                 <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 재주문_결제즉시 제작시작건_ ' : ''}${d.productName || '상품명 없음'}</h2>
-                <div class="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-700">
                     <div><span class="font-semibold">작성자:</span> ${d.author}</div>
 <div><span class="font-semibold">상태:</span> ${d.status || '-'} <span class="text-blue-600 font-bold">${statusLabel}</span></div>
 <div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
@@ -349,7 +362,7 @@ if (d.status !== '대기' && d.status !== '접수에러') {
                     <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
                 </div>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-row sm:flex-col gap-2 flex-wrap">
             ${
     (!d.isJajoo && d.sian !== 'done') 
     ? `<button onclick="window.open('https://sowonnamoo.github.io/myboard/index2?autoId=${d.id}', '_blank', 'width=864,height=1000,scrollbars=yes')" 
