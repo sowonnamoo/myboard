@@ -7,6 +7,7 @@
     <meta name="robots" content="noindex, nofollow, noarchive">
     <title>주문 조회 검색기</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://static.nid.naver.com/js/naveridlogin_js_sdk_2.0.2.js"></script>
     <style>
         /* 우클릭(및 우클릭으로 여는 메뉴)으로 이미지/텍스트를 쉽게 저장 못 하게 최소한의 방어 */
         body{ -webkit-touch-callout: none; }
@@ -63,6 +64,11 @@
             * 구입완료건 조회 / 제작상황
         </div>
 
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-4 p-3 bg-green-50/70 border border-green-100 rounded-xl">
+            <div id="naverIdLogin"></div>
+            <div id="naver-status" class="text-sm"></div>
+        </div>
+
       <div class="flex flex-col sm:flex-row gap-2.5">
         <input type="text" id="search-name" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:flex-grow-[2]" placeholder="이름 입력">
 
@@ -76,7 +82,7 @@
 
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // 우클릭(및 모바일 길게 눌러서 뜨는 메뉴) 방지 — 개인 주문정보라 이미지/텍스트를
         // 쉽게 저장/복사하지 못하도록 최소한의 방어 차원. (개발자도구 등 완전 차단은 불가능하지만
@@ -129,6 +135,265 @@
         const cartApp = initializeApp(cartFirebaseConfig, "cartApp");
         const cartDb = getFirestore(cartApp);
 
+        // 이름으로 boards/jjjj/cart(orders) 3개 컬렉션을 모두 조회해서 공통 형태로 합쳐줌
+        // (전화번호 조회, 네이버 자동 연결 양쪽에서 재사용)
+        async function fetchDocsByName(name) {
+            const qBoards = query(collection(db, "boards"), where("author", "==", name));
+            const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
+            const qCart = query(collection(cartDb, "orders"), where("name", "==", name));
+
+            const [snapBoards, snapJjjj, snapCart] = await Promise.all([getDocs(qBoards), getDocs(qJjjj), getDocs(qCart)]);
+
+            return [
+                ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false, source: 'board' })),
+                ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true, source: 'board' })),
+                // cart.html의 orders 컬렉션은 필드 구조가 완전히 달라서(author 대신 name,
+                // 단일 상품 대신 items 배열) 렌더링에서 쓸 공통 필드만 맞춰서 정규화함.
+                ...snapCart.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        ...data,
+                        id: doc.id,
+                        isJajoo: false,
+                        source: 'cart',
+                        author: data.name,
+                        phone: data.phone
+                    };
+                })
+            ];
+        }
+
+        // 주문 문서 하나를 실제로 업데이트할 때 필요한 db/컬렉션명을 판별
+        function targetOf(d) {
+            const targetDb = d.source === 'cart' ? cartDb : db;
+            const targetCollectionName = d.source === 'cart' ? 'orders' : (d.isJajoo ? 'jjjj' : 'boards');
+            return { targetDb, targetCollectionName };
+        }
+
+        // ---------------- 네이버 로그인 ----------------
+        // 네이버 개발자센터(https://developers.naver.com)에서 애플리케이션을 등록하고
+        // 아래 CLIENT_ID를 발급받은 값으로 바꿔주세요. 서비스 URL / Callback URL은
+        // 이 페이지의 실제 주소(예: https://내도메인/search.html)로 정확히 등록해야 합니다.
+        const NAVER_CLIENT_ID = "npbEa026GilYRcrAVmpx";
+        const NAVER_CALLBACK_URL = window.location.origin + window.location.pathname;
+
+        let naverLogin = null;
+        let currentNaverUser = null; // { id, name, email }
+
+        function docCollectionOf(d) {
+            // 주문 카드 데이터가 어느 컬렉션에서 왔는지 판별 (연결/조회에 사용)
+            if (d.source === 'cart') return 'cart';
+            return d.isJajoo ? 'jjjj' : 'boards';
+        }
+
+        function updateNaverStatusUI() {
+            const statusEl = document.getElementById('naver-status');
+            if (!statusEl) return;
+            if (currentNaverUser) {
+                statusEl.innerHTML = `
+                    <span class="text-slate-700">네이버 계정 <b>${currentNaverUser.name || currentNaverUser.email || '회원'}</b> 님으로 로그인됨</span>
+                    <button id="naver-order-search-btn" class="ml-2 text-blue-600 underline font-semibold">내 주문 조회</button>
+                    <button id="naver-logout-btn" class="ml-2 text-slate-400 underline">로그아웃</button>
+                `;
+                document.getElementById('naver-order-search-btn').addEventListener('click', searchByNaver);
+                document.getElementById('naver-logout-btn').addEventListener('click', () => {
+                    if (naverLogin) naverLogin.logout();
+                    currentNaverUser = null;
+                    updateNaverStatusUI();
+                    document.getElementById('results').innerHTML = "";
+                });
+            } else {
+                statusEl.innerHTML = '<span class="text-slate-400">네이버 로그인 시 연동된 주문을 바로 조회할 수 있어요</span>';
+            }
+        }
+
+        // 특정 주문을 현재 네이버 계정에 연결 (전화번호 조회 비활성화 + 네이버 조회 전환)
+        window.linkOrderToNaver = (docId, collectionName) => {
+            if (!currentNaverUser) {
+                // 아직 네이버 로그인이 안 된 상태 → 로그인 진행 후 돌아와서 이어서 연결하도록
+                // 필요한 정보를 저장해두고 네이버 로그인 버튼을 클릭시킴 (페이지가 새로고침됨)
+                localStorage.setItem('pendingLinkDocId', docId);
+                localStorage.setItem('pendingLinkCollection', collectionName);
+                localStorage.setItem('pendingSearchName', document.getElementById('search-name').value.trim());
+                localStorage.setItem('pendingSearchPhone', document.getElementById('search-phone').value.trim());
+                const loginAnchor = document.querySelector('#naverIdLogin a');
+                if (loginAnchor) {
+                    loginAnchor.click();
+                } else {
+                    alert('네이버 로그인 버튼을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                }
+                return;
+            }
+            doLinkOrder(docId, collectionName, true);
+        };
+
+        async function doLinkOrder(docId, collectionName, askConfirm) {
+            if (askConfirm && !confirm('이 주문을 네이버 계정으로 연결하시겠습니까?\n연결 후에는 이름/전화번호로 조회되지 않고, 네이버 로그인으로만 조회됩니다.')) {
+                return;
+            }
+            try {
+                const targetDb = collectionName === 'cart' ? cartDb : db;
+                const targetCollectionName = collectionName === 'cart' ? 'orders' : collectionName;
+                await updateDoc(doc(targetDb, targetCollectionName, docId), {
+                    naverId: currentNaverUser.id,
+                    naverLinked: true
+                });
+                alert('네이버 계정으로 연결되었습니다. 앞으로는 네이버 로그인으로 조회해주세요.');
+                location.reload();
+            } catch (error) {
+                console.error('네이버 연결 실패:', error);
+                alert('연결 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 네이버 로그인에서 돌아온 직후, 연결 대기 중이던 주문이 있으면 자동으로 연결 처리
+        async function handlePendingLink() {
+            const docId = localStorage.getItem('pendingLinkDocId');
+            const collectionName = localStorage.getItem('pendingLinkCollection');
+            if (docId && collectionName && currentNaverUser) {
+                localStorage.removeItem('pendingLinkDocId');
+                localStorage.removeItem('pendingLinkCollection');
+                try {
+                    const targetDb = collectionName === 'cart' ? cartDb : db;
+                    const targetCollectionName = collectionName === 'cart' ? 'orders' : collectionName;
+                    await updateDoc(doc(targetDb, targetCollectionName, docId), {
+                        naverId: currentNaverUser.id,
+                        naverLinked: true
+                    });
+                    alert('네이버 계정으로 연결되었습니다. 앞으로는 네이버 로그인으로 조회해주세요.');
+                } catch (error) {
+                    console.error('네이버 연결 실패:', error);
+                    alert('연결 중 오류가 발생했습니다.');
+                }
+                return true; // 연결 처리를 했음
+            }
+            return false;
+        }
+
+        // 원래 이름/전화번호로 조회하던 중이었다면 복원해서 재조회
+        // (방금 네이버로 연결한 주문은 이제 결과에서 자동으로 빠지게 됨)
+        function restorePendingSearch() {
+            const name = localStorage.getItem('pendingSearchName');
+            const phone = localStorage.getItem('pendingSearchPhone');
+            localStorage.removeItem('pendingSearchName');
+            localStorage.removeItem('pendingSearchPhone');
+            if (name && phone) {
+                document.getElementById('search-name').value = name;
+                document.getElementById('search-phone').value = phone;
+                document.getElementById('search-btn').click();
+            }
+        }
+
+        // 네이버 계정에 연결된 주문 조회
+        async function searchByNaver() {
+            if (!currentNaverUser) {
+                alert('먼저 네이버 로그인을 해주세요.');
+                return;
+            }
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = "조회 중...";
+            try {
+                const qBoards = query(collection(db, "boards"), where("naverId", "==", currentNaverUser.id));
+                const qJjjj = query(collection(db, "jjjj"), where("naverId", "==", currentNaverUser.id));
+                const qCart = query(collection(cartDb, "orders"), where("naverId", "==", currentNaverUser.id));
+
+                const [snapBoards, snapJjjj, snapCart] = await Promise.all([getDocs(qBoards), getDocs(qJjjj), getDocs(qCart)]);
+
+                const allDocs = [
+                    ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false, source: 'board' })),
+                    ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true, source: 'board' })),
+                    ...snapCart.docs.map(doc => {
+                        const data = doc.data();
+                        return { ...data, id: doc.id, isJajoo: false, source: 'cart', author: data.name, phone: data.phone };
+                    })
+                ];
+
+                if (allDocs.length === 0) {
+                    resultsDiv.innerHTML = "네이버 계정에 연결된 주문 정보가 없습니다.";
+                    return;
+                }
+                renderResults(allDocs);
+            } catch (error) {
+                console.error(error);
+                resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
+            }
+        }
+
+        function initNaverLogin() {
+            if (typeof naver === 'undefined') {
+                console.warn('네이버 로그인 SDK를 불러오지 못했습니다.');
+                return;
+            }
+            naverLogin = new naver.LoginWithNaverId({
+                clientId: NAVER_CLIENT_ID,
+                callbackUrl: NAVER_CALLBACK_URL,
+                isPopup: false,
+                callbackHandle: true,
+                loginButton: { color: "green", type: 3, height: 40 }
+            });
+            naverLogin.init();
+
+            naverLogin.getLoginStatus(async (status) => {
+                if (status) {
+                    currentNaverUser = {
+                        id: naverLogin.user.getId(),
+                        name: naverLogin.user.getName(),
+                        email: naverLogin.user.getEmail(),
+                        mobile: naverLogin.user.getMobile() // 네이버 개발자센터에서 "휴대전화번호" 필수 항목으로 체크되어 있어야 값이 들어옴
+                    };
+                    updateNaverStatusUI();
+
+                    const linked = await handlePendingLink();
+                    if (linked) {
+                        restorePendingSearch();
+                    } else {
+                        // 카드에서 수동으로 연결한 게 아니어도, 이름+전화번호가 일치하는
+                        // 기존 주문이 있으면 로그인 즉시 자동으로 전부 연결해줌
+                        await autoLinkMatchingOrders();
+                    }
+                } else {
+                    currentNaverUser = null;
+                    updateNaverStatusUI();
+                }
+            });
+        }
+
+        // 네이버 이름 + 휴대전화번호 뒷 4자리와 일치하는, 아직 연결 안 된 주문을
+        // 전부 찾아서 자동으로 네이버 계정에 연결한 뒤 조회 결과를 보여줌
+        async function autoLinkMatchingOrders() {
+            if (!currentNaverUser || !currentNaverUser.name) {
+                return;
+            }
+            const mobileDigits = (currentNaverUser.mobile || "").replace(/[^0-9]/g, "");
+            const mobileLast4 = mobileDigits.slice(-4);
+
+            if (mobileLast4) {
+                try {
+                    const allDocs = await fetchDocsByName(currentNaverUser.name);
+                    const matches = allDocs.filter(d => d.phone && d.phone.slice(-4) === mobileLast4 && !d.naverLinked);
+
+                    if (matches.length > 0) {
+                        await Promise.all(matches.map(d => {
+                            const { targetDb, targetCollectionName } = targetOf(d);
+                            return updateDoc(doc(targetDb, targetCollectionName, d.id), {
+                                naverId: currentNaverUser.id,
+                                naverLinked: true
+                            });
+                        }));
+                    }
+                } catch (error) {
+                    console.error('자동 연결 실패:', error);
+                }
+            }
+
+            // 자동 연결된 게 있든 없든(예전에 이미 연결해둔 경우 포함), 네이버 계정에
+            // 연결된 주문을 바로 조회해서 보여줌
+            searchByNaver();
+        }
+
+        initNaverLogin();
+        // ---------------- 네이버 로그인 끝 ----------------
+
 document.getElementById('search-btn').addEventListener('click', async () => {
     // [추가] 봇 방지 로직: 10회 실패 시 입력값 변조
     let failCount = parseInt(localStorage.getItem('searchFailCount') || '0');
@@ -152,31 +417,11 @@ document.getElementById('search-btn').addEventListener('click', async () => {
     resultsDiv.innerHTML = "조회 중...";
 
     try {
-        const qBoards = query(collection(db, "boards"), where("author", "==", name));
-        const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
-        const qCart = query(collection(cartDb, "orders"), where("name", "==", name));
+        const allDocs = await fetchDocsByName(name);
 
-        const [snapBoards, snapJjjj, snapCart] = await Promise.all([getDocs(qBoards), getDocs(qJjjj), getDocs(qCart)]);
-
-        const allDocs = [
-            ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false, source: 'board' })),
-            ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true, source: 'board' })),
-            // cart.html의 orders 컬렉션은 필드 구조가 완전히 달라서(author 대신 name,
-            // 단일 상품 대신 items 배열) 렌더링에서 쓸 공통 필드만 맞춰서 정규화함.
-            ...snapCart.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    ...data,
-                    id: doc.id,
-                    isJajoo: false,
-                    source: 'cart',
-                    author: data.name,
-                    phone: data.phone
-                };
-            })
-        ];
-
-        const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
+        // 전화번호 뒷 4자리가 일치하면서, 아직 네이버 계정으로 전환되지 않은 주문만 조회 대상으로 함
+        // (네이버로 전환된 주문은 이제 네이버 로그인으로만 조회 가능)
+        const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone && !d.naverLinked);
 
         if(filteredData.length === 0) {
             // [추가] 조회 결과 없을 시 카운트 증가
@@ -188,7 +433,17 @@ document.getElementById('search-btn').addEventListener('click', async () => {
         // [추가] 성공 시 카운트 초기화
         localStorage.setItem('searchFailCount', '0');
 
-        
+        renderResults(filteredData);
+    } catch (error) {
+        console.error(error);
+        resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
+    }
+        });
+
+// 주문 목록을 화면에 렌더링 (이름/전화번호 조회, 네이버 로그인 조회 둘 다 여기서 처리)
+function renderResults(filteredData) {
+    const resultsDiv = document.getElementById('results');
+
 filteredData.sort((a, b) => {
     const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
     const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
@@ -246,6 +501,14 @@ filteredData.sort((a, b) => {
                     name: productNamesCart, size: sizeLabelCart, qty: String(totalQtyCart || 0), price: String(totalNumber)
                 }).toString();
 
+                // [추가] 네이버 계정으로 전환 버튼 (장바구니 주문)
+                const naverLinkBtnCart = d.naverLinked ? `
+                    <span class="text-xs text-green-600 font-semibold px-2 py-1">네이버 연결됨</span>
+                ` : `
+                    <button onclick="linkOrderToNaver('${d.id}', 'cart')"
+                    class="bg-green-500 text-white px-4 py-2 rounded font-bold text-xs shrink-0">네이버 로그인으로 변경</button>
+                `;
+
                 resultsDiv.innerHTML += `
                 <div class="bg-blue-50 border border-blue-100 p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
@@ -259,6 +522,7 @@ filteredData.sort((a, b) => {
                                 <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
                             </div>
                         </div>
+                        <div class="flex sm:flex-col gap-2 shrink-0">${naverLinkBtnCart}</div>
                     </div>
                     <div class="mt-3 text-sm text-gray-600 border-t pt-3">
                         <div><span class="font-semibold">작성일:</span> ${dateStrCart}</div>
@@ -321,6 +585,15 @@ filteredData.sort((a, b) => {
                 class="bg-black text-white px-6 py-2 rounded font-bold">재구입</button>
             `;
 
+            // [추가] 네이버 계정으로 전환 버튼 — 전환하면 이후 이름/전화번호 조회에서는
+            // 이 주문이 빠지고, 네이버 로그인으로만 조회 가능해짐
+            const naverLinkBtn = d.naverLinked ? `
+                <span class="text-xs text-green-600 font-semibold px-2 py-1">네이버 연결됨</span>
+            ` : `
+                <button onclick="linkOrderToNaver('${d.id}', '${d.isJajoo ? 'jjjj' : 'boards'}')"
+                class="bg-green-500 text-white px-6 py-2 rounded font-bold text-sm">네이버 로그인으로 변경</button>
+            `;
+
             const isBankTransfer = d.status === '무통장';
             const isCard = d.status === '카드결제';
 const isPending = d.status === '대기';
@@ -371,6 +644,7 @@ if (d.status !== '대기' && d.status !== '접수에러') {
                class="bg-green-600 text-white px-6 py-2 rounded font-bold">확정시안</button>`
 }
             ${reOrderBtn}
+            ${naverLinkBtn}
         </div>
         </div>
 
@@ -436,11 +710,7 @@ ${
                 </div>
             `;
         });
-    } catch (error) {
-        console.error(error);
-        resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
-    }
-        });
+}
 
 window.deleteOrder = async (docId, isJajoo) => {
     // 경고 메시지 내용 변경
