@@ -207,6 +207,26 @@
         };
         // ---------------- 재구입 URL 찾기 끝 ----------------
 
+        // ---------------- 후기 작성 이동 ----------------
+        // 재구입과 같은 productId/헤더 매칭 방식으로 상품 페이지를 찾은 뒤,
+        // 이름/전화번호를 실어서 보내면 그 페이지에서 구매 확인 절차 없이 바로 작성창이 열림
+        // (이 카드가 조회됐다는 것 자체가 이미 이름/전화번호 확인이 끝난 상태이기 때문)
+        const reviewItemRegistry = {};
+        let reviewItemSeq = 0;
+
+        window.reviewClick = async (key) => {
+            const data = reviewItemRegistry[key];
+            if (!data) return;
+            const productUrl = await resolveReorderProductUrl(data);
+            const query = new URLSearchParams({
+                writeReview: '1',
+                reviewName: data.name || '',
+                reviewPhone: data.phone || ''
+            }).toString();
+            openProductPopup(`${productUrl}?${query}`);
+        };
+        // ---------------- 후기 작성 이동 끝 ----------------
+
         // 시안보기 — 새 창 대신 같은 페이지 안 모달로 열어서, 브라우저 주소창/탭
         // 높이 때문에 생기던 회색 여백 문제를 원천적으로 없앰.
         // fallbackUrl을 같이 넘기면, 1차 이미지(R2 등)가 삭제되어 로드 실패했을 때
@@ -664,6 +684,13 @@ filteredData.sort((a, b) => {
                 const itemDesignNos = items.map((it, idx) => items.length > 1 ? `${designNoCart}_${idx + 1}` : designNoCart);
                 const cafe24UrlsCart = itemDesignNos.map(no => `https://sowonnamoo1005.cafe24.com/1/${no}.jpg`);
 
+                // [추가] 후기 작성 가능 여부 — 주문 접수일로부터 30일 이내인 주문에서만 버튼 노출
+                // (이미 이 주문 카드가 조회됐다는 것 자체가 이름/전화번호 확인이 끝난 상태라,
+                //  01my.html에서 다시 구매 확인 절차를 안 밟고 바로 후기 작성창으로 들어감)
+                const orderDateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+                const daysSinceOrder = (Date.now() - orderDateObj.getTime()) / (1000 * 60 * 60 * 24);
+                const canWriteReview = !isNaN(daysSinceOrder) && daysSinceOrder <= 30;
+
                 const itemRows = items.map((it, idx) => {
                     const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
                     const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
@@ -691,6 +718,20 @@ filteredData.sort((a, b) => {
                         reorderLink = `<a href="javascript:void(0)" onclick="reorderClick('${reorderKey}')" class="text-black font-semibold underline">재구입</a>`;
                     }
 
+                    // [추가] 후기 작성 — 상품 페이지(01my.html 등)로 이름/전화번호를 실어서 보내면,
+                    // 거기서 다시 구매 확인 절차 없이 바로 작성창이 뜸
+                    let reviewLink = '';
+                    if (canWriteReview) {
+                        const reviewKey = `rv_${reviewItemSeq++}`;
+                        reviewItemRegistry[reviewKey] = {
+                            productId: it.productId || '',
+                            itemName: it.item || '',
+                            name: d.author || '',
+                            phone: (d.phone || '').slice(-4)
+                        };
+                        reviewLink = `<a href="javascript:void(0)" onclick="reviewClick('${reviewKey}')" class="text-green-600 font-semibold underline">후기 작성</a>`;
+                    }
+
                     // [추가] 사이즈/용지/인쇄면/후가공 등 상세 정보 (지금까지 화면에 아예 안 그려지고 있었음)
                     const detailBits = [
                         (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
@@ -704,7 +745,7 @@ filteredData.sort((a, b) => {
                         <div class="text-xs bg-white border rounded px-2 py-1.5 mt-1">
                             <div class="flex items-center justify-between">
                                 <span>${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
-                                <span class="flex items-center gap-2">${sianLink}${reorderLink}</span>
+                                <span class="flex items-center gap-2">${sianLink}${reorderLink}${reviewLink}</span>
                             </div>
                             ${detailBits ? `<div class="text-gray-500 mt-0.5">${detailBits}</div>` : ''}
                         </div>`;
