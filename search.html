@@ -195,7 +195,9 @@
             if (!data) return;
             const productUrl = await resolveReorderProductUrl(data);
             const query = new URLSearchParams({
-                reorderImage: data.compositeImage || '',
+                // R2 원본이 있으면 그걸 1순위로, 없으면 카페24 경로를 1순위로 사용
+                reorderImage: data.r2Image || data.cafe24Image || '',
+                reorderImageFallback: data.cafe24Image || '',
                 reorderWidth: data.width || '',
                 reorderHeight: data.height || '',
                 reorderSide: data.side || ''
@@ -679,7 +681,8 @@ filteredData.sort((a, b) => {
                         reorderItemRegistry[reorderKey] = {
                             productId: it.productId || '',
                             itemName: it.item || '',
-                            compositeImage: cafe24UrlsCart[idx],
+                            r2Image: it.compositeImage || '',      // R2 원본(아직 살아있을 수도 있음)
+                            cafe24Image: cafe24UrlsCart[idx],       // 관리자가 옮겨둘 카페24 경로
                             width: it.width || '',
                             height: it.height || '',
                             side: it.ink || '' // 단면/양면 등 인쇄면 (있으면 01my.html에서 함께 비교)
