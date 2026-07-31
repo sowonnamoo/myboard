@@ -64,9 +64,16 @@
             * 구입완료건 조회 / 제작상황
         </div>
 
-        <div class="flex items-center justify-between flex-wrap gap-2 mb-4 p-3 bg-blue-50/70 border border-blue-100 rounded-xl">
+        <div class="flex items-center flex-wrap gap-2.5 mb-4 p-3 bg-blue-50/70 border border-blue-100 rounded-xl">
             <div id="g_id_button_container"></div>
-            <div id="google-status" class="text-sm"></div>
+            <div class="flex items-start gap-1.5 text-xs text-slate-500 leading-snug">
+                <span class="text-blue-400 shrink-0 mt-0.5">ℹ️</span>
+                <span>
+                    <b class="text-slate-700">"구글 로그인으로 변경"</b>하면 아래 조회되지 않고<br>
+                    현재 접수건, 이후 접수 건 모두 <b class="text-slate-700">구글 로그인으로만 조회</b>됩니다.
+                </span>
+            </div>
+            <div id="google-status" class="text-sm w-full"></div>
         </div>
 
       <div class="flex flex-col sm:flex-row gap-2.5">
@@ -82,7 +89,7 @@
 
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // 우클릭(및 모바일 길게 눌러서 뜨는 메뉴) 방지 — 개인 주문정보라 이미지/텍스트를
         // 쉽게 저장/복사하지 못하도록 최소한의 방어 차원. (개발자도구 등 완전 차단은 불가능하지만
@@ -179,11 +186,41 @@
         const GOOGLE_CLIENT_ID = "657396405667-nrsfvjrc6e0munkbibsp9sd8glln9qi3.apps.googleusercontent.com";
 
         let currentGoogleUser = null; // { id, name, email }
+        let isGoogleResultView = false; // 지금 화면에 뿌려진 결과가 "구글 계정으로 조회한 결과"인지 여부
 
-        function targetOfCollection(collectionName) {
-            const targetDb = collectionName === 'cart' ? cartDb : db;
-            const targetCollectionName = collectionName === 'cart' ? 'orders' : collectionName;
-            return { targetDb, targetCollectionName };
+        // ---- 이름+전화번호 "신원"을 구글 계정에 연결하는 방식 ----
+        // 카드 하나하나를 연결하는 게 아니라, "이 이름 + 이 전화번호 뒷4자리는 이 구글 계정 것"이라는
+        // 연결 정보를 googleLinks 컬렉션에 저장해둡니다. 이렇게 하면 지금 있는 주문뿐 아니라
+        // 앞으로 같은 이름+전화번호로 새로 접수되는 주문도 자동으로 구글 로그인에 잡히게 됩니다.
+        function linkKey(name, phone4) {
+            return `${name}__${phone4}`.replace(/[\/\s'"]+/g, '_').slice(0, 190);
+        }
+
+        async function upsertGoogleLink(name, phone4) {
+            await setDoc(doc(db, "googleLinks", linkKey(name, phone4)), {
+                googleId: currentGoogleUser.id,
+                name: name,
+                phone4: phone4,
+                linkedAt: new Date().toISOString()
+            });
+        }
+
+        // 이 이름+전화번호가 이미 누군가의 구글 계정에 연결되어 있는지 확인 (전화번호 조회 차단용)
+        async function isIdentityLinked(name, phone4) {
+            try {
+                const snap = await getDoc(doc(db, "googleLinks", linkKey(name, phone4)));
+                return snap.exists();
+            } catch (error) {
+                console.error('연결 여부 확인 실패:', error);
+                return false;
+            }
+        }
+
+        // 이 구글 계정에 연결된 이름+전화번호 목록(신원) 전부 가져오기
+        async function fetchLinkedProfiles(googleId) {
+            const q = query(collection(db, "googleLinks"), where("googleId", "==", googleId));
+            const snap = await getDocs(q);
+            return snap.docs.map(d => d.data());
         }
 
         // 구글이 내려주는 JWT(credential)를 디코딩해서 payload(사용자 정보)만 꺼냄
@@ -219,13 +256,14 @@
             }
         }
 
-        // 특정 주문을 현재 구글 계정에 연결 (전화번호 조회 비활성화 + 구글 조회 전환)
-        window.linkOrderToGoogle = (docId, collectionName) => {
+        // 카드의 "구글 로그인으로 변경" 버튼 — 이 카드의 작성자 이름+전화번호를 구글 계정에 연결
+        window.linkOrderToGoogle = (encodedName, phone4) => {
+            const name = decodeURIComponent(encodedName);
             if (!currentGoogleUser) {
                 // 아직 구글 로그인이 안 된 상태 → 로그인 진행 후 돌아와서 이어서 연결하도록
                 // 필요한 정보를 저장해두고 구글 로그인 창을 띄움
-                localStorage.setItem('pendingLinkDocId', docId);
-                localStorage.setItem('pendingLinkCollection', collectionName);
+                localStorage.setItem('pendingLinkName', name);
+                localStorage.setItem('pendingLinkPhone4', phone4);
                 localStorage.setItem('pendingSearchName', document.getElementById('search-name').value.trim());
                 localStorage.setItem('pendingSearchPhone', document.getElementById('search-phone').value.trim());
                 if (typeof google !== 'undefined' && google.accounts) {
@@ -239,19 +277,15 @@
                 }
                 return;
             }
-            doLinkOrder(docId, collectionName, true);
+            doLinkIdentity(name, phone4, true);
         };
 
-        async function doLinkOrder(docId, collectionName, askConfirm) {
-            if (askConfirm && !confirm('이 주문을 구글 계정으로 연결하시겠습니까?\n연결 후에는 이름/전화번호로 조회되지 않고, 구글 로그인으로만 조회됩니다.')) {
+        async function doLinkIdentity(name, phone4, askConfirm) {
+            if (askConfirm && !confirm(`"${name}"(전화번호 뒷 ${phone4}자리) 주문 전체를 구글 계정에 연결하시겠습니까?\n연결 후에는 이 이름+전화번호로 조회되지 않고, 지금 주문뿐 아니라 앞으로 같은 이름·전화번호로 접수되는 주문도 구글 로그인으로만 조회됩니다.`)) {
                 return;
             }
             try {
-                const { targetDb, targetCollectionName } = targetOfCollection(collectionName);
-                await updateDoc(doc(targetDb, targetCollectionName, docId), {
-                    googleId: currentGoogleUser.id,
-                    googleLinked: true
-                });
+                await upsertGoogleLink(name, phone4);
                 alert('구글 계정으로 연결되었습니다. 앞으로는 구글 로그인으로 조회해주세요.');
                 location.reload();
             } catch (error) {
@@ -260,19 +294,15 @@
             }
         }
 
-        // 구글 로그인에서 돌아온 직후, 연결 대기 중이던 주문이 있으면 자동으로 연결 처리
+        // 구글 로그인에서 돌아온 직후, 연결 대기 중이던 신원이 있으면 자동으로 연결 처리
         async function handlePendingLink() {
-            const docId = localStorage.getItem('pendingLinkDocId');
-            const collectionName = localStorage.getItem('pendingLinkCollection');
-            if (docId && collectionName && currentGoogleUser) {
-                localStorage.removeItem('pendingLinkDocId');
-                localStorage.removeItem('pendingLinkCollection');
+            const name = localStorage.getItem('pendingLinkName');
+            const phone4 = localStorage.getItem('pendingLinkPhone4');
+            if (name && phone4 && currentGoogleUser) {
+                localStorage.removeItem('pendingLinkName');
+                localStorage.removeItem('pendingLinkPhone4');
                 try {
-                    const { targetDb, targetCollectionName } = targetOfCollection(collectionName);
-                    await updateDoc(doc(targetDb, targetCollectionName, docId), {
-                        googleId: currentGoogleUser.id,
-                        googleLinked: true
-                    });
+                    await upsertGoogleLink(name, phone4);
                     alert('구글 계정으로 연결되었습니다. 앞으로는 구글 로그인으로 조회해주세요.');
                 } catch (error) {
                     console.error('구글 연결 실패:', error);
@@ -284,7 +314,7 @@
         }
 
         // 원래 이름/전화번호로 조회하던 중이었다면 복원해서 재조회
-        // (방금 구글로 연결한 주문은 이제 결과에서 자동으로 빠지게 됨)
+        // (방금 구글로 연결한 신원은 이제 결과에서 자동으로 빠지게 됨)
         function restorePendingSearch() {
             const name = localStorage.getItem('pendingSearchName');
             const phone = localStorage.getItem('pendingSearchPhone');
@@ -297,7 +327,8 @@
             }
         }
 
-        // 구글 계정에 연결된 주문 조회
+        // 구글 계정에 연결된 모든 신원(이름+전화번호)의 주문을 전부 조회
+        // — 지금 있는 주문은 물론, 나중에 같은 이름·전화번호로 새로 접수되는 주문도 여기서 다 잡힘
         async function searchByGoogle() {
             if (!currentGoogleUser) {
                 alert('먼저 구글 로그인을 해주세요.');
@@ -306,26 +337,35 @@
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = "조회 중...";
             try {
-                const qBoards = query(collection(db, "boards"), where("googleId", "==", currentGoogleUser.id));
-                const qJjjj = query(collection(db, "jjjj"), where("googleId", "==", currentGoogleUser.id));
-                const qCart = query(collection(cartDb, "orders"), where("googleId", "==", currentGoogleUser.id));
+                const profiles = await fetchLinkedProfiles(currentGoogleUser.id);
 
-                const [snapBoards, snapJjjj, snapCart] = await Promise.all([getDocs(qBoards), getDocs(qJjjj), getDocs(qCart)]);
-
-                const allDocs = [
-                    ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false, source: 'board' })),
-                    ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true, source: 'board' })),
-                    ...snapCart.docs.map(doc => {
-                        const data = doc.data();
-                        return { ...data, id: doc.id, isJajoo: false, source: 'cart', author: data.name, phone: data.phone };
-                    })
-                ];
-
-                if (allDocs.length === 0) {
+                if (profiles.length === 0) {
                     resultsDiv.innerHTML = "구글 계정에 연결된 주문 정보가 없습니다.";
                     return;
                 }
-                renderResults(allDocs);
+
+                const resultsPerProfile = await Promise.all(profiles.map(async (p) => {
+                    const allDocs = await fetchDocsByName(p.name);
+                    return allDocs.filter(d => d.phone && d.phone.slice(-4) === p.phone4);
+                }));
+
+                const seen = new Set();
+                const merged = [];
+                for (const list of resultsPerProfile) {
+                    for (const d of list) {
+                        if (!seen.has(d.id)) {
+                            seen.add(d.id);
+                            merged.push(d);
+                        }
+                    }
+                }
+
+                if (merged.length === 0) {
+                    resultsDiv.innerHTML = "구글 계정에 연결된 주문 정보가 없습니다.";
+                    return;
+                }
+                isGoogleResultView = true;
+                renderResults(merged);
             } catch (error) {
                 console.error(error);
                 resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
@@ -333,7 +373,7 @@
         }
 
         // 구글은 네이버와 달리 전화번호를 기본 제공하지 않기 때문에(별도의 민감 권한 심사가 필요),
-        // 이미 조회창에 입력해둔 이름/전화번호가 있으면 그 값으로 일치하는 주문을 자동 연결합니다.
+        // 이미 조회창에 입력해둔 이름/전화번호가 있으면 그 신원을 그대로 구글 계정에 연결합니다.
         // (조회 → 결과 확인 → 로그인 순서로 쓰면 자연스럽게 자동 연결되고,
         //  입력값이 없으면 카드별 "구글 로그인으로 변경" 버튼으로 개별 연결하면 됩니다.)
         async function autoLinkMatchingOrders() {
@@ -345,16 +385,9 @@
             if (typedName && typedPhone.length === 4) {
                 try {
                     const allDocs = await fetchDocsByName(typedName);
-                    const matches = allDocs.filter(d => d.phone && d.phone.slice(-4) === typedPhone && !d.googleLinked);
-
-                    if (matches.length > 0) {
-                        await Promise.all(matches.map(d => {
-                            const { targetDb, targetCollectionName } = targetOf(d);
-                            return updateDoc(doc(targetDb, targetCollectionName, d.id), {
-                                googleId: currentGoogleUser.id,
-                                googleLinked: true
-                            });
-                        }));
+                    const hasMatch = allDocs.some(d => d.phone && d.phone.slice(-4) === typedPhone);
+                    if (hasMatch) {
+                        await upsertGoogleLink(typedName, typedPhone);
                     }
                 } catch (error) {
                     console.error('자동 연결 실패:', error);
@@ -439,22 +472,30 @@ document.getElementById('search-btn').addEventListener('click', async () => {
     resultsDiv.innerHTML = "조회 중...";
 
     try {
+        // 이 이름+전화번호가 이미 구글 계정에 연결된 신원이면, 전화번호 조회로는
+        // 더 이상 보여주지 않고 구글 로그인으로만 조회되도록 함
+        const alreadyLinked = await isIdentityLinked(name, phone);
+        if (alreadyLinked) {
+            localStorage.setItem('searchFailCount', parseInt(localStorage.getItem('searchFailCount') || '0') + 1);
+            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. 접수내역을 구글로그인으로 변동하셨다면 조회가 안되는 경우 구글로그인 해주세요.";
+            return;
+        }
+
         const allDocs = await fetchDocsByName(name);
 
-        // 전화번호 뒷 4자리가 일치하면서, 아직 네이버 계정으로 전환되지 않은 주문만 조회 대상으로 함
-        // (네이버로 전환된 주문은 이제 네이버 로그인으로만 조회 가능)
-        const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone && !d.googleLinked);
+        const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
 
         if(filteredData.length === 0) {
             // [추가] 조회 결과 없을 시 카운트 증가
             localStorage.setItem('searchFailCount', parseInt(localStorage.getItem('searchFailCount') || '0') + 1);
-            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
+            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. 접수내역을 구글로그인으로 변동하셨다면 조회가 안되는 경우 구글로그인 해주세요."; 
             return; 
         }
 
         // [추가] 성공 시 카운트 초기화
         localStorage.setItem('searchFailCount', '0');
 
+        isGoogleResultView = false;
         renderResults(filteredData);
     } catch (error) {
         console.error(error);
@@ -475,7 +516,7 @@ filteredData.sort((a, b) => {
         
         resultsDiv.innerHTML = "";
         if(filteredData.length === 0) { 
-            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다."; 
+            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. 접수내역을 구글로그인으로 변동하셨다면 조회가 안되는 경우 구글로그인 해주세요."; 
             return; 
         }
 
@@ -523,11 +564,11 @@ filteredData.sort((a, b) => {
                     name: productNamesCart, size: sizeLabelCart, qty: String(totalQtyCart || 0), price: String(totalNumber)
                 }).toString();
 
-                // [추가] 네이버 계정으로 전환 버튼 (장바구니 주문)
-                const googleLinkBtnCart = d.googleLinked ? `
+                // [추가] 구글 계정으로 전환 버튼 (장바구니 주문) — 이름+전화번호 단위로 연결
+                const googleLinkBtnCart = isGoogleResultView ? `
                     <span class="text-xs text-blue-600 font-semibold px-2 py-1">구글 연결됨</span>
                 ` : `
-                    <button onclick="linkOrderToGoogle('${d.id}', 'cart')"
+                    <button onclick="linkOrderToGoogle('${encodeURIComponent(d.author || '')}', '${(d.phone || '').slice(-4)}')"
                     class="bg-blue-500 text-white px-4 py-2 rounded font-bold text-xs shrink-0">구글 로그인으로 변경</button>
                 `;
 
@@ -607,12 +648,12 @@ filteredData.sort((a, b) => {
                 class="bg-black text-white px-6 py-2 rounded font-bold">재구입</button>
             `;
 
-            // [추가] 네이버 계정으로 전환 버튼 — 전환하면 이후 이름/전화번호 조회에서는
-            // 이 주문이 빠지고, 네이버 로그인으로만 조회 가능해짐
-            const googleLinkBtn = d.googleLinked ? `
+            // [추가] 구글 계정으로 전환 버튼 — 전환하면 이 이름+전화번호로는 이후
+            // 조회되지 않고, 구글 로그인으로만(앞으로 새로 접수되는 주문 포함) 조회 가능해짐
+            const googleLinkBtn = isGoogleResultView ? `
                 <span class="text-xs text-blue-600 font-semibold px-2 py-1">구글 연결됨</span>
             ` : `
-                <button onclick="linkOrderToGoogle('${d.id}', '${d.isJajoo ? 'jjjj' : 'boards'}')"
+                <button onclick="linkOrderToGoogle('${encodeURIComponent(d.author || '')}', '${(d.phone || '').slice(-4)}')"
                 class="bg-blue-500 text-white px-6 py-2 rounded font-bold text-sm">구글 로그인으로 변경</button>
             `;
 
