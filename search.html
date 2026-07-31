@@ -200,7 +200,8 @@
                 reorderImageFallback: data.cafe24Image || '',
                 reorderWidth: data.width || '',
                 reorderHeight: data.height || '',
-                reorderSide: data.side || ''
+                reorderSide: data.side || '',
+                reorderItemName: data.itemName || '' // 양면/단면 등 "글자" 비교용 원본 상품명
             }).toString();
             openProductPopup(`${productUrl}?${query}`);
         };
