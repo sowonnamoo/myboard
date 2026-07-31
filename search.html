@@ -69,8 +69,8 @@
             <div class="flex items-start gap-1.5 text-xs text-slate-500 leading-snug">
                 <span class="text-blue-400 shrink-0 mt-0.5">ℹ️</span>
                 <span>
-                    <b class="text-slate-700">"구글 로그인으로 변경"</b>하면(이름+전화번호로 조회됬던)<br>
-                    모든접수건이 <b class="text-slate-700">구글 로그인으로만 조회</b>됩니다.
+                    한 번 <b class="text-slate-700">"구글 로그인으로 변경"</b>하면<br>
+                    이후 접수 건도 <b class="text-slate-700">구글 로그인으로만 조회</b>돼요
                 </span>
             </div>
             <div id="google-status" class="text-sm w-full"></div>
@@ -101,16 +101,131 @@
             window.open(url, '_blank', 'width=590,height=830,scrollbars=yes');
         };
 
+        // cart.html은 2단 레이아웃이라 좀 더 넉넉한 창 크기로 열어줌
+        window.openCartPopup = (url) => {
+            window.open(url, '_blank', 'width=1040,height=860,scrollbars=yes');
+        };
+
+        // 상품 설정 페이지(01my.html 등)는 더 넓은 레이아웃이라 그에 맞는 창 크기로 열어줌
+        window.openProductPopup = (url) => {
+            window.open(url, '_blank', 'width=1240,height=900,scrollbars=yes');
+        };
+
+        // ---------------- 재구입 → 정확한 상품 페이지 찾기 ----------------
+        // 장바구니 아이템에 productId가 저장되어 있으면(=이 검색기의 재구입 기능으로 담겼던 건)
+        // 그걸로 100% 정확하게 연결하고, 없으면(예전 방식으로 담긴 주문) 헤더의 메뉴 데이터에서
+        // 상품명이 겹치는 항목을 찾아 연결한다. 그마저 못 찾으면 기본 상품(01my)으로 보낸다.
+        const HEADER_URL = 'https://sowonnamoo.github.io/myjs/includes/header';
+        const DEFAULT_PRODUCT_URL = 'https://sowonnamoo.github.io/myjs/products/01my';
+        let cachedMenuData = null;
+
+        // "const menuData = [ ... ];" 부분을 괄호 짝을 세어가며 정확히 잘라낸 뒤 JSON으로 파싱
+        function extractMenuData(headerText) {
+            const startMarker = 'const menuData = [';
+            const startIdx = headerText.indexOf(startMarker);
+            if (startIdx === -1) return [];
+            let i = startIdx + startMarker.length - 1; // '[' 위치
+            let depth = 0;
+            for (; i < headerText.length; i++) {
+                if (headerText[i] === '[') depth++;
+                else if (headerText[i] === ']') { depth--; if (depth === 0) { i++; break; } }
+            }
+            const arrayText = headerText.slice(startIdx + startMarker.length - 1, i);
+            try { return JSON.parse(arrayText); } catch (e) { console.error('menuData 파싱 실패:', e); return []; }
+        }
+
+        async function loadMenuData() {
+            if (cachedMenuData) return cachedMenuData;
+            try {
+                const res = await fetch(HEADER_URL);
+                const text = await res.text();
+                cachedMenuData = extractMenuData(text);
+            } catch (e) {
+                console.error('헤더 메뉴 데이터를 불러오지 못했습니다:', e);
+                cachedMenuData = [];
+            }
+            return cachedMenuData;
+        }
+
+        // 트리 구조(menuData)를 "이름 있는 링크(leaf)"만 평평하게 펼침
+        function flattenMenu(items) {
+            let out = [];
+            (items || []).forEach(it => {
+                if (it.children && it.children.length) {
+                    out = out.concat(flattenMenu(it.children));
+                } else if (it.url && it.url !== '#') {
+                    out.push({ leaf: it.name, url: it.url });
+                }
+            });
+            return out;
+        }
+
+        // 저장된 상품명(itemName) 안에 메뉴의 leaf 이름이 포함되어 있으면 그 URL을 후보로 삼고,
+        // 여러 개 걸리면(예: "명함"이 여러 하위 상품에 다 포함) 가장 구체적인(이름이 긴) 것을 고름
+        function guessProductUrl(itemName, flatList) {
+            if (!itemName) return null;
+            const candidates = flatList.filter(f => f.leaf && itemName.includes(f.leaf));
+            if (candidates.length === 0) return null;
+            candidates.sort((a, b) => b.leaf.length - a.leaf.length);
+            return candidates[0].url;
+        }
+
+        function toAbsoluteUrl(url) {
+            if (!url) return null;
+            return url.startsWith('http') ? url : `https://sowonnamoo.github.io${url}`;
+        }
+
+        // 장바구니 아이템 하나에 대한 재구입 상품 페이지 URL을 알아냄
+        async function resolveReorderProductUrl(item) {
+            if (item.productId) {
+                return `https://sowonnamoo.github.io/myjs/products/${item.productId}`;
+            }
+            const flat = flattenMenu(await loadMenuData());
+            const guessed = guessProductUrl(item.itemName, flat);
+            return toAbsoluteUrl(guessed) || DEFAULT_PRODUCT_URL;
+        }
+
+        // 아이템별 재구입 정보 임시 보관소 (클릭 시점에 조회) — HTML onclick 속성에
+        // 객체를 그대로 실을 수 없어서, 키만 넘기고 실제 데이터는 여기서 찾아 씀
+        const reorderItemRegistry = {};
+        let reorderItemSeq = 0;
+
+        window.reorderClick = async (key) => {
+            const data = reorderItemRegistry[key];
+            if (!data) return;
+            const productUrl = await resolveReorderProductUrl(data);
+            const query = new URLSearchParams({
+                reorderImage: data.compositeImage || '',
+                reorderWidth: data.width || '',
+                reorderHeight: data.height || ''
+            }).toString();
+            openProductPopup(`${productUrl}?${query}`);
+        };
+        // ---------------- 재구입 URL 찾기 끝 ----------------
+
         // 시안보기 — 새 창 대신 같은 페이지 안 모달로 열어서, 브라우저 주소창/탭
-        // 높이 때문에 생기던 회색 여백 문제를 원천적으로 없앰
-        window.viewSianImage = (url) => {
-            if(!url) return;
-            document.getElementById('sian-modal-img').src = url;
+        // 높이 때문에 생기던 회색 여백 문제를 원천적으로 없앰.
+        // fallbackUrl을 같이 넘기면, 1차 이미지(R2 등)가 삭제되어 로드 실패했을 때
+        // 자동으로 카페24 경로(fallbackUrl)의 이미지로 대체해서 보여줌.
+        window.viewSianImage = (url, fallbackUrl) => {
+            const primary = url || fallbackUrl;
+            if(!primary) return;
+            const img = document.getElementById('sian-modal-img');
+            img.onerror = () => {
+                if (fallbackUrl && img.src !== fallbackUrl) {
+                    img.onerror = null;
+                    img.src = fallbackUrl;
+                } else {
+                    img.onerror = null;
+                }
+            };
+            img.src = primary;
             document.getElementById('sian-modal').classList.add('active');
         };
         window.closeSianImage = () => {
             document.getElementById('sian-modal').classList.remove('active');
             document.getElementById('sian-modal-img').src = '';
+            document.getElementById('sian-modal-img').onerror = null;
         };
         document.addEventListener('keydown', (e) => {
             if(e.key === 'Escape') window.closeSianImage();
@@ -529,16 +644,46 @@ filteredData.sort((a, b) => {
                 const items = Array.isArray(d.items) ? d.items : [];
                 const totalNumber = Number(String(d.total).replace(/[^0-9.-]/g, '')) || 0;
 
-                const itemRows = items.map(it => {
+                // [추가] board와 동일한 규칙으로 시안이미지번호(designNo) 생성
+                // = 전화번호(뒤 2자리 제외) + 접수일시(YYMMDDHHmm)
+                const phoneFullCart = (d.phone || "").replace(/[^0-9]/g, "");
+                const phonePrefixCart = phoneFullCart.slice(0, -2);
+                const yearCart = dateObjCart.getFullYear().toString().slice(-2);
+                const monthCart = (dateObjCart.getMonth() + 1).toString().padStart(2, '0');
+                const dayCart = dateObjCart.getDate().toString().padStart(2, '0');
+                const hoursCart = dateObjCart.getHours().toString().padStart(2, '0');
+                const minutesCart = dateObjCart.getMinutes().toString().padStart(2, '0');
+                const designNoCart = `${phonePrefixCart}${yearCart}${monthCart}${dayCart}${hoursCart}${minutesCart}`;
+
+                // 상품이 여러 개면 뒤에 _2, _3 ... 붙여서 구분 (1개면 designNo 그대로)
+                // — 시안보기 대체 URL과 재구입 담기용 URL 양쪽에서 동일하게 사용
+                const itemDesignNos = items.map((it, idx) => items.length > 1 ? `${designNoCart}_${idx + 1}` : designNoCart);
+                const cafe24UrlsCart = itemDesignNos.map(no => `https://sowonnamoo1005.cafe24.com/1/${no}.jpg`);
+
+                const itemRows = items.map((it, idx) => {
                     const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
                     const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
-                    const sianLink = it.compositeImage
-                        ? `<a href="javascript:void(0)" onclick="viewSianImage('${it.compositeImage}')" class="text-blue-500 underline">시안보기</a>`
-                        : '<span class="text-gray-400">시안없음</span>';
+                    // R2(compositeImage)를 1차로 시도하고, 나중에 관리자가 R2 원본을 지우고
+                    // 카페24로 옮겨두면 자동으로 그쪽 이미지를 대신 보여줌
+                    const sianLink = `<a href="javascript:void(0)" onclick="viewSianImage('${it.compositeImage || ''}', '${cafe24UrlsCart[idx]}')" class="text-blue-500 underline">시안보기</a>`;
+                    // [추가] 재구입 — 01my.html(상품 설정 페이지)로 카페24 시안 이미지 경로를 넘기며 이동.
+                    // 옵션은 새로 골라야 하지만, 그만큼 가격은 항상 지금 시점 최신가로 계산됨.
+                    // [추가] 재구입 — productId가 있으면 정확한 상품 페이지로, 없으면(예전 주문)
+                    // 헤더 메뉴 데이터에서 상품명이 겹치는 페이지로 추정해서 이동. 클릭 시점에
+                    // resolveReorderProductUrl()에서 최종 URL을 계산함.
+                    const reorderKey = `ro_${reorderItemSeq++}`;
+                    reorderItemRegistry[reorderKey] = {
+                        productId: it.productId || '',
+                        itemName: it.item || '',
+                        compositeImage: cafe24UrlsCart[idx],
+                        width: it.width || '',
+                        height: it.height || ''
+                    };
+                    const reorderLink = `<a href="javascript:void(0)" onclick="reorderClick('${reorderKey}')" class="text-black font-semibold underline">재구입</a>`;
                     return `
                         <div class="flex items-center justify-between text-xs bg-white border rounded px-2 py-1.5 mt-1">
                             <span>${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
-                            ${sianLink}
+                            <span class="flex items-center gap-2">${sianLink}${reorderLink}</span>
                         </div>`;
                 }).join('');
 
@@ -591,6 +736,7 @@ filteredData.sort((a, b) => {
                         <div><span class="font-semibold">작성일:</span> ${dateStrCart}</div>
                         <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
                         <div class="mt-2"><span class="font-semibold">주문 상품:</span>${itemRows}</div>
+                        <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNoCart}</div>
 
                         ${isPendingCart ? `
                         <div class="mt-3 text-sm font-bold text-red-600 bg-red-50 p-2 rounded">
