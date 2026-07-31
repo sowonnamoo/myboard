@@ -197,7 +197,8 @@
             const query = new URLSearchParams({
                 reorderImage: data.compositeImage || '',
                 reorderWidth: data.width || '',
-                reorderHeight: data.height || ''
+                reorderHeight: data.height || '',
+                reorderSide: data.side || ''
             }).toString();
             openProductPopup(`${productUrl}?${query}`);
         };
@@ -666,20 +667,26 @@ filteredData.sort((a, b) => {
                     // R2(compositeImage)를 1차로 시도하고, 나중에 관리자가 R2 원본을 지우고
                     // 카페24로 옮겨두면 자동으로 그쪽 이미지를 대신 보여줌
                     const sianLink = `<a href="javascript:void(0)" onclick="viewSianImage('${it.compositeImage || ''}', '${cafe24UrlsCart[idx]}')" class="text-blue-500 underline">시안보기</a>`;
-                    // [추가] 재구입 — 01my.html(상품 설정 페이지)로 카페24 시안 이미지 경로를 넘기며 이동.
-                    // 옵션은 새로 골라야 하지만, 그만큼 가격은 항상 지금 시점 최신가로 계산됨.
-                    // [추가] 재구입 — productId가 있으면 정확한 상품 페이지로, 없으면(예전 주문)
-                    // 헤더 메뉴 데이터에서 상품명이 겹치는 페이지로 추정해서 이동. 클릭 시점에
-                    // resolveReorderProductUrl()에서 최종 URL을 계산함.
-                    const reorderKey = `ro_${reorderItemSeq++}`;
-                    reorderItemRegistry[reorderKey] = {
-                        productId: it.productId || '',
-                        itemName: it.item || '',
-                        compositeImage: cafe24UrlsCart[idx],
-                        width: it.width || '',
-                        height: it.height || ''
-                    };
-                    const reorderLink = `<a href="javascript:void(0)" onclick="reorderClick('${reorderKey}')" class="text-black font-semibold underline">재구입</a>`;
+
+                    // [추가] 재구입 — 후가공이 붙은 주문은 재구입 버튼을 아예 숨김
+                    // (후가공까지 예전과 똑같이 맞춰 재현하기 어려워서, 새로 주문받는 게 안전함)
+                    let reorderLink = '';
+                    if (!it.finishings) {
+                        // productId가 있으면 정확한 상품 페이지로, 없으면(예전 주문) 헤더 메뉴
+                        // 데이터에서 상품명이 겹치는 페이지로 추정해서 이동. 클릭 시점에
+                        // resolveReorderProductUrl()에서 최종 URL을 계산함.
+                        const reorderKey = `ro_${reorderItemSeq++}`;
+                        reorderItemRegistry[reorderKey] = {
+                            productId: it.productId || '',
+                            itemName: it.item || '',
+                            compositeImage: cafe24UrlsCart[idx],
+                            width: it.width || '',
+                            height: it.height || '',
+                            side: it.ink || '' // 단면/양면 등 인쇄면 (있으면 01my.html에서 함께 비교)
+                        };
+                        reorderLink = `<a href="javascript:void(0)" onclick="reorderClick('${reorderKey}')" class="text-black font-semibold underline">재구입</a>`;
+                    }
+
                     return `
                         <div class="flex items-center justify-between text-xs bg-white border rounded px-2 py-1.5 mt-1">
                             <span>${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
