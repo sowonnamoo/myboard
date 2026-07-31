@@ -69,8 +69,8 @@
             <div class="flex items-start gap-1.5 text-xs text-slate-500 leading-snug">
                 <span class="text-blue-400 shrink-0 mt-0.5">ℹ️</span>
                 <span>
-                    <b class="text-slate-700">"구글 로그인으로 변경"</b>하면 아래 조회되지 않고<br>
-                    현재 접수건, 이후 접수 건 모두 <b class="text-slate-700">구글 로그인으로만 조회</b>됩니다.
+                    한 번 <b class="text-slate-700">"구글 로그인으로 변경"</b>하면<br>
+                    이후 접수 건도 <b class="text-slate-700">구글 로그인으로만 조회</b>돼요
                 </span>
             </div>
             <div id="google-status" class="text-sm w-full"></div>
@@ -784,7 +784,12 @@ window.deleteOrder = async (docId, isJajoo) => {
             await deleteDoc(doc(db, collectionName, docId));
             
             alert("삭제되었습니다.");
-            document.getElementById('search-btn').click();
+            // 구글 로그인으로 조회한 화면이었으면 구글 조회를, 아니면 이름/전화번호 조회를 다시 실행
+            if (isGoogleResultView) {
+                searchByGoogle();
+            } else {
+                document.getElementById('search-btn').click();
+            }
         } catch (error) {
             console.error("삭제 실패:", error);
             alert("삭제 중 오류가 발생했습니다.");
@@ -800,7 +805,11 @@ window.deleteCartOrder = async (docId) => {
             await deleteDoc(doc(cartDb, "orders", docId));
 
             alert("삭제되었습니다.");
-            document.getElementById('search-btn').click();
+            if (isGoogleResultView) {
+                searchByGoogle();
+            } else {
+                document.getElementById('search-btn').click();
+            }
         } catch (error) {
             console.error("삭제 실패:", error);
             alert("삭제 중 오류가 발생했습니다.");
