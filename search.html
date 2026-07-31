@@ -690,10 +690,22 @@ filteredData.sort((a, b) => {
                         reorderLink = `<a href="javascript:void(0)" onclick="reorderClick('${reorderKey}')" class="text-black font-semibold underline">재구입</a>`;
                     }
 
+                    // [추가] 사이즈/용지/인쇄면/후가공 등 상세 정보 (지금까지 화면에 아예 안 그려지고 있었음)
+                    const detailBits = [
+                        (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
+                        it.paper ? `용지: ${it.paper}` : '',
+                        it.ink ? `인쇄면: ${it.ink}` : '',
+                        it.finishings ? `후가공: ${it.finishings}` : '',
+                        it.weight ? `무게: ${it.weight}` : ''
+                    ].filter(Boolean).join(' · ');
+
                     return `
-                        <div class="flex items-center justify-between text-xs bg-white border rounded px-2 py-1.5 mt-1">
-                            <span>${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
-                            <span class="flex items-center gap-2">${sianLink}${reorderLink}</span>
+                        <div class="text-xs bg-white border rounded px-2 py-1.5 mt-1">
+                            <div class="flex items-center justify-between">
+                                <span>${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
+                                <span class="flex items-center gap-2">${sianLink}${reorderLink}</span>
+                            </div>
+                            ${detailBits ? `<div class="text-gray-500 mt-0.5">${detailBits}</div>` : ''}
                         </div>`;
                 }).join('');
 
