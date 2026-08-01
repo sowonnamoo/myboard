@@ -53,6 +53,18 @@
         <img id="sian-modal-img" src="" alt="시안 이미지" onclick="event.stopPropagation()">
     </div>
 
+    <!-- 내 포인트 확인 모달 -->
+    <div id="pointModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#fff; width:380px; max-width:92vw; border-radius:12px; padding:24px; text-align:center;">
+        <div style="display:flex; justify-content:flex-end;">
+          <span id="closePointModalBtn" style="cursor:pointer; font-size:20px; color:#999;">✕</span>
+        </div>
+        <div style="font-size:15px; color:#666; margin-bottom:6px;">보유 포인트</div>
+        <div id="pointBalanceDisplay" style="font-size:32px; font-weight:800; color:#d97706; margin-bottom:10px;">0P</div>
+        <div id="pointNameDisplay" style="font-size:13px; color:#999;"></div>
+      </div>
+    </div>
+
     <!-- 후기 작성 모달 -->
     <div id="reviewModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
       <div style="background:#fff; width:520px; max-width:92vw; max-height:88vh; overflow-y:auto; border-radius:12px; padding:24px;">
@@ -157,6 +169,7 @@
         <input type="text" id="search-phone" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44" placeholder="전화번호 뒤 4자리" maxlength="4">
 
         <button id="search-btn" class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
+        <button id="my-point-btn" type="button" class="w-full sm:w-auto shrink-0 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-amber-200">💰 내 포인트</button>
     </div>
 </div>
         <div id="results" class="space-y-4"></div>
@@ -164,7 +177,7 @@
 
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, updateDoc, addDoc, serverTimestamp, arrayUnion, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // 우클릭(및 모바일 길게 눌러서 뜨는 메뉴) 방지 — 개인 주문정보라 이미지/텍스트를
         // 쉽게 저장/복사하지 못하도록 최소한의 방어 차원. (개발자도구 등 완전 차단은 불가능하지만
@@ -411,10 +424,10 @@
             cancelBtn.addEventListener('click', closeModal);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
-            window.openReviewModal = (key) => {
+            window.openReviewModal = (key, triggerEl) => {
                 const data = reviewItemRegistry[key];
                 if (!data) return;
-                currentReviewData = data;
+                currentReviewData = { ...data, triggerEl: triggerEl || null };
                 targetLabel.textContent = `"${data.itemName || '상품'}" 에 대한 후기예요`;
                 overlay.style.display = 'flex';
             };
@@ -449,6 +462,8 @@
                         price: document.getElementById('reviewPriceSelect').value,
                         content,
                         images,
+                        orderId: currentReviewData.orderId || '',
+                        itemIndex: (typeof currentReviewData.itemIndex === 'number') ? currentReviewData.itemIndex : null,
                         createdAt: serverTimestamp()
                     });
 
@@ -469,7 +484,25 @@
                         console.error('리뷰 통계 갱신 실패:', statErr);
                     }
 
+                    // [추가] 주문 문서에 "이 아이템은 이미 후기 작성됨" 표시를 남겨둠 — 다음에
+                    // 이 주문을 다시 조회할 때 추가 조회 없이 바로 후기작성 버튼을 숨길 수 있음
+                    if (currentReviewData.orderId && typeof currentReviewData.itemIndex === 'number') {
+                        try {
+                            await updateDoc(doc(cartDb, 'orders', currentReviewData.orderId), {
+                                reviewedItemIndexes: arrayUnion(currentReviewData.itemIndex)
+                            });
+                        } catch (markErr) {
+                            console.error('후기 작성완료 표시 실패:', markErr);
+                        }
+                    }
+
                     alert('이용후기가 등록되었습니다. 소중한 후기 감사합니다!');
+                    if (currentReviewData.triggerEl && currentReviewData.triggerEl.parentNode) {
+                        const done = document.createElement('span');
+                        done.className = 'text-xs text-gray-400 font-semibold px-1';
+                        done.textContent = '후기 작성완료';
+                        currentReviewData.triggerEl.replaceWith(done);
+                    }
                     closeModal();
                 } catch (err) {
                     console.error('후기 등록 실패:', err);
@@ -482,8 +515,36 @@
         }
         setupReviewModal();
 
-        window.reviewClick = (key) => {
-            window.openReviewModal(key);
+        // ---------------- 내 포인트 확인 ----------------
+        document.getElementById('my-point-btn').addEventListener('click', async () => {
+            const name = document.getElementById('search-name').value.trim();
+            const phone = document.getElementById('search-phone').value.trim();
+            if (!name || !/^\d{4}$/.test(phone)) {
+                alert('이름과 전화번호 뒤 4자리를 입력한 뒤 눌러주세요.');
+                return;
+            }
+            try {
+                const snap = await getDoc(doc(cartDb, 'pointsBalance', linkKey(name, phone)));
+                const balance = (snap.exists() ? snap.data().balance : 0) || 0;
+                document.getElementById('pointBalanceDisplay').textContent = `${balance.toLocaleString()}P`;
+                document.getElementById('pointNameDisplay').textContent = `${name} (${phone}) 님`;
+                document.getElementById('pointModalOverlay').style.display = 'flex';
+            } catch (err) {
+                console.error('포인트 조회 실패:', err);
+                alert('포인트 조회 중 오류가 발생했습니다.');
+            }
+        });
+        document.getElementById('closePointModalBtn').addEventListener('click', () => {
+            document.getElementById('pointModalOverlay').style.display = 'none';
+        });
+        document.getElementById('pointModalOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'pointModalOverlay') e.target.style.display = 'none';
+        });
+        // ---------------- 내 포인트 확인 끝 ----------------
+
+
+        window.reviewClick = (key, triggerEl) => {
+            window.openReviewModal(key, triggerEl);
         };
         // ---------------- 후기 작성 끝 ----------------
 
@@ -979,7 +1040,7 @@ filteredData.sort((a, b) => {
                     const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
                     // R2(compositeImage)를 1차로 시도하고, 나중에 관리자가 R2 원본을 지우고
                     // 카페24로 옮겨두면 자동으로 그쪽 이미지를 대신 보여줌
-                    const sianLink = `<a href="javascript:void(0)" onclick="viewSianImage('${it.compositeImage || ''}', '${cafe24UrlsCart[idx]}')" class="text-blue-500 underline">시안보기</a>`;
+                    const sianLink = `<button type="button" onclick="viewSianImage('${it.compositeImage || ''}', '${cafe24UrlsCart[idx]}')" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">시안보기</button>`;
 
                     // [추가] 재구입 — 후가공이 붙은 주문은 재구입 버튼을 아예 숨김
                     // (후가공까지 예전과 똑같이 맞춰 재현하기 어려워서, 새로 주문받는 게 안전함)
@@ -998,21 +1059,28 @@ filteredData.sort((a, b) => {
                             height: it.height || '',
                             side: it.ink || '' // 단면/양면 등 인쇄면 (있으면 01my.html에서 함께 비교)
                         };
-                        reorderLink = `<a href="javascript:void(0)" onclick="reorderClick('${reorderKey}')" class="text-black font-semibold underline">재구입</a>`;
+                        reorderLink = `<button type="button" onclick="reorderClick('${reorderKey}')" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">재구입</button>`;
                     }
 
                     // [추가] 후기 작성 — 상품 페이지(01my.html 등)로 이름/전화번호를 실어서 보내면,
-                    // 거기서 다시 구매 확인 절차 없이 바로 작성창이 뜸
+                    // 거기서 다시 구매 확인 절차 없이 바로 작성창이 뜸. 이미 이 아이템으로 후기를
+                    // 작성했으면(d.reviewedItemIndexes) 버튼을 숨김 — 추가 조회 없이 이미 불러온
+                    // 주문 데이터로 바로 판단함.
+                    const alreadyReviewed = Array.isArray(d.reviewedItemIndexes) && d.reviewedItemIndexes.includes(idx);
                     let reviewLink = '';
-                    if (canWriteReview) {
+                    if (canWriteReview && !alreadyReviewed) {
                         const reviewKey = `rv_${reviewItemSeq++}`;
                         reviewItemRegistry[reviewKey] = {
                             productId: it.productId || '',
                             itemName: it.item || '',
                             name: d.author || '',
-                            phone: (d.phone || '').slice(-4)
+                            phone: (d.phone || '').slice(-4),
+                            orderId: d.id,
+                            itemIndex: idx
                         };
-                        reviewLink = `<a href="javascript:void(0)" onclick="reviewClick('${reviewKey}')" class="text-green-600 font-semibold underline">후기 작성</a>`;
+                        reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">후기 작성</button>`;
+                    } else if (alreadyReviewed) {
+                        reviewLink = `<span class="text-xs text-gray-400 font-semibold px-1">후기 작성완료</span>`;
                     }
 
                     // [추가] 사이즈/용지/인쇄면/후가공 등 상세 정보 (지금까지 화면에 아예 안 그려지고 있었음)
@@ -1025,12 +1093,12 @@ filteredData.sort((a, b) => {
                     ].filter(Boolean).join(' · ');
 
                     return `
-                        <div class="text-xs bg-white border rounded px-2 py-1.5 mt-1">
-                            <div class="flex items-center justify-between">
-                                <span>${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
-                                <span class="flex items-center gap-2">${sianLink}${reorderLink}${reviewLink}</span>
+                        <div class="text-xs bg-white border rounded-lg px-3 py-2.5 mt-1.5">
+                            <div class="flex items-center justify-between flex-wrap gap-1.5">
+                                <span class="font-medium">${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
                             </div>
-                            ${detailBits ? `<div class="text-gray-500 mt-0.5">${detailBits}</div>` : ''}
+                            ${detailBits ? `<div class="text-gray-500 mt-1">${detailBits}</div>` : ''}
+                            <div class="flex items-center gap-2 mt-2 flex-wrap">${sianLink}${reorderLink}${reviewLink}</div>
                         </div>`;
                 }).join('');
 
