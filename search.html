@@ -447,6 +447,23 @@
                         createdAt: serverTimestamp()
                     });
 
+                    // [추가] 상품 문서에 별점 통계(개수/합계/평균)를 같이 누적해둠 — 이러면
+                    // 상품페이지에서 별점 배지를 보여줄 때 리뷰를 따로 조회할 필요가 없어짐
+                    // (이미 하고 있던 상품정보 조회 1번에 값이 같이 딸려옴)
+                    try {
+                        const productRef = doc(cartDb, 'products', productId);
+                        const productSnap = await getDoc(productRef);
+                        const prevStats = (productSnap.exists() && productSnap.data().reviewStats) || { count: 0, sum: 0 };
+                        const newCount = (prevStats.count || 0) + 1;
+                        const newSum = (prevStats.sum || 0) + reviewRating;
+                        await updateDoc(productRef, {
+                            reviewStats: { count: newCount, sum: newSum, avg: newSum / newCount }
+                        });
+                    } catch (statErr) {
+                        // 통계 갱신이 실패해도 리뷰 자체는 이미 등록됐으니 조용히 무시
+                        console.error('리뷰 통계 갱신 실패:', statErr);
+                    }
+
                     alert('이용후기가 등록되었습니다. 소중한 후기 감사합니다!');
                     closeModal();
                 } catch (err) {
