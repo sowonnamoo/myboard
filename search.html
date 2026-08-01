@@ -159,31 +159,31 @@
           <div>
             <div style="font-size:12px; color:#666; margin-bottom:4px;">품질</div>
             <select id="reviewQualitySelect" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-              <option value="좋음">좋음</option>
-              <option value="보통" selected>보통</option>
+              <option value="좋음" selected>좋음</option>
+              <option value="보통">보통</option>
               <option value="나쁨">나쁨</option>
             </select>
           </div>
           <div>
             <div style="font-size:12px; color:#666; margin-bottom:4px;">배송</div>
             <select id="reviewDeliverySelect" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-              <option value="빠름">빠름</option>
-              <option value="보통" selected>보통</option>
+              <option value="빠름" selected>빠름</option>
+              <option value="보통">보통</option>
               <option value="느림">느림</option>
             </select>
           </div>
           <div>
             <div style="font-size:12px; color:#666; margin-bottom:4px;">가격</div>
             <select id="reviewPriceSelect" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-              <option value="저렴">저렴</option>
-              <option value="보통" selected>보통</option>
+              <option value="저렴" selected>저렴</option>
+              <option value="보통">보통</option>
               <option value="비쌈">비쌈</option>
             </select>
           </div>
         </div>
 
         <div style="margin-bottom:14px;">
-          <textarea id="reviewContentInput" placeholder="상품에 대한 솔직한 후기를 남겨주세요." style="width:100%; min-height:110px; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
+          <textarea id="reviewContentInput" placeholder="상품에 대한 솔직한 후기를 남겨주세요. 포토후기 작성시 캐쉬백 포인트를 드립니다." style="width:100%; min-height:110px; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
         </div>
 
         <div style="margin-bottom:18px;">
@@ -470,9 +470,9 @@
                 currentReviewData = null;
                 renderStars(5);
                 document.getElementById('reviewContentInput').value = '';
-                document.getElementById('reviewQualitySelect').value = '보통';
-                document.getElementById('reviewDeliverySelect').value = '보통';
-                document.getElementById('reviewPriceSelect').value = '보통';
+                document.getElementById('reviewQualitySelect').value = '좋음';
+                document.getElementById('reviewDeliverySelect').value = '빠름';
+                document.getElementById('reviewPriceSelect').value = '저렴';
                 photoInput.value = '';
                 photoPreview.innerHTML = '';
             }
