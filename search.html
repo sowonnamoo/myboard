@@ -77,7 +77,7 @@
                 </li>
                 <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
                     <span style="color:#d97706; flex-shrink:0;">·</span>
-                    <span>포인트 적립은 결제후 30일 내 상품평작성시 지급되며, 물품수령, 거래 완료 기준 <b style="color:#333;">7일 뒤</b> 적립됩니다.</span>
+                    <span>포인트 적립은 상품평작성, 물품수령, 거래 완료 기준 <b style="color:#333;">7일 뒤</b> 적립됩니다.</span>
                 </li>
                 <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
                     <span style="color:#d97706; flex-shrink:0;">·</span>
@@ -359,7 +359,7 @@
 
         const reviewItemRegistry = {};
         let reviewItemSeq = 0;
-        let reviewRating = 0;
+        let reviewRating = 5;
         let reviewPhotoFiles = [];
         let currentReviewData = null;
 
@@ -465,10 +465,10 @@
             });
 
             function resetForm() {
-                reviewRating = 0;
+                reviewRating = 5; // 기본값 5개 채워진 상태로 시작 — 낮추고 싶으면 원하는 별을 클릭
                 reviewPhotoFiles = [];
                 currentReviewData = null;
-                renderStars(0);
+                renderStars(5);
                 document.getElementById('reviewContentInput').value = '';
                 document.getElementById('reviewQualitySelect').value = '보통';
                 document.getElementById('reviewDeliverySelect').value = '보통';
@@ -487,6 +487,7 @@
                 if (!data) return;
                 currentReviewData = { ...data, triggerEl: triggerEl || null };
                 targetLabel.textContent = `"${data.itemName || '상품'}" 에 대한 후기예요`;
+                renderStars(reviewRating);
                 overlay.style.display = 'flex';
             };
 
