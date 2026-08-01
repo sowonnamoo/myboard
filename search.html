@@ -53,15 +53,74 @@
         <img id="sian-modal-img" src="" alt="시안 이미지" onclick="event.stopPropagation()">
     </div>
 
-    <!-- 내 포인트 확인 모달 -->
+    <!-- 캐쉬백 포인트 확인 모달 -->
     <div id="pointModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
       <div style="background:#fff; width:380px; max-width:92vw; border-radius:12px; padding:24px; text-align:center;">
         <div style="display:flex; justify-content:flex-end;">
           <span id="closePointModalBtn" style="cursor:pointer; font-size:20px; color:#999;">✕</span>
         </div>
-        <div style="font-size:15px; color:#666; margin-bottom:6px;">보유 포인트</div>
+        <div style="font-size:15px; color:#666; margin-bottom:6px;">보유 캐쉬백 포인트</div>
         <div id="pointBalanceDisplay" style="font-size:32px; font-weight:800; color:#d97706; margin-bottom:10px;">0P</div>
-        <div id="pointNameDisplay" style="font-size:13px; color:#999;"></div>
+        <div id="pointNameDisplay" style="font-size:13px; color:#999; margin-bottom:18px;"></div>
+
+        <button id="pointWithdrawBtn" type="button" disabled
+            style="width:100%; padding:12px; border:none; border-radius:8px; font-weight:bold; font-size:14px; background:#e5e7eb; color:#9ca3af; cursor:not-allowed;">
+            출금 신청
+        </button>
+
+        <div style="background:#fafafa; border:1px solid #eee; border-radius:10px; padding:14px 16px; margin-top:14px; text-align:left;">
+            <div style="font-size:12px; font-weight:700; color:#888; margin-bottom:8px; letter-spacing:.02em;">유의사항</div>
+            <ul style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px;">
+                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
+                    <span style="color:#d97706; flex-shrink:0;">·</span>
+                    <span>10,000포인트가 넘으면 버튼이 활성화되며 출금 신청 할 수 있습니다.</span>
+                </li>
+                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
+                    <span style="color:#d97706; flex-shrink:0;">·</span>
+                    <span>포인트 적립은 결제후 30일 내 상품평작성시 지급되며, 물품수령, 거래 완료 기준 <b style="color:#333;">7일 뒤</b> 적립됩니다.</span>
+                </li>
+                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
+                    <span style="color:#d97706; flex-shrink:0;">·</span>
+                    <span>출금 신청은 상품평작성, 물품수령, 거래 완료 기준 <b style="color:#333;">7일 뒤</b> 출금됩니다.</span>
+                </li>
+                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
+                    <span style="color:#d97706; flex-shrink:0;">·</span>
+                    <span>포인트는 2년간 구입이 없는 경우 삭제됩니다.</span>
+                </li>
+                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
+                    <span style="color:#d97706; flex-shrink:0;">·</span>
+                    <span>접수자나 연락처가 다른 접수건 주문은 포인트가 합산되지 않습니다.</span>
+                </li>
+                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
+                    <span style="color:#d97706; flex-shrink:0;">·</span>
+                    <span>구글로그인으로 전환해야 출금 신청이 가능합니다.</span>
+                </li>
+                <li style="display:flex; gap:7px; font-size:12px; color:#c0392b; line-height:1.5;">
+                    <span style="color:#c0392b; flex-shrink:0;">·</span>
+                    <span><b>주문자와 출금자의 성함이 다른 경우 출금되지 않습니다.</b></span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 출금 계좌 입력 폼 (출금 신청 버튼 누르면 여기가 펼쳐짐) -->
+        <div id="pointWithdrawForm" style="display:none; text-align:left; margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
+            <div style="margin-bottom:10px;">
+                <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">은행명</label>
+                <input id="withdrawBankInput" type="text" placeholder="예: 국민은행" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">계좌번호</label>
+                <input id="withdrawAccountInput" type="text" placeholder="'-' 없이 숫자만 입력" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">예금주(출금자 성함)</label>
+                <input id="withdrawHolderInput" type="text" placeholder="예금주 성함" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="cancelWithdrawFormBtn" type="button" style="flex:1; padding:10px; border:1px solid #ccc; background:#fff; border-radius:6px; font-size:13px; cursor:pointer;">취소</button>
+                <button id="submitWithdrawFormBtn" type="button" style="flex:2; padding:10px; border:none; background:#d97706; color:#fff; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">신청하기</button>
+            </div>
+        </div>
       </div>
     </div>
 
@@ -90,8 +149,8 @@
 
         <div style="margin-bottom:14px;">
           <div style="font-size:13px; color:#666; margin-bottom:6px;">별점</div>
-          <div id="reviewStarPicker" style="font-size:28px; letter-spacing:4px; user-select:none;">
-            <span class="review-star" data-value="1" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="2" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="3" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="4" style="color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="5" style="color:#ddd; cursor:pointer;">★</span>
+          <div id="reviewStarPicker" style="display:inline-flex; user-select:none;">
+            <span class="review-star" data-value="1" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="2" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="3" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="4" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="5" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span>
           </div>
         </div>
 
@@ -169,7 +228,6 @@
         <input type="text" id="search-phone" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44" placeholder="전화번호 뒤 4자리" maxlength="4">
 
         <button id="search-btn" class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
-        <button id="my-point-btn" type="button" class="w-full sm:w-auto shrink-0 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-amber-200">💰 내 포인트</button>
     </div>
 </div>
         <div id="results" class="space-y-4"></div>
@@ -515,32 +573,123 @@
         }
         setupReviewModal();
 
-        // ---------------- 내 포인트 확인 ----------------
-        document.getElementById('my-point-btn').addEventListener('click', async () => {
-            const name = document.getElementById('search-name').value.trim();
-            const phone = document.getElementById('search-phone').value.trim();
-            if (!name || !/^\d{4}$/.test(phone)) {
-                alert('이름과 전화번호 뒤 4자리를 입력한 뒤 눌러주세요.');
+        // ---------------- 캐쉬백 포인트 확인 ----------------
+        const POINT_WITHDRAW_MIN = 10000;
+
+        // 조회 결과 카드의 "캐쉬백 포인트" 버튼에서 이름/전화번호를 넘겨 호출함
+        window.showMyPoints = async (encodedName, phone) => {
+            const name = decodeURIComponent(encodedName || '');
+            if (!name || !/^\d{4}$/.test(phone || '')) {
+                alert('이름/전화번호 정보를 확인할 수 없습니다.');
                 return;
             }
+            const withdrawBtn = document.getElementById('pointWithdrawBtn');
             try {
                 const snap = await getDoc(doc(cartDb, 'pointsBalance', linkKey(name, phone)));
                 const balance = (snap.exists() ? snap.data().balance : 0) || 0;
                 document.getElementById('pointBalanceDisplay').textContent = `${balance.toLocaleString()}P`;
                 document.getElementById('pointNameDisplay').textContent = `${name} (${phone}) 님`;
+
+                if (balance >= POINT_WITHDRAW_MIN) {
+                    withdrawBtn.disabled = false;
+                    withdrawBtn.style.background = '#d97706';
+                    withdrawBtn.style.color = '#fff';
+                    withdrawBtn.style.cursor = 'pointer';
+                } else {
+                    withdrawBtn.disabled = true;
+                    withdrawBtn.style.background = '#e5e7eb';
+                    withdrawBtn.style.color = '#9ca3af';
+                    withdrawBtn.style.cursor = 'not-allowed';
+                }
+                withdrawBtn.onclick = async () => {
+                    // 구글 로그인으로 전환된 회원만 출금 신청 가능하게 함 (search.html의
+                    // googleLinks 컬렉션 — 구글 로그인으로 변경했을 때 저장되는 것과 동일)
+                    withdrawBtn.disabled = true;
+                    const originalText = withdrawBtn.textContent;
+                    withdrawBtn.textContent = '확인 중...';
+                    try {
+                        const linked = await isIdentityLinked(name, phone);
+                        if (!linked) {
+                            alert('구글 로그인으로 전환된 회원만 출금 신청이 가능합니다.\n주문 조회 결과에서 "구글 로그인으로 변경" 먼저 진행해주세요.');
+                            return;
+                        }
+                        // 예금주 기본값은 주문자 성함으로 채워둠(주의사항과 맞춤) — 다르면 출금 안 되니 그대로 두는 게 안전
+                        document.getElementById('withdrawHolderInput').value = name;
+                        document.getElementById('withdrawBankInput').value = '';
+                        document.getElementById('withdrawAccountInput').value = '';
+                        document.getElementById('pointWithdrawForm').style.display = 'block';
+                        document.getElementById('pointWithdrawForm').dataset.name = name;
+                        document.getElementById('pointWithdrawForm').dataset.phone = phone;
+                        document.getElementById('pointWithdrawForm').dataset.balance = balance;
+                    } finally {
+                        withdrawBtn.disabled = false;
+                        withdrawBtn.textContent = originalText;
+                    }
+                };
+
                 document.getElementById('pointModalOverlay').style.display = 'flex';
             } catch (err) {
                 console.error('포인트 조회 실패:', err);
                 alert('포인트 조회 중 오류가 발생했습니다.');
             }
+        };
+
+        document.getElementById('cancelWithdrawFormBtn').addEventListener('click', () => {
+            document.getElementById('pointWithdrawForm').style.display = 'none';
         });
+
+        // 출금 신청 — 계좌정보와 함께 신청 기록을 남겨두고(관리자가 나중에 확인해서 처리),
+        // 안내 문구대로 물품수령/거래완료 기준 7일 뒤 출금됨을 다시 한번 알려줌
+        document.getElementById('submitWithdrawFormBtn').addEventListener('click', async () => {
+            const form = document.getElementById('pointWithdrawForm');
+            const name = form.dataset.name;
+            const phone = form.dataset.phone;
+            const balance = Number(form.dataset.balance) || 0;
+            const bank = document.getElementById('withdrawBankInput').value.trim();
+            const account = document.getElementById('withdrawAccountInput').value.trim();
+            const holder = document.getElementById('withdrawHolderInput').value.trim();
+
+            if (!bank) { alert('은행명을 입력해주세요.'); return; }
+            if (!account) { alert('계좌번호를 입력해주세요.'); return; }
+            if (!holder) { alert('예금주 성함을 입력해주세요.'); return; }
+            if (holder !== name) {
+                if (!confirm(`예금주(${holder})와 주문자(${name}) 성함이 다릅니다.\n주의사항대로 이 경우 출금되지 않을 수 있는데, 그래도 신청하시겠습니까?`)) return;
+            }
+            if (!confirm(`${balance.toLocaleString()}P 전액 출금을 신청하시겠습니까?\n출금신청은 물품수령, 거래 완료 기준 7일 뒤 출금됩니다.`)) return;
+
+            const submitBtn = document.getElementById('submitWithdrawFormBtn');
+            submitBtn.disabled = true;
+            try {
+                await addDoc(collection(cartDb, 'pointsWithdrawRequests'), {
+                    name, phone, amount: balance,
+                    bank, account, holder,
+                    status: '신청됨', createdAt: serverTimestamp()
+                });
+                alert('출금 신청이 접수되었습니다.\n물품수령, 거래 완료 기준 7일 뒤 출금됩니다.');
+                form.style.display = 'none';
+                document.getElementById('pointWithdrawBtn').disabled = true;
+                document.getElementById('pointWithdrawBtn').style.background = '#e5e7eb';
+                document.getElementById('pointWithdrawBtn').style.color = '#9ca3af';
+                document.getElementById('pointWithdrawBtn').style.cursor = 'not-allowed';
+            } catch (err) {
+                console.error('출금 신청 실패:', err);
+                alert('출금 신청 중 오류가 발생했습니다.');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
         document.getElementById('closePointModalBtn').addEventListener('click', () => {
             document.getElementById('pointModalOverlay').style.display = 'none';
+            document.getElementById('pointWithdrawForm').style.display = 'none';
         });
         document.getElementById('pointModalOverlay').addEventListener('click', (e) => {
-            if (e.target.id === 'pointModalOverlay') e.target.style.display = 'none';
+            if (e.target.id === 'pointModalOverlay') {
+                e.target.style.display = 'none';
+                document.getElementById('pointWithdrawForm').style.display = 'none';
+            }
         });
-        // ---------------- 내 포인트 확인 끝 ----------------
+        // ---------------- 캐쉬백 포인트 확인 끝 ----------------
 
 
         window.reviewClick = (key, triggerEl) => {
@@ -1078,10 +1227,10 @@ filteredData.sort((a, b) => {
                             orderId: d.id,
                             itemIndex: idx
                         };
-                        reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">후기 작성</button>`;
-                    } else if (alreadyReviewed) {
-                        reviewLink = `<span class="text-xs text-gray-400 font-semibold px-1">후기 작성완료</span>`;
+                        reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center">포토 후기작성<br><span class="font-normal text-[10px]">작성시 (2%) 캐쉬백 적립</span></button>`;
                     }
+                    // 이미 작성했거나(alreadyReviewed) 기간이 지났으면(!canWriteReview) 아무것도
+                    // 표시하지 않음 — 완료 텍스트도 남기지 않고 버튼이 활성화될 때만 보이게 함
 
                     // [추가] 사이즈/용지/인쇄면/후가공 등 상세 정보 (지금까지 화면에 아예 안 그려지고 있었음)
                     const detailBits = [
@@ -1092,13 +1241,18 @@ filteredData.sort((a, b) => {
                         it.weight ? `무게: ${it.weight}` : ''
                     ].filter(Boolean).join(' · ');
 
+                    // [추가] 캐쉬백 포인트 — 재구입/후기작성과 같은 조건(후가공 없는 상품)일 때만 노출
+                    const pointBtn = !it.finishings
+                        ? `<button type="button" onclick="showMyPoints('${encodeURIComponent(d.author || '')}', '${(d.phone || '').slice(-4)}')" class="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">💰 캐쉬백 포인트</button>`
+                        : '';
+
                     return `
                         <div class="text-xs bg-white border rounded-lg px-3 py-2.5 mt-1.5">
                             <div class="flex items-center justify-between flex-wrap gap-1.5">
                                 <span class="font-medium">${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
                             </div>
                             ${detailBits ? `<div class="text-gray-500 mt-1">${detailBits}</div>` : ''}
-                            <div class="flex items-center gap-2 mt-2 flex-wrap">${sianLink}${reorderLink}${reviewLink}</div>
+                            <div class="flex items-center gap-2 mt-2 flex-wrap">${sianLink}${reorderLink}${reviewLink}${pointBtn}</div>
                         </div>`;
                 }).join('');
 
