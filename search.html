@@ -116,8 +116,8 @@
         </div>
 
         <div style="margin-bottom:18px;">
-          <label for="reviewPhotoInput" style="display:inline-block; padding:8px 16px; border:1px dashed #999; border-radius:6px; cursor:pointer; font-size:13px; color:#555;">📷 사진 첨부 (최대 5장)</label>
-          <input type="file" id="reviewPhotoInput" accept="image/jpeg,image/png,image/gif" multiple style="display:none;">
+          <label for="reviewPhotoInput" style="display:inline-block; padding:8px 16px; border:1px dashed #999; border-radius:6px; cursor:pointer; font-size:13px; color:#555;">📷 사진 첨부 (최대 1장)</label>
+          <input type="file" id="reviewPhotoInput" accept="image/jpeg,image/png,image/gif" style="display:none;">
           <div id="reviewPhotoPreview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
         </div>
 
@@ -284,7 +284,7 @@
 
         // ---------------- 후기 작성 (search.html 안에서 직접 처리) ----------------
         const REVIEW_WORKER_URL = 'https://r22.sowonnamoo.workers.dev/';
-        const MAX_REVIEW_PHOTOS = 5;
+        const MAX_REVIEW_PHOTOS = 1;
 
         const reviewItemRegistry = {};
         let reviewItemSeq = 0;
@@ -379,11 +379,16 @@
 
             photoInput.addEventListener('change', () => {
                 const files = Array.from(photoInput.files || []);
-                const room = MAX_REVIEW_PHOTOS - reviewPhotoFiles.length;
-                if (files.length > room) {
-                    alert(`사진은 최대 ${MAX_REVIEW_PHOTOS}장까지 첨부할 수 있습니다.`);
+                if (!files.length) return;
+                if (MAX_REVIEW_PHOTOS === 1) {
+                    reviewPhotoFiles = files.slice(0, 1); // 1장 제한이면 새로 고른 사진으로 그냥 교체
+                } else {
+                    const room = MAX_REVIEW_PHOTOS - reviewPhotoFiles.length;
+                    if (files.length > room) {
+                        alert(`사진은 최대 ${MAX_REVIEW_PHOTOS}장까지 첨부할 수 있습니다.`);
+                    }
+                    reviewPhotoFiles = reviewPhotoFiles.concat(files.slice(0, room));
                 }
-                reviewPhotoFiles = reviewPhotoFiles.concat(files.slice(0, room));
                 photoInput.value = '';
                 renderPhotoPreview();
             });
