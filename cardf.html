@@ -49,7 +49,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -96,7 +96,8 @@
                 await updateDoc(doc(db, COLLECTION, id), data);
                 alert('수정 완료!');
             } else {
-                await addDoc(collection(db, COLLECTION), data);
+                // [추가] 관리자 페이지에서 "언제 새로 신청됐는지" 파악할 수 있게 등록 시각을 남김
+                await addDoc(collection(db, COLLECTION), { ...data, createdAt: serverTimestamp() });
                 alert('저장 완료!');
             }
             location.reload();
