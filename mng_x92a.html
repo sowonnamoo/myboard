@@ -56,8 +56,38 @@
     };
 
     // 2. 30일 지난 파일(URL) 삭제 기능
+    // R2 워커 주소 — app.js(게시판 파일 업로드)가 파일을 올릴 때 쓰는 것과 동일한 워커
+    const R2_WORKER_URL = "https://r2.ecogr.workers.dev/";
+
+    // file1Url/file2Url 문자열에서 R2에 저장된 실제 파일명(name= 파라미터)을 뽑아냄.
+    // 예전 형식(pub-....r2.dev/파일명)으로 저장된 것도 있을 수 있어서, 그 경우엔
+    // 주소의 마지막 경로 조각을 파일명으로 대신 사용함.
+    function extractR2FileName(url) {
+        if (!url) return null;
+        try {
+            const u = new URL(url);
+            const byParam = u.searchParams.get("name");
+            if (byParam) return byParam;
+            const segments = u.pathname.split("/").filter(Boolean);
+            return segments.length ? decodeURIComponent(segments[segments.length - 1]) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // R2에서 실제 파일을 삭제함 (실패해도 조용히 넘어감 — 이미 지워졌거나 다른 저장소일 수 있음)
+    async function deleteFromR2(fileUrl) {
+        const fileName = extractR2FileName(fileUrl);
+        if (!fileName) return;
+        try {
+            await fetch(`${R2_WORKER_URL}?name=${encodeURIComponent(fileName)}`, { method: "DELETE" });
+        } catch (e) {
+            console.error("R2 파일 삭제 실패:", fileName, e);
+        }
+    }
+
     window.deleteOldFiles = async function() {
-        if (!confirm("30일이 경과한 게시물의 파일 정보를 초기화하시겠습니까? (복구 불가)")) return;
+        if (!confirm("30일이 경과한 게시물의 파일 정보를 초기화하시겠습니까?\n(R2 저장소의 실제 파일도 함께 삭제되며, 복구 불가합니다)")) return;
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -68,12 +98,17 @@
             for (const docSnapshot of snapshot.docs) {
                 const data = docSnapshot.data();
                 if (data.createdAt && data.createdAt.toDate() < thirtyDaysAgo && (data.file1Url || data.file2Url)) {
+                    // [추가] Firestore 참조를 지우기 전에, R2에 있는 실제 파일부터 삭제
+                    await Promise.all([
+                        deleteFromR2(data.file1Url),
+                        deleteFromR2(data.file2Url)
+                    ]);
                     await setDoc(doc(db, colName, docSnapshot.id), { file1Url: null, file2Url: null }, { merge: true });
                     count++;
                 }
             }
         }
-        alert(count > 0 ? `${count}개 게시물의 파일 정보가 삭제되었습니다.` : "삭제할 파일 정보가 없습니다.");
+        alert(count > 0 ? `${count}개 게시물의 파일(Firestore 참조 + R2 실제 파일)이 삭제되었습니다.` : "삭제할 파일 정보가 없습니다.");
     };
 
     // 3. 1년 지난 개인정보 삭제 기능
