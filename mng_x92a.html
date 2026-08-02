@@ -24,12 +24,15 @@
         <button onclick="deleteOldPersonalInfo()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm w-full hover:bg-purple-700">
             1년 지난 개인정보(메시지/IP/주소) 삭제
         </button>
+        <button onclick="bulkDeleteStaleOrders()" class="bg-red-600 text-white px-4 py-2 rounded text-sm w-full mt-2 hover:bg-red-700">
+            30일 지난 입금대기 + 주문취소건 일괄삭제
+        </button>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, setDoc, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -42,6 +45,25 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+    // [추가] 장바구니(01my.html/cart.html) 쪽 주문은 다른 Firebase 프로젝트에 저장됨
+    const cartFirebaseConfig = {
+        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+    };
+    const cartDb = getFirestore(initializeApp(cartFirebaseConfig, "cartApp"));
+
+    // Firestore Timestamp든 문자열 날짜든(장바구니 주문 createdAt이 ISO 문자열) 안전하게 Date로 변환
+    function toDateSafe(val) {
+        if (!val) return null;
+        if (typeof val.toDate === 'function') return val.toDate();
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+    }
 
     // 1. IP 차단 기능
     window.blockIp = async function() {
@@ -132,6 +154,45 @@
             }
         }
         alert(count > 0 ? `${count}개 게시물의 개인정보가 삭제되었습니다.` : "삭제할 대상이 없습니다.");
+    };
+
+    // 4. [추가] 30일 지난 "입금대기"건 + 기간 상관없이 "주문취소"건을 일괄 삭제.
+    // 게시판(board-291e3)과 장바구니(ecogr-636c6) 두 프로젝트 전부 대상으로 함께 처리됨.
+    window.bulkDeleteStaleOrders = async function() {
+        if (!confirm("30일이 지난 '입금대기' 주문과, 기간 상관없이 모든 '주문취소' 주문을 전부 삭제하시겠습니까?\n(게시판 + 장바구니 주문 전부 대상이며, 복구할 수 없습니다)")) return;
+
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const targets = [
+            { targetDb: db, name: "boards" },
+            { targetDb: db, name: "jjjj" },
+            { targetDb: cartDb, name: "orders" }
+        ];
+
+        let deletedCount = 0;
+        try {
+            for (const t of targets) {
+                const snapshot = await getDocs(collection(t.targetDb, t.name));
+                for (const docSnapshot of snapshot.docs) {
+                    const data = docSnapshot.data();
+                    const status = data.status;
+                    const createdAtDate = toDateSafe(data.createdAt);
+
+                    const isCancelled = status === '주문취소';
+                    const isStalePending = status === '입금대기' && createdAtDate && createdAtDate < thirtyDaysAgo;
+
+                    if (isCancelled || isStalePending) {
+                        await deleteDoc(doc(t.targetDb, t.name, docSnapshot.id));
+                        deletedCount++;
+                    }
+                }
+            }
+            alert(deletedCount > 0 ? `${deletedCount}건 삭제 완료되었습니다.` : "삭제 대상이 없습니다.");
+        } catch (e) {
+            console.error(e);
+            alert("삭제 중 오류가 발생했습니다: " + e.message);
+        }
     };
 </script>
 </body>
