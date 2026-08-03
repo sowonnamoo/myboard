@@ -47,6 +47,23 @@ const SHIPPING_BUNDLE_GROUPS = [
 
 
 // ==================================================================
+// 1-1) 착불(도서산간) 지역 설정
+// ------------------------------------------------------------------
+// 배송지 주소(address)에 아래 키워드 중 하나라도 포함되어 있으면
+// 배송비를 미리 계산하지 않고 "착불배송"으로 처리합니다.
+// (대소문자 구분 없음 / 부분 일치)
+//
+// ▼ 착불 대상 지역을 추가/수정하고 싶으면 이 배열만 편집하세요 ▼
+const SHIPPING_CASH_ON_DELIVERY_KEYWORDS = ["제주", "울릉"];
+
+// 주소 문자열이 착불 대상 지역인지 확인합니다.
+function isCashOnDeliveryAddress(address) {
+    const text = String(address || "").toLowerCase();
+    return SHIPPING_CASH_ON_DELIVERY_KEYWORDS.some(keyword => text.includes(String(keyword).toLowerCase()));
+}
+
+
+// ==================================================================
 // 2) 무게 구간별 배송비
 // ------------------------------------------------------------------
 // maxKg: 합산 무게가 이 값 "이하"일 때 적용되는 요금.
@@ -92,15 +109,23 @@ function findShippingGroupId(item) {
 /**
  * 장바구니(cart) 전체의 배송비를 계산합니다.
  * @param {Array} cart - [{ productId, productName, weight, ... }, ...]
- * @returns {{ totalFee: number, breakdown: Array<{label:string, weight:number, fee:number, bundled:boolean}> }}
+ * @param {string} [address] - 배송지 주소. 제주/울릉 등 도서산간이 포함되면
+ *                              무게 계산 없이 착불배송으로 처리됩니다.
+ * @returns {{ totalFee: number, breakdown: Array<{label:string, weight:number, fee:number, bundled:boolean}>, cashOnDelivery: boolean }}
  *
  *   - 같은 묶음배송 그룹 상품들은 무게를 합쳐 breakdown에 한 줄로 나옵니다. (bundled: true)
  *   - 묶음배송 불가 상품은 각각 별도 줄로 나옵니다. (bundled: false)
  *   - totalFee = breakdown의 fee를 모두 더한 값입니다.
+ *   - cashOnDelivery가 true면 착불배송 대상이므로 totalFee는 0이고 breakdown은 비어있습니다.
+ *     (실제 배송비는 결제 시 청구하지 않고, 상품 도착 시 택배기사에게 별도로 지불합니다.)
  */
-function calculateShippingFee(cart) {
+function calculateShippingFee(cart, address) {
+    if (isCashOnDeliveryAddress(address)) {
+        return { totalFee: 0, breakdown: [], cashOnDelivery: true };
+    }
+
     if (!Array.isArray(cart) || cart.length === 0) {
-        return { totalFee: 0, breakdown: [] };
+        return { totalFee: 0, breakdown: [], cashOnDelivery: false };
     }
 
     // 그룹별로 무게를 합산 (묶음배송 불가 상품은 각자 고유 버킷으로 분리)
@@ -140,7 +165,7 @@ function calculateShippingFee(cart) {
 
     const totalFee = breakdown.reduce((sum, b) => sum + b.fee, 0);
 
-    return { totalFee, breakdown };
+    return { totalFee, breakdown, cashOnDelivery: false };
 }
 
 // 일반 <script> 파일이라 전역(window)에 그대로 노출됩니다.
@@ -148,5 +173,7 @@ function calculateShippingFee(cart) {
 window.calculateShippingFee = calculateShippingFee;
 window.getShippingFeeByWeight = getShippingFeeByWeight;
 window.findShippingGroupId = findShippingGroupId;
+window.isCashOnDeliveryAddress = isCashOnDeliveryAddress;
 window.SHIPPING_BUNDLE_GROUPS = SHIPPING_BUNDLE_GROUPS;
 window.SHIPPING_WEIGHT_TIERS = SHIPPING_WEIGHT_TIERS;
+window.SHIPPING_CASH_ON_DELIVERY_KEYWORDS = SHIPPING_CASH_ON_DELIVERY_KEYWORDS;

@@ -17,6 +17,9 @@ window.execDaumPostcode = function() {
         oncomplete: function(data) {
             document.getElementById("address").value = data.address;
             document.getElementById("address-detail").focus();
+            // 주소가 바뀌면(특히 제주/울릉 등 착불 대상 여부가 바뀔 수 있으므로)
+            // 장바구니 합계·배송비 표시를 다시 계산합니다.
+            renderCombinedCartOrder();
         }
     }).open();
 }
@@ -230,20 +233,28 @@ function renderCombinedCartOrder() {
     summaryCard.classList.remove('hidden');
 
     // shipping.js의 calculateShippingFee()로 묶음배송 여부 + 무게 구간을 반영해 배송비 계산
+    // (주소에 제주/울릉이 포함되면 shipping.js가 착불배송으로 판단해 배송비를 0으로 돌려줌)
+    const addressForShipping = (document.getElementById('address')?.value || '')
+        + ' ' + (document.getElementById('address-detail')?.value || '');
     const shippingResult = (typeof calculateShippingFee === 'function')
-        ? calculateShippingFee(cart)
-        : { totalFee: 0, breakdown: [] };
+        ? calculateShippingFee(cart, addressForShipping)
+        : { totalFee: 0, breakdown: [], cashOnDelivery: false };
     const shippingFee = shippingResult.totalFee;
     const total = subtotal + shippingFee;
 
     if (totalLine) {
-        let shippingText = `배송비 ${shippingFee}`;
-        if (shippingResult.breakdown.length > 1) {
-            // 묶음배송으로 여러 건으로 나뉜 경우 상세 내역도 함께 표시
-            const detail = shippingResult.breakdown.map(b => `${b.label} ${b.fee}원`).join(' + ');
-            shippingText = `배송비 ${shippingFee}(${detail})`;
+        if (shippingResult.cashOnDelivery) {
+            // 제주/울릉 등 도서산간: 배송비를 미리 청구하지 않고, 상품 도착 시 택배기사에게 별도 지불
+            totalLine.textContent = `${subtotal}원 + 배송비 착불(도서산간) 총결제액 : ${total}원 (배송비는 상품 도착 시 별도 결제)`;
+        } else {
+            let shippingText = `배송비 ${shippingFee}`;
+            if (shippingResult.breakdown.length > 1) {
+                // 묶음배송으로 여러 건으로 나뉜 경우 상세 내역도 함께 표시
+                const detail = shippingResult.breakdown.map(b => `${b.label} ${b.fee}원`).join(' + ');
+                shippingText = `배송비 ${shippingFee}(${detail})`;
+            }
+            totalLine.textContent = `${subtotal}원 + ${shippingText} 총결제액 : ${total}원`;
         }
-        totalLine.textContent = `${subtotal}원 + ${shippingText} 총결제액 : ${total}원`;
         totalLine.classList.remove('hidden');
     }
 
