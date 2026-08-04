@@ -132,6 +132,13 @@
           <span id="closeReviewModalBtn" style="cursor:pointer; font-size:20px; color:#999;">✕</span>
         </div>
 
+        <div style="background:#fff8e6; border:1px solid #f3d98b; border-radius:8px; padding:14px; font-size:12px; color:#7a5c00; line-height:1.8; margin-bottom:14px;">
+          <b>🎁 캐쉬백 적립 안내</b><br>
+          · <b>사진을 첨부한 포토 후기만</b> 캐쉬백이 적립되며, 사진을 첨부하지 않은 후기는 포인트가 지급되지 않습니다.<br>
+          · 적립은 <b>후기 등록일로부터 7일 후</b>에 지급됩니다.<br>
+          · 적립률은 기본 2%이며, <b>1회 구매 결제금액이 20만원 이상인 경우 5%</b>가 적립됩니다. (여러 번 구매한 금액을 합산하는 것이 아니라, 해당 주문 1건의 결제금액 기준입니다)
+        </div>
+
         <div style="background:#f7f8f9; border:1px solid #eee; border-radius:8px; padding:14px; font-size:12px; color:#666; line-height:1.8; margin-bottom:18px; white-space:pre-line;">· 이용후기는 구매한 상품이 출고완료 된 후 30일 이내에만 리뷰를 작성할 수 있습니다.
 · 이용후기 포인트는 등록 즉시 지급되지 않고 선별 지급됩니다.
 · 전액 포인트로 결제한 주문 건은 포인트 지급 대상에서 제외됩니다.
@@ -1228,7 +1235,7 @@ filteredData.sort((a, b) => {
                             orderId: d.id,
                             itemIndex: idx
                         };
-                        reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center">포토 후기작성<br><span class="font-normal text-[10px]">작성시 (2%) 캐쉬백 적립</span></button>`;
+                        reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center">포토 후기작성<br><span class="font-normal text-[10px]">사진첨부시 캐쉬백 2~5% 적립</span></button>`;
                     }
                     // 이미 작성했거나(alreadyReviewed) 기간이 지났으면(!canWriteReview) 아무것도
                     // 표시하지 않음 — 완료 텍스트도 남기지 않고 버튼이 활성화될 때만 보이게 함
