@@ -1185,6 +1185,15 @@ filteredData.sort((a, b) => {
                 const daysSinceOrder = (Date.now() - orderDateObj.getTime()) / (1000 * 60 * 60 * 24);
                 const canWriteReview = !isNaN(daysSinceOrder) && daysSinceOrder <= 30;
 
+                // cart.html의 saveOrderToFirestore가 저장하는 상태값: "입금대기"(무통장, 확인 전)
+                // 또는 "결제완료"(카드결제는 결제 성공 시 바로 이 상태로 저장됨)
+                // [추가] 재구입/후기작성/캐쉬백 포인트 버튼은 실제로 결제(입금)가 확인된
+                // 주문에서만 활성화한다 — "무통장입금"이라도 아직 입금 확인 전(입금대기)이면
+                // 비활성화하고, "카드결제"는 결제 성공 시 바로 결제완료 상태가 되므로 항상 포함된다.
+                const isPendingCart = d.status === '입금대기';
+                const isBankTransferCart = d.payment === '무통장입금';
+                const isCardCart = d.payment === '카드결제';
+
                 const itemRows = items.map((it, idx) => {
                     const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
                     const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
@@ -1194,8 +1203,10 @@ filteredData.sort((a, b) => {
 
                     // [추가] 재구입 — 후가공이 붙은 주문은 재구입 버튼을 아예 숨김
                     // (후가공까지 예전과 똑같이 맞춰 재현하기 어려워서, 새로 주문받는 게 안전함)
+                    // [추가] 입금(결제)이 아직 확인되지 않은 주문(입금대기)에서도 숨김 — 결제가
+                    // 확인된 주문(무통장 입금확인 완료 또는 카드결제)에서만 재구입을 허용한다.
                     let reorderLink = '';
-                    if (!it.finishings) {
+                    if (!it.finishings && !isPendingCart) {
                         // productId가 있으면 정확한 상품 페이지로, 없으면(예전 주문) 헤더 메뉴
                         // 데이터에서 상품명이 겹치는 페이지로 추정해서 이동. 클릭 시점에
                         // resolveReorderProductUrl()에서 최종 URL을 계산함.
@@ -1216,19 +1227,28 @@ filteredData.sort((a, b) => {
                     // 거기서 다시 구매 확인 절차 없이 바로 작성창이 뜸. 이미 이 아이템으로 후기를
                     // 작성했으면(d.reviewedItemIndexes) 버튼을 숨김 — 추가 조회 없이 이미 불러온
                     // 주문 데이터로 바로 판단함.
+                    // [추가] 입금(결제) 확인 전(입금대기)에는 아직 후기 작성 대상이 아니므로 숨김.
+                    // 결제는 확인됐지만 아직 "운송장"(출고)이 등록되지 않았으면(d.woonso1 없음),
+                    // 버튼은 보여주되 눌렀을 때 "운송장 발송 전에는 작성할 수 없다"는 경고만 띄우고
+                    // 실제 작성창은 열지 않는다. 운송장이 등록된 뒤에만 진짜로 작성 가능해진다.
                     const alreadyReviewed = Array.isArray(d.reviewedItemIndexes) && d.reviewedItemIndexes.includes(idx);
+                    const isShippedCart = !!d.woonso1;
                     let reviewLink = '';
-                    if (canWriteReview && !alreadyReviewed) {
-                        const reviewKey = `rv_${reviewItemSeq++}`;
-                        reviewItemRegistry[reviewKey] = {
-                            productId: it.productId || '',
-                            itemName: it.item || '',
-                            name: d.author || '',
-                            phone: (d.phone || '').slice(-4),
-                            orderId: d.id,
-                            itemIndex: idx
-                        };
-                        reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center">포토 후기작성<br><span class="font-normal text-[10px]">작성시 (2%) 캐쉬백 적립</span></button>`;
+                    if (canWriteReview && !alreadyReviewed && !isPendingCart) {
+                        if (isShippedCart) {
+                            const reviewKey = `rv_${reviewItemSeq++}`;
+                            reviewItemRegistry[reviewKey] = {
+                                productId: it.productId || '',
+                                itemName: it.item || '',
+                                name: d.author || '',
+                                phone: (d.phone || '').slice(-4),
+                                orderId: d.id,
+                                itemIndex: idx
+                            };
+                            reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center">포토 후기작성<br><span class="font-normal text-[10px]">작성시 (2%) 캐쉬백 적립</span></button>`;
+                        } else {
+                            reviewLink = `<button type="button" onclick="alert('발송 이후 작성 가능합니다. 수령하신 물품의 사진후기를 남겨주세요.')" class="bg-gray-300 text-gray-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center cursor-not-allowed">포토 후기작성<br><span class="font-normal text-[10px]">(포인트2%적립)</span></button>`;
+                        }
                     }
                     // 이미 작성했거나(alreadyReviewed) 기간이 지났으면(!canWriteReview) 아무것도
                     // 표시하지 않음 — 완료 텍스트도 남기지 않고 버튼이 활성화될 때만 보이게 함
@@ -1242,8 +1262,9 @@ filteredData.sort((a, b) => {
                         it.weight ? `무게: ${it.weight}` : ''
                     ].filter(Boolean).join(' · ');
 
-                    // [추가] 캐쉬백 포인트 — 재구입/후기작성과 같은 조건(후가공 없는 상품)일 때만 노출
-                    const pointBtn = !it.finishings
+                    // [추가] 캐쉬백 포인트 — 재구입과 같은 조건(후가공 없는 상품 + 입금/결제
+                    // 확인된 주문)일 때만 노출
+                    const pointBtn = (!it.finishings && !isPendingCart)
                         ? `<button type="button" onclick="showMyPoints('${encodeURIComponent(d.author || '')}', '${(d.phone || '').slice(-4)}')" class="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">💰 캐쉬백 포인트</button>`
                         : '';
 
@@ -1256,12 +1277,6 @@ filteredData.sort((a, b) => {
                             <div class="flex items-center gap-2 mt-2 flex-wrap">${sianLink}${reorderLink}${reviewLink}${pointBtn}</div>
                         </div>`;
                 }).join('');
-
-                // cart.html의 saveOrderToFirestore가 저장하는 상태값: "입금대기"(무통장, 확인 전)
-                // 또는 "결제완료"(카드결제는 결제 성공 시 바로 이 상태로 저장됨)
-                const isPendingCart = d.status === '입금대기';
-                const isBankTransferCart = d.payment === '무통장입금';
-                const isCardCart = d.payment === '카드결제';
 
                 // 여러 상품이 한 주문에 담기므로, 영수증/카드전표용 상품명·사이즈·수량은
                 // 상품들을 합쳐서 하나의 문자열로 구성함
