@@ -243,6 +243,9 @@
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, updateDoc, addDoc, serverTimestamp, arrayUnion, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // [분리됨] 주문 조회/삭제의 핵심 로직은 같은 폴더의 order-search-core.js 파일로 뺐습니다.
+        // 앞으로 조회/삭제 관련 버그를 고칠 땐 이 search.html 전체가 아니라 그 파일만 열면 됩니다.
+        import { ORDER_COLLAPSE_DAYS, safeDate, wrapCollapsible, createFetchDocsByName, createDeleteHandlers } from "./order-search-core.js";
 
         // 우클릭(및 모바일 길게 눌러서 뜨는 메뉴) 방지 — 개인 주문정보라 이미지/텍스트를
         // 쉽게 저장/복사하지 못하도록 최소한의 방어 차원. (개발자도구 등 완전 차단은 불가능하지만
@@ -759,33 +762,9 @@
         const cartApp = initializeApp(cartFirebaseConfig, "cartApp");
         const cartDb = getFirestore(cartApp);
 
-        // 이름으로 boards/jjjj/cart(orders) 3개 컬렉션을 모두 조회해서 공통 형태로 합쳐줌
-        // (전화번호 조회, 네이버 자동 연결 양쪽에서 재사용)
-        async function fetchDocsByName(name) {
-            const qBoards = query(collection(db, "boards"), where("author", "==", name));
-            const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
-            const qCart = query(collection(cartDb, "orders"), where("name", "==", name));
-
-            const [snapBoards, snapJjjj, snapCart] = await Promise.all([getDocs(qBoards), getDocs(qJjjj), getDocs(qCart)]);
-
-            return [
-                ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false, source: 'board' })),
-                ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true, source: 'board' })),
-                // cart.html의 orders 컬렉션은 필드 구조가 완전히 달라서(author 대신 name,
-                // 단일 상품 대신 items 배열) 렌더링에서 쓸 공통 필드만 맞춰서 정규화함.
-                ...snapCart.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        ...data,
-                        id: doc.id,
-                        isJajoo: false,
-                        source: 'cart',
-                        author: data.name,
-                        phone: data.phone
-                    };
-                })
-            ];
-        }
+        // [분리됨] boards/jjjj/cart(orders) 3개 컬렉션을 합쳐서 가져오는 로직은
+        // order-search-core.js로 뺐습니다. 여기서는 db/cartDb를 넘겨서 함수만 받아옵니다.
+        const fetchDocsByName = createFetchDocsByName(db, cartDb);
 
         // 주문 문서 하나를 실제로 업데이트할 때 필요한 db/컬렉션명을 판별
         function targetOf(d) {
@@ -1122,19 +1101,8 @@ document.getElementById('search-btn').addEventListener('click', async () => {
 
 // 주문 목록을 화면에 렌더링 (이름/전화번호 조회, 네이버 로그인 조회 둘 다 여기서 처리)
 // [추가] 접수 7일이 지난 주문은 기본적으로 접어두고, 최근(7일 이내) 주문만 펼쳐서 보여줌
-const ORDER_COLLAPSE_DAYS = 7;
-function wrapCollapsible(fullHtml, isRecent, cardId, summaryLabel) {
-    if (isRecent) return fullHtml; // 최근 주문은 그대로 펼쳐진 채로 둠
-    return `
-    <div class="mb-4">
-        <button type="button" onclick="toggleOrderCard('${cardId}')"
-            class="w-full text-left bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-600 flex justify-between items-center gap-2">
-            <span class="truncate">${summaryLabel}</span>
-            <span id="${cardId}_arrow" class="shrink-0 text-blue-600 font-semibold">▾ 펼쳐보기</span>
-        </button>
-        <div id="${cardId}" style="display:none;">${fullHtml}</div>
-    </div>`;
-}
+// [분리됨] ORDER_COLLAPSE_DAYS / safeDate / wrapCollapsible 은 이제 order-search-core.js에서
+// import해서 씁니다 (아래 </body> 근처, script 상단의 import문 참고).
 window.toggleOrderCard = (id) => {
     const el = document.getElementById(id);
     const arrow = document.getElementById(id + '_arrow');
@@ -1148,8 +1116,8 @@ function renderResults(filteredData) {
     const resultsDiv = document.getElementById('results');
 
 filteredData.sort((a, b) => {
-    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+    const dateA = safeDate(a.createdAt);
+    const dateB = safeDate(b.createdAt);
     return dateB - dateA;
 });
 
@@ -1161,10 +1129,11 @@ filteredData.sort((a, b) => {
         }
 
         filteredData.forEach(d => {
+          try {
             // cart.html(장바구니/결제) 쪽에서 넘어온 주문은 필드 구조가 완전히 달라서
             // (단일 상품이 아니라 items 배열) 따로 간소화된 카드로 렌더링함.
             if (d.source === 'cart') {
-                const dateObjCart = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+                const dateObjCart = safeDate(d.createdAt);
                 const dateStrCart = `${dateObjCart.getFullYear()}년 ${dateObjCart.getMonth() + 1}월 ${dateObjCart.getDate()}일`;
                 const items = Array.isArray(d.items) ? d.items : [];
                 const totalNumber = Number(String(d.total).replace(/[^0-9.-]/g, '')) || 0;
@@ -1189,12 +1158,12 @@ filteredData.sort((a, b) => {
                 // 주문에서만 버튼 노출, 그 이후엔 버튼이 사라짐(블라인드 처리).
                 // paidAt은 관리자가 상태를 무통장/카드결제로 바꾼 시점에 기록됨 — 그 기록이 없는
                 // 예전 주문(또는 아직 결제 확정 전 주문)은 접수일(createdAt)을 기준으로 대신 계산함.
-                const paidDateRaw = d.paidAt || d.createdAt;
-                const orderDateObj = paidDateRaw?.toDate ? paidDateRaw.toDate() : new Date(paidDateRaw);
+                const orderDateObj = safeDate(d.paidAt || d.createdAt);
                 const daysSincePayment = (Date.now() - orderDateObj.getTime()) / (1000 * 60 * 60 * 24);
                 const canWriteReview = !isNaN(daysSincePayment) && daysSincePayment <= 30;
 
-                const itemRows = items.map((it, idx) => {
+                const itemRows = items.map((rawIt, idx) => {
+                    const it = rawIt || {}; // 배열 안에 빈 항목이 섞여있어도 죽지 않게
                     const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
                     const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
                     // R2(compositeImage)를 1차로 시도하고, 나중에 관리자가 R2 원본을 지우고
@@ -1359,7 +1328,7 @@ filteredData.sort((a, b) => {
             }
 
             // [4] 날짜 및 이미지 번호 로직
-            const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+            const dateObj = safeDate(d.createdAt);
             const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
             const phonePrefix = phoneFull.slice(0, -2);    
             const year = dateObj.getFullYear().toString().slice(-2);
@@ -1503,153 +1472,27 @@ ${
             const isRecentBoard = !isNaN(daysSinceOrderBoard) && daysSinceOrderBoard <= ORDER_COLLAPSE_DAYS;
             const summaryBoard = `${d.author || '-'} · ${dateStr} · ${d.productName || '상품명 없음'} · ${d.price || 0}원`;
             resultsDiv.innerHTML += wrapCollapsible(cardHtmlBoard, isRecentBoard, `card_${d.id}`, summaryBoard);
+          } catch (cardErr) {
+            // 이 주문 한 건 렌더링 중 문제가 생겨도 나머지 정상 주문들은 계속 보여줌.
+            // 고객 화면에는 티 나지 않게 조용히 건너뛰고, 콘솔에만 상세 로그를 남김
+            // (F12 콘솔에서 이 주문 id로 검색하면 실제 원인을 확인할 수 있음)
+            console.error('주문 카드 렌더링 실패, 이 건은 화면에서 건너뜁니다:', d.id, cardErr);
+          }
         });
 }
 
-window.deleteOrder = async (docId, isJajoo) => {
-    // 경고 메시지 내용 변경
-    if (confirm("정말로 이 주문을 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) {
-        try {
-            // isJajoo 값에 따라 컬렉션 경로를 다르게 설정
-            const collectionName = isJajoo ? "jjjj" : "boards";
-            await deleteDoc(doc(db, collectionName, docId));
-            
-            alert("삭제되었습니다.");
-            // 구글 로그인으로 조회한 화면이었으면 구글 조회를, 아니면 이름/전화번호 조회를 다시 실행
-            if (isGoogleResultView) {
-                searchByGoogle();
-            } else {
-                document.getElementById('search-btn').click();
-            }
-        } catch (error) {
-            console.error("삭제 실패:", error);
-            alert("삭제 중 오류가 발생했습니다.");
-        }
+// [분리됨] 주문 삭제(게시판형/장바구니형) 로직도 order-search-core.js에서 가져옵니다.
+// 삭제 성공 후에는 구글 로그인으로 조회한 화면이었으면 구글 조회를, 아니면 이름/전화번호
+// 조회를 다시 실행해서 화면을 새로고침합니다.
+const { deleteOrder, deleteCartOrder } = createDeleteHandlers(db, cartDb, () => {
+    if (isGoogleResultView) {
+        searchByGoogle();
+    } else {
+        document.getElementById('search-btn').click();
     }
-};
-
-// 장바구니(cart.html) 쪽 주문은 별도 Firebase 프로젝트(cartDb)의 "orders" 컬렉션에
-// 저장돼 있어서, 위 deleteOrder와는 별개로 따로 삭제함
-window.deleteCartOrder = async (docId) => {
-    if (confirm("정말로 이 주문을 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) {
-        try {
-            await deleteDoc(doc(cartDb, "orders", docId));
-
-            alert("삭제되었습니다.");
-            if (isGoogleResultView) {
-                searchByGoogle();
-            } else {
-                document.getElementById('search-btn').click();
-            }
-        } catch (error) {
-            console.error("삭제 실패:", error);
-            alert("삭제 중 오류가 발생했습니다.");
-        }
-    }
-};
-
-// ---------------- 포토후기 캐쉬백 자동 적립 (백그라운드, 화면에 표시되지 않음) ----------------
-// 이 프로젝트엔 서버 스케줄러가 없어서 "정확히 7일 뒤"에 저절로 돌아가는 cron은 만들 수 없습니다.
-// 대신 고객이 이 주문조회 페이지를 열 때마다 조용히 한 번씩, 지급 조건(사진 첨부 + 작성일로부터
-// 7일 경과 + 미지급)을 만족하는 후기가 있는지 전체를 스캔해서 자동으로 적립합니다.
-// 같은 로직이 관리자 페이지(관리자통합.html)에도 들어있어서, 두 페이지 중 아무거나 하나만
-// 열려도 처리됩니다.
-const REVIEW_CASHBACK_MIN_AMOUNT = 200000; // 이 금액(원) 이상이면 5%, 미만이면 2% — 1회 구매 기준(누적X)
-const REVIEW_CASHBACK_RATE_HIGH = 0.05;
-const REVIEW_CASHBACK_RATE_BASE = 0.02;
-const REVIEW_CASHBACK_DELAY_DAYS = 7;
-
-// 리뷰의 orderId가 게시판형(boards/jjjj)인지 장바구니형(cartDb orders)인지 알 수 없으므로
-// 세 곳을 순서대로 조회해서 처음 찾은 주문의 결제금액을 반환함 (캐쉬백 % 판정용)
-async function resolveOrderAmountForCashback(orderId) {
-    if (!orderId) return null;
-    try {
-        const cartSnap = await getDoc(doc(cartDb, 'orders', orderId));
-        if (cartSnap.exists()) return Number(cartSnap.data().total) || 0;
-    } catch (e) { /* 무시하고 다음 컬렉션 시도 */ }
-    try {
-        const boardSnap = await getDoc(doc(db, 'boards', orderId));
-        if (boardSnap.exists()) return Number(boardSnap.data().price) || 0;
-    } catch (e) { /* 무시 */ }
-    try {
-        const jjjjSnap = await getDoc(doc(db, 'jjjj', orderId));
-        if (jjjjSnap.exists()) return Number(jjjjSnap.data().price) || 0;
-    } catch (e) { /* 무시 */ }
-    return null; // 연결된 주문을 못 찾음 — 관리자가 캐쉬백 포인트 관리에서 직접 처리해야 함
-}
-
-async function autoGrantEligiblePhotoReviewCashback() {
-    // 새로고침할 때마다 전체 후기를 매번 다시 스캔하지 않도록, 이 브라우저에서는 1시간에 한 번만 실행
-    try {
-        const lastRun = Number(localStorage.getItem('reviewCashbackAutoScanAt') || 0);
-        if (Date.now() - lastRun < 60 * 60 * 1000) return;
-        localStorage.setItem('reviewCashbackAutoScanAt', String(Date.now()));
-    } catch (e) { /* localStorage를 못 쓰는 환경이면 그냥 매번 실행 */ }
-
-    try {
-        const snap = await getDocs(collection(cartDb, 'reviews'));
-        const targets = [];
-        snap.forEach(docSnap => {
-            const v = docSnap.data();
-            if (v.pointsGranted) return; // 이미 지급됨
-            const images = Array.isArray(v.images) ? v.images : [];
-            if (images.length === 0) return; // 사진 미첨부 후기는 적립 대상 아님
-            const createdDt = v.createdAt?.toDate ? v.createdAt.toDate() : null;
-            if (!createdDt) return;
-            const eligibleAt = createdDt.getTime() + REVIEW_CASHBACK_DELAY_DAYS * 24 * 60 * 60 * 1000;
-            if (Date.now() < eligibleAt) return; // 아직 7일 안 지남
-            targets.push({ id: docSnap.id, name: v.name, phone: v.phone, orderId: v.orderId || null });
-        });
-
-        for (const r of targets) {
-            try {
-                const amount = await resolveOrderAmountForCashback(r.orderId);
-                if (amount == null || !r.name || !r.phone) continue; // 확인 불가 건은 건너뜀(관리자가 수동 처리)
-                const rate = amount >= REVIEW_CASHBACK_MIN_AMOUNT ? REVIEW_CASHBACK_RATE_HIGH : REVIEW_CASHBACK_RATE_BASE;
-                const points = Math.floor(amount * rate);
-                if (points <= 0) continue;
-
-                const key = linkKey(r.name, r.phone);
-                let didGrant = false;
-                await runTransaction(cartDb, async (tx) => {
-                    const reviewRef = doc(cartDb, 'reviews', r.id);
-                    const reviewSnap = await tx.get(reviewRef);
-                    if (!reviewSnap.exists() || reviewSnap.data().pointsGranted) { didGrant = false; return; }
-
-                    const balanceRef = doc(cartDb, 'pointsBalance', key);
-                    const balSnap = await tx.get(balanceRef);
-                    const prevBalance = (balSnap.exists() ? balSnap.data().balance : 0) || 0;
-
-                    tx.set(balanceRef, {
-                        name: r.name, phone: r.phone,
-                        balance: prevBalance + points, updatedAt: serverTimestamp()
-                    }, { merge: true });
-                    tx.update(reviewRef, {
-                        pointsGranted: true, pointsGrantedAmount: points, pointsGrantedAt: serverTimestamp()
-                    });
-                    didGrant = true;
-                });
-
-                if (didGrant) {
-                    await addDoc(collection(cartDb, 'pointsHistory'), {
-                        key, name: r.name, phone: r.phone,
-                        amount: points,
-                        reason: `포토후기 캐쉬백 ${rate * 100}% 자동적립 (주문금액 ${amount.toLocaleString()}원, 후기ID ${r.id})`,
-                        createdAt: serverTimestamp()
-                    });
-                }
-            } catch (innerErr) {
-                console.error('후기 자동 적립 실패(개별건):', r.id, innerErr);
-                // 이 건만 실패 — 다음에 이 페이지가 열릴 때 다시 시도됨(멱등적으로 안전함)
-            }
-        }
-    } catch (e) {
-        console.error('포토후기 캐쉬백 자동 스캔 실패:', e);
-    }
-}
-
-// 페이지 로드 후 조용히 백그라운드에서 1회 실행 — 화면 표시/속도에는 영향 없음
-autoGrantEligiblePhotoReviewCashback();
+});
+window.deleteOrder = deleteOrder;
+window.deleteCartOrder = deleteCartOrder;
     
     </script>
 </body>
