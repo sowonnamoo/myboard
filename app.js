@@ -132,6 +132,27 @@ function applyFileAcceptRestriction(allowedExts) {
     }
 }
 
+// file-2(뒷면첨부)를 장바구니 상품 내용에 따라 활성화/비활성화합니다.
+// "양면"이라는 글자가 포함된 상품이 하나라도 있으면 활성화, 아니면(장바구니가 비어있어도) 비활성화합니다.
+function applyFileTwoAvailability(enabled) {
+    const file2 = document.getElementById('file-2');
+    const wrap = document.getElementById('file-2-wrap');
+    const hint2 = document.getElementById('file-2-hint');
+    if (!file2) return;
+
+    file2.disabled = !enabled;
+    if (!enabled) {
+        file2.value = ''; // 비활성화 시 혹시 선택되어 있던 파일은 비워줍니다.
+    }
+
+    if (wrap) {
+        wrap.style.opacity = enabled ? '1' : '0.5';
+    }
+    if (hint2) {
+        hint2.classList.toggle('hidden', enabled);
+    }
+}
+
 // file-1 / file-2에서 파일을 고를 때, 허용된 확장자가 아니면 선택을 취소합니다.
 // (accept 속성은 파일 선택창에서 필터로만 동작하고 "전체 파일"로 우회 선택이 가능해서, 실제 첨부 단계에서 한 번 더 막습니다)
 function setupFileExtensionGuard() {
@@ -175,6 +196,7 @@ function renderCombinedCartOrder() {
         summaryCard.classList.add('hidden');
         if (totalLine) totalLine.classList.add('hidden');
         applyFileAcceptRestriction(null); // 파일 확장자 제한도 해제
+        applyFileTwoAvailability(false); // 장바구니가 비어있으면 뒷면첨부(file-2)도 비활성화
 
         [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
             if (!el) return;
@@ -268,6 +290,10 @@ function renderCombinedCartOrder() {
     // (productName에 옵션이 이미 녹아든 경우까지 놓치지 않도록 원문 옵션 텍스트를 따로 모아서 검사)
     const allowedExts = extractAllowedFileExtensions(cart.map(it => getItemRawOptionsText(it)).join(' '));
     applyFileAcceptRestriction(allowedExts);
+
+    // 장바구니 상품명/옵션 텍스트 중 "양면"이 포함된 상품이 있으면 뒷면첨부(file-2)를 활성화합니다.
+    const cartText = names.join(' ') + ' ' + cart.map(it => getItemRawOptionsText(it)).join(' ');
+    applyFileTwoAvailability(cartText.includes('양면'));
 
     prodInput.value = names.join(' / ');
     qtyInput.value = qtys.join(' / ');
