@@ -134,10 +134,11 @@ function applyFileAcceptRestriction(allowedExts) {
 
 // file-2(뒷면첨부)를 장바구니 상품 내용에 따라 활성화/비활성화합니다.
 // "양면"이라는 글자가 포함된 상품이 하나라도 있으면 활성화, 아니면(장바구니가 비어있어도) 비활성화합니다.
+// file-2(뒷면첨부)를 장바구니 상품 내용에 따라 활성화/비활성화합니다.
+// "양면"이라는 글자가 포함된 상품이 하나라도 있으면 표시(활성화), 아니면 아예 화면에서 숨깁니다(블라인드).
 function applyFileTwoAvailability(enabled) {
     const file2 = document.getElementById('file-2');
     const wrap = document.getElementById('file-2-wrap');
-    const hint2 = document.getElementById('file-2-hint');
     if (!file2) return;
 
     file2.disabled = !enabled;
@@ -146,10 +147,7 @@ function applyFileTwoAvailability(enabled) {
     }
 
     if (wrap) {
-        wrap.style.opacity = enabled ? '1' : '0.5';
-    }
-    if (hint2) {
-        hint2.classList.toggle('hidden', enabled);
+        wrap.classList.toggle('hidden', !enabled); // 흐리게 대신 아예 숨김 처리
     }
 }
 
