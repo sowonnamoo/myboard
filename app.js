@@ -356,6 +356,25 @@ function addItemToCart(item) {
     return cart;
 }
 
+// 간편구입(simpleMode)으로 상품을 다 받은 뒤 호출됩니다.
+// 이 창을 닫거나(새창 닫기), 뒤로가기, 새로고침 등으로 페이지를 벗어나는 순간
+// 장바구니(pendingCartOrders)에 담긴 상품을 전부 지웁니다.
+// (한 번만 등록되도록 플래그로 중복 등록을 막습니다)
+let __simpleModeAutoClearBound = false;
+function setupSimpleModeAutoClear() {
+    if (__simpleModeAutoClearBound) return;
+    __simpleModeAutoClearBound = true;
+
+    const clearSimpleCart = () => {
+        localStorage.removeItem(CART_QUEUE_KEY);
+    };
+
+    // pagehide: 새로고침/뒤로가기/앞으로가기/탭·창 닫기를 폭넓게 커버 (모바일 bfcache 포함)
+    window.addEventListener('pagehide', clearSimpleCart);
+    // beforeunload: 구형 브라우저 호환용 보조 수단
+    window.addEventListener('beforeunload', clearSimpleCart);
+}
+
 // "담긴 상품" 카드에서 개별 상품 삭제 → 저장 후 다시 렌더링
 // 마지막 상품까지 다 지워서 장바구니가 완전히 비면, 빈 글쓰기 창을 보여주는 대신 창을 자동으로 닫습니다.
 function removePendingCartItem(idx) {
@@ -1192,6 +1211,7 @@ window.addEventListener('DOMContentLoaded', () => {
         // 예전 방식(?product=...&size=...) 호환용 - 현재는 cart.html의 "간편구입" 버튼만 이 방식을 사용합니다.
         // simpleMode 표시를 남겨서, renderCombinedCartOrder()에서 상단 장바구니 카드/배송비 로직을
         // 이 경우에만 건너뛸 수 있게 합니다. (01my.html이 쓰는 productId 방식에는 영향 없음)
+        const moreComing = params.get('more') === '1'; // cart.html이 상품을 순서대로 이어서 보낼 예정이면 1
         const newItem = {
             productName: params.get('product') || '',
             qty: params.get('qty') || '',
@@ -1201,6 +1221,12 @@ window.addEventListener('DOMContentLoaded', () => {
         };
         addItemToCart(newItem);
         window.history.replaceState(null, '', window.location.pathname);
+
+        if (!moreComing) {
+            // cart.html이 보낼 마지막(또는 유일한) 상품까지 다 받았으면,
+            // 이제부터 이 창을 닫거나/뒤로가기/새로고침 등으로 벗어나면 장바구니를 통째로 비웁니다.
+            setupSimpleModeAutoClear();
+        }
     }
 
     // 3. 장바구니에 쌓인 상품들을 "담긴 상품" 카드 + 폼에 합쳐서 보여줍니다 (index1.html에만 있는 요소일 때만 동작)
