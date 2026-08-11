@@ -11,6 +11,7 @@
         .input-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
         input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         input[readonly] { background: #f0f0f0; }
+        #price, #address { background: #fff; }
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         .btn-group button { flex: 1; padding: 15px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: white; }
     </style>
@@ -27,7 +28,7 @@
         <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity" readonly></div>
         <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size" readonly></div>
     </div>
-    <div class="input-group"><label>결제금액</label><input type="text" id="price" readonly></div>
+    <div class="input-group"><label>결제금액</label><input type="text" id="price" placeholder="상품 가격 금액을 정확히 입력해 주세요." inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
     <div class="input-group"><label>이미지 번호</label>
         <div style="display:flex; gap:10px;">
             <input type="text" id="imgCode" readonly>
@@ -90,8 +91,6 @@
                 document.getElementById('quantity').value = parts[1]?.trim() || '';
                 document.getElementById('size').value = parts[2]?.trim() || '';
             }
-            const priceMatch = fullTitle.match(/\)\s+(\d+)/);
-            if (priceMatch) document.getElementById('price').value = priceMatch[1].trim();
         }
         if (params.get('imgCode')) document.getElementById('imgCode').value = params.get('imgCode');
         if (params.get('message')) document.getElementById('message').value = params.get('message');
@@ -116,6 +115,11 @@
         
         if (!name || !address || !addressDetail) {
             alert("작성자명, 주소, 상세주소는 필수 입력 항목입니다.");
+            return;
+        }
+
+        if (!price || parseInt(price, 10) <= 0) {
+            alert("상품 가격 금액을 정확히 입력해 주세요.");
             return;
         }
         

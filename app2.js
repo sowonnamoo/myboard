@@ -18,6 +18,9 @@ let currentPage = 1;
 let currentViewId = ""; 
 let lastVisible = null;
 const POSTS_PER_PAGE = 8;
+// 현재 상세보기 중인 게시글의 "시안 이미지 번호"(finalCode)를 담아둡니다.
+// 재구입 버튼이 화면 텍스트를 파싱하지 않고 이 값을 바로 사용합니다.
+let currentSianImgCode = "";
 
 async function loadMemo(boardId) {
     const memoDisplay = document.getElementById("memo-display");
@@ -322,6 +325,7 @@ const dImage = document.getElementById("detail-image");
                 const rawPhone = data.phone || "00000000000";
                 const phonePrefix = rawPhone.slice(0, -2);
                 const finalCode = phonePrefix + timeCode;
+                currentSianImgCode = finalCode; // 재구입 버튼이 사용할 이미지번호 저장
                 const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
                 const timestamp = new Date().getTime();
 
@@ -452,17 +456,24 @@ setInterval(() => {
             
             reorderBtn.onclick = () => {
                 const title = document.getElementById('detail-title').innerText;
-                
-                let imgCode = "";
-                const divs = document.querySelectorAll('div');
-                for (let div of divs) {
-                    if (div.innerText.includes('재구입 이미지번호')) {
-                        const rawText = div.innerText.split(':')[1]?.trim() || "";
-                        imgCode = rawText.replace(/[^0-9]/g, ''); 
-                        break;
+
+                // 시안 상세를 그릴 때 저장해 둔 이미지번호를 그대로 사용합니다.
+                // (화면 문구가 "시안 이미지 번호 : ..."로 바뀌면서 예전 텍스트 매칭이
+                //  더 이상 맞지 않아 항상 빈 값이 되던 문제를 근본적으로 고쳤습니다)
+                let imgCode = currentSianImgCode;
+
+                // 혹시를 대비한 예비 방법: 위 값이 비어있으면 화면 텍스트에서 한 번 더 찾아봅니다.
+                if (!imgCode) {
+                    const divs = document.querySelectorAll('div');
+                    for (let div of divs) {
+                        if (div.innerText.includes('시안 이미지 번호')) {
+                            const rawText = div.innerText.split(':')[1]?.trim() || "";
+                            imgCode = rawText.replace(/[^0-9]/g, '');
+                            break;
+                        }
                     }
                 }
-                
+
                 // [수정된 부분] window.location.href 대신 window.open으로 새 창(팝업) 오픈
                 const url = `index3.html?productName=${encodeURIComponent(title)}&imgCode=${encodeURIComponent(imgCode)}`;
                 window.open(url, '_blank', 'width=500,height=800,scrollbars=yes');
@@ -538,6 +549,7 @@ async function autoViewDetail(id) {
         const rawPhone = data.phone || "00000000000";
         const phonePrefix = rawPhone.slice(0, -2);
         const finalCode = phonePrefix + timeCode;
+        currentSianImgCode = finalCode; // 재구입 버튼이 사용할 이미지번호 저장
         const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
         const timestamp = new Date().getTime();
 
