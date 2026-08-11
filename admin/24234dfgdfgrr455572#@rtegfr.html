@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>관리자 통합 관리 페이지</title>
+    <!-- 검색엔진 및 크롤러 수집 차단: 잘 만들어진(정직한) 봇들은 이 지시를 따름 -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="bingbot" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
@@ -165,7 +170,7 @@
 
     // ---- Firebase 연결 (게시판형 주문 + myjs/cart 주문, 프로젝트가 서로 다름) ----
     const firebaseConfig = {
-        apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+        apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
         authDomain: "board-291e3.firebaseapp.com",
         projectId: "board-291e3",
         storageBucket: "board-291e3.firebasestorage.app",
