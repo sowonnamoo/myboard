@@ -255,7 +255,7 @@ function renderCombinedCartOrder() {
 
         const qtyEl = document.createElement('div');
         qtyEl.className = 'cart-summary-qty';
-        qtyEl.textContent = `${item.qty || ''}개`;
+        qtyEl.textContent = `${item.qty || ''}건`;
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
@@ -313,7 +313,7 @@ function renderCombinedCartOrder() {
 
     // ---- 폼 필드: 여러 상품 값을 "/"로 구획해서 하나로 합쳐 넣기 ----
     const names = cart.map(it => getItemProductName(it));
-    const qtys = cart.map(it => `${it.qty || ''}개`);
+    const qtys = cart.map(it => `${it.qty || ''}건`);
     const sizes = cart.map(it => (it.width && it.height) ? `${it.width} x ${it.height}mm` : (it.size || ''));
     const extras = cart.map(it => buildExtraOptionsText(it));
 
@@ -445,51 +445,73 @@ window.viewDetail = function(id) {
 
 
 // [R2 업로드 함수] 업로드 및 보안 검사 포함
-async function uploadToR2(fileInputId, authorName) {
-    const fileInput = document.getElementById(fileInputId);
-    if (!fileInput || fileInput.files.length === 0) return null;
-
-    const file = fileInput.files[0];
-    
-    // 1. 용량 제한 ( MB = 500 * 1024 * 1024 bytes)
-    const MAX_SIZE = 500 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-        alert("⚠️ 파일 용량이 너무 큽니다. 500MB 이하의 파일만 업로드 가능합니다.");
-        throw new Error("파일 크기 초과: " + (file.size / (1024 * 1024)).toFixed(2) + "MB");
-    }
-
-    // 2. 보안을 위한 확장자 필터링
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx']; 
-    const ext = file.name.split('.').pop().toLowerCase();
-    
-    if (!allowedExtensions.includes(ext)) {
-        alert("⚠️ 허용되지 않는 파일 형식입니다.");
-        throw new Error("보안상 차단된 파일 형식: " + ext);
-    }
-
-    // 3. 중복 방지: 동일 파일명(확장자 포함) 방지
-    // 파일명과 현재 시간을 조합하여 고유한 이름을 생성합니다.
-    // 기존에 단순히 이름만 썼다면, 이제는 고유한 타임스탬프를 반드시 포함시켜 중복을 피합니다.
-    const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
-    
-    const WORKER_URL = "https://r2.ecogr.workers.dev/"; 
-
-    // 헤더에 파일 크기와 정보를 전달 (필요시 Worker에서 검사하도록 함)
-    const response = await fetch(`${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, {
-        method: "PUT",
-        body: file,
-        headers: {
-            "Content-Type": file.type,
-            "X-File-Size": file.size
+// onProgress(loaded, total)을 넘기면 실제 업로드된 바이트 수를 실시간으로 알려줍니다.
+function uploadToR2(fileInputId, authorName, onProgress) {
+    return new Promise((resolve, reject) => {
+        const fileInput = document.getElementById(fileInputId);
+        if (!fileInput || fileInput.files.length === 0) {
+            resolve(null);
+            return;
         }
+
+        const file = fileInput.files[0];
+
+        // 1. 용량 제한 ( MB = 500 * 1024 * 1024 bytes)
+        const MAX_SIZE = 500 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            alert("⚠️ 파일 용량이 너무 큽니다. 500MB 이하의 파일만 업로드 가능합니다.");
+            reject(new Error("파일 크기 초과: " + (file.size / (1024 * 1024)).toFixed(2) + "MB"));
+            return;
+        }
+
+        // 2. 보안을 위한 확장자 필터링
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx'];
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (!allowedExtensions.includes(ext)) {
+            alert("⚠️ 허용되지 않는 파일 형식입니다.");
+            reject(new Error("보안상 차단된 파일 형식: " + ext));
+            return;
+        }
+
+        // 3. 중복 방지: 동일 파일명(확장자 포함) 방지
+        // 파일명과 현재 시간을 조합하여 고유한 이름을 생성합니다.
+        const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+
+        const WORKER_URL = "https://r2.ecogr.workers.dev/";
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", `${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, true);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.setRequestHeader("X-File-Size", file.size);
+
+        // 실제 업로드된 바이트 수를 실시간으로 전달 (네트워크 진행 상황 그대로)
+        if (xhr.upload && typeof onProgress === 'function') {
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    onProgress(e.loaded, e.total);
+                }
+            });
+        }
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                if (typeof onProgress === 'function') onProgress(file.size, file.size);
+                try {
+                    const result = JSON.parse(xhr.responseText);
+                    resolve(result.url);
+                } catch (e) {
+                    reject(new Error("업로드 응답을 처리하지 못했습니다."));
+                }
+            } else {
+                reject(new Error("업로드 실패: " + xhr.statusText));
+            }
+        };
+
+        xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다."));
+
+        xhr.send(file);
     });
-
-    if (!response.ok) {
-        throw new Error("업로드 실패: " + response.statusText);
-    }
-
-    const result = await response.json();
-    return result.url;
 }
 
 async function loadAndRender() {
@@ -648,7 +670,11 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-qty").innerText = data.quantity;
     document.getElementById("detail-size").innerText = data.size;
 
-    document.getElementById("detail-price").innerText = data.price ? data.price.toLocaleString() + '원' : '0원';
+    // data.price가 저장 시점 형식에 따라 "10000" 또는 "10000원"처럼 섞여 있을 수 있어서,
+    // 항상 숫자만 뽑아낸 뒤 '원'을 한 번만 붙이도록 정규화합니다. (이전엔 이미 '원'이 붙은 값에
+    // toLocaleString() + '원'을 또 붙여서 "원원"으로 중복 표시되는 문제가 있었습니다)
+    const priceDigits = data.price ? Number(String(data.price).replace(/[^0-9]/g, '')) || 0 : 0;
+    document.getElementById("detail-price").innerText = priceDigits.toLocaleString() + '원';
     document.getElementById("detail-phone").innerText = data.phone;
     document.getElementById("detail-address").innerText = data.address;
     document.getElementById("detail-msg").innerText = data.message || "내용 없음";
@@ -744,26 +770,40 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
     if (phoneVal.length !== 11) { alert("전화번호 11자리를 정확히 입력해주세요."); return; }
 
-    // 2. 로딩바 시작 로직 (요청하신 대로 3초마다 5% 증가, 텍스트 변경)
+    // 2. 업로드 진행률 UI 준비
+    //    - 더 이상 "3초마다 5% 증가"하는 가짜 타이머가 아니라, XHR의 실제 업로드 바이트 수를 그대로 반영합니다.
+    //    - 몇 번째 파일을 올리고 있는지(1/2, 2/2), 몇 MB 중 몇 MB가 올라갔는지까지 보여줍니다.
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
     const text = document.getElementById("loading-text");
-    const messages = ["파일 접수중...", "파일이 정상 업로드 중입니다.", "기다려주세요.", "정상 업로드중"];
-    
+    const percentText = document.getElementById("upload-percent-text");
+    const fileInfoText = document.getElementById("upload-file-info");
+
+    const uploadFile1 = f1 || null;
+    const uploadFile2 = f2 || null;
+    const fileCount = (uploadFile1 ? 1 : 0) + (uploadFile2 ? 1 : 0);
+    const totalBytes = (uploadFile1 ? uploadFile1.size : 0) + (uploadFile2 ? uploadFile2.size : 0);
+
+    let uploadedFile1 = 0;
+    let uploadedFile2 = 0;
+    let currentFileLabel = '';
+
+    const formatMB = (bytes) => (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+
+    function renderUploadProgress() {
+        const uploaded = uploadedFile1 + uploadedFile2;
+        const percent = totalBytes > 0 ? Math.min(100, Math.round((uploaded / totalBytes) * 100)) : 0;
+        bar.style.width = percent + '%';
+        percentText.textContent = percent + '%';
+        fileInfoText.textContent = totalBytes > 0
+            ? `${currentFileLabel} ${formatMB(uploaded)} / ${formatMB(totalBytes)}`.trim()
+            : '';
+    }
+
     spinner.classList.remove("hidden");
-    bar.style.width = "5%";
-    text.innerText = messages[0];
-    
-    let percent = 5;
-    let msgIndex = 0;
-    const interval = setInterval(() => {
-        if (percent < 90) {
-            percent += 5;
-            bar.style.width = percent + "%";
-        }
-        msgIndex = (msgIndex + 1) % messages.length;
-        text.innerText = messages[msgIndex];
-    }, 3000); // 3초 간격
+    text.textContent = "파일 업로드 중...";
+    currentFileLabel = fileCount > 1 ? '(1/' + fileCount + ')' : '';
+    renderUploadProgress();
 
     // 3. 기존 글쓰기 로직 (침범 안 함)
   try {
@@ -771,10 +811,24 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     // 작성자가 직접 입력한 주문인지 여기서 판별해서 함께 저장합니다.
     const isFromCart = document.getElementById('product-name').readOnly === true;
 
-    // 1. 파일 업로드 실행
-    const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value);
-    const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value);
+    // 1. 파일 업로드 실행 (진행 콜백으로 실제 업로드된 바이트 수를 게이지에 반영)
+    const file1Url = await uploadToR2("file-1", document.getElementById('input-author').value, (loaded) => {
+        uploadedFile1 = loaded;
+        currentFileLabel = fileCount > 1 ? '(1/' + fileCount + ')' : '';
+        renderUploadProgress();
+    });
 
+    currentFileLabel = fileCount > 1 ? '(2/' + fileCount + ')' : '';
+    const file2Url = await uploadToR2("file-2", document.getElementById('input-author').value, (loaded) => {
+        uploadedFile2 = loaded;
+        currentFileLabel = fileCount > 1 ? '(2/' + fileCount + ')' : '';
+        renderUploadProgress();
+    });
+
+    // 파일 업로드는 끝났지만 서버에 저장하는 단계는 진행률 계산이 불가능한 구간이라
+    // 게이지는 100%로 유지한 채 안내 문구만 바꿔서 "멈춘 게 아니라 진행 중"임을 알려줍니다.
+    text.textContent = "주문 정보를 저장하는 중...";
+    fileInfoText.textContent = "잠시만 기다려주세요.";
 
 // [수정] IP 정보 가져오기
     const userIp = await getUserIp();
@@ -801,6 +855,9 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     fromCart: isFromCart // true: 장바구니 자동입력 주문 / false: 작성자가 직접 입력한 주문
     });
 
+    text.textContent = "접수 완료!";
+    fileInfoText.textContent = '';
+
     alert("접수되었습니다.");
 
     // 장바구니를 하나의 주문으로 합쳐 접수한 경우, 장바구니 비우기
@@ -811,10 +868,11 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     alert("오류: " + e.message);
 } finally {
     // 4. 로딩바 종료
-    clearInterval(interval);
-        spinner.classList.add("hidden");
-        bar.style.width = "0%";
-    }
+    spinner.classList.add("hidden");
+    bar.style.width = "0%";
+    percentText.textContent = "0%";
+    fileInfoText.textContent = '';
+}
 });
 
 
