@@ -136,10 +136,16 @@ function applyFileAcceptRestriction(allowedExts) {
 // "양면"이라는 글자가 포함된 상품이 하나라도 있으면 활성화, 아니면(장바구니가 비어있어도) 비활성화합니다.
 // file-2(뒷면첨부)를 장바구니 상품 내용에 따라 활성화/비활성화합니다.
 // "양면"이라는 글자가 포함된 상품이 하나라도 있으면 표시(활성화), 아니면 아예 화면에서 숨깁니다(블라인드).
-function applyFileTwoAvailability(enabled) {
+// 단, 간편구입(isSimpleMode)으로 들어온 경우엔 "양면" 여부와 상관없이 항상 켜고,
+// 라벨도 "뒷면첨부"가 아니라 "파일첨부2"로 표시합니다.
+function applyFileTwoAvailability(enabled, isSimpleMode) {
     const file2 = document.getElementById('file-2');
     const wrap = document.getElementById('file-2-wrap');
     if (!file2) return;
+
+    if (isSimpleMode) {
+        enabled = true;
+    }
 
     file2.disabled = !enabled;
     if (!enabled) {
@@ -148,6 +154,11 @@ function applyFileTwoAvailability(enabled) {
 
     if (wrap) {
         wrap.classList.toggle('hidden', !enabled); // 흐리게 대신 아예 숨김 처리
+
+        const label = wrap.querySelector('span');
+        if (label) {
+            label.textContent = isSimpleMode ? '파일첨부2' : '뒷면첨부';
+        }
     }
 }
 
@@ -194,7 +205,7 @@ function renderCombinedCartOrder() {
         summaryCard.classList.add('hidden');
         if (totalLine) totalLine.classList.add('hidden');
         applyFileAcceptRestriction(null); // 파일 확장자 제한도 해제
-        applyFileTwoAvailability(false); // 장바구니가 비어있으면 뒷면첨부(file-2)도 비활성화
+        applyFileTwoAvailability(false, false); // 장바구니가 비어있으면 뒷면첨부(file-2)도 비활성화
 
         [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
             if (!el) return;
@@ -313,7 +324,7 @@ function renderCombinedCartOrder() {
 
     // 장바구니 상품명/옵션 텍스트 중 "양면"이 포함된 상품이 있으면 뒷면첨부(file-2)를 활성화합니다.
     const cartText = names.join(' ') + ' ' + cart.map(it => getItemRawOptionsText(it)).join(' ');
-    applyFileTwoAvailability(cartText.includes('양면'));
+    applyFileTwoAvailability(cartText.includes('양면'), isSimpleMode);
 
     prodInput.value = names.join(' / ');
     qtyInput.value = qtys.join(' / ');
