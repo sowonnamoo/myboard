@@ -198,7 +198,12 @@ function renderCombinedCartOrder() {
 
         [prodInput, qtyInput, sizeInput, priceInput].forEach(el => {
             if (!el) return;
-            el.value = '';
+            // 장바구니에서 채워졌던(readOnly) 값만 비웁니다.
+            // 사용자가 직접 입력한 값(readOnly=false)은 주소찾기 등으로 이 함수가
+            // 다시 호출되더라도 절대 지우지 않습니다.
+            if (el.readOnly) {
+                el.value = '';
+            }
             el.readOnly = false;
             el.style.backgroundColor = '';
             el.style.cursor = '';
