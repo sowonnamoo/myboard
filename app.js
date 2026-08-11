@@ -211,6 +211,11 @@ function renderCombinedCartOrder() {
         return;
     }
 
+    // 이 장바구니가 전부 cart.html "간편구입" 버튼(Order_option 값)에서 온 상품인지 판별.
+    // (이 경우에만 상단 장바구니 카드/배송비 로직을 건너뜁니다. 01my.html에서 온 상품이 섞여있으면
+    //  평소대로 동작합니다.)
+    const isSimpleMode = cart.length > 0 && cart.every(it => it.simpleMode === true);
+
     // ---- "담긴 상품" 카드 렌더링 (개별 삭제 버튼 포함) ----
     const itemsContainer = document.getElementById('cart-summary-items');
     itemsContainer.innerHTML = '';
@@ -255,22 +260,34 @@ function renderCombinedCartOrder() {
         itemsContainer.appendChild(row);
     });
 
-    summaryCard.classList.remove('hidden');
+    if (isSimpleMode) {
+        // 간편구입으로 들어온 경우: 상단 장바구니 카드는 계속 숨김
+        summaryCard.classList.add('hidden');
+    } else {
+        summaryCard.classList.remove('hidden');
+    }
 
     // shipping.js의 calculateShippingFee()로 묶음배송 여부 + 무게 구간을 반영해 배송비 계산
     // (주소에 제주/울릉이 포함되면 shipping.js가 착불배송으로 판단해 배송비를 0으로 돌려줌)
+    // 단, 간편구입(simpleMode)인 경우엔 배송비 로직을 적용하지 않고 입력된 결제금액을 그대로 총 결제액으로 씁니다.
     const addressForShipping = (document.getElementById('address')?.value || '')
         + ' ' + (document.getElementById('address-detail')?.value || '');
-    const shippingResult = (typeof calculateShippingFee === 'function')
-        ? calculateShippingFee(cart, addressForShipping)
-        : { totalFee: 0, breakdown: [], cashOnDelivery: false };
+    const shippingResult = isSimpleMode
+        ? { totalFee: 0, breakdown: [], cashOnDelivery: false }
+        : ((typeof calculateShippingFee === 'function')
+            ? calculateShippingFee(cart, addressForShipping)
+            : { totalFee: 0, breakdown: [], cashOnDelivery: false });
     const shippingFee = shippingResult.totalFee;
     const total = subtotal + shippingFee;
 
     if (totalLine) {
-        if (shippingResult.cashOnDelivery) {
+        if (isSimpleMode) {
+            // 간편구입인 경우엔 상단 합계 라인도 함께 숨김
+            totalLine.classList.add('hidden');
+        } else if (shippingResult.cashOnDelivery) {
             // 제주/울릉 등 도서산간: 배송비를 미리 청구하지 않고, 상품 도착 시 택배기사에게 별도 지불
             totalLine.textContent = `${subtotal}원 + 배송비 착불(도서산간) 총결제액 : ${total}원 (배송비는 상품 도착 시 별도 결제)`;
+            totalLine.classList.remove('hidden');
         } else {
             let shippingText = `배송비 ${shippingFee}`;
             if (shippingResult.breakdown.length > 1) {
@@ -279,8 +296,8 @@ function renderCombinedCartOrder() {
                 shippingText = `배송비 ${shippingFee}(${detail})`;
             }
             totalLine.textContent = `${subtotal}원 + ${shippingText} 총결제액 : ${total}원`;
+            totalLine.classList.remove('hidden');
         }
-        totalLine.classList.remove('hidden');
     }
 
     // ---- 폼 필드: 여러 상품 값을 "/"로 구획해서 하나로 합쳐 넣기 ----
@@ -1161,12 +1178,15 @@ window.addEventListener('DOMContentLoaded', () => {
         // 새로고침해도 같은 상품이 중복으로 다시 담기지 않도록 주소의 쿼리스트링을 제거
         window.history.replaceState(null, '', window.location.pathname);
     } else if (params.has('product')) {
-        // 예전 방식(?product=...&size=...) 호환용 - 마찬가지로 장바구니에 추가
+        // 예전 방식(?product=...&size=...) 호환용 - 현재는 cart.html의 "간편구입" 버튼만 이 방식을 사용합니다.
+        // simpleMode 표시를 남겨서, renderCombinedCartOrder()에서 상단 장바구니 카드/배송비 로직을
+        // 이 경우에만 건너뛸 수 있게 합니다. (01my.html이 쓰는 productId 방식에는 영향 없음)
         const newItem = {
             productName: params.get('product') || '',
             qty: params.get('qty') || '',
             size: params.get('size') || '',
-            price: params.get('price') || ''
+            price: params.get('price') || '',
+            simpleMode: true
         };
         addItemToCart(newItem);
         window.history.replaceState(null, '', window.location.pathname);
