@@ -445,9 +445,9 @@
         }
     };
 
-    // ---- R2 파일 삭제(1일 뒤 자동삭제 예약) ----
+    // ---- R2 파일 삭제 ----
     // 업로드 때 쓰는 것과 같은 Worker(r2.ecogr.workers.dev)를 사용합니다.
-    // 이 워커의 다운로드 URL은 "?name=파일명" 형태의 쿼리파라미터를 씁니다.
+    // 이 워커의 다운로드/삭제 URL은 "?name=파일명" 형태의 쿼리파라미터를 씁니다.
     const R2_WORKER_URL = "https://r2.ecogr.workers.dev/";
 
     // 다운로드 URL에서 R2에 저장된 실제 파일명(name 파라미터)을 뽑아냅니다.
@@ -461,28 +461,25 @@
         }
     }
 
-    // "파일삭제" 버튼: 누르면 R2 Worker에 "1일(86400초) 뒤 삭제해줘"라고 예약 요청을 보냅니다.
-    // ※ 이 요청이 실제로 동작하려면 Worker(r2.ecogr.workers.dev) 쪽에도
-    //    예약삭제를 처리하는 코드가 있어야 합니다. (별도 안내 참고)
-    window.scheduleFileDelete = async function(url, label, btnEl) {
+    // "삭제" 버튼: 누르면 바로 R2에서 파일을 지웁니다. (복구 불가)
+    window.deleteR2File = async function(url, label, btnEl) {
         const key = getR2KeyFromUrl(url);
         if (!key) { alert('파일 경로를 확인할 수 없습니다.'); return; }
-        if (!confirm(`"${label}" 파일을 1일 뒤 R2에서 자동 삭제 예약하시겠습니까?\n(다운로드는 그 전까지 계속 가능합니다)`)) return;
+        if (!confirm(`"${label}" 파일을 지금 바로 삭제하시겠습니까?\n삭제하면 복구할 수 없습니다.`)) return;
 
         try {
-            const res = await fetch(`${R2_WORKER_URL}?name=${encodeURIComponent(key)}&action=schedule-delete&afterSeconds=86400`, {
-                method: 'POST'
+            const res = await fetch(`${R2_WORKER_URL}?name=${encodeURIComponent(key)}`, {
+                method: 'DELETE'
             });
             if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-            alert('1일 뒤 자동 삭제되도록 예약되었습니다.');
+            alert('파일이 삭제되었습니다.');
             if (btnEl) {
-                btnEl.textContent = '삭제예약됨';
-                btnEl.disabled = true;
-                btnEl.classList.add('opacity-50', 'cursor-not-allowed');
+                const row = btnEl.closest('.flex');
+                if (row) row.remove(); else { btnEl.textContent = '삭제됨'; btnEl.disabled = true; }
             }
         } catch (e) {
-            console.error('삭제 예약 실패:', e);
-            alert('삭제 예약에 실패했습니다. Worker에 예약삭제 기능이 아직 없을 수 있습니다.');
+            console.error('파일 삭제 실패:', e);
+            alert('파일 삭제에 실패했습니다.');
         }
     };
 
@@ -562,7 +559,7 @@
                 fileButtons += `
                     <div class="flex gap-1 mb-1">
                         <button type="button" onclick="downloadFile('${img.url}', '${author}_${img.label}')" class="flex-1 bg-orange-50 text-orange-600 px-1.5 py-1 rounded-lg text-center font-medium hover:bg-orange-100 transition truncate" title="${img.label}">${img.label}</button>
-                        <button type="button" onclick="scheduleFileDelete('${img.url}', '${safeLabel}', this)" title="1일 뒤 R2에서 자동삭제 예약" class="shrink-0 bg-red-50 text-red-600 px-1.5 py-1 rounded-lg font-medium hover:bg-red-100 transition">삭제</button>
+                        <button type="button" onclick="deleteR2File('${img.url}', '${safeLabel}', this)" title="R2에서 즉시 삭제" class="shrink-0 bg-red-50 text-red-600 px-1.5 py-1 rounded-lg font-medium hover:bg-red-100 transition">삭제</button>
                     </div>`;
             });
 
