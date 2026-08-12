@@ -1326,7 +1326,21 @@ window.downloadFile = async (url, filename) => {
 
 
 
-// [보안] IP 차단 확인 및 '접수하기' 버튼만 숨기기
+// [추가] URL 파라미터(autoId) 감지 시, 해당 주문의 비밀번호 확인창을 자동으로 엽니다.
+// (기존 viewDetail을 그대로 호출하므로 작성자명+비밀번호 확인과 10회 차단 로직은 동일하게 적용됩니다)
+window.addEventListener('load', () => {
+    const params = new URLSearchParams(window.location.search);
+    const autoId = params.get('autoId');
+    if (!autoId) return;
+
+    const checkInterval = setInterval(() => {
+        if (allOrders.length > 0) {
+            clearInterval(checkInterval);
+            viewDetail(autoId);
+        }
+    }, 300);
+});
+
 async function applyIpSecurity() {
     try {
         const response = await fetch("https://api.ipify.org?format=json");
