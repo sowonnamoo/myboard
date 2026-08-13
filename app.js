@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+const firebaseConfig = {
+    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -13,25 +14,29 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ordersCollection = collection(db, "boards");
 
-// ---- 배송지 수정 / 주문 삭제 시 구글 로그인 요구 ----
+// ---- 방문자마다 파이어베이스 익명 로그인을 자동으로 부여 ----
+// 회원가입/로그인 절차 없이, 방문자가 글을 쓰거나 자기 글을 수정/삭제하려 할 때
+// 백그라운드에서 조용히 익명 로그인을 해서 고유 uid를 발급받습니다.
+// 이 uid는 글 작성 시 문서에 같이 저장되고(uid 필드), Firestore 규칙에서
+// "글쓴이 본인(uid가 일치하는 사람)만 수정/삭제 가능"을 검사하는 근거로 쓰입니다.
 const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
 
-// 이미 로그인되어 있으면 바로 통과, 아니면 구글 로그인 팝업을 띄우고 완료될 때까지 기다립니다.
-// 로그인에 실패(취소 등)하면 에러를 던져서 호출한 쪽에서 이후 동작(수정/삭제)을 진행하지 않도록 합니다.
-function ensureGoogleLogin() {
-    if (auth.currentUser) {
-        return Promise.resolve(auth.currentUser);
-    }
-    return signInWithPopup(auth, googleProvider)
-        .then((result) => {
-            console.log("구글 로그인 성공:", result.user.email);
-            return result.user;
-        })
-        .catch((error) => {
-            console.error("구글 로그인 에러:", error.message);
-            throw error;
+let resolveAuthReady;
+const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        resolveAuthReady(user);
+    } else {
+        signInAnonymously(auth).catch((e) => {
+            console.error("익명 로그인 실패:", e);
         });
+    }
+});
+
+// 익명 로그인이 끝날 때까지(=uid가 확정될 때까지) 기다립니다.
+function ensureAnonymousLogin() {
+    return authReadyPromise;
 }
 
 window.execDaumPostcode = function() {
@@ -700,6 +705,13 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     // 기존에 작동하던 상세 렌더링 로직 (데이터 뿌리기, 수정 버튼, 파일, 삭제 등)
     document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
+
+    // 이미 여기서 이름+비밀번호 확인을 마쳤으므로, "시안보기"를 눌렀을 때
+    // index2에서 또 비밀번호를 묻지 않고 이 글이 바로 열리도록 autoId를 붙여줍니다.
+    const sianLink = document.getElementById("sian-view-link");
+    if (sianLink) {
+        sianLink.href = `https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`;
+    }
     const d = data.createdAt.toDate();
     document.getElementById("detail-date").innerText = `작성일: ${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
     document.getElementById("detail-qty").innerText = data.quantity;
@@ -730,16 +742,12 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         }
     }
     
-    // 수정 버튼 안전하게 연결 (구글 로그인 후에만 배송지 수정 페이지가 열림)
+    // 수정 버튼 안전하게 연결 (익명 로그인 확인 후 배송지 수정 페이지가 열림.
+    // 실제로 본인 글인지는 Firestore 규칙이 uid로 검사합니다.)
     const editBtn = document.getElementById("detail-edit-btn");
     if (editBtn) {
         editBtn.onclick = async () => {
-            try {
-                await ensureGoogleLogin();
-            } catch (e) {
-                alert("배송지 수정을 하려면 구글 로그인이 필요합니다.\n(오류: " + e.code + " " + e.message + ")");
-                return;
-            }
+            await ensureAnonymousLogin();
             const url = `edit.html?id=${currentViewId}&author=${encodeURIComponent(data.author)}&phone=${encodeURIComponent(data.phone)}&address=${encodeURIComponent(data.address)}`;
             window.open(url, "editWindow", "width=400,height=500");
         };
@@ -765,15 +773,11 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
        filesDiv.appendChild(a);
     }
 
-    // 삭제 버튼 설정 (구글 로그인 후에만 진행. 실제로 문서를 지우지 않고,
-    // isDeleted 플래그만 true로 표시해 목록(이 게시판 + 시안 확인 게시판)에서 숨깁니다.)
+    // 삭제 버튼 설정 (익명 로그인 확인 후 진행. 실제로 문서를 지우지 않고,
+    // isDeleted 플래그만 true로 표시해 목록(이 게시판 + 시안 확인 게시판)에서 숨깁니다.
+    // 본인 글인지 여부는 Firestore 규칙이 uid로 검사하며, 남의 글이면 규칙에서 거부됩니다.)
  document.getElementById("detail-delete-btn").onclick = async () => {
-    try {
-        await ensureGoogleLogin();
-    } catch (e) {
-        alert("주문 삭제를 하려면 구글 로그인이 필요합니다.\n(오류: " + e.code + " " + e.message + ")");
-        return;
-    }
+    await ensureAnonymousLogin();
     if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
         try { 
             // 1. 완전 삭제 대신 숨김 처리
@@ -784,7 +788,11 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
             location.reload(); 
             
         } catch (e) { 
-            alert("삭제 실패: " + e.message);
+            if (e.code === "permission-denied") {
+                alert("본인이 작성한 글만 삭제할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)");
+            } else {
+                alert("삭제 실패: " + e.message);
+            }
             }
         } 
     };
@@ -855,6 +863,10 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     // 3. 기존 글쓰기 로직 (침범 안 함)
   try {
+    // 글을 저장하기 전에 익명 로그인이 끝나서 uid가 확정됐는지 확인합니다.
+    // (본인 글만 나중에 수정/삭제할 수 있으려면 이 uid가 문서에 같이 저장돼야 합니다.)
+    const currentUser = await ensureAnonymousLogin();
+
     // 장바구니에서 자동으로 채워진 주문인지(제품명/수량/사이즈가 읽기전용이면 장바구니발), 아니면
     // 작성자가 직접 입력한 주문인지 여기서 판별해서 함께 저장합니다.
     const isFromCart = document.getElementById('product-name').readOnly === true;
@@ -896,6 +908,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
     file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
     ip: userIp, // <--- IP 주소 저장 추가
+    uid: currentUser.uid, // 익명 로그인으로 발급된 고유 ID (본인 글 판별용)
     createdAt: new Date(),
     isDeleted: false,
     status: '대기',

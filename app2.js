@@ -1,8 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, updateDoc, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -12,6 +13,22 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// index1.html(글 작성 창)에서 이미 익명 로그인이 되어 있다면 이 창(index2)도 같은 uid를 이어받습니다.
+// (같은 브라우저/기기여야 본인 글로 인식됩니다.) 혹시 로그인 전이면 여기서 새로 익명 로그인합니다.
+const auth = getAuth(app);
+let resolveAuthReady;
+const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        resolveAuthReady(user);
+    } else {
+        signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+    }
+});
+function ensureAnonymousLogin() {
+    return authReadyPromise;
+}
 
 let allOrders = [];
 let currentPage = 1;
@@ -255,10 +272,19 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
 
             // 승인 진행
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
-                await updateDoc(doc(db, "boards", boardId), { sian: "done" });
-                // 상태 변경 후 즉시 상태 갱신
-                await checkMemoAndSetButton(boardId, "done");
-                alert("조판완료 처리되었습니다.");
+                await ensureAnonymousLogin();
+                try {
+                    await updateDoc(doc(db, "boards", boardId), { sian: "done" });
+                    // 상태 변경 후 즉시 상태 갱신
+                    await checkMemoAndSetButton(boardId, "done");
+                    alert("조판완료 처리되었습니다.");
+                } catch (e) {
+                    if (e.code === "permission-denied") {
+                        alert("본인이 작성한 글만 인쇄승인할 수 있습니다.");
+                    } else {
+                        alert("인쇄승인 실패: " + e.message);
+                    }
+                }
             }
         };
     }
@@ -380,38 +406,58 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
     const input = document.getElementById("memo-input");
     if (!input.value.trim()) return;
 
-    // 1. 기존 메모 삭제
-    const q = query(collection(db, "boards", currentViewId, "hanjool"));
-    const snapshot = await getDocs(q);
-    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
+    const currentUser = await ensureAnonymousLogin();
 
-    // 2. 새 메모 저장
-    await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
-        text: input.value, 
-        createdAt: new Date() 
-    });
-    input.value = "";
-    
-    // 3. (핵심) 최신 상태를 DB에서 다시 읽어온 후 버튼과 레이어 동기화
-    const snap = await getDoc(doc(db, "boards", currentViewId));
-    await checkMemoAndSetButton(currentViewId, snap.data().sian);
-    
-    alert("수정내용이 작성되었습니다.");
+    try {
+        // 1. 기존 메모 삭제 (예전에 uid 없이 저장된 메모는 규칙상 삭제가 거부될 수 있으므로,
+        //    하나가 실패해도 나머지 진행에는 영향 없게 처리)
+        const q = query(collection(db, "boards", currentViewId, "hanjool"));
+        const snapshot = await getDocs(q);
+        await Promise.allSettled(snapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 2. 새 메모 저장
+        await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
+            text: input.value, 
+            createdAt: new Date(),
+            uid: currentUser.uid
+        });
+        input.value = "";
+
+        // 3. (핵심) 최신 상태를 DB에서 다시 읽어온 후 버튼과 레이어 동기화
+        const snap = await getDoc(doc(db, "boards", currentViewId));
+        await checkMemoAndSetButton(currentViewId, snap.data().sian);
+
+        alert("수정내용이 작성되었습니다.");
+    } catch (e) {
+        if (e.code === "permission-denied") {
+            alert("본인이 작성한 글에만 수정요청을 남길 수 있습니다.");
+        } else {
+            alert("수정요청 등록 실패: " + e.message);
+        }
+    }
 });
 
 document.getElementById("delete-memo-btn").addEventListener("click", async () => {
     if (!currentViewId) return;
-    const q = query(collection(db, "boards", currentViewId, "hanjool"));
-    const snapshot = await getDocs(q);
-    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
-    
-    // 수정된 부분: 최신 sian 데이터를 다시 읽어서 버튼 갱신
-    const snap = await getDoc(doc(db, "boards", currentViewId));
-    await checkMemoAndSetButton(currentViewId, snap.data().sian);
-    alert("수정내용이 삭제/취소 되었습니다.");
-}); // <-- 이벤트 리스너를 닫는 괄호는 딱 여기까지만 있어야 합니다.
+    await ensureAnonymousLogin();
+    try {
+        const q = query(collection(db, "boards", currentViewId, "hanjool"));
+        const snapshot = await getDocs(q);
+        const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+
+        // 최신 sian 데이터를 다시 읽어서 버튼 갱신
+        const snap = await getDoc(doc(db, "boards", currentViewId));
+        await checkMemoAndSetButton(currentViewId, snap.data().sian);
+        alert("수정내용이 삭제/취소 되었습니다.");
+    } catch (e) {
+        if (e.code === "permission-denied") {
+            alert("본인이 작성한 글의 수정요청만 삭제할 수 있습니다.");
+        } else {
+            alert("삭제 실패: " + e.message);
+        }
+    }
+});
 
 loadOrders();
 
