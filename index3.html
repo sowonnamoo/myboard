@@ -58,7 +58,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = { 
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -69,7 +70,32 @@
         appId: "1:25881766316:web:c03e118cf26d3fff11b209"
     };
 
-    const db = getFirestore(initializeApp(firebaseConfig));
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ---- 익명 로그인 ----
+    // 규칙에서 jjjj 컬렉션 create를 request.auth != null 로 막아뒀기 때문에
+    // (예전엔 로그인 없이도 그냥 써졌지만, 이제는 auth가 있어야 저장이 됩니다)
+    const auth = getAuth(app);
+    let resolveAuthReady;
+    const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+    onAuthStateChanged(auth, (user) => {
+        if (user) resolveAuthReady(user);
+        else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+    });
+    function ensureAnonymousLogin() { return authReadyPromise; }
+
+    // ---- 개인정보 조회키(secretId) 계산 - app.js/app2.js와 반드시 동일한 방식 ----
+    async function sha256Hex(text) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    function normalizeName(name) { return String(name || "").trim(); }
+    function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
+    async function computeSecretId(boardId, author, phone) {
+        const key = `${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`;
+        return sha256Hex(key);
+    }
 
     window.execDaumPostcode = () => {
         new daum.Postcode({
@@ -128,6 +154,18 @@
             return;
         }
 
+        // 저장 전에 익명 로그인이 끝났는지 확인 (uid 확정 대기)
+        const currentUser = await ensureAnonymousLogin();
+
+        // 문서 ID를 먼저 발급받고, 그 ID로 조회키(secretId)를 계산합니다.
+        const orderRef = doc(collection(db, "jjjj"));
+        const orderId = orderRef.id;
+        const secretId = await computeSecretId(orderId, name, phoneInput);
+
+        const fullAddress = address + " " + addressDetail;
+        const messageVal = document.getElementById('message').value;
+
+        // 공개 문서: 개인정보(phone/address/message/password) 절대 포함하지 않음
         const orderData = {
             productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
@@ -135,19 +173,24 @@
             price: price,
             imgCode: document.getElementById('imgCode').value,
             author: name,
-            phone: phoneInput,
-            address: address + " " + addressDetail,
-            message: document.getElementById('message').value,
             file1Url: document.getElementById('file1Url').value,
             file2Url: document.getElementById('file2Url').value,
 type: (type === '카드') ? '재주문' : type,
             createdAt: new Date(),
-            status: '대기'
+            status: '대기',
+            uid: currentUser.uid
         };
 
 try {
-            // 주문서 저장
-            const docRef = await addDoc(collection(db, "jjjj"), orderData);
+            // 주문서 저장 (공개 문서 + 개인정보 private 문서를 함께 기록)
+            await setDoc(orderRef, orderData);
+            await setDoc(doc(db, "jjjj", orderId, "private", secretId), {
+                phone: phoneInput,
+                address: fullAddress,
+                message: messageVal,
+                uid: currentUser.uid
+            });
+            const docRef = { id: orderId };
             
             if (type === '무통장') {
                 // 무통장 결제: 기존 로직 유지
