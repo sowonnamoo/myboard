@@ -1,4 +1,4 @@
-1<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -417,9 +417,21 @@
         a.click();
     };
 
+    // boards 주문을 삭제할 때, 남겨두면 개인정보만 고아로 남는 private 서브컬렉션도 함께 지웁니다.
+    // (jjjj/orders는 이 구조가 아니라서 해당 없음 - source가 'boards'일 때만 동작)
+    async function cleanupBoardPrivateData(boardId) {
+        try {
+            const privSnap = await getDocs(collection(db, "boards", boardId, "private"));
+            await Promise.all(privSnap.docs.map(d => deleteDoc(d.ref)));
+        } catch (e) {
+            console.error('개인정보(private) 삭제 실패:', boardId, e);
+        }
+    }
+
     window.deleteDocById = async function(id, source, dbKind) {
         if (confirm("정말 삭제하시겠습니까?")) {
             const targetDb = dbKind === 'cart' ? cartDb : db;
+            if (source === 'boards') await cleanupBoardPrivateData(id);
             await deleteDoc(doc(targetDb, source, id));
             loadAllOrders();
         }
@@ -504,8 +516,26 @@
 
         const [snapshot1, snapshot2, snapshot3] = await Promise.all([getDocs(q1), getDocs(q2), getDocs(q3)]);
 
+        // boards 컬렉션은 phone/address/message가 공개 문서에 없고(보안 강화로 분리됨)
+        // boards/{id}/private/{secretId}에만 있습니다. 고객은 secretId를 알아야만 열 수 있지만,
+        // 관리자 계정(Firestore의 admins/{uid} 문서로 등록된 계정)은 규칙에서 list를 허용해뒀기 때문에
+        // secretId를 몰라도 "그 주문의 private 문서가 뭔지" 목록으로 찾아올 수 있습니다.
+        const boardPrivates = await Promise.all(snapshot1.docs.map(async (d) => {
+            try {
+                const privSnap = await getDocs(collection(db, "boards", d.id, "private"));
+                return privSnap.empty ? {} : privSnap.docs[0].data();
+            } catch (e) {
+                // 관리자 권한이 아니거나(admins 컬렉션 미등록) 규칙 미배포 시 여기로 옴
+                console.error('개인정보(phone/address) 조회 실패 - admins 컬렉션에 계정이 등록돼 있는지 확인하세요:', d.id, e);
+                return {};
+            }
+        }));
+
         let allDocs = [];
-        snapshot1.forEach(d => allDocs.push(normalizeDoc(d.id, d.data(), 'boards', 'board', '일반')));
+        snapshot1.forEach((d, idx) => {
+            const merged = { ...d.data(), ...boardPrivates[idx] };
+            allDocs.push(normalizeDoc(d.id, merged, 'boards', 'board', '일반'));
+        });
         snapshot2.forEach(d => allDocs.push(normalizeDoc(d.id, d.data(), 'jjjj', 'board', '재주문')));
         snapshot3.forEach(d => allDocs.push(normalizeDoc(d.id, d.data(), 'orders', 'cart', '장바구니')));
 
@@ -726,6 +756,7 @@
 
         try {
             const targetDb = currentSelected.dbKind === 'cart' ? cartDb : db;
+            if (currentSelected.collection === 'boards') await cleanupBoardPrivateData(currentSelected.id);
             await deleteDoc(doc(targetDb, currentSelected.collection, currentSelected.id));
             alert("주문이 삭제되었습니다.");
 
