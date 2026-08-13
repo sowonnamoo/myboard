@@ -17,6 +17,7 @@ let allOrders = [];
 let currentPage = 1;
 let currentViewId = ""; 
 let lastVisible = null;
+let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
 const POSTS_PER_PAGE = 8;
 // 현재 상세보기 중인 게시글의 "시안 이미지 번호"(finalCode)를 담아둡니다.
 // 재구입 버튼이 화면 텍스트를 파싱하지 않고 이 값을 바로 사용합니다.
@@ -39,41 +40,53 @@ async function loadMemo(boardId) {
     }
 }
 
+// Firestore에서 lastVisible 이후로 유효한(숨김 처리 안 된) 글을 목표 개수만큼 모을 때까지
+// 필요한 만큼 반복해서 가져옵니다. 숨겨진 글을 건너뛴 만큼 목록 개수가 줄어드는 문제를 방지합니다.
+async function fetchValidOrders(targetCount) {
+    const collected = [];
+    let exhausted = false;
+
+    while (collected.length < targetCount && !exhausted) {
+        const q = lastVisible
+            ? query(collection(db, "boards"), orderBy("createdAt", "desc"), startAfter(lastVisible), limit(POSTS_PER_PAGE))
+            : query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(POSTS_PER_PAGE));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) { exhausted = true; break; }
+
+        for (const docSnap of snapshot.docs) {
+            lastVisible = docSnap; // 숨김 처리된 글도 포함해서 커서를 갱신 (중복/누락 방지)
+            const data = docSnap.data();
+            if (data.isDeleted !== true) {
+                collected.push({ id: docSnap.id, ...data });
+                if (collected.length >= targetCount) break;
+            }
+        }
+
+        if (snapshot.docs.length < POSTS_PER_PAGE) {
+            exhausted = true; // Firestore에 더 가져올 문서가 없음
+        }
+    }
+
+    hasMoreOrders = !exhausted;
+    return collected;
+}
+
 async function loadOrders() {
     try {
-        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(8));
-        const snapshot = await getDocs(q);
-        
         allOrders = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.isDeleted === true) return;
-            allOrders.push({ id: doc.id, ...data });
-        });
-
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        lastVisible = null;
+        allOrders = await fetchValidOrders(POSTS_PER_PAGE);
         renderTable(); 
     } catch (err) { console.error(err); }
 }
 
 window.loadMore = async function() {
-    if (!lastVisible) return;
+    if (!hasMoreOrders) { alert("더 이상 게시글이 없습니다."); return; }
     try {
-        const nextQ = query(collection(db, "boards"), orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
-        const snapshot = await getDocs(nextQ);
-        
-        if (snapshot.empty) {
-            alert("더 이상 게시글이 없습니다.");
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.isDeleted === true) return;
-            allOrders.push({ id: doc.id, ...data });
-        });
-        
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        const newOnes = await fetchValidOrders(POSTS_PER_PAGE);
+        if (newOnes.length === 0) { alert("더 이상 게시글이 없습니다."); return; }
+        allOrders = allOrders.concat(newOnes);
         renderTable();
     } catch (err) { console.error(err); }
 };
@@ -125,7 +138,7 @@ function renderTable(dataToRender = allOrders) {
 
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (dataToRender.length > 0 && dataToRender.length % POSTS_PER_PAGE === 0) {
+    if (dataToRender.length > 0 && hasMoreOrders) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
                 더보기 (현재 ${dataToRender.length}개 표시)
