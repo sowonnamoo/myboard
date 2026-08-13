@@ -722,7 +722,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
             try {
                 await ensureGoogleLogin();
             } catch (e) {
-                alert("배송지 수정을 하려면 구글 로그인이 필요합니다.");
+                alert("배송지 수정을 하려면 구글 로그인이 필요합니다.\n(오류: " + e.code + " " + e.message + ")");
                 return;
             }
             const url = `edit.html?id=${currentViewId}&author=${encodeURIComponent(data.author)}&phone=${encodeURIComponent(data.phone)}&address=${encodeURIComponent(data.address)}`;
@@ -755,7 +755,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     try {
         await ensureGoogleLogin();
     } catch (e) {
-        alert("주문 삭제를 하려면 구글 로그인이 필요합니다.");
+        alert("주문 삭제를 하려면 구글 로그인이 필요합니다.\n(오류: " + e.code + " " + e.message + ")");
         return;
     }
     if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
