@@ -653,10 +653,7 @@
         }
     };
 
-    // 30초마다 자동으로 새 글이 있는지 확인해서 화면에 반영 (수동 새로고침을 안 눌러도 됨)
-    setInterval(() => {
-        if (appStarted) refreshOrdersKeepView();
-    }, 30000);
+
 
     window.loadMoreOrders = async function() {
         visibleCount += 5;
