@@ -38,7 +38,9 @@
 
     <div class="flex flex-wrap justify-between items-center mb-5">
         <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">📦 주문 통합 관리</h1>
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
+            <span id="last-refreshed-at" class="text-xs text-slate-400"></span>
+            <button onclick="refreshOrdersKeepView()" class="bg-white border border-slate-300 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 transition shadow-sm">🔄 새로고침</button>
             <a href="https://sowonnamoo.github.io/myboard/mng_x92a" target="_blank" class="bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-700 transition shadow-sm">🛡️ 보안/차단</a>
             <button onclick="adminLogout()" class="bg-white border border-slate-300 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 transition shadow-sm">로그아웃</button>
         </div>
@@ -627,7 +629,34 @@
         visibleCount = 5;
         await fetchOrders();
         await renderVisible();
+        const stamp = document.getElementById('last-refreshed-at');
+        if (stamp) {
+            const now = new Date();
+            stamp.textContent = `마지막 갱신: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }
     };
+
+    // 새로 작성된 글(익명 로그인 포함)을 반영하기 위한 새로고침.
+    // loadAllOrders()와 달리 currentPage/visibleCount(= "더 보기"로 펼쳐 놓은 상태)는 그대로 유지한 채
+    // 목록만 최신으로 다시 불러옵니다.
+    window.refreshOrdersKeepView = async function() {
+        try {
+            await fetchOrders();
+            await renderVisible();
+            const stamp = document.getElementById('last-refreshed-at');
+            if (stamp) {
+                const now = new Date();
+                stamp.textContent = `마지막 갱신: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            }
+        } catch (e) {
+            console.error('주문 목록 새로고침 실패:', e);
+        }
+    };
+
+    // 30초마다 자동으로 새 글이 있는지 확인해서 화면에 반영 (수동 새로고침을 안 눌러도 됨)
+    setInterval(() => {
+        if (appStarted) refreshOrdersKeepView();
+    }, 30000);
 
     window.loadMoreOrders = async function() {
         visibleCount += 5;
