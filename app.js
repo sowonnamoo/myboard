@@ -759,13 +759,13 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         alert("주문 삭제를 하려면 구글 로그인이 필요합니다.\n(오류: " + e.code + " " + e.message + ")");
         return;
     }
-    if(confirm("정말로 삭제하시겠습니까? 목록에서 보이지 않게 처리됩니다.")) { 
+    if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
         try { 
             // 1. 완전 삭제 대신 숨김 처리
             await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true }); 
             
             // 2. 알림 후 페이지 새로고침
-            alert("삭제(숨김) 처리되었습니다."); 
+            alert("삭제되었습니다."); 
             location.reload(); 
             
         } catch (e) { 
