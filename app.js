@@ -57,7 +57,7 @@ let lastVisible = null; // 마지막 문서 저장용
 let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
 let currentPage = 1;      
 let currentViewId = null;
-const POSTS_PER_PAGE = 8; 
+const POSTS_PER_PAGE = 7; 
 
 // ---- 장바구니(01my.html 등에서 담은 여러 상품) 통합 주문작성 ----
 // 이 기능은 index1.html에만 있는 #cart-summary-card 요소가 있을 때만 동작합니다.
@@ -542,7 +542,7 @@ function uploadToR2(fileInputId, authorName, onProgress) {
     });
 }
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 7;
 
 // Firestore에서 lastVisible 이후로 유효한(숨김 처리 안 된) 글을 목표 개수만큼 모을 때까지
 // 필요한 만큼 반복해서 가져옵니다. 숨겨진 글을 건너뛴 만큼 목록 개수가 줄어드는 문제를 방지합니다.
