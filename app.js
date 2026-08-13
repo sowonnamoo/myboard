@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -49,6 +49,7 @@ window.execDaumPostcode = function() {
 let allOrders = [];        
 let filteredOrders = [];  
 let lastVisible = null; // 마지막 문서 저장용
+let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
 let currentPage = 1;      
 let currentViewId = null;
 const POSTS_PER_PAGE = 8; 
@@ -536,43 +537,57 @@ function uploadToR2(fileInputId, authorName, onProgress) {
     });
 }
 
+const PAGE_SIZE = 8;
+
+// Firestore에서 lastVisible 이후로 유효한(숨김 처리 안 된) 글을 목표 개수만큼 모을 때까지
+// 필요한 만큼 반복해서 가져옵니다. 숨겨진 글을 건너뛴 만큼 목록 개수가 줄어드는 문제를 방지합니다.
+async function fetchValidOrders(targetCount) {
+    const collected = [];
+    let exhausted = false;
+
+    while (collected.length < targetCount && !exhausted) {
+        const q = lastVisible
+            ? query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(PAGE_SIZE))
+            : query(ordersCollection, orderBy("createdAt", "desc"), limit(PAGE_SIZE));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) { exhausted = true; break; }
+
+        for (const docSnap of snapshot.docs) {
+            lastVisible = docSnap; // 숨김 처리된 글도 포함해서 커서를 갱신 (중복/누락 방지)
+            const data = docSnap.data();
+            if (data.isDeleted !== true) {
+                collected.push({ id: docSnap.id, ...data });
+                if (collected.length >= targetCount) break;
+            }
+        }
+
+        if (snapshot.docs.length < PAGE_SIZE) {
+            exhausted = true; // Firestore에 더 가져올 문서가 없음
+        }
+    }
+
+    hasMoreOrders = !exhausted;
+    return collected;
+}
+
 async function loadAndRender() {
     try {
-        const q = query(ordersCollection, orderBy("createdAt", "desc"), limit(8));
-        const snapshot = await getDocs(q);
-        
         allOrders = [];
-     snapshot.forEach(doc => {
-    const data = doc.data();
-    if (data.isDeleted === true) return; // 숨김 처리된 글은 목록에 표시하지 않음
-    allOrders.push({ id: doc.id, ...data });
-});
-
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        renderTable(); // 이 코드를 넣으세요
+        lastVisible = null;
+        allOrders = await fetchValidOrders(PAGE_SIZE);
+        renderTable();
     } catch (err) { console.error(err); }
 }
 
-// 2. 더보기 클릭 시 다음 8개 가져오기
+// 2. 더보기 클릭 시 유효한 글 8개를 추가로 채우기
 window.loadMore = async function() {
-    if (!lastVisible) return;
+    if (!hasMoreOrders) { alert("더 이상 게시글이 없습니다."); return; }
     try {
-        const nextQ = query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(8));
-        const snapshot = await getDocs(nextQ);
-        
-        if (snapshot.empty) {
-            alert("더 이상 게시글이 없습니다.");
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.isDeleted === true) return;
-            allOrders.push({ id: doc.id, ...data });
-        });
-        
-        lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        renderTable(); // 여기서 다시 렌더링하며 버튼을 갱신합니다.
+        const newOnes = await fetchValidOrders(PAGE_SIZE);
+        if (newOnes.length === 0) { alert("더 이상 게시글이 없습니다."); return; }
+        allOrders = allOrders.concat(newOnes);
+        renderTable();
     } catch (err) { console.error(err); }
 };
 
@@ -612,7 +627,7 @@ function renderTable() {
 
     const pager = document.getElementById("pagination");
     pager.innerHTML = "";
-    if (allOrders.length > 0) {
+    if (allOrders.length > 0 && hasMoreOrders) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
                 더보기
