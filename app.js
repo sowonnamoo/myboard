@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";const firebaseConfig = {
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
@@ -11,6 +12,27 @@ import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, order
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ordersCollection = collection(db, "boards");
+
+// ---- 배송지 수정 / 주문 삭제 시 구글 로그인 요구 ----
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+// 이미 로그인되어 있으면 바로 통과, 아니면 구글 로그인 팝업을 띄우고 완료될 때까지 기다립니다.
+// 로그인에 실패(취소 등)하면 에러를 던져서 호출한 쪽에서 이후 동작(수정/삭제)을 진행하지 않도록 합니다.
+function ensureGoogleLogin() {
+    if (auth.currentUser) {
+        return Promise.resolve(auth.currentUser);
+    }
+    return signInWithPopup(auth, googleProvider)
+        .then((result) => {
+            console.log("구글 로그인 성공:", result.user.email);
+            return result.user;
+        })
+        .catch((error) => {
+            console.error("구글 로그인 에러:", error.message);
+            throw error;
+        });
+}
 
 window.execDaumPostcode = function() {
     new daum.Postcode({
@@ -693,10 +715,16 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         }
     }
     
-    // 수정 버튼 안전하게 연결
+    // 수정 버튼 안전하게 연결 (구글 로그인 후에만 배송지 수정 페이지가 열림)
     const editBtn = document.getElementById("detail-edit-btn");
     if (editBtn) {
-        editBtn.onclick = () => {
+        editBtn.onclick = async () => {
+            try {
+                await ensureGoogleLogin();
+            } catch (e) {
+                alert("배송지 수정을 하려면 구글 로그인이 필요합니다.");
+                return;
+            }
             const url = `edit.html?id=${currentViewId}&author=${encodeURIComponent(data.author)}&phone=${encodeURIComponent(data.phone)}&address=${encodeURIComponent(data.address)}`;
             window.open(url, "editWindow", "width=400,height=500");
         };
@@ -722,8 +750,14 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
        filesDiv.appendChild(a);
     }
 
-    // 삭제 버튼 설정
- document.getElementById("detail-delete-btn").onclick = async () => { 
+    // 삭제 버튼 설정 (구글 로그인 후에만 삭제 진행)
+ document.getElementById("detail-delete-btn").onclick = async () => {
+    try {
+        await ensureGoogleLogin();
+    } catch (e) {
+        alert("주문 삭제를 하려면 구글 로그인이 필요합니다.");
+        return;
+    }
     if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
         try { 
             // 1. 데이터베이스에서 문서 영구 삭제
