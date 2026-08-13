@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
