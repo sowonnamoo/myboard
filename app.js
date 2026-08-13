@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, setDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
@@ -13,6 +13,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ordersCollection = collection(db, "boards");
+
+// ---- 개인정보 조회키(secretId) 계산 ----
+// boardId + 작성자명 + 전화번호 뒷4자리를 합쳐 SHA-256 해싱한 값을 문서 ID로 씁니다.
+// 이 값을 "정확히" 계산해낼 수 있는 사람(=이름+뒷4자리를 아는 사람)만
+// boards/{boardId}/private/{secretId} 문서를 조회할 수 있습니다.
+// (브라우저 내장 crypto.subtle 사용 - 별도 라이브러리/서버 불필요, 완전 무료)
+async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+// 작성 시/조회 시 항상 같은 방식으로 정규화해야 같은 secretId가 나옵니다.
+function normalizeName(name) {
+    return String(name || "").trim();
+}
+function normalizePhoneLast4(phone) {
+    return String(phone || "").replace(/[^0-9]/g, "").slice(-4);
+}
+async function computeSecretId(boardId, author, phone) {
+    const key = `${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`;
+    return sha256Hex(key);
+}
 
 // ---- 방문자마다 파이어베이스 익명 로그인을 자동으로 부여 ----
 // 회원가입/로그인 절차 없이, 방문자가 글을 쓰거나 자기 글을 수정/삭제하려 할 때
@@ -57,7 +78,7 @@ let lastVisible = null; // 마지막 문서 저장용
 let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
 let currentPage = 1;      
 let currentViewId = null;
-const POSTS_PER_PAGE = 7; 
+const POSTS_PER_PAGE = 8; 
 
 // ---- 장바구니(01my.html 등에서 담은 여러 상품) 통합 주문작성 ----
 // 이 기능은 index1.html에만 있는 #cart-summary-card 요소가 있을 때만 동작합니다.
@@ -542,7 +563,7 @@ function uploadToR2(fileInputId, authorName, onProgress) {
     });
 }
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 8;
 
 // Firestore에서 lastVisible 이후로 유효한(숨김 처리 안 된) 글을 목표 개수만큼 모을 때까지
 // 필요한 만큼 반복해서 가져옵니다. 숨겨진 글을 건너뛴 만큼 목록 개수가 줄어드는 문제를 방지합니다.
@@ -559,10 +580,12 @@ async function fetchValidOrders(targetCount) {
         if (snapshot.empty) { exhausted = true; break; }
 
         for (const docSnap of snapshot.docs) {
-            lastVisible = docSnap;
+            lastVisible = docSnap; // 숨김 처리된 글도 포함해서 커서를 갱신 (중복/누락 방지)
             const data = docSnap.data();
-            collected.push({ id: docSnap.id, ...data });
-            if (collected.length >= targetCount) break;
+            if (data.isDeleted !== true) {
+                collected.push({ id: docSnap.id, ...data });
+                if (collected.length >= targetCount) break;
+            }
         }
 
         if (snapshot.docs.length < PAGE_SIZE) {
@@ -666,20 +689,21 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
 
     const inputName = document.getElementById("modal-name-input").value.trim();
     const inputPwd = document.getElementById("modal-password-input").value;
+
+    // 공개 문서: 상품명/수량/가격 등 비민감 정보만 들어있음 (비밀번호 검증과 무관하게 먼저 읽어도 안전)
     const snap = await getDoc(doc(db, "boards", currentViewId));
-    
     if (!snap.exists()) {
         alert("데이터를 찾을 수 없습니다.");
         return;
     }
-
     const data = snap.data();
-    
-    // 2. 작성자명 + 비밀번호(전화번호 뒷4자리) 둘 다 검증
-    const nameMatches = inputName !== "" && inputName === String(data.author || "").trim();
-    const pwdMatches = inputPwd === data.password;
 
-    if (!nameMatches || !pwdMatches) {
+    // 2. 입력한 이름+뒷4자리로 secretId를 계산해서, 그 문서가 "존재하는지"로 검증합니다.
+    //    (틀린 값이면 애초에 그런 경로의 문서가 존재하지 않으므로 exists()가 false가 됩니다)
+    const secretId = await computeSecretId(currentViewId, inputName, inputPwd);
+    const privateSnap = await getDoc(doc(db, "boards", currentViewId, "private", secretId));
+
+    if (inputName === "" || !privateSnap.exists()) {
         let failCount = parseInt(localStorage.getItem("failCount") || "0") + 1;
         
         if (failCount >= 10) {
@@ -694,6 +718,8 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         return;
     }
 
+    const privateData = privateSnap.data(); // phone, address, message - private 문서에서만 얻음
+
     // 3. 인증 성공 시 카운트 초기화 및 상세 화면 렌더링
     localStorage.setItem("failCount", "0");
     document.getElementById("password-modal").classList.add("hidden");
@@ -705,10 +731,11 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
 
     // 이미 여기서 이름+비밀번호 확인을 마쳤으므로, "시안보기"를 눌렀을 때
-    // index2에서 또 비밀번호를 묻지 않고 이 글이 바로 열리도록 autoId를 붙여줍니다.
+    // index2에서 또 비밀번호를 묻지 않고 이 글이 바로 열리도록 autoId와 key(secretId)를 붙여줍니다.
+    // (전화번호 자체가 아니라 secretId만 넘기므로 URL에 개인정보가 노출되지 않습니다)
     const sianLink = document.getElementById("sian-view-link");
     if (sianLink) {
-        sianLink.href = `https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}`;
+        sianLink.href = `https://sowonnamoo.github.io/myboard/index2?autoId=${currentViewId}&key=${secretId}`;
     }
     const d = data.createdAt.toDate();
     document.getElementById("detail-date").innerText = `작성일: ${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
@@ -720,9 +747,9 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     // toLocaleString() + '원'을 또 붙여서 "원원"으로 중복 표시되는 문제가 있었습니다)
     const priceDigits = data.price ? Number(String(data.price).replace(/[^0-9]/g, '')) || 0 : 0;
     document.getElementById("detail-price").innerText = priceDigits.toLocaleString() + '원';
-    document.getElementById("detail-phone").innerText = data.phone;
-    document.getElementById("detail-address").innerText = data.address;
-    document.getElementById("detail-msg").innerText = data.message || "내용 없음";
+    document.getElementById("detail-phone").innerText = privateData.phone;
+    document.getElementById("detail-address").innerText = privateData.address;
+    document.getElementById("detail-msg").innerText = privateData.message || "내용 없음";
     window.syncStatusOverlay(data.status);
 
     // 장바구니(01my.html 쿼리 등)로 자동 입력되어 저장된 주문이면 "장바구니담기" 버튼을 숨기고 클릭도 막습니다.
@@ -746,7 +773,9 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     if (editBtn) {
         editBtn.onclick = async () => {
             await ensureAnonymousLogin();
-            const url = `edit.html?id=${currentViewId}&author=${encodeURIComponent(data.author)}&phone=${encodeURIComponent(data.phone)}&address=${encodeURIComponent(data.address)}`;
+            // ⚠️ edit.html도 이 key(secretId)로 boards/{id}/private/{key} 문서를 직접 읽어와서
+            // phone/address를 채우도록 별도로 수정해야 합니다 (더 이상 URL로 전화번호/주소를 넘기지 않음).
+            const url = `edit.html?id=${currentViewId}&key=${secretId}&author=${encodeURIComponent(data.author)}`;
             window.open(url, "editWindow", "width=400,height=500");
         };
     }
@@ -888,26 +917,41 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
 // [수정] IP 정보 가져오기
     const userIp = await getUserIp();
-      
-      
-    // 2. 파이어베이스에 모든 정보 저장 (누락 없이 합침)
-  await addDoc(collection(db, "boards"), { 
-    author: document.getElementById('input-author').value,
+
+    const authorVal = document.getElementById('input-author').value;
+    const phoneVal2 = document.getElementById('phone').value; // 원본(하이픈 포함 가능) - private 저장용
+    const addressVal = document.getElementById('address').value + " " + document.getElementById('address-detail').value;
+    const messageVal = document.getElementById('message').value;
+
+    // 2. 문서 ID를 먼저 발급받고(아직 저장은 안 함), 그 ID로 조회키(secretId)를 계산합니다.
+    const boardRef = doc(collection(db, "boards"));
+    const boardId = boardRef.id;
+    const secretId = await computeSecretId(boardId, authorVal, phoneVal2);
+
+    // 3. 공개 문서: 개인정보(phone/address/message/password) 절대 포함하지 않음
+    await setDoc(boardRef, {
+    author: authorVal,
     productName: document.getElementById('product-name').value,
     quantity: document.getElementById('quantity').value,
     size: document.getElementById('size').value,
-    phone: document.getElementById('phone').value,
     price: document.getElementById('price').value,
-    address: document.getElementById('address').value + " " + document.getElementById('address-detail').value,
-    password: document.getElementById('phone').value.slice(-4),
-    message: document.getElementById('message').value,
     file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
     file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
     ip: userIp, // <--- IP 주소 저장 추가
     uid: currentUser.uid, // 익명 로그인으로 발급된 고유 ID (본인 글 판별용)
     createdAt: new Date(),
+    isDeleted: false,
     status: '대기',
     fromCart: isFromCart // true: 장바구니 자동입력 주문 / false: 작성자가 직접 입력한 주문
+    });
+
+    // 4. 개인정보는 boards/{boardId}/private/{secretId} 문서에만 저장.
+    //    이 경로는 이름+전화번호 뒷4자리를 정확히 알아야만 다시 계산해서 조회할 수 있습니다.
+    await setDoc(doc(db, "boards", boardId, "private", secretId), {
+        phone: phoneVal2,
+        address: addressVal,
+        message: messageVal,
+        uid: currentUser.uid
     });
 
     text.textContent = "접수 완료!";

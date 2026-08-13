@@ -14,6 +14,22 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// app.js와 반드시 동일한 방식으로 정규화해야 같은 secretId가 계산됩니다.
+async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function normalizeName(name) {
+    return String(name || "").trim();
+}
+function normalizePhoneLast4(phone) {
+    return String(phone || "").replace(/[^0-9]/g, "").slice(-4);
+}
+async function computeSecretId(boardId, author, phone) {
+    const key = `${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`;
+    return sha256Hex(key);
+}
+
 // index1.html(글 작성 창)에서 이미 익명 로그인이 되어 있다면 이 창(index2)도 같은 uid를 이어받습니다.
 // (같은 브라우저/기기여야 본인 글로 인식됩니다.) 혹시 로그인 전이면 여기서 새로 익명 로그인합니다.
 const auth = getAuth(app);
@@ -35,7 +51,7 @@ let currentPage = 1;
 let currentViewId = ""; 
 let lastVisible = null;
 let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
-const POSTS_PER_PAGE = 6;
+const POSTS_PER_PAGE = 8;
 // 현재 상세보기 중인 게시글의 "시안 이미지 번호"(finalCode)를 담아둡니다.
 // 재구입 버튼이 화면 텍스트를 파싱하지 않고 이 값을 바로 사용합니다.
 let currentSianImgCode = "";
@@ -72,10 +88,12 @@ async function fetchValidOrders(targetCount) {
         if (snapshot.empty) { exhausted = true; break; }
 
         for (const docSnap of snapshot.docs) {
-            lastVisible = docSnap;
+            lastVisible = docSnap; // 숨김 처리된 글도 포함해서 커서를 갱신 (중복/누락 방지)
             const data = docSnap.data();
-            collected.push({ id: docSnap.id, ...data });
-            if (collected.length >= targetCount) break;
+            if (data.isDeleted !== true) {
+                collected.push({ id: docSnap.id, ...data });
+                if (collected.length >= targetCount) break;
+            }
         }
 
         if (snapshot.docs.length < POSTS_PER_PAGE) {
@@ -175,44 +193,8 @@ window.goToPage = (p) => {
     }
 };
 
-window.viewDetail = async function(id) {
-    const snap = await getDoc(doc(db, "boards", id));
-    if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
-    
-    const data = snap.data();
-    const storedPass = String(data.password || "");
-    const modal = document.getElementById("password-modal");
-    const input = document.getElementById("modal-password-input");
-    const confirmBtn = document.getElementById("modal-confirm-btn");
-    const cancelBtn = document.getElementById("modal-cancel-btn");
-
-    modal.classList.remove("hidden");
-    input.value = "";
-    input.focus();
-
-    confirmBtn.onclick = async () => {
-        const inputVal = input.value;
-        const isNumeric = /^\d+$/.test(storedPass);
-        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
-
-        if (inputVal === passToCompare) {
-            modal.classList.add("hidden");
-            currentViewId = id;
-
-            // 1. 화면 전환
-            document.getElementById("view-list").classList.add("hidden");
-            document.getElementById("view-detail").classList.remove("hidden");
-
-            // 2. 메모 체크를 위한 별도 함수 호출 (버튼 제어까지 여기서 처리)
-await checkMemoAndSetButton(id, data.sian);
-            
-            // ... (이미지 및 타이틀 로드 로직)
-        } else {
-            alert("비밀번호가 일치하지 않습니다.");
-        }
-    };
-    cancelBtn.onclick = () => modal.classList.add("hidden");
-};
+// (구) 공개문서 password 필드를 직접 비교하던 viewDetail은 제거했습니다.
+// 실제 조회 로직은 아래 secretId 기반의 새 viewDetail만 사용합니다.
 
 // 새로 추가할 함수 (이 함수가 메모를 확인한 뒤 버튼을 세팅함)
 async function checkMemoAndSetButton(boardId, sianStatus) {
@@ -287,14 +269,12 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         };
     }
 }
-// 비밀번호 확인 후 실행되는 부분 (여기가 수정되어야 함)
+// 비밀번호 확인 후 실행되는 부분
 window.viewDetail = async function(id) {
     const snap = await getDoc(doc(db, "boards", id));
     if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
     
-    const data = snap.data();
-    const storedPass = String(data.password || "");
-    const storedAuthor = String(data.author || "").trim();
+    const data = snap.data(); // 공개 문서: 상품명/수량/가격 등 비민감 정보만 있음 (phone/password 없음)
     const modal = document.getElementById("password-modal");
     const nameInput = document.getElementById("modal-name-input");
     const input = document.getElementById("modal-password-input");
@@ -320,13 +300,14 @@ window.viewDetail = async function(id) {
 
         const inputName = nameInput ? nameInput.value.trim() : "";
         const inputVal = input.value;
-        const isNumeric = /^\d+$/.test(storedPass);
-        const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
 
-        const nameMatches = inputName !== "" && inputName === storedAuthor;
-        const pwdMatches = inputVal === passToCompare;
+        const secretId = await computeSecretId(id, inputName, inputVal);
+        const privateSnap = inputName !== ""
+            ? await getDoc(doc(db, "boards", id, "private", secretId))
+            : null;
 
-        if (nameMatches && pwdMatches) {
+        if (privateSnap && privateSnap.exists()) {
+    const privateData = privateSnap.data(); // phone 등 - 여기서만 얻음
     // 성공 시 실패 횟수 초기화
     localStorage.setItem("sianFailCount", "0");
 
@@ -359,7 +340,7 @@ const dImage = document.getElementById("detail-image");
                 const hh = String(createdAt.getHours()).padStart(2, '0');
                 const mi = String(createdAt.getMinutes()).padStart(2, '0');
                 const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
-                const rawPhone = data.phone || "00000000000";
+                const rawPhone = privateData.phone || "00000000000";
                 const phonePrefix = rawPhone.slice(0, -2);
                 const finalCode = phonePrefix + timeCode;
                 currentSianImgCode = finalCode; // 재구입 버튼이 사용할 이미지번호 저장
@@ -558,23 +539,38 @@ window.copyToClipboard = (text) => {
 };
 
 // --- [추가] URL 파라미터(autoId) 감지하여 자동 상세 보기 ---
+// ⚠️ 예전 버전은 autoId만 있으면 비밀번호 확인 없이 바로 열렸습니다(취약점).
+// 이제는 key(secretId)가 함께 있고 실제로 유효할 때만 자동으로 열리고,
+// key가 없거나 틀리면 일반 viewDetail(비밀번호 입력창)로 넘어갑니다.
 window.addEventListener('load', async () => {
     const params = new URLSearchParams(window.location.search);
     const autoId = params.get('autoId');
+    const autoKey = params.get('key');
     
     if (autoId) {
         const checkInterval = setInterval(async () => {
             if (allOrders.length > 0) {
                 clearInterval(checkInterval);
-                await autoViewDetail(autoId);
+                if (autoKey) {
+                    await autoViewDetail(autoId, autoKey);
+                } else {
+                    await viewDetail(autoId); // key 없으면 비밀번호 입력창으로
+                }
             }
         }, 300);
     }
 });
 
-async function autoViewDetail(id) {
+async function autoViewDetail(id, secretId) {
     const snap = await getDoc(doc(db, "boards", id));
     if (!snap.exists()) return alert("게시글이 존재하지 않습니다.");
+
+    // key가 실제로 유효한 secretId인지(=본인이 맞는지) private 문서 존재 여부로 확인
+    const privateSnap = await getDoc(doc(db, "boards", id, "private", secretId));
+    if (!privateSnap.exists()) {
+        return viewDetail(id); // 위조/오래된 key면 비밀번호 입력창으로 폴백
+    }
+    const privateData = privateSnap.data();
     
     const data = snap.data();
     currentViewId = id;
@@ -603,7 +599,7 @@ async function autoViewDetail(id) {
         const hh = String(createdAt.getHours()).padStart(2, '0');
         const mi = String(createdAt.getMinutes()).padStart(2, '0');
         const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
-        const rawPhone = data.phone || "00000000000";
+        const rawPhone = privateData.phone || "00000000000";
         const phonePrefix = rawPhone.slice(0, -2);
         const finalCode = phonePrefix + timeCode;
         currentSianImgCode = finalCode; // 재구입 버튼이 사용할 이미지번호 저장
