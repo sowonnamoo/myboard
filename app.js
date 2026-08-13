@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, increment, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";const firebaseConfig = {
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";const firebaseConfig = {
     apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
@@ -661,12 +661,10 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("modal-password-input").value = "";
     
     // 기존에 작동하던 상세 렌더링 로직 (데이터 뿌리기, 수정 버튼, 파일, 삭제 등)
-    await updateDoc(doc(db, "boards", currentViewId), { views: increment(1) });
     document.getElementById("detail-title").innerText = `${data.productName} 스티커 / 도안 접수`;
     document.getElementById("detail-author").innerText = `작성자: ${data.author}`;
     const d = data.createdAt.toDate();
     document.getElementById("detail-date").innerText = `작성일: ${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
-    document.getElementById("detail-views").innerText = `조회: ${data.views + 1}`;
     document.getElementById("detail-qty").innerText = data.quantity;
     document.getElementById("detail-size").innerText = data.size;
 
@@ -848,7 +846,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     file1Url: file1Url, // 아까 위에서 선언한 변수 그대로 사용
     file2Url: file2Url, // 아까 위에서 선언한 변수 그대로 사용
     ip: userIp, // <--- IP 주소 저장 추가
-    views: 0,
     createdAt: new Date(),
     isDeleted: false,
     status: '대기',
