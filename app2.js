@@ -72,12 +72,10 @@ async function fetchValidOrders(targetCount) {
         if (snapshot.empty) { exhausted = true; break; }
 
         for (const docSnap of snapshot.docs) {
-            lastVisible = docSnap; // 숨김 처리된 글도 포함해서 커서를 갱신 (중복/누락 방지)
+            lastVisible = docSnap;
             const data = docSnap.data();
-            if (data.isDeleted !== true) {
-                collected.push({ id: docSnap.id, ...data });
-                if (collected.length >= targetCount) break;
-            }
+            collected.push({ id: docSnap.id, ...data });
+            if (collected.length >= targetCount) break;
         }
 
         if (snapshot.docs.length < POSTS_PER_PAGE) {

@@ -559,12 +559,10 @@ async function fetchValidOrders(targetCount) {
         if (snapshot.empty) { exhausted = true; break; }
 
         for (const docSnap of snapshot.docs) {
-            lastVisible = docSnap; // 숨김 처리된 글도 포함해서 커서를 갱신 (중복/누락 방지)
+            lastVisible = docSnap;
             const data = docSnap.data();
-            if (data.isDeleted !== true) {
-                collected.push({ id: docSnap.id, ...data });
-                if (collected.length >= targetCount) break;
-            }
+            collected.push({ id: docSnap.id, ...data });
+            if (collected.length >= targetCount) break;
         }
 
         if (snapshot.docs.length < PAGE_SIZE) {
@@ -908,7 +906,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     ip: userIp, // <--- IP 주소 저장 추가
     uid: currentUser.uid, // 익명 로그인으로 발급된 고유 ID (본인 글 판별용)
     createdAt: new Date(),
-    isDeleted: false,
     status: '대기',
     fromCart: isFromCart // true: 장바구니 자동입력 주문 / false: 작성자가 직접 입력한 주문
     });
