@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -544,7 +544,7 @@ async function loadAndRender() {
         allOrders = [];
      snapshot.forEach(doc => {
     const data = doc.data();
-    // isDeleted 조건문을 제거합니다.
+    if (data.isDeleted === true) return; // 숨김 처리된 글은 목록에 표시하지 않음
     allOrders.push({ id: doc.id, ...data });
 });
 
@@ -750,7 +750,8 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
        filesDiv.appendChild(a);
     }
 
-    // 삭제 버튼 설정 (구글 로그인 후에만 삭제 진행)
+    // 삭제 버튼 설정 (구글 로그인 후에만 진행. 실제로 문서를 지우지 않고,
+    // isDeleted 플래그만 true로 표시해 목록(이 게시판 + 시안 확인 게시판)에서 숨깁니다.)
  document.getElementById("detail-delete-btn").onclick = async () => {
     try {
         await ensureGoogleLogin();
@@ -758,13 +759,13 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         alert("주문 삭제를 하려면 구글 로그인이 필요합니다.\n(오류: " + e.code + " " + e.message + ")");
         return;
     }
-    if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
+    if(confirm("정말로 삭제하시겠습니까? 목록에서 보이지 않게 처리됩니다.")) { 
         try { 
-            // 1. 데이터베이스에서 문서 영구 삭제
-            await deleteDoc(doc(db, "boards", currentViewId)); 
+            // 1. 완전 삭제 대신 숨김 처리
+            await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true }); 
             
             // 2. 알림 후 페이지 새로고침
-            alert("삭제되었습니다."); 
+            alert("삭제(숨김) 처리되었습니다."); 
             location.reload(); 
             
         } catch (e) { 
