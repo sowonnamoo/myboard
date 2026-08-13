@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";const firebaseConfig = {
-    apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
     projectId: "board-291e3",
     storageBucket: "board-291e3.firebasestorage.app",
@@ -1447,49 +1447,4 @@ async function getUserIp() {
 
 
 
-let failCount = 0; // 전역 변수로 관리 이것도 포함 비번틀림 카운트
 
-// 비밀번호 확인 버튼 클릭 시 카운트 로직
-modalConfirmBtn.onclick = async () => {
-    const inputVal = input.value;
-    const isNumeric = /^\d+$/.test(storedPass);
-    const passToCompare = isNumeric ? storedPass.slice(-4) : storedPass;
-
-    // [추가된 로직] 3시간 차단 체크
-    const blockUntil = localStorage.getItem(`block_${id}`);
-    if (blockUntil && Date.now() < parseInt(blockUntil)) {
-        alert("비밀번호 10회 오류로 인해 3시간 동안 차단되었습니다.");
-        return;
-    }
-
-    if (inputVal === passToCompare) {
-        failCount = 0; // 성공 시 횟수 초기화
-        document.getElementById("fail-count-display").classList.add("hidden");
-        
-        modal.classList.add("hidden");
-        currentViewId = id;
-
-        document.getElementById("view-list").classList.add("hidden");
-        document.getElementById("view-detail").classList.remove("hidden");
-        
-        await checkMemoAndSetButton(id, data.sian);
-        // ... (이후 제목 및 이미지 로드 로직 동일)
-    } else {
-        failCount++;
-        // 화면에 틀린 횟수 업데이트
-        const failDisplay = document.getElementById("fail-count-display");
-        const failNum = document.getElementById("fail-num");
-        failNum.innerText = failCount;
-        failDisplay.classList.remove("hidden");
-
-        if (failCount >= 10) {
-            // 3시간(10800000ms) 후 차단 해제
-            localStorage.setItem(`block_${id}`, Date.now() + 10800000);
-            alert("10회 이상 비밀번호가 틀려 3시간 동안 조회가 차단됩니다.");
-            modal.classList.add("hidden");
-            failCount = 0; // 횟수 초기화
-        } else {
-            alert(`비밀번호가 일치하지 않습니다. (${failCount}/10)`);
-        }
-    }
-};
