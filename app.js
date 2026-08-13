@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
@@ -773,17 +773,15 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
        filesDiv.appendChild(a);
     }
 
-    // 삭제 버튼 설정 (익명 로그인 확인 후 진행. 실제로 문서를 지우지 않고,
-    // isDeleted 플래그만 true로 표시해 목록(이 게시판 + 시안 확인 게시판)에서 숨깁니다.
-    // 본인 글인지 여부는 Firestore 규칙이 uid로 검사하며, 남의 글이면 규칙에서 거부됩니다.)
+    // 삭제 버튼 설정 (익명 로그인 확인 후 진행. 실제로 문서를 삭제합니다.
+    // 본인 글인지 여부(또는 관리자 이메일 로그인 여부)는 Firestore 규칙이 검사하며,
+    // 해당 안 되면 규칙에서 거부됩니다.)
  document.getElementById("detail-delete-btn").onclick = async () => {
     await ensureAnonymousLogin();
     if(confirm("정말로 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) { 
         try { 
-            // 1. 완전 삭제 대신 숨김 처리
-            await updateDoc(doc(db, "boards", currentViewId), { isDeleted: true }); 
+            await deleteDoc(doc(db, "boards", currentViewId)); 
             
-            // 2. 알림 후 페이지 새로고침
             alert("삭제되었습니다."); 
             location.reload(); 
             
