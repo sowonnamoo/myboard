@@ -105,7 +105,7 @@
         };
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
+            apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
             authDomain: "board-291e3.firebaseapp.com",
             projectId: "board-291e3",
             storageBucket: "board-291e3.firebasestorage.app",
@@ -188,7 +188,7 @@ document.getElementById('search-btn').addEventListener('click', async () => {
             const secretId = await computeSecretId(c.id, name, phone);
             const privateSnap = await getDoc(doc(db, c.col, c.id, "private", secretId));
             if (!privateSnap.exists()) return null;
-            return { ...c.data, ...privateSnap.data(), id: c.id, isJajoo: c.isJajoo };
+            return { ...c.data, ...privateSnap.data(), id: c.id, isJajoo: c.isJajoo, secretId };
         }));
 
         const filteredData = verified.filter(Boolean);
@@ -280,7 +280,7 @@ if (d.status !== '대기' && d.status !== '접수에러') {
             <div class="flex flex-col gap-2">
             ${
     (!d.isJajoo && d.sian !== 'done') 
-    ? `<button onclick="window.open('https://sowonnamoo.github.io/myboard/index2?autoId=${d.id}', '_blank', 'width=864,height=1000,scrollbars=yes')" 
+    ? `<button onclick="window.open('https://sowonnamoo.github.io/myboard/index2?autoId=${d.id}&key=${d.secretId}', '_blank', 'width=864,height=1000,scrollbars=yes')" 
                class="bg-yellow-500 text-white px-6 py-2 rounded font-bold">인쇄승인대기중</button>`
     : `<button onclick="openPopup('photo1.html?designNo=${designNo}')"
                class="bg-green-600 text-white px-6 py-2 rounded font-bold">확정시안</button>`
