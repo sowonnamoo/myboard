@@ -341,7 +341,7 @@ const dImage = document.getElementById("detail-image");
                 const mi = String(createdAt.getMinutes()).padStart(2, '0');
                 const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
                 const rawPhone = privateData.phone || "00000000000";
-                const phonePrefix = rawPhone.slice(0, -2);
+                const phonePrefix = rawPhone.slice(0, -4); // 뒷4자리(=비밀번호)가 이미지번호로 노출되지 않도록 뒷4자리를 제외
                 const finalCode = phonePrefix + timeCode;
                 currentSianImgCode = finalCode; // 재구입 버튼이 사용할 이미지번호 저장
                 const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
@@ -600,7 +600,7 @@ async function autoViewDetail(id, secretId) {
         const mi = String(createdAt.getMinutes()).padStart(2, '0');
         const timeCode = `${yy}${mm}${dd}${hh}${mi}`;
         const rawPhone = privateData.phone || "00000000000";
-        const phonePrefix = rawPhone.slice(0, -2);
+        const phonePrefix = rawPhone.slice(0, -4); // 뒷4자리(=비밀번호)가 이미지번호로 노출되지 않도록 뒷4자리를 제외
         const finalCode = phonePrefix + timeCode;
         currentSianImgCode = finalCode; // 재구입 버튼이 사용할 이미지번호 저장
         const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
