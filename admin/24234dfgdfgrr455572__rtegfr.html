@@ -394,24 +394,23 @@
 
         const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
-        // boards/jjjj 둘 다 phone/address/message가 공개 문서에 없고(보안 강화로 분리됨)
-        // {컬렉션}/{id}/private/{secretId}에만 있습니다. 고객은 secretId를 알아야만 열 수 있지만,
-        // 관리자 계정(Firestore의 admins/{uid} 문서로 등록된 계정)은 규칙에서 list를 허용해뒀기 때문에
-        // secretId를 몰라도 "그 주문의 private 문서가 뭔지" 목록으로 찾아올 수 있습니다.
-        async function fetchPrivateData(source, docId) {
+        // 개인정보는 이제 관리자 전용 컬렉션 adminOrders/{boardId}에 문서 ID로 바로 저장됩니다.
+        // (boards/jjjj/{id}/private/{secretId}는 고객용 조회 그대로 유지되고, 관리자 페이지는 이걸 건드리지 않습니다.)
+        // 문서 ID가 boardId 그대로라 secretId 계산이나 list 조회 없이 getDoc 단건으로 바로 가져옵니다.
+        async function fetchPrivateData(docId) {
             try {
-                const privSnap = await getDocs(collection(db, source, docId, "private"));
-                return privSnap.empty ? {} : privSnap.docs[0].data();
+                const snap = await getDoc(doc(db, "adminOrders", docId));
+                return snap.exists() ? snap.data() : {};
             } catch (e) {
                 // 관리자 권한이 아니거나(admins 컬렉션 미등록) 규칙 미배포 시 여기로 옴
-                console.error('개인정보(phone/address) 조회 실패 - admins 컬렉션에 계정이 등록돼 있는지 확인하세요:', source, docId, e);
+                console.error('개인정보(phone/address) 조회 실패 - admins 컬렉션에 계정이 등록돼 있는지 확인하세요:', docId, e);
                 return {};
             }
         }
 
         const [boardPrivates, jjjjPrivates] = await Promise.all([
-            Promise.all(snapshot1.docs.map(d => fetchPrivateData('boards', d.id))),
-            Promise.all(snapshot2.docs.map(d => fetchPrivateData('jjjj', d.id)))
+            Promise.all(snapshot1.docs.map(d => fetchPrivateData(d.id))),
+            Promise.all(snapshot2.docs.map(d => fetchPrivateData(d.id)))
         ]);
 
         let allDocs = [];
