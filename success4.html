@@ -11,6 +11,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
         // Firebase 설정 (board-291e3 프로젝트 전용)
         const firebaseConfig = {
@@ -25,6 +26,18 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // ---- 익명 로그인 ----
+        // boards 문서의 status 업데이트는 규칙상 auth가 있어야 통과됩니다.
+        // 같은 브라우저(같은 origin)에서 이미 로그인된 세션이 있으면 그대로 이어받습니다.
+        const auth = getAuth(app);
+        let resolveAuthReady;
+        const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+        onAuthStateChanged(auth, (user) => {
+            if (user) resolveAuthReady(user);
+            else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+        });
+        function ensureAnonymousLogin() { return authReadyPromise; }
+
         async function processPaymentStatus() {
             const statusText = document.getElementById("status-text");
             const price = new URLSearchParams(window.location.search).get('price');
@@ -35,6 +48,9 @@
             }
 
             try {
+                // 상태 업데이트 전에 로그인 세션(같은 브라우저에서 이어받은 익명 계정)이 준비될 때까지 대기
+                await ensureAnonymousLogin();
+
                 // 1. 상태가 '대기'인 문서들 조회
                 const q = query(collection(db, "boards"), where("status", "==", "대기"));
                 const querySnapshot = await getDocs(q);
@@ -63,7 +79,11 @@
                 }
             } catch (err) {
                 console.error(err);
-                statusText.innerText = "결제전송완료";
+                if (err.code === "permission-denied") {
+                    statusText.innerText = "결제는 완료되었으나 상태 반영에 실패했습니다. 관리자에게 문의해주세요.";
+                } else {
+                    statusText.innerText = "결제전송완료";
+                }
             }
         }
 
