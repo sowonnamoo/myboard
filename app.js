@@ -954,6 +954,16 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         uid: currentUser.uid
     });
 
+    // 5. 관리자 페이지 전용 조회용으로, 동일한 개인정보를 adminOrders/{boardId}에도 저장.
+    //    문서 ID가 boardId라서 secretId 계산 없이 관리자가 바로 단건 조회할 수 있고,
+    //    Rules상 isAdmin()만 읽을 수 있어 고객/비관리자에게는 노출되지 않습니다.
+    await setDoc(doc(db, "adminOrders", boardId), {
+        phone: phoneVal2,
+        address: addressVal,
+        message: messageVal,
+        uid: currentUser.uid
+    });
+
     text.textContent = "접수 완료!";
     fileInfoText.textContent = '';
 
