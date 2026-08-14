@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>자동 진단</title>
+<style>
+  body { font-family: sans-serif; margin: 0; padding: 30px 20px; background:#f8fafc; text-align:center; }
+  #box { max-width: 500px; margin: 60px auto; padding: 40px 24px; border-radius:16px; font-size:18px; line-height:1.8; }
+  .pending { background:#f1f5f9; color:#475569; }
+  .ok { background:#dcfce7; color:#166534; }
+  .fail { background:#fee2e2; color:#991b1b; }
+  #big { font-size: 48px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<div id="box" class="pending">
+  <div id="big">⏳</div>
+  <div id="msg">확인 중입니다... (5초 정도 걸려요)</div>
+</div>
+
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const config = {
+  apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+  authDomain: "board-291e3.firebaseapp.com",
+  projectId: "board-291e3",
+  storageBucket: "board-291e3.firebasestorage.app",
+  messagingSenderId: "25881766316",
+  appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
+const app = getApps().find(a => a.name === "diagApp") || initializeApp(config, "diagApp");
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function show(state, bigText, msgText) {
+  document.getElementById("box").className = state;
+  document.getElementById("big").textContent = bigText;
+  document.getElementById("msg").innerHTML = msgText;
+}
+
+(async () => {
+  try {
+    const user = await new Promise((resolve, reject) => {
+      const unsub = onAuthStateChanged(auth, (u) => { if (u) { unsub(); resolve(u); } });
+      signInAnonymously(auth).catch(reject);
+    });
+
+    const boardRef = doc(collection(db, "boards"));
+    const boardId = boardRef.id;
+    const author = "자동진단_" + Date.now();
+    const phone = "01099998888";
+
+    try {
+      await setDoc(boardRef, {
+        author, productName: "진단", quantity: "1", size: "1", price: "0",
+        ip: "0.0.0.0", uid: user.uid, createdAt: new Date(),
+        isDeleted: true, status: "대기", fromCart: false
+      });
+    } catch (e) {
+      show("fail", "❌", "1단계(주문 저장)에서 막혔어요.<br><br>에러 코드:<br><b>" + (e.code || e.message) + "</b><br><br>이 화면을 그대로 캡처해서 보내주세요.");
+      return;
+    }
+
+    const secretId = await sha256Hex(`${boardId}::${author}::${phone.slice(-4)}`);
+
+    try {
+      await setDoc(doc(db, "boards", boardId, "private", secretId), {
+        phone, address: "진단주소", message: "진단", uid: user.uid
+      });
+    } catch (e) {
+      show("fail", "❌", "2단계(연락처/배송지 저장)에서 막혔어요.<br><br>에러 코드:<br><b>" + (e.code || e.message) + "</b><br><br>이 화면을 그대로 캡처해서 보내주세요.");
+      await deleteDoc(boardRef).catch(()=>{});
+      return;
+    }
+
+    const snap = await getDoc(doc(db, "boards", boardId, "private", secretId));
+
+    await deleteDoc(doc(db, "boards", boardId, "private", secretId)).catch(()=>{});
+    await deleteDoc(boardRef).catch(()=>{});
+
+    if (snap.exists()) {
+      show("ok", "✅", "정상입니다!<br>주문 저장 기능은 문제없이 작동해요.");
+    } else {
+      show("fail", "❌", "저장은 됐는데 다시 읽었을 때 안 보여요.<br>이 화면을 그대로 캡처해서 보내주세요.");
+    }
+  } catch (e) {
+    show("fail", "❌", "로그인 단계에서 막혔어요.<br><br>에러 코드:<br><b>" + (e.code || e.message) + "</b><br><br>이 화면을 그대로 캡처해서 보내주세요.");
+  }
+})();
+</script>
+</body>
+</html>
