@@ -403,6 +403,7 @@
             woonso1: data.woonso1 || '',
             ip: data.ip,
             createdAt: data.createdAt,
+            privateError: !!data._privateError,
             raw: data
         };
     }
@@ -526,8 +527,10 @@
                 return privSnap.empty ? {} : privSnap.docs[0].data();
             } catch (e) {
                 // 관리자 권한이 아니거나(admins 컬렉션 미등록) 규칙 미배포 시 여기로 옴
-                console.error('개인정보(phone/address) 조회 실패 - admins 컬렉션에 계정이 등록돼 있는지 확인하세요:', source, docId, e);
-                return {};
+                // 예전엔 조용히 {}를 반환해서, "개인정보가 원래 없는 것"과 "권한 오류로 못 읽은 것"을
+                // 화면에서 구분할 수 없었습니다. 이제는 _privateError 표식을 남겨서 화면에 다르게 표시합니다.
+                console.error('개인정보(phone/address) 조회 실패 - admins 컬렉션에 계정이 등록돼 있는지, 규칙이 배포됐는지 확인하세요:', source, docId, e);
+                return { _privateError: true };
             }
         }
 
@@ -634,12 +637,12 @@
                         </div>
                         ${receiptBadges ? `<div class="mt-1 flex flex-wrap gap-1">${receiptBadges}</div>` : ''}
                     </td>
-                    <td class="p-3 text-slate-600">${data.phone || "-"}</td>
+                    <td class="p-3 text-slate-600">${data.privateError ? '<span class="text-red-500 font-bold" title="개인정보 조회 실패 - admins 등록/규칙 배포 확인 필요">⚠️ 조회오류</span>' : (data.phone || "-")}</td>
                     <td class="p-3 text-slate-600 text-left">
                         ${data.productName || "-"}/${data.quantity || "-"}/${data.size || "-"}
                         ${data.finishings ? `<div class="text-xs text-amber-600 font-medium mt-0.5">🔧 후가공: ${data.finishings}</div>` : ''}
                     </td>
-                    <td class="p-3 text-left text-slate-600">${data.address || "-"}</td>
+                    <td class="p-3 text-left text-slate-600">${data.privateError ? '<span class="text-red-500 font-bold" title="개인정보 조회 실패 - admins 등록/규칙 배포 확인 필요">⚠️ 조회오류</span>' : (data.address || "-")}</td>
                     <td class="p-3 font-semibold text-slate-700">${(data.price || 0).toLocaleString ? (data.price || 0).toLocaleString() : (data.price || 0)}</td>
                     <td class="p-3 font-bold text-blue-600">${data.status || '대기'}${woonsoMsg}</td>
                     <td class="p-3 min-w-[150px] max-w-[210px]">${fileButtons || "-"}</td>
