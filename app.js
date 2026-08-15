@@ -1162,8 +1162,8 @@ window.openCardPage = () => {
     const size = document.getElementById("detail-size").innerText;
     const price = document.getElementById("detail-price").innerText.replace(/[^0-9]/g, '');
 
-    // 3. URL 생성 (작성일이 반영됨)
-    const url = `cardf.html?date=${targetDate}&name=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${qty}&price=${price}`;
+    // 3. URL 생성 (작성일 + 이 주문의 id가 반영됨 - id가 있어야 이메일을 이 주문에 연결 저장 가능)
+    const url = `cardf.html?id=${encodeURIComponent(currentViewId || '')}&date=${targetDate}&name=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${qty}&price=${price}`;
     
     window.open(url, '_blank', 'width=500,height=700');
 };

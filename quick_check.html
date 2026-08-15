@@ -43,6 +43,11 @@
       <button onclick="window.open('https://sowonnamoo.github.io/myboard/index1', '_blank', 'width=800,height=900')" style="background:#4f46e5;">✏️ 글쓰기</button>
     </div>
   </div>
+
+  <div style="margin-top:20px; padding:16px; background:#eff6ff; border-radius:10px;">
+    <p style="margin:0 0 10px; font-size:14px; font-weight:bold;">💳 카드전표 신청 목록</p>
+    <div id="cardResult">불러오는 중...</div>
+  </div>
 </div>
 
 <script type="module">
@@ -113,6 +118,15 @@ window.updateStatus = async (value) => {
   }
 };
 
+window.toggleCardIssued = async (checkbox, id) => {
+  try {
+    await updateDoc(doc(db, "adminOrders", id), { cardIssued: checkbox.checked });
+  } catch (e) {
+    alert("발행완료 처리 실패: " + e.message);
+    checkbox.checked = !checkbox.checked; // 실패 시 체크 상태 원복
+  }
+};
+
 window.deleteSelectedOrder = async () => {
   if (!currentSelected.id) return alert("표에서 주문을 체크해주세요.");
   if (!confirm("정말로 이 주문을 삭제하시겠습니까?\n삭제한 주문은 복구할 수 없습니다.")) return;
@@ -153,6 +167,8 @@ async function loadRecentOrders() {
     }
 
     let html = "<table><tr><th></th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th></tr>";
+    let cardHtml = "<table><tr><th>작성자</th><th>이메일</th><th>발행완료</th></tr>";
+    let cardCount = 0;
     snap1.docs.forEach((d, idx) => {
       const data = d.data();
       const priv = privates[idx];
@@ -168,9 +184,19 @@ async function loadRecentOrders() {
       }
       const authorEsc = author.replace(/'/g, "\\'");
       html += `<tr><td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td><td>${date}</td><td>${author}</td><td>${phone}</td><td>${address}</td></tr>`;
+
+      // 카드전표 이메일이 신청된 주문만 별도 목록에 표시
+      if (!priv._err && priv.cardEmail) {
+        cardCount++;
+        const checked = priv.cardIssued ? 'checked' : '';
+        cardHtml += `<tr><td>${author}</td><td>${priv.cardEmail}</td><td style="text-align:center;"><input type="checkbox" ${checked} onchange="toggleCardIssued(this, '${d.id}')"></td></tr>`;
+      }
     });
     html += "</table>";
     resultEl.innerHTML = html;
+
+    cardHtml += "</table>";
+    document.getElementById("cardResult").innerHTML = cardCount > 0 ? cardHtml : "카드전표 신청 내역이 없습니다.";
   } catch (e) {
     resultEl.innerHTML = `<span class="fail">⚠️ 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
   }
