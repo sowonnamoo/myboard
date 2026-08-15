@@ -92,6 +92,56 @@ let currentSelected = { id: "" };
 // 주문별 private 서브컬렉션 문서 참조를 캐싱 (운송장URL 저장 시 재사용)
 let privateRefCache = {};
 
+// 세금계산서(segum1) 문서 ID 계산 - app.js/segum.html과 완전히 동일한 방식이어야
+// 같은 사람이면 같은 ID가 나옴 (이름 + 전화번호 전체자리 해싱)
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function normalizeName(name) { return String(name || "").trim(); }
+function normalizePhoneFull(phone) { return String(phone || "").replace(/[^0-9]/g, ""); }
+async function computeSegumId(name, phone) {
+  return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
+}
+async function fetchSegumMatch(author, phone) {
+  try {
+    const segumId = await computeSegumId(author, phone);
+    const snap = await getDoc(doc(db, "segum1", segumId));
+    return snap.exists() ? snap.data() : null;
+  } catch (e) {
+    return null;
+  }
+}
+// boardId -> segum1 등록 정보 캐시 (아이콘 클릭 시 재조회 없이 바로 보여주기 위함)
+let taxDataMap = {};
+// boardId -> 이 주문건의 세금계산서 발행 여부 캐시 (버튼 토글/정렬에 사용)
+let taxIssuedMap = {};
+window.showTaxInfo = (boardId) => {
+  const t = taxDataMap[boardId];
+  if (!t) return;
+  alert(
+    `📋 세금계산서 등록 정보\n\n` +
+    `상호명: ${t.bizName || '-'}\n` +
+    `사업자등록번호: ${t.bizNum || '-'}\n` +
+    `업태/종목: ${t.bizType || '-'} / ${t.bizItem || '-'}\n` +
+    `이메일: ${t.email || '-'}\n` +
+    `담당자: ${t.manager || '-'} (${t.managerPhone || '-'})`
+  );
+};
+
+// 세금계산서 발행 여부는 (운송장URL과 동일하게) 이 주문의 private 문서에 저장 - 관리자만 수정 가능
+window.toggleTaxIssued = async (boardId) => {
+  const ref = privateRefCache[boardId];
+  if (!ref) return alert("이 주문의 개인정보(private) 문서를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.");
+  const newVal = !taxIssuedMap[boardId];
+  try {
+    await updateDoc(ref, { taxIssued: newVal });
+    loadRecentOrders();
+  } catch (e) {
+    alert("상태 변경 실패: " + e.message);
+  }
+};
+
 // 표를 5개까지만 먼저 보여주고, 나머지는 "펼쳐보기" 버튼으로 펼치게 만드는 공통 헬퍼
 function buildExpandableTable(headerRowHtml, rowsHtml, keyPrefix) {
   const visible = rowsHtml.slice(0, 5).join('');
@@ -278,8 +328,14 @@ async function loadRecentOrders() {
 
     const adminPrivates = await Promise.all(snap1.docs.map(d => fetchPrivate(d.id)));
     const rawPrivates = await Promise.all(snap1.docs.map(d => fetchPrivateRef(d.id)));
+    // 이 10건 각각의 작성자+전화번호가 segum1(세금계산서)에 이미 등록돼 있는지 확인
+    const taxMatches = await Promise.all(snap1.docs.map((d, idx) => {
+      const ap = adminPrivates[idx];
+      if (ap._err) return null;
+      return fetchSegumMatch(d.data().author || '', ap.phone || '');
+    }));
 
-    const rows = [];
+    const rowObjs = [];
     snap1.docs.forEach((d, idx) => {
       const adminPriv = adminPrivates[idx];
       // adminOrders 문서 자체가 없는 주문은 목록에서 아예 제외
@@ -312,7 +368,23 @@ async function loadRecentOrders() {
         cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
       }
 
-      rows.push(`<tr>
+      // 세금계산서가 이미 등록된 작성자+전화번호면 아이콘+발행 상태 버튼 표시
+      const tax = taxMatches[idx];
+      let taxIconCell = '';
+      let pinToTop = false;
+      if (tax) {
+        taxDataMap[d.id] = tax;
+        const issued = !!rawPriv.taxIssued;
+        taxIssuedMap[d.id] = issued;
+        pinToTop = !issued; // 이 주문건이 미발행이면 최상단 고정 대상
+        const btnLabel = issued ? '✅ 발행완' : '🔴 미발행';
+        const btnStyle = issued ? 'background:#166534;' : 'background:#dc2626;';
+        taxIconCell = `<span style="cursor:pointer; font-size:16px;" title="세금계산서 신청됨 - 클릭해서 정보 보기" onclick="showTaxInfo('${d.id}')">🧾</span>
+          <button onclick="toggleTaxIssued('${d.id}')" style="${btnStyle} padding:3px 6px; font-size:11px; margin-left:4px;">${btnLabel}</button>`;
+      }
+
+      rowObjs.push({ pinned: pinToTop, html: `<tr>
+        <td>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td>${date}</td>
         <td>${author}</td>
@@ -321,8 +393,12 @@ async function loadRecentOrders() {
         <td>${status}</td>
         <td>${trackingCell}</td>
         <td>${cardCell}</td>
-      </tr>`);
+      </tr>` });
     });
+
+    // 세금계산서 미발행 건을 최상단으로 (그 외에는 원래(최신순) 순서 유지 - stable sort)
+    rowObjs.sort((a, b) => (a.pinned === b.pinned) ? 0 : (a.pinned ? -1 : 1));
+    const rows = rowObjs.map(r => r.html);
 
     if (rows.length === 0) {
       resultEl.textContent = "표시할 주문이 없습니다.";
@@ -330,7 +406,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = buildExpandableTable(
-      "<tr><th></th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
+      "<tr><th></th><th></th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
       rows, "orders"
     );
   } catch (e) {

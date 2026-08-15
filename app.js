@@ -733,6 +733,31 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     currentViewAuthor = data.author;
     currentViewPhone = privateData.phone;
 
+    // 양방향 제한: 신청 자체는 openCashPage/segum.html에서 막고,
+    // 여기는 "이미 신청/등록된 쪽의 버튼을 즉시 숨기는" UI 노출만 담당
+    const segumBtn = document.getElementById('segum-btn-id');
+    if (segumBtn) {
+        segumBtn.style.display = ''; // 매번 렌더링 시 초기화 후 재판단
+        // 이 주문에 현금영수증 신청 기록이 있으면(발행 전이어도) 세금계산서 버튼 숨김
+        getDoc(doc(db, "cashReceipt1", currentViewId)).then(cashSnap => {
+            if (cashSnap.exists()) {
+                segumBtn.style.display = 'none';
+            }
+        }).catch(() => {});
+    }
+    const cashBtn = document.getElementById('cash-receipt-btn');
+    if (cashBtn) {
+        cashBtn.style.display = '';
+        // 이 이름+전화번호로 세금계산서가 이미 등록돼 있으면 현금영수증 버튼 숨김
+        computeSegumId(currentViewAuthor, currentViewPhone).then(segumId =>
+            getDoc(doc(db, "segum1", segumId))
+        ).then(segumSnap => {
+            if (segumSnap.exists()) {
+                cashBtn.style.display = 'none';
+            }
+        }).catch(() => {});
+    }
+
     // 3. 인증 성공 시 카운트 초기화 및 상세 화면 렌더링
     localStorage.setItem("failCount", "0");
     document.getElementById("password-modal").classList.add("hidden");
@@ -1202,6 +1227,15 @@ window.openCashPage = async () => {
             createdAt: serverTimestamp(),
             uid: (await ensureAnonymousLogin()).uid
         });
+        // 이름+전화번호 기반 식별자로도 기록 -> segum.html에서 "이미 현금영수증 신청됨"을 확인할 수 있게 함
+        // (segum1과 동일한 해싱 방식이라 같은 사람이면 항상 같은 ID가 나옴)
+        const cashSecretId = await computeSegumId(currentViewAuthor, currentViewPhone);
+        await setDoc(doc(db, "cashSecret", cashSecretId), {
+            boardId: currentViewId,
+            createdAt: serverTimestamp()
+        }, { merge: true });
+        const segumBtnNow = document.getElementById('segum-btn-id');
+        if (segumBtnNow) segumBtnNow.style.display = 'none';
         alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
     } catch (e) {
         alert('신청 중 오류가 발생했습니다: ' + e.message);

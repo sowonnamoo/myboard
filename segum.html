@@ -11,6 +11,12 @@
     .notice { font-size: 12px; color: #444; line-height: 1.6; background: #f5f5f5; padding: 12px; border-radius: 6px; margin: 15px 0; }
     .warn { font-size: 12px; color: #d32f2f; font-weight: bold; margin-top: 6px; }
     label { display:block; font-size:12px; font-weight:bold; color:#555; margin-top:10px; }
+    .hidden { display: none; }
+    .done-title { color: #03c75a; font-weight: bold; text-align: center; margin: 10px 0; font-size: 15px; }
+    .summary-row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #eee; padding: 8px 0; font-size: 14px; }
+    .summary-row span:first-child { color: #888; }
+    .summary-row span:last-child { font-weight: bold; text-align: right; word-break: break-all; }
+    .edit-btn { background: #64748b; }
 </style>
 </head>
 <body>
@@ -23,34 +29,42 @@
         <div class="warn">※ 작성자 성함 또는 전화번호가 바뀐 경우, 필히 다시 신청해주세요.</div>
     </div>
 
-    <input type="hidden" id="docId">
+    <div id="formSection">
+        <input type="hidden" id="docId">
 
-    <label>상품 구입시 작성자 성함</label>
-    <input type="text" id="name" placeholder="작성자 성함">
-    <label>상품 구입시 전화번호</label>
-    <input type="text" id="phone" placeholder="전화번호 (숫자만)">
+        <label>상품 구입시 작성자 성함</label>
+        <input type="text" id="name" placeholder="작성자 성함">
+        <label>상품 구입시 전화번호</label>
+        <input type="text" id="phone" placeholder="전화번호 (숫자만)">
 
-    <label>사업자 등록번호</label>
-    <input type="text" id="bizNum" placeholder="사업자 등록번호">
-    <label>업태</label>
-    <input type="text" id="bizType" placeholder="업태">
-    <label>종목</label>
-    <input type="text" id="bizItem" placeholder="종목">
-    <label>상호명</label>
-    <input type="text" id="bizName" placeholder="상호명">
-    <label>발행받을 이메일</label>
-    <input type="email" id="email" placeholder="발행받을 이메일">
-    <label>담당자 성함</label>
-    <input type="text" id="manager" placeholder="담당자 성함">
-    <label>담당자 연락처</label>
-    <input type="text" id="managerPhone" placeholder="담당자 연락처">
+        <label>사업자 등록번호</label>
+        <input type="text" id="bizNum" placeholder="사업자 등록번호">
+        <label>업태</label>
+        <input type="text" id="bizType" placeholder="업태">
+        <label>종목</label>
+        <input type="text" id="bizItem" placeholder="종목">
+        <label>상호명</label>
+        <input type="text" id="bizName" placeholder="상호명">
+        <label>발행받을 이메일</label>
+        <input type="email" id="email" placeholder="발행받을 이메일">
+        <label>담당자 성함</label>
+        <input type="text" id="manager" placeholder="담당자 성함">
+        <label>담당자 연락처</label>
+        <input type="text" id="managerPhone" placeholder="담당자 연락처">
 
-    <button onclick="saveData()">신청 / 수정하기</button>
+        <button onclick="saveData()">신청 / 수정하기</button>
+    </div>
+
+    <div id="summarySection" class="hidden">
+        <p class="done-title">✅ 신청이 완료되었습니다.<br>매월 1일 자동으로 세금계산서가 발행됩니다.</p>
+        <div id="summaryList"></div>
+        <button class="edit-btn" onclick="showForm()">✏️ 수정</button>
+    </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -79,12 +93,51 @@
         return sha256Hex(`segum::${normalizeName(name)}::${normalizePhone(phone)}`);
     }
 
+    const FIELD_LABELS = [
+        ['name', '작성자 성함'],
+        ['phone', '전화번호'],
+        ['bizNum', '사업자 등록번호'],
+        ['bizType', '업태'],
+        ['bizItem', '종목'],
+        ['bizName', '상호명'],
+        ['email', '발행받을 이메일'],
+        ['manager', '담당자 성함'],
+        ['managerPhone', '담당자 연락처'],
+    ];
+
+    function renderSummary(data) {
+        const listEl = document.getElementById('summaryList');
+        listEl.innerHTML = FIELD_LABELS.map(([key, label]) =>
+            `<div class="summary-row"><span>${label}</span><span>${(data[key] || '-').toString().replace(/</g, '&lt;')}</span></div>`
+        ).join('');
+    }
+
+    window.showForm = () => {
+        document.getElementById('summarySection').classList.add('hidden');
+        document.getElementById('formSection').classList.remove('hidden');
+    };
+
     window.saveData = async () => {
         const name = document.getElementById('name').value.trim();
         const phone = document.getElementById('phone').value.trim();
 
         if (!name || !phone) {
             alert('작성자 성함과 전화번호는 필수입니다.');
+            return;
+        }
+
+        // 이 이름+전화번호로 이미 현금영수증을 신청한 적이 있으면 세금계산서 신청을 막음
+        // (cashSecret 문서 ID는 app.js의 computeSegumId와 완전히 동일한 방식으로 계산되므로
+        //  같은 사람이면 항상 같은 ID가 나와 서로 조회가 가능함)
+        try {
+            const cashSecretId = await computeDocId(name, phone);
+            const cashSnap = await getDoc(doc(db, "cashSecret", cashSecretId));
+            if (cashSnap.exists()) {
+                alert('이미 현금영수증 신청이 등록되셔서 세금계산서 신청은 되지 않습니다.');
+                return;
+            }
+        } catch (e) {
+            alert('확인 중 오류가 발생했습니다: ' + e.message);
             return;
         }
 
@@ -109,8 +162,17 @@
             const docId = await computeDocId(name, phone);
             // setDoc + merge: 처음 신청이면 새로 생성, 같은 이름+전화번호로 다시 신청하면 자동 수정(덮어쓰기)
             await setDoc(doc(db, COLLECTION_NAME, docId), data, { merge: true });
-            alert('신청이 완료되었습니다.\n매월 1일 자동으로 세금계산서가 발행됩니다.');
-            location.reload();
+            // 이 페이지를 연 주문 상세 화면(부모 창)의 현금영수증 버튼을 즉시 숨김 (같은 사이트라 접근 가능)
+            if (window.opener) {
+                try {
+                    const btn = window.opener.document.getElementById('cash-receipt-btn');
+                    if (btn) btn.style.display = 'none';
+                } catch (e) { /* 부모 창 접근 실패해도 신청 자체는 정상 처리됨 */ }
+            }
+            // alert/새로고침 대신, 입력한 내용을 그대로 화면에 나열해서 바로 확인할 수 있게 함
+            renderSummary(data);
+            document.getElementById('formSection').classList.add('hidden');
+            document.getElementById('summarySection').classList.remove('hidden');
         } catch (e) {
             alert('저장 중 오류가 발생했습니다: ' + e.message);
         }
