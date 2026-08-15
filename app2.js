@@ -46,6 +46,70 @@ function ensureAnonymousLogin() {
     return authReadyPromise;
 }
 
+// [R2 업로드 함수] app.js의 uploadToR2와 동일한 방식(용량/확장자 제한 포함),
+// 다만 이 페이지는 input이 미리 고정돼있지 않고 클릭 시점에 선택된 파일 하나를 바로 받아 업로드함
+function uploadFileToR2(file, authorName) {
+    return new Promise((resolve, reject) => {
+        const MAX_SIZE = 500 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            alert("⚠️ 파일 용량이 너무 큽니다. 500MB 이하의 파일만 업로드 가능합니다.");
+            reject(new Error("파일 크기 초과: " + (file.size / (1024 * 1024)).toFixed(2) + "MB"));
+            return;
+        }
+
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!allowedExtensions.includes(ext)) {
+            alert("⚠️ 허용되지 않는 파일 형식입니다.");
+            reject(new Error("보안상 차단된 파일 형식: " + ext));
+            return;
+        }
+
+        const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+        const WORKER_URL = "https://r2.ecogr.workers.dev/";
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", `${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, true);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.setRequestHeader("X-File-Size", file.size);
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const result = JSON.parse(xhr.responseText);
+                    resolve(result.url);
+                } catch (e) {
+                    reject(new Error("업로드 응답을 처리하지 못했습니다."));
+                }
+            } else {
+                reject(new Error("업로드 실패: " + xhr.statusText));
+            }
+        };
+        xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다."));
+        xhr.send(file);
+    });
+}
+
+// 파일 다운로드 강제 실행 함수 (app.js와 동일)
+window.downloadFile = async (url, filename) => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+    } catch (e) {
+        alert("다운로드 중 오류가 발생했습니다.");
+        console.error(e);
+    }
+};
+
 let allOrders = [];
 let currentPage = 1;
 let currentViewId = ""; 
@@ -204,18 +268,33 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const memoInput = document.getElementById("memo-input"); // 입력창
     const saveBtn = document.getElementById("save-memo-btn"); // 등록버튼
     const deleteBtn = document.getElementById("delete-memo-btn"); // 삭제버튼
+    const fileBtn = document.getElementById("file-replace-btn"); // 파일교체 버튼
+    const fileDownloadArea = document.getElementById("file-download-area");
     
     // 조판 완료 상태 여부 확인
     const isDone = (sianStatus === "done");
+
+    // 파일 재업로드 잠금 여부 확인 (이미 파일을 올려서 처리 대기중이면, 관리자가 새 시안을
+    // 등록하고 잠금을 풀어주기 전까지는 다시 못 올리게 함)
+    let fileLocked = false;
+    try {
+        const boardSnap = await getDoc(doc(db, "boards", boardId));
+        fileLocked = !!(boardSnap.exists() && boardSnap.data().fileLocked);
+    } catch (e) { /* 조회 실패해도 나머지 UI는 정상 진행 */ }
 
     // [핵심] 조판 완료 시 입력창과 버튼 비활성화
     memoInput.disabled = isDone;
     saveBtn.disabled = isDone;
     deleteBtn.disabled = isDone;
+    if (fileBtn) fileBtn.disabled = isDone || fileLocked;
     
     // 버튼 스타일 조정 (비활성화 시 흐리게)
     saveBtn.style.opacity = isDone ? "0.5" : "1";
     deleteBtn.style.opacity = isDone ? "0.5" : "1";
+    if (fileBtn) {
+        fileBtn.style.opacity = (isDone || fileLocked) ? "0.5" : "1";
+        fileBtn.title = fileLocked ? "새 시안이 등록된 후 다시 첨부할 수 있습니다." : "";
+    }
 
     approveBtn.onclick = null;
     
@@ -224,11 +303,18 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const hasMemo = !snapshot.empty;
 
     if (hasMemo) {
-        memoDisplay.innerText = snapshot.docs[0].data().text;
+        const latest = snapshot.docs[0].data();
+        memoDisplay.innerText = latest.text;
         memoStatus.classList.remove("hidden");
+        if (fileDownloadArea) {
+            fileDownloadArea.innerHTML = latest.fileUrl
+                ? `<a href="javascript:void(0)" onclick="downloadFile('${latest.fileUrl}', '${(latest.fileName || 'file').replace(/'/g, "")}')" class="text-blue-600 underline text-xs">📎 내가 올린 파일 다운로드 (${latest.fileName || '파일'})</a>`
+                : "";
+        }
     } else {
         memoDisplay.innerText = isDone ? "조판 완료로 인해 수정 요청이 불가능합니다." : "작성된 수정요청 없습니다.(인쇄승인 가능상태)";
         memoStatus.classList.add("hidden");
+        if (fileDownloadArea) fileDownloadArea.innerHTML = "";
     }
 
     if (isDone) {
@@ -434,6 +520,79 @@ document.getElementById("delete-memo-btn").addEventListener("click", async () =>
             alert("본인이 작성한 글의 수정요청만 삭제할 수 있습니다.");
         } else {
             alert("삭제 실패: " + e.message);
+        }
+    }
+});
+
+const FILE_REPLACE_WARNING =
+    "반복된 파일교체는 작업지연을 유발합니다. 기다리시는 손님께 폐가 되는 일 방지 차원상 " +
+    "수정량이 많은 경우 후순위로 접수되니 차례, 양해 부탁드립니다. " +
+    "파일수정시 통상 1일 1회 혹은 다음날 시안 등록됩니다. " +
+    "파일을 올리시는 경우 신중히 최종확정된 파일로 접수 바랍니다.";
+
+document.getElementById("file-replace-btn").addEventListener("click", () => {
+    if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
+    alert(FILE_REPLACE_WARNING);
+    document.getElementById("revision-file-input").click();
+});
+
+document.getElementById("revision-file-input").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    e.target.value = ""; // 같은 파일을 다시 선택해도 change 이벤트가 또 발생하도록 초기화
+    if (!file || !currentViewId) return;
+
+    const currentUser = await ensureAnonymousLogin();
+    const fileBtn = document.getElementById("file-replace-btn");
+
+    try {
+        // 업로드 직전에 최신 잠금/조판 상태를 다시 확인 (다른 창에서 이미 처리됐을 수 있으므로)
+        const boardSnap = await getDoc(doc(db, "boards", currentViewId));
+        const boardData = boardSnap.data() || {};
+        if (boardData.sian === "done") {
+            return alert("조판 완료로 인해 파일 첨부가 불가능합니다.");
+        }
+        if (boardData.fileLocked) {
+            return alert("이미 첨부하신 파일이 처리 대기중입니다. 새 시안이 등록된 후 다시 첨부해주세요.");
+        }
+
+        fileBtn.disabled = true;
+        fileBtn.innerText = "업로드중...";
+
+        const fileUrl = await uploadFileToR2(file, boardData.author || "고객");
+
+        // 기존 수정요청(hanjool) 삭제 후 새로 등록 - 텍스트 메모 등록과 동일한 방식
+        const q = query(collection(db, "boards", currentViewId, "hanjool"));
+        const existing = await getDocs(q);
+        await Promise.allSettled(existing.docs.map(d => deleteDoc(d.ref)));
+
+        await addDoc(collection(db, "boards", currentViewId, "hanjool"), {
+            text: "📎 파일이 첨부되었습니다. (수정중입니다)",
+            fileUrl: fileUrl,
+            fileName: file.name,
+            createdAt: new Date(),
+            uid: currentUser.uid
+        });
+
+        // 새 시안이 등록되어 관리자가 잠금을 풀어주기 전까지 재업로드 잠금
+        await updateDoc(doc(db, "boards", currentViewId), { fileLocked: true });
+
+        const freshSnap = await getDoc(doc(db, "boards", currentViewId));
+        await checkMemoAndSetButton(currentViewId, freshSnap.data().sian);
+
+        alert("파일이 첨부되었습니다. 수정중 상태로 변경되었습니다.");
+    } catch (err) {
+        if (err.code === "permission-denied") {
+            alert("본인이 작성한 글에만 파일을 첨부할 수 있습니다.");
+        } else {
+            alert("파일 첨부 실패: " + err.message);
+        }
+    } finally {
+        fileBtn.disabled = false;
+        fileBtn.innerText = "📎 파일교체";
+        // 실제 잠금 여부는 checkMemoAndSetButton이 다시 반영해줌 (성공 시 비활성 상태 유지)
+        const snap = await getDoc(doc(db, "boards", currentViewId)).catch(() => null);
+        if (snap && snap.exists()) {
+            await checkMemoAndSetButton(currentViewId, snap.data().sian);
         }
     }
 });

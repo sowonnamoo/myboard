@@ -112,16 +112,6 @@ async function fetchSegumMatch(author, phone) {
     return null;
   }
 }
-
-// 카드전표(cardjun1) 등록 여부/URL 확인 - "등록완료 + 보기" 표시를 위해 목록 로딩 시 함께 조회
-async function fetchCardMatch(boardId) {
-  try {
-    const snap = await getDoc(doc(db, "cardjun1", boardId));
-    return snap.exists() ? snap.data() : null;
-  } catch (e) {
-    return null;
-  }
-}
 // boardId -> segum1 등록 정보 캐시 (아이콘 클릭 시 재조회 없이 바로 보여주기 위함)
 let taxDataMap = {};
 // boardId -> 이 주문건의 세금계산서 발행 여부 캐시 (버튼 토글/정렬에 사용)
@@ -267,6 +257,17 @@ window.saveTrackingUrl = async (boardId) => {
   }
 };
 
+// 고객이 index2에서 파일을 첨부하면 boards/{id}.fileLocked = true 로 잠김.
+// 관리자가 새 시안을 등록한 뒤 여기서 눌러 풀어줘야 고객이 다시 파일을 첨부할 수 있음.
+window.unlockFileUpload = async (boardId) => {
+  try {
+    await updateDoc(doc(db, "boards", boardId), { fileLocked: false });
+    loadRecentOrders();
+  } catch (e) {
+    alert("잠금 해제 실패: " + e.message);
+  }
+};
+
 window.saveCardReceiptUrl = async (boardId) => {
   const input = document.getElementById('card-' + boardId);
   const url = input.value.trim();
@@ -338,8 +339,6 @@ async function loadRecentOrders() {
 
     const adminPrivates = await Promise.all(snap1.docs.map(d => fetchPrivate(d.id)));
     const rawPrivates = await Promise.all(snap1.docs.map(d => fetchPrivateRef(d.id)));
-    // 이 10건 각각의 카드전표(cardjun1) 등록 여부/URL을 함께 조회 ("등록완료 + 보기" 표시용)
-    const cardMatches = await Promise.all(snap1.docs.map(d => fetchCardMatch(d.id)));
     // 이 10건 각각의 작성자+전화번호가 segum1(세금계산서)에 이미 등록돼 있는지 확인
     const taxMatches = await Promise.all(snap1.docs.map((d, idx) => {
       const ap = adminPrivates[idx];
@@ -371,18 +370,13 @@ async function loadRecentOrders() {
       const authorEsc = author.replace(/'/g, "\\'");
       const existingTracking = rawPriv.trackingUrl || '';
       const trackingCell = existingTracking
-        ? `<span class="url-saved">✅ 등록됨</span> <a href="${existingTracking}" target="_blank" style="font-size:12px;">보기</a><div class="url-row"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">수정</button></div>`
+        ? `<span class="url-saved">✅ 등록됨</span><div class="url-row"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">수정</button></div>`
         : `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
 
-      // 카드결제 상태일 때만 카드전표 URL 입력칸 표시. 이미 등록돼 있으면 "등록완료 + 보기"로 표시하고,
-      // 값을 채운 입력칸을 함께 보여줘서 잘못 등록됐을 때 바로 수정할 수 있게 함.
+      // 카드결제 상태일 때만 카드전표 URL 입력칸 표시
       let cardCell = '-';
       if (status === '카드결제') {
-        const cardData = cardMatches[idx];
-        const existingCardUrl = (cardData && cardData.fileUrl) || '';
-        cardCell = existingCardUrl
-          ? `<span class="url-saved">✅ 등록됨</span> <a href="${existingCardUrl}" target="_blank" style="font-size:12px;">보기</a><div class="url-row"><input id="card-${d.id}" value="${existingCardUrl.replace(/"/g,'&quot;')}"><button onclick="saveCardReceiptUrl('${d.id}')">수정</button></div>`
-          : `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
+        cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
       }
 
       // 세금계산서가 이미 등록된 작성자+전화번호면 아이콘+발행 상태 버튼 표시
@@ -400,11 +394,16 @@ async function loadRecentOrders() {
           <button onclick="toggleTaxIssued('${d.id}')" style="${btnStyle} padding:3px 6px; font-size:11px; margin-left:4px;">${btnLabel}</button>`;
       }
 
+      // 고객이 index2에서 파일을 첨부해 잠긴 상태면, 작성자 옆에 잠금 배지 + 해제 버튼 표시
+      const authorCell = data.fileLocked
+        ? `${author}<br><span style="color:#b45309; font-size:11px;">📎🔒 파일첨부됨</span> <button onclick="unlockFileUpload('${d.id}')" style="padding:2px 6px; font-size:11px;">해제</button>`
+        : author;
+
       rowObjs.push({ pinned: pinToTop, html: `<tr>
         <td>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td>${date}</td>
-        <td>${author}</td>
+        <td>${authorCell}</td>
         <td>${phone}</td>
         <td>${address}</td>
         <td>${status}</td>
