@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ── 관리자 판별: admins/{uid} 문서가 "존재하기만 하면" 그 uid는 관리자 ──
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    // ── 게시글 공개 문서: 상품명/수량/가격 등 비민감 정보만 ──
+    match /boards/{boardId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && !('password' in request.resource.data)
+        && !('phone' in request.resource.data)
+        && !('address' in request.resource.data)
+        && !('message' in request.resource.data);
+      allow update, delete: if (request.auth != null && request.auth.uid == resource.data.uid)
+        || isAdmin();
+      // ── 고객용 개인정보 조회(이름+전화번호 뒷4자리로 계산한 secretId) ──
+      match /private/{secretId} {
+        allow get: if true;
+        allow list: if isAdmin();
+        allow create: if request.auth != null;
+        // 관리자가 나중에 운송장URL/카드전표URL 등을 추가로 기록할 수 있게 허용
+        // (다른 필드는 그대로, 고객 자신은 여전히 수정 불가)
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+      match /hanjool/{memoId} {
+        allow read: if true;
+        allow create: if request.auth != null;
+        allow delete: if request.auth != null;
+      }
+    }
+    // 재주문 게시판(jjjj) - boards와 동일 구조
+    match /jjjj/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && !('password' in request.resource.data)
+        && !('phone' in request.resource.data)
+        && !('address' in request.resource.data)
+        && !('message' in request.resource.data);
+      allow update, delete: if (request.auth != null && request.auth.uid == resource.data.uid)
+        || isAdmin();
+      match /private/{secretId} {
+        allow get: if true;
+        allow list: if isAdmin();
+        allow create: if request.auth != null;
+        // 관리자가 나중에 운송장URL/카드전표URL 등을 추가로 기록할 수 있게 허용
+        // (다른 필드는 그대로, 고객 자신은 여전히 수정 불가)
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+    }
+    // ── 관리자 전용 개인정보 저장소: boardId를 문서 ID로 그대로 사용 ──
+    // 주문 작성 시 private와 동일한 phone/address/message를 여기에도 한 번 더 저장해서,
+    // 관리자 페이지는 secretId 계산이나 list 조회 없이 getDoc 단건으로 바로 읽습니다.
+    // 관리자(isAdmin())만 읽을 수 있고, 그 외에는 완전히 비공개입니다.
+    match /adminOrders/{boardId} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null; // 고객이 주문 접수 시 클라이언트에서 직접 씀
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+    // IP 차단 목록
+    match /blocked_ips/{ip} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // 세금계산서 등록 정보: 문서 ID = 이름+전화번호를 해싱한 값
+    // (boards/private의 secretId와 동일한 방식) 본인만(이름+전화번호를 아는 사람만)
+    // get으로 조회/재신청(수정)할 수 있고, list(전체 목록)는 관리자만 가능합니다.
+    match /segum1/{secretId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+    // ── 카드전표 신청 정보: 문서 ID = boardId ──
+    // 관리자는 전체 조회/수정(전표 URL 등록) 가능.
+    // 신청은 누구나(그 주문을 열람한 고객이) 생성 가능.
+    // 조회(get)는 관리자이거나, 그 주문(boards/{boardId})의 작성자 본인(uid 일치)만 가능
+    //   -> 고객이 "카드전표" 버튼을 다시 눌렀을 때 자기 신청 상태(발행 여부)만 확인할 수 있게 함.
+    // list(전체 목록 조회)는 관리자만 가능해서 다른 사람 신청 내역은 볼 수 없음.
+    match /cardjun1/{boardId} {
+      allow get: if isAdmin() || (request.auth != null
+        && get(/databases/$(database)/documents/boards/$(boardId)).data.uid == request.auth.uid);
+      allow list: if isAdmin();
+      // 고객은 더 이상 직접 신청(생성)하지 않고, 관리자가 발송 후 등록합니다.
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── 현금영수증 신청 정보: 문서 ID = boardId ──
+    // 세금계산서(segum1)에 이미 등록된 이름+전화번호면, 클라이언트(app.js)가 신청 전에
+    // 미리 막습니다 (완전한 서버측 강제는 아니고 앱 차원의 안내입니다).
+    // 고객은 최초 신청(create)과 발행희망번호 수정(update)까지 가능하고,
+    // fileUrl(전표 이미지) 등록은 관리자가 quick_check.html에서 별도로 진행합니다.
+    match /cashReceipt1/{boardId} {
+      allow get: if isAdmin() || (request.auth != null
+        && get(/databases/$(database)/documents/boards/$(boardId)).data.uid == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if request.auth != null;
+      allow update: if isAdmin() || (request.auth != null
+        && get(/databases/$(database)/documents/boards/$(boardId)).data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+  }
+}

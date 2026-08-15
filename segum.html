@@ -2,59 +2,55 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>세무 관리 시스템</title>
+    <title>세금계산서 등록</title>
 <style>
-    body { font-family: sans-serif; padding: 20px; background: #fff; } /* 회색 배경 제거 */
-    .box { max-width: 450px; margin: 0 auto; padding: 0; border: none; border-radius: 0; background: white; box-shadow: none; } /* 테두리, 둥근 모서리, 그림자 제거 */
-    input, select { width: 100%; padding: 8px; margin: 3px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; } /* 행간 3px로 조정 */
-    .hidden { display: none; }
-    button { width: 100%; padding: 12px; margin-top: 5px; background: #03c75a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-    .btn-search { background: #007bff; }
-    .item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-    .btn-group button { width: auto; padding: 5px 10px; margin-left: 5px; font-size: 12px; }
+    body { font-family: sans-serif; padding: 20px; background: #fff; }
+    .box { max-width: 450px; margin: 0 auto; padding: 0; border: none; background: white; }
+    input { width: 100%; padding: 8px; margin: 3px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; margin-top: 12px; background: #03c75a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .notice { font-size: 12px; color: #444; line-height: 1.6; background: #f5f5f5; padding: 12px; border-radius: 6px; margin: 15px 0; }
+    .warn { font-size: 12px; color: #d32f2f; font-weight: bold; margin-top: 6px; }
+    label { display:block; font-size:12px; font-weight:bold; color:#555; margin-top:10px; }
 </style>
 </head>
 <body>
 
 <div class="box">
-    <h3>저장된 내 정보 조회</h3>
-    <input type="text" id="searchPhone" placeholder="전화번호(접수자) 입력">
-    <button class="btn-search" onclick="searchData()">조회하기</button>
-    <div id="resultList" style="margin-bottom: 20px;"></div>
+    <h3>세금계산서 등록</h3>
 
-    <hr style="margin: 30px 0;">
-
-    <h3>세무 정보 신규 등록 (최초1회등록시 매월1일 자동발행)</h3>
-    <input type="hidden" id="docId">
-    <input type="text" id="name" placeholder="상품구입시 접수자성함">
-    <input type="text" id="phone" placeholder="접수자 핸드폰번호">
-    
-    <select id="type" onchange="toggleFields()">
-        <option value="tax" selected>세금계산서 (세금계산서 입력시 현금영수증란은 비워두세요)</option>
-        <option value="cash">현금영수증 (계산서, 영수증 둘 중 1개만 발행되시오니 1개만 작성해주세요)</option>
-    </select>
-
-    <div id="taxFields">
-        <input type="text" id="bizNum" placeholder="사업자 등록번호">
-        <input type="text" id="bizType" placeholder="업태">
-        <input type="text" id="bizItem" placeholder="종목">
-        <input type="text" id="bizName" placeholder="상호명">
-        <input type="email" id="email" placeholder="발행받을 이메일">
-        <input type="text" id="manager" placeholder="담당자 성함">
-        <input type="text" id="managerPhone" placeholder="담당자 연락처">
+    <div class="notice">
+        본 접수된 건의 <b>작성자성함 / 전화번호</b>로 접수된 건에 한해서, 구입 시 세금계산서는 매월 1일 자동 발행됩니다.
+        <div class="warn">※ 작성자 성함 또는 전화번호가 바뀐 경우, 필히 다시 신청해주세요.</div>
     </div>
 
-<div id="cashFields" class="hidden">
-    <input type="text" id="cashNumber" placeholder="현금영수증 발생희망(사업자번호or전화번호중 1개 입력)">
-    <input type="email" id="cashEmail" placeholder="발행받을 이메일">
-</div>
+    <input type="hidden" id="docId">
 
-    <button onclick="saveData()">저장 / 수정하기</button>
+    <label>상품 구입시 작성자 성함</label>
+    <input type="text" id="name" placeholder="작성자 성함">
+    <label>상품 구입시 전화번호</label>
+    <input type="text" id="phone" placeholder="전화번호 (숫자만)">
+
+    <label>사업자 등록번호</label>
+    <input type="text" id="bizNum" placeholder="사업자 등록번호">
+    <label>업태</label>
+    <input type="text" id="bizType" placeholder="업태">
+    <label>종목</label>
+    <input type="text" id="bizItem" placeholder="종목">
+    <label>상호명</label>
+    <input type="text" id="bizName" placeholder="상호명">
+    <label>발행받을 이메일</label>
+    <input type="email" id="email" placeholder="발행받을 이메일">
+    <label>담당자 성함</label>
+    <input type="text" id="manager" placeholder="담당자 성함">
+    <label>담당자 연락처</label>
+    <input type="text" id="managerPhone" placeholder="담당자 연락처">
+
+    <button onclick="saveData()">신청 / 수정하기</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
@@ -69,137 +65,54 @@
     const db = getFirestore(app);
     const COLLECTION_NAME = "segum1";
 
-    window.toggleFields = () => {
-        const type = document.getElementById('type').value;
-        document.getElementById('taxFields').classList.toggle('hidden', type !== 'tax');
-        document.getElementById('cashFields').classList.toggle('hidden', type !== 'cash');
-    };
-
-   window.saveData = async () => {
-    const id = document.getElementById('docId').value;
-    const type = document.getElementById('type').value;
-
-    const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-
-    if (!name || !phone) {
-        alert('이름과 접수자 핸드폰번호는 필수입니다.');
-        return;
+    // 다른 페이지(app.js)의 secretId 계산 방식과 동일한 원리:
+    // 이름+전화번호로 문서 ID를 계산해서, 같은 이름+전화번호로 다시 신청하면
+    // 자동으로 "그 사람의 기존 등록 정보"를 덮어쓰게(수정) 됩니다.
+    // 이 ID를 모르면 남이 조회할 수 없어서, 본인만 확인 가능한 저장소 역할을 합니다.
+    async function sha256Hex(text) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    function normalizeName(name) { return String(name || "").trim(); }
+    function normalizePhone(phone) { return String(phone || "").replace(/[^0-9]/g, ""); }
+    async function computeDocId(name, phone) {
+        return sha256Hex(`segum::${normalizeName(name)}::${normalizePhone(phone)}`);
     }
 
-    let data = { name, phone, type };
+    window.saveData = async () => {
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
 
-    // 타입별 데이터 세팅 및 필수 입력 체크
-    if (type === 'tax') {
-        data.bizNum = document.getElementById('bizNum').value.trim();
-        data.bizType = document.getElementById('bizType').value.trim();
-        data.bizItem = document.getElementById('bizItem').value.trim();
-        data.bizName = document.getElementById('bizName').value.trim();
-        data.email = document.getElementById('email').value.trim();
-        data.manager = document.getElementById('manager').value.trim();
-        data.managerPhone = document.getElementById('managerPhone').value.trim();
-        data.cashNumber = "";
+        if (!name || !phone) {
+            alert('작성자 성함과 전화번호는 필수입니다.');
+            return;
+        }
+
+        const data = {
+            name, phone, type: 'tax',
+            bizNum: document.getElementById('bizNum').value.trim(),
+            bizType: document.getElementById('bizType').value.trim(),
+            bizItem: document.getElementById('bizItem').value.trim(),
+            bizName: document.getElementById('bizName').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            manager: document.getElementById('manager').value.trim(),
+            managerPhone: document.getElementById('managerPhone').value.trim(),
+            updatedAt: serverTimestamp()
+        };
 
         if (!data.bizNum || !data.bizType || !data.bizItem || !data.bizName || !data.email || !data.manager || !data.managerPhone) {
             alert('세금계산서 발행을 위한 모든 정보를 빠짐없이 입력해주세요.');
             return;
         }
-    } else {
-        data.cashNumber = document.getElementById('cashNumber').value.trim();
-        data.email = document.getElementById('cashEmail').value.trim();
-        data.bizNum = data.bizType = data.bizItem = data.bizName = data.manager = data.managerPhone = "";
 
-        if (!data.cashNumber || !data.email) {
-            alert('현금영수증 발행을 위한 정보를 모두 입력해주세요.');
-            return;
-        }
-    }
-
-    try {
-        if (id) {
-            // 수정 모드
-            await updateDoc(doc(db, COLLECTION_NAME, id), data);
-            alert('수정 완료!');
-        } else {
-            // 신규 등록 모드: 중복 확인 로직 추가
-            const q = query(collection(db, COLLECTION_NAME), where("phone", "==", phone));
-            const querySnapshot = await getDocs(q);
-
-            if (!querySnapshot.empty) {
-                alert('이미 등록된 핸드폰번호입니다. 조회 기능을 통해 수정해주세요.');
-                return;
-            }
-
-            // [추가] 관리자 페이지에서 "언제 새로 신청됐는지" 파악할 수 있게 등록 시각을 남김
-            await addDoc(collection(db, COLLECTION_NAME), { ...data, createdAt: serverTimestamp() });
-            alert('저장 완료!');
-        }
-        location.reload();
-    } catch (e) {
-        alert('저장 중 오류가 발생했습니다: ' + e.message);
-    }
-};
-
-    window.searchData = async () => {
-        const phone = document.getElementById('searchPhone').value;
-        if (!phone) {
-            alert('전화번호를 입력해주세요.');
-            return;
-        }
-
-        const q = query(collection(db, COLLECTION_NAME), where("phone", "==", phone));
-        const snapshot = await getDocs(q);
-        const list = document.getElementById('resultList');
-        list.innerHTML = '';
-
-        // 검색 결과가 없을 때의 처리
-        if (snapshot.empty) {
-            list.innerHTML = '<p style="color: red; text-align: center; font-size: 13px;">등록정보가 없습니다. 아래 작성해주세요.</p>';
-            return;
-        }
-
-        snapshot.forEach(d => {
-            const data = d.data();
-            // 수정 시 데이터 전달을 위해 작은따옴표로 변환된 문자열 생성
-            const dataStr = JSON.stringify(data).replace(/"/g, "'");
-            list.innerHTML += `<div class="item">
-                ${data.name} (${data.type === 'tax' ? '세금' : '현금'})
-                <div class="btn-group">
-                    <button onclick="editData('${d.id}', ${dataStr})">조회/수정</button>
-                    <button onclick="deleteData('${d.id}')">삭제</button>
-                </div>
-            </div>`;
-        });
-    };
-
-    window.editData = (id, data) => {
-    document.getElementById('docId').value = id;
-    document.getElementById('name').value = data.name;
-    document.getElementById('phone').value = data.phone;
-    document.getElementById('type').value = data.type;
-    toggleFields();
-
-    // 타입에 따라 알맞은 이메일 칸에 데이터 채우기
-    if (data.type === 'tax') {
-        document.getElementById('email').value = data.email || '';
-    } else {
-        document.getElementById('cashEmail').value = data.email || '';
-    }
-    
-    document.getElementById('cashNumber').value = data.cashNumber || '';
-    document.getElementById('bizNum').value = data.bizNum || '';
-    document.getElementById('bizType').value = data.bizType || '';
-    document.getElementById('bizItem').value = data.bizItem || '';
-    document.getElementById('bizName').value = data.bizName || '';
-    document.getElementById('manager').value = data.manager || '';
-    document.getElementById('managerPhone').value = data.managerPhone || '';
-    window.scrollTo(0,0);
-};
-
-    window.deleteData = async (id) => {
-        if(confirm('정말 삭제하시겠습니까?')) {
-            await deleteDoc(doc(db, COLLECTION_NAME, id));
-            searchData();
+        try {
+            const docId = await computeDocId(name, phone);
+            // setDoc + merge: 처음 신청이면 새로 생성, 같은 이름+전화번호로 다시 신청하면 자동 수정(덮어쓰기)
+            await setDoc(doc(db, COLLECTION_NAME, docId), data, { merge: true });
+            alert('신청이 완료되었습니다.\n매월 1일 자동으로 세금계산서가 발행됩니다.');
+            location.reload();
+        } catch (e) {
+            alert('저장 중 오류가 발생했습니다: ' + e.message);
         }
     };
 </script>

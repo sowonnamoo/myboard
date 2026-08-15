@@ -35,6 +35,15 @@ async function computeSecretId(boardId, author, phone) {
     return sha256Hex(key);
 }
 
+// ---- 세금계산서(segum.html) 등록 여부 확인용 ID 계산 ----
+// segum.html과 반드시 동일한 방식(전체 전화번호 사용, 뒷4자리 아님)이어야 합니다.
+function normalizePhoneFull(phone) {
+    return String(phone || "").replace(/[^0-9]/g, "");
+}
+async function computeSegumId(name, phone) {
+    return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
+}
+
 // ---- 방문자마다 파이어베이스 익명 로그인을 자동으로 부여 ----
 // 회원가입/로그인 절차 없이, 방문자가 글을 쓰거나 자기 글을 수정/삭제하려 할 때
 // 백그라운드에서 조용히 익명 로그인을 해서 고유 uid를 발급받습니다.
@@ -78,6 +87,8 @@ let lastVisible = null; // 마지막 문서 저장용
 let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
 let currentPage = 1;      
 let currentViewId = null;
+let currentViewAuthor = null; // 현금영수증 신청 시 세금계산서 등록 여부를 확인하는 데 사용
+let currentViewPhone = null;
 const POSTS_PER_PAGE = 8; 
 
 // ---- 장바구니(01my.html 등에서 담은 여러 상품) 통합 주문작성 ----
@@ -719,6 +730,8 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
 
     const privateData = privateSnap.data(); // phone, address, message - private 문서에서만 얻음
+    currentViewAuthor = data.author;
+    currentViewPhone = privateData.phone;
 
     // 3. 인증 성공 시 카운트 초기화 및 상세 화면 렌더링
     localStorage.setItem("failCount", "0");
@@ -1138,20 +1151,29 @@ window.openLink = function(url) {
 };
 
 
-    // 8. 카드전표 신청 / 다운로드
-    // - 처음 클릭: cardjun1/{boardId} 문서가 없으면 새로 만들고 안내 메시지 표시
-    // - 이미 신청된 상태(문서는 있지만 fileUrl 없음): 대기 안내 메시지 다시 표시
-    // - 관리자가 발행 완료(fileUrl 저장)한 뒤 클릭: 전표 jpg를 새 창으로 바로 열어줌
-window.openCardPage = async () => {
-    if (!currentViewId) {
+window.openCashPage = async () => {
+    if (!currentViewId || !currentViewAuthor || !currentViewPhone) {
         alert('주문 정보를 찾을 수 없습니다.');
         return;
     }
 
-    const cardRef = doc(db, "cardjun1", currentViewId);
+    // 1. 세금계산서가 이미 등록된 이름+전화번호면 현금영수증 신청 자체를 막습니다.
+    try {
+        const segumId = await computeSegumId(currentViewAuthor, currentViewPhone);
+        const segumSnap = await getDoc(doc(db, "segum1", segumId));
+        if (segumSnap.exists()) {
+            alert('이미 세금계산서 신청이 등록되셔서 현금영수증 신청은 되지 않습니다.');
+            return;
+        }
+    } catch (e) {
+        alert('확인 중 오류가 발생했습니다: ' + e.message);
+        return;
+    }
+
+    const cashRef = doc(db, "cashReceipt1", currentViewId);
     let snap;
     try {
-        snap = await getDoc(cardRef);
+        snap = await getDoc(cashRef);
     } catch (e) {
         alert('조회 중 오류가 발생했습니다: ' + e.message);
         return;
@@ -1162,20 +1184,49 @@ window.openCardPage = async () => {
         if (data.fileUrl) {
             window.open(data.fileUrl, '_blank');
         } else {
-            alert('카드전표가 신청되셨습니다.\n신청후 1~2일 뒤(영업시간 내 발행) 본 버튼을 다시 클릭해주시면 전표를 다운받으실 수 있습니다.');
+            alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
         }
         return;
     }
 
+    // 2. 최초 신청: 발행희망번호(사업자번호 또는 전화번호) 입력받기
+    const cashNumber = prompt('현금영수증 발행희망 번호를 입력해주세요.\n(사업자등록번호 또는 전화번호 중 1개)');
+    if (!cashNumber || !cashNumber.trim()) return;
+
     try {
-        await setDoc(cardRef, {
+        await setDoc(cashRef, {
             boardId: currentViewId,
+            author: currentViewAuthor,
+            cashNumber: cashNumber.trim(),
             fileUrl: '',
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            uid: (await ensureAnonymousLogin()).uid
         });
-        alert('카드전표가 신청되셨습니다.\n신청후 1~2일 뒤(영업시간 내 발행) 본 버튼을 다시 클릭해주시면 전표를 다운받으실 수 있습니다.');
+        alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
     } catch (e) {
         alert('신청 중 오류가 발생했습니다: ' + e.message);
+    }
+};
+
+
+    // - cardjun1/{boardId} 문서에 관리자가 fileUrl을 등록해뒀으면 바로 열어줌
+    // - 아직 등록 전이면(문서가 없거나 fileUrl이 비어있으면) 안내 메시지만 표시
+    // - 고객이 직접 "신청"하는 절차는 없음 (관리자가 발송 후 알아서 등록)
+window.openCardPage = async () => {
+    if (!currentViewId) {
+        alert('주문 정보를 찾을 수 없습니다.');
+        return;
+    }
+
+    try {
+        const snap = await getDoc(doc(db, "cardjun1", currentViewId));
+        if (snap.exists() && snap.data().fileUrl) {
+            window.open(snap.data().fileUrl, '_blank');
+        } else {
+            alert('택배물 발송후 등록됩니다.');
+        }
+    } catch (e) {
+        alert('택배물 발송후 등록됩니다.');
     }
 };
 
