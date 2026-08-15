@@ -205,10 +205,22 @@ async function loadCardRequests(authorMap) {
       return;
     }
 
+    // 최근 10건 목록에 없는 주문(더 예전 주문)은 boards에서 직접 작성자명을 가져옴
+    const authors = await Promise.all(snap2.docs.map(async d => {
+      const boardId = d.data().boardId;
+      if (authorMap[boardId]) return authorMap[boardId];
+      try {
+        const boardSnap = await getDoc(doc(db, "boards", boardId));
+        return boardSnap.exists() ? (boardSnap.data().author || '-') : '-';
+      } catch (e) {
+        return '-';
+      }
+    }));
+
     let cardHtml = "<table><tr><th>작성자</th><th>이메일</th><th>발행완료</th></tr>";
-    snap2.docs.forEach(d => {
+    snap2.docs.forEach((d, idx) => {
       const data = d.data();
-      const author = authorMap[data.boardId] || '-';
+      const author = authors[idx];
       const checked = data.issued ? 'checked' : '';
       cardHtml += `<tr><td>${author}</td><td>${data.email}</td><td style="text-align:center;"><input type="checkbox" ${checked} onchange="toggleCardIssued(this, '${d.id}')"></td></tr>`;
     });
