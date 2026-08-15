@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, setDoc, updateDoc, writeBatch, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, getDoc, setDoc, updateDoc, writeBatch, limit, startAfter, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
@@ -1138,35 +1138,47 @@ window.openLink = function(url) {
 };
 
 
-    // 8. 카드영수증
-window.openCardPage = () => {
-    // 1. 상세 페이지의 날짜 텍스트를 가져옵니다 (예: "작성일: 2026년 6월 12일")
-    const dateText = document.getElementById("detail-date").innerText;
-    
-    // 2. 텍스트에서 모든 숫자를 찾아 배열로 만듭니다 (결과: ["2026", "6", "12"])
-    // 텍스트에 "작성일:" 같은 글자가 있어도 숫자만 골라냅니다.
-    const matches = dateText.match(/\d+/g);
-    
-    let targetDate = '2026-01-01'; // 기본값
-    if (matches && matches.length >= 3) {
-        // 배열의 0, 1, 2번째 숫자를 사용 (년, 월, 일)
-        const y = matches[0];
-        const m = matches[1].padStart(2, '0');
-        const d = matches[2].padStart(2, '0');
-        targetDate = `${y}-${m}-${d}`;
+    // 8. 카드전표 신청 / 다운로드
+    // - 처음 클릭: cardjun1/{boardId} 문서가 없으면 새로 만들고 안내 메시지 표시
+    // - 이미 신청된 상태(문서는 있지만 fileUrl 없음): 대기 안내 메시지 다시 표시
+    // - 관리자가 발행 완료(fileUrl 저장)한 뒤 클릭: 전표 jpg를 새 창으로 바로 열어줌
+window.openCardPage = async () => {
+    if (!currentViewId) {
+        alert('주문 정보를 찾을 수 없습니다.');
+        return;
     }
 
-    // 나머지 데이터 가져오기
-    const product = document.getElementById("detail-title").innerText;
-    const qty = document.getElementById("detail-qty").innerText;
-    const size = document.getElementById("detail-size").innerText;
-    const price = document.getElementById("detail-price").innerText.replace(/[^0-9]/g, '');
+    const cardRef = doc(db, "cardjun1", currentViewId);
+    let snap;
+    try {
+        snap = await getDoc(cardRef);
+    } catch (e) {
+        alert('조회 중 오류가 발생했습니다: ' + e.message);
+        return;
+    }
 
-    // 3. URL 생성 (작성일 + 이 주문의 id가 반영됨 - id가 있어야 이메일을 이 주문에 연결 저장 가능)
-    const url = `cardf.html?id=${encodeURIComponent(currentViewId || '')}&date=${targetDate}&name=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${qty}&price=${price}`;
-    
-    window.open(url, '_blank', 'width=500,height=700');
+    if (snap.exists()) {
+        const data = snap.data();
+        if (data.fileUrl) {
+            window.open(data.fileUrl, '_blank');
+        } else {
+            alert('카드전표가 신청되셨습니다.\n신청후 1~2일 뒤(영업시간 내 발행) 본 버튼을 다시 클릭해주시면 전표를 다운받으실 수 있습니다.');
+        }
+        return;
+    }
+
+    try {
+        await setDoc(cardRef, {
+            boardId: currentViewId,
+            fileUrl: '',
+            createdAt: serverTimestamp()
+        });
+        alert('카드전표가 신청되셨습니다.\n신청후 1~2일 뒤(영업시간 내 발행) 본 버튼을 다시 클릭해주시면 전표를 다운받으실 수 있습니다.');
+    } catch (e) {
+        alert('신청 중 오류가 발생했습니다: ' + e.message);
+    }
 };
+
 
 // 기존 syncStatusOverlay 함수를 이 코드로 덮어쓰세요 (타이밍 보완)
 window.syncStatusOverlay = function(status) {
