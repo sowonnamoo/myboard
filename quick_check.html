@@ -2,38 +2,39 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>연락처/배송지 테스트</title>
+<title>최근 주문 연락처 확인</title>
 <style>
-  body { font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 0 20px; }
+  body { font-family: sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
   input { display:block; width:100%; box-sizing:border-box; padding:12px; margin:8px 0; border:1px solid #ccc; border-radius:8px; font-size:16px; }
-  button { width:100%; padding:14px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px; margin-top:8px; }
-  #result { margin-top:20px; padding:18px; border-radius:8px; font-size:16px; white-space:pre-wrap; line-height:1.7; display:none; }
-  .ok { background:#dcfce7; color:#166534; }
-  .fail { background:#fee2e2; color:#991b1b; }
-  #loginBox, #testBox { display:none; }
+  button { padding:12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:15px; }
+  table { width:100%; border-collapse: collapse; margin-top:20px; font-size:14px; }
+  th, td { border:1px solid #e2e8f0; padding:8px 10px; text-align:left; }
+  th { background:#f1f5f9; }
+  .fail { color:#991b1b; }
+  .ok { color:#166534; font-weight:bold; }
+  #loginBox { display:block; }
+  #listBox { display:none; }
 </style>
 </head>
 <body>
 
-<h2>📦 연락처/배송지 테스트</h2>
+<h2>📦 최근 주문 연락처/배송지 확인</h2>
 
-<div id="loginBox" style="display:block;">
+<div id="loginBox">
   <input id="email" type="email" placeholder="관리자 이메일">
   <input id="pw" type="password" placeholder="비밀번호">
-  <button onclick="login()">로그인</button>
-  <div id="loginResult" style="color:#991b1b; margin-top:8px; font-size:14px;"></div>
+  <button onclick="login()">로그인해서 최근 주문 보기</button>
+  <div id="loginResult" class="fail" style="margin-top:8px; font-size:14px;"></div>
 </div>
 
-<div id="testBox">
-  <p style="color:#166534;">✅ 로그인됨</p>
-  <input id="boardId" placeholder="boards 문서 ID 붙여넣기">
-  <button onclick="check()">조회</button>
-  <div id="result"></div>
+<div id="listBox">
+  <p class="ok">✅ 로그인됨 — 최근 주문 10건</p>
+  <div id="result">불러오는 중...</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const config = {
@@ -50,7 +51,8 @@ const auth = getAuth(app);
 
 onAuthStateChanged(auth, (user) => {
   document.getElementById("loginBox").style.display = user ? "none" : "block";
-  document.getElementById("testBox").style.display = user ? "block" : "none";
+  document.getElementById("listBox").style.display = user ? "block" : "none";
+  if (user) loadRecentOrders();
 });
 
 window.login = async function() {
@@ -63,37 +65,49 @@ window.login = async function() {
   }
 };
 
-window.check = async function() {
-  const resultEl = document.getElementById("result");
-  const boardId = document.getElementById("boardId").value.trim();
-  resultEl.style.display = "block";
-  resultEl.className = "";
-  resultEl.textContent = "조회 중...";
-
-  if (!boardId) {
-    resultEl.className = "fail";
-    resultEl.textContent = "boards 문서 ID를 입력해주세요.";
-    return;
-  }
-
+async function fetchPrivate(docId) {
   try {
-    const snap = await getDoc(doc(db, "adminOrders", boardId));
-    if (snap.exists()) {
-      const d = snap.data();
-      resultEl.className = "ok";
-      resultEl.textContent =
-        "✅ 조회 성공!\n\n연락처: " + (d.phone || "(없음)") +
-        "\n배송지: " + (d.address || "(없음)") +
-        "\n메모: " + (d.message || "(없음)");
-    } else {
-      resultEl.className = "fail";
-      resultEl.textContent = "❌ adminOrders 문서가 존재하지 않습니다.\n\n→ 이 boardId로 만든 adminOrders 문서가 아예 없다는 뜻입니다. (주문 저장 시 adminOrders 쓰기가 안 되고 있거나, boardId를 잘못 입력했을 수 있어요)";
-    }
+    const snap = await getDoc(doc(db, "adminOrders", docId));
+    return snap.exists() ? snap.data() : { _err: "adminOrders 문서 없음" };
   } catch (e) {
-    resultEl.className = "fail";
-    resultEl.textContent = "⚠️ 오류: " + (e.code || "") + " " + e.message;
+    return { _err: (e.code || "") + " " + e.message };
   }
-};
+}
+
+async function loadRecentOrders() {
+  const resultEl = document.getElementById("result");
+  try {
+    const q1 = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(10));
+    const snap1 = await getDocs(q1);
+    const privates = await Promise.all(snap1.docs.map(d => fetchPrivate(d.id)));
+
+    if (snap1.empty) {
+      resultEl.textContent = "주문이 없습니다.";
+      return;
+    }
+
+    let html = "<table><tr><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th></tr>";
+    snap1.docs.forEach((d, idx) => {
+      const data = d.data();
+      const priv = privates[idx];
+      const date = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('ko-KR') : '-';
+      const author = data.author || '-';
+      let phone, address;
+      if (priv._err) {
+        phone = `<span class="fail">⚠️ ${priv._err}</span>`;
+        address = '-';
+      } else {
+        phone = priv.phone || '<span class="fail">(비어있음)</span>';
+        address = priv.address || '<span class="fail">(비어있음)</span>';
+      }
+      html += `<tr><td>${date}</td><td>${author}</td><td>${phone}</td><td>${address}</td></tr>`;
+    });
+    html += "</table>";
+    resultEl.innerHTML = html;
+  } catch (e) {
+    resultEl.innerHTML = `<span class="fail">⚠️ 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
+  }
+}
 </script>
 </body>
 </html>
