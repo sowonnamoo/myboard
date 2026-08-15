@@ -1175,6 +1175,14 @@ window.openLink = function(url) {
     window.open(url, '_blank', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
 };
 
+// 세금계산서 버튼: 이 주문의 작성자/전화번호를 함께 넘겨서, segum.html이 열리자마자
+// "이미 신청돼 있는지"를 바로 확인해 보여줄 수 있게 함
+window.openSegumPage = function() {
+    const name = encodeURIComponent(currentViewAuthor || '');
+    const phone = encodeURIComponent(currentViewPhone || '');
+    openLink(`https://sowonnamoo.github.io/myboard/segum?name=${name}&phone=${phone}`);
+};
+
 
 window.openCashPage = async () => {
     if (!currentViewId || !currentViewAuthor || !currentViewPhone) {

@@ -56,9 +56,9 @@
     </div>
 
     <div id="summarySection" class="hidden">
-        <p class="done-title">✅ 신청이 완료되었습니다.<br>매월 1일 자동으로 세금계산서가 발행됩니다.</p>
+        <p class="done-title" id="summaryTitle"></p>
         <div id="summaryList"></div>
-        <button class="edit-btn" onclick="showForm()">✏️ 수정</button>
+        <button class="edit-btn" onclick="showForm()">✏️ 수정하기</button>
     </div>
 </div>
 
@@ -105,11 +105,27 @@
         ['managerPhone', '담당자 연락처'],
     ];
 
-    function renderSummary(data) {
+    function fillForm(data) {
+        document.getElementById('name').value = data.name || '';
+        document.getElementById('phone').value = data.phone || '';
+        document.getElementById('bizNum').value = data.bizNum || '';
+        document.getElementById('bizType').value = data.bizType || '';
+        document.getElementById('bizItem').value = data.bizItem || '';
+        document.getElementById('bizName').value = data.bizName || '';
+        document.getElementById('email').value = data.email || '';
+        document.getElementById('manager').value = data.manager || '';
+        document.getElementById('managerPhone').value = data.managerPhone || '';
+    }
+
+    function showSummary(data, titleHtml) {
+        fillForm(data); // "수정하기"를 눌렀을 때 기존 값이 그대로 보이도록 폼에도 채워둠
+        document.getElementById('summaryTitle').innerHTML = titleHtml;
         const listEl = document.getElementById('summaryList');
         listEl.innerHTML = FIELD_LABELS.map(([key, label]) =>
             `<div class="summary-row"><span>${label}</span><span>${(data[key] || '-').toString().replace(/</g, '&lt;')}</span></div>`
         ).join('');
+        document.getElementById('formSection').classList.add('hidden');
+        document.getElementById('summarySection').classList.remove('hidden');
     }
 
     window.showForm = () => {
@@ -170,13 +186,33 @@
                 } catch (e) { /* 부모 창 접근 실패해도 신청 자체는 정상 처리됨 */ }
             }
             // alert/새로고침 대신, 입력한 내용을 그대로 화면에 나열해서 바로 확인할 수 있게 함
-            renderSummary(data);
-            document.getElementById('formSection').classList.add('hidden');
-            document.getElementById('summarySection').classList.remove('hidden');
+            showSummary(data, '✅ 신청이 완료되었습니다.<br>매월 1일 자동으로 세금계산서가 발행됩니다.');
         } catch (e) {
             alert('저장 중 오류가 발생했습니다: ' + e.message);
         }
     };
+
+    // 주문 상세 화면(index.html)에서 넘어온 경우: 이름/전화번호가 URL에 같이 실려옴.
+    // 이미 신청된 상태라면 폼 대신 "신청된 상태입니다" 요약을 바로 보여줌.
+    (async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const prefillName = urlParams.get('name') || '';
+        const prefillPhone = urlParams.get('phone') || '';
+        if (!prefillName || !prefillPhone) return;
+
+        document.getElementById('name').value = prefillName;
+        document.getElementById('phone').value = prefillPhone;
+
+        try {
+            const docId = await computeDocId(prefillName, prefillPhone);
+            const snap = await getDoc(doc(db, COLLECTION_NAME, docId));
+            if (snap.exists()) {
+                showSummary(snap.data(), '📋 세금계산서가 신청된 상태입니다.');
+            }
+        } catch (e) {
+            // 조회 실패해도 폼은 그대로 사용 가능 (이름/전화번호는 이미 채워져 있음)
+        }
+    })();
 </script>
 </body>
 </html>
