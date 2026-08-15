@@ -378,12 +378,14 @@ filteredData.sort((a, b) => {
             `;
 
 const isPending = d.status === '대기';
+const isBankTransfer = d.status === '무통장';
+const isCardPay = d.status === '카드결제';
 let statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' : 
                   (d.status === '접수에러') ? '(제작보류)' : '(접수완료)';
 
 // [추가된 로직] 시안 완료/출고 상태에 따른 문구 자동 변경
 if (d.status !== '대기' && d.status !== '접수에러') {
-    if (d.woonso1) {
+    if (d.trackingUrl) {
         statusLabel += ' <span class="text-red-600 font-bold">_출고완료</span>';
     } else if (d.sian === 'done') {
         statusLabel += ' <span class="text-yellow-600 font-bold">_인쇄중</span>';
@@ -456,32 +458,33 @@ ${
             <div class="mt-4 flex gap-2 flex-wrap">
                 <button type="button" id="segum-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
-                    onclick="${isPending ? '' : "window.openSegumPageFor(this.dataset.name, this.dataset.phone)"}"
-                    class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">세금계산서</button>
+                    onclick="${(isPending || isCardPay) ? '' : "window.openSegumPageFor(this.dataset.name, this.dataset.phone)"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !isCardPay) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : ''}>세금계산서</button>
 
                 <button type="button" id="cash-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
-                    onclick="${(isPending || d.isJajoo) ? '' : "window.openCashPageFor('" + d.id + "', this.dataset.name, this.dataset.phone)"}"
-                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
-                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : ''}>현금영수증</button>
+                    onclick="${(isPending || d.isJajoo || isCardPay) ? '' : "window.openCashPageFor('" + d.id + "', this.dataset.name, this.dataset.phone)"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo && !isCardPay) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : '')}>현금영수증</button>
 
                 <a href="javascript:void(0)" 
                    onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + params + "')"}" 
                    class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
                 
                 <button type="button" id="card-btn-${d.id}"
-                    onclick="${(isPending || d.isJajoo) ? '' : "window.openCardPageFor('" + d.id + "')"}"
-                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
-                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : ''}>카드전표</button>
+                    onclick="${(isPending || d.isJajoo || isBankTransfer) ? '' : "window.openCardPageFor('" + d.id + "')"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo && !isBankTransfer) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isBankTransfer ? 'title="무통장 입금 건은 세금계산서/현금영수증을 이용해주세요."' : '')}>카드전표</button>
          
 <a href="javascript:void(0)" 
-   onclick="${d.woonso1 ? "openPopup('" + d.woonso1 + "')" : ""}"
+   onclick="${d.trackingUrl ? "openPopup('" + d.trackingUrl + "')" : ""}"
    class="border px-2 py-1 text-xs transition-colors duration-300 
-   ${d.woonso1 
+   ${d.trackingUrl 
        ? 'bg-red-500 text-white border-red-500 hover:bg-red-600 font-bold' 
        : 'bg-gray-100 text-gray-400 pointer-events-none'
    }">
-   ${d.woonso1 ? '출고완료/운송장보기' : '운송장'}
+   ${d.trackingUrl ? '출고완료/운송장보기' : '운송장'}
 </a>
 
 ${
