@@ -97,7 +97,8 @@
 
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, getDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         // 팝업 열기 함수 추가
         window.openPopup = (url) => {
@@ -130,6 +131,146 @@
         async function computeSecretId(boardId, author, phone) {
             const key = `${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`;
             return sha256Hex(key);
+        }
+
+        // ---- 세금계산서/현금영수증 상호배타 판별용 ID (segum.html / app.js와 완전히 동일한 방식) ----
+        // 문서 ID = "segum::이름::전화번호전체" 해시값. 이 값이 같으면 같은 사람으로 판단해서
+        // 세금계산서(segum1)와 현금영수증(cashSecret) 중 하나만 신청 가능하도록 서로 확인합니다.
+        function normalizePhoneFull(phone) { return String(phone || "").replace(/[^0-9]/g, ""); }
+        // data-name/data-phone 등 HTML 속성값에 안전하게 넣기 위한 이스케이프 (따옴표로 인한 마크업 깨짐 방지)
+        function escapeAttr(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        async function computeSegumId(name, phone) {
+            return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
+        }
+
+        // ---- 방문자 익명 로그인 (현금영수증 신청 시 uid가 필요해서 index.html/app.js와 동일하게 부여) ----
+        const auth = getAuth(app);
+        let resolveAuthReady;
+        const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveAuthReady(user);
+            } else {
+                signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+            }
+        });
+        function ensureAnonymousLogin() {
+            return authReadyPromise;
+        }
+
+        // ---- 세금계산서 버튼: index.html의 openSegumPage와 동일하게, 이름/전화번호를 넘겨서
+        //      segum.html이 열리자마자 "이미 신청돼 있는지"를 바로 확인해 보여줄 수 있게 함 ----
+        window.openSegumPageFor = (name, phone) => {
+            const n = encodeURIComponent(name || '');
+            const p = encodeURIComponent(phone || '');
+            openPopup(`https://sowonnamoo.github.io/myboard/segum?name=${n}&phone=${p}`);
+        };
+
+        // ---- 현금영수증 버튼: index.html/app.js의 openCashPage와 동일한 로직 ----
+        window.openCashPageFor = async (boardId, name, phone) => {
+            if (!boardId || !name || !phone) {
+                alert('주문 정보를 찾을 수 없습니다.');
+                return;
+            }
+
+            // 1. 세금계산서가 이미 등록된 이름+전화번호면 현금영수증 신청 자체를 막습니다.
+            try {
+                const segumId = await computeSegumId(name, phone);
+                const segumSnap = await getDoc(doc(db, "segum1", segumId));
+                if (segumSnap.exists()) {
+                    alert('이미 세금계산서 신청이 등록되셔서 현금영수증 신청은 되지 않습니다.');
+                    return;
+                }
+            } catch (e) {
+                alert('확인 중 오류가 발생했습니다: ' + e.message);
+                return;
+            }
+
+            const cashRef = doc(db, "cashReceipt1", boardId);
+            let snap;
+            try {
+                snap = await getDoc(cashRef);
+            } catch (e) {
+                alert('조회 중 오류가 발생했습니다: ' + e.message);
+                return;
+            }
+
+            if (snap.exists()) {
+                const data = snap.data();
+                if (data.fileUrl) {
+                    window.open(data.fileUrl, '_blank');
+                } else {
+                    alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
+                }
+                return;
+            }
+
+            // 2. 최초 신청: 발행희망번호(사업자번호 또는 전화번호) 입력받기
+            const cashNumber = prompt('현금영수증 발행희망 번호를 입력해주세요.\n(사업자등록번호 또는 전화번호 중 1개)');
+            if (!cashNumber || !cashNumber.trim()) return;
+
+            try {
+                const user = await ensureAnonymousLogin();
+                await setDoc(cashRef, {
+                    boardId, author: name, cashNumber: cashNumber.trim(),
+                    fileUrl: '', createdAt: serverTimestamp(), uid: user.uid
+                });
+                // 이름+전화번호 기반 식별자로도 기록 -> segum.html에서 "이미 현금영수증 신청됨"을 확인할 수 있게 함
+                const cashSecretId = await computeSegumId(name, phone);
+                await setDoc(doc(db, "cashSecret", cashSecretId), {
+                    boardId, createdAt: serverTimestamp()
+                }, { merge: true });
+                const segumBtnNow = document.getElementById('segum-btn-' + boardId);
+                if (segumBtnNow) segumBtnNow.style.display = 'none';
+                alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
+            } catch (e) {
+                alert('신청 중 오류가 발생했습니다: ' + e.message);
+            }
+        };
+
+        // ---- 카드전표 버튼: index.html/app.js의 openCardPage와 동일한 로직 ----
+        // 고객이 직접 신청하는 절차는 없고, 관리자가 택배 발송 후 fileUrl을 등록해두면 열람 가능합니다.
+        window.openCardPageFor = async (boardId) => {
+            if (!boardId) {
+                alert('주문 정보를 찾을 수 없습니다.');
+                return;
+            }
+            try {
+                const snap = await getDoc(doc(db, "cardjun1", boardId));
+                if (snap.exists() && snap.data().fileUrl) {
+                    window.open(snap.data().fileUrl, '_blank');
+                } else {
+                    alert('택배물 발송후 등록됩니다.');
+                }
+            } catch (e) {
+                alert('택배물 발송후 등록됩니다.');
+            }
+        };
+
+        // ---- 세금계산서 ↔ 현금영수증 상호배타 상태를 화면에 즉시 반영 ----
+        // index.html 상세화면에서 하던 것과 동일하게, 이 주문의 현금영수증(cashReceipt1)이 이미
+        // 등록돼 있으면 세금계산서 버튼을 숨기고, 이 이름+전화번호로 세금계산서(segum1)가 이미
+        // 등록돼 있으면 현금영수증 버튼을 숨깁니다.
+        async function syncTaxCashButtons(d) {
+            const segumBtn = document.getElementById('segum-btn-' + d.id);
+            const cashBtn = document.getElementById('cash-btn-' + d.id);
+            if (segumBtn) {
+                try {
+                    const cashSnap = await getDoc(doc(db, "cashReceipt1", d.id));
+                    if (cashSnap.exists()) segumBtn.style.display = 'none';
+                } catch (e) { /* 조회 실패해도 버튼은 그대로 둠 */ }
+            }
+            if (cashBtn) {
+                try {
+                    const segumId = await computeSegumId(d.author, d.phone);
+                    const segumSnap = await getDoc(doc(db, "segum1", segumId));
+                    if (segumSnap.exists()) cashBtn.style.display = 'none';
+                } catch (e) { /* 조회 실패해도 버튼은 그대로 둠 */ }
+            }
         }
 
 document.getElementById('search-btn').addEventListener('click', async () => {
@@ -236,8 +377,6 @@ filteredData.sort((a, b) => {
                 class="bg-black text-white px-6 py-2 rounded font-bold">재구입</button>
             `;
 
-            const isBankTransfer = d.status === '무통장';
-            const isCard = d.status === '카드결제';
 const isPending = d.status === '대기';
 let statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' : 
                   (d.status === '접수에러') ? '(제작보류)' : '(접수완료)';
@@ -315,17 +454,25 @@ ${
     : ''
 }
             <div class="mt-4 flex gap-2 flex-wrap">
-                <a href="javascript:void(0)" 
-                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/segum')"}" 
-                   class="border px-2 py-1 text-xs ${(isBankTransfer && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
-                
+                <button type="button" id="segum-btn-${d.id}"
+                    data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
+                    onclick="${isPending ? '' : "window.openSegumPageFor(this.dataset.name, this.dataset.phone)"}"
+                    class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">세금계산서</button>
+
+                <button type="button" id="cash-btn-${d.id}"
+                    data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
+                    onclick="${(isPending || d.isJajoo) ? '' : "window.openCashPageFor('" + d.id + "', this.dataset.name, this.dataset.phone)"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : ''}>현금영수증</button>
+
                 <a href="javascript:void(0)" 
                    onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + params + "')"}" 
-                   class="border px-2 py-1 text-xs ${(isBankTransfer && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
+                   class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
                 
-                <a href="javascript:void(0)" 
-                   onclick="${isPending ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParams + "')"}" 
-                   class="border px-2 py-1 text-xs ${(isCard && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
+                <button type="button" id="card-btn-${d.id}"
+                    onclick="${(isPending || d.isJajoo) ? '' : "window.openCardPageFor('" + d.id + "')"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : ''}>카드전표</button>
          
 <a href="javascript:void(0)" 
    onclick="${d.woonso1 ? "openPopup('" + d.woonso1 + "')" : ""}"
@@ -351,6 +498,10 @@ ${
                 </div>
             `;
         });
+
+        // 목록이 모두 그려진 뒤, 주문별로 세금계산서/현금영수증 상호 신청 여부를 조회해서
+        // 이미 한쪽이 신청된 주문은 반대쪽 버튼을 숨깁니다. (index.html 상세화면과 동일한 방식)
+        filteredData.forEach(d => { syncTaxCashButtons(d); });
     } catch (error) {
         console.error(error);
         resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
