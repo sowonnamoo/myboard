@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>연락처/배송지 테스트</title>
+<style>
+  body { font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 0 20px; }
+  input { display:block; width:100%; box-sizing:border-box; padding:12px; margin:8px 0; border:1px solid #ccc; border-radius:8px; font-size:16px; }
+  button { width:100%; padding:14px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px; margin-top:8px; }
+  #result { margin-top:20px; padding:18px; border-radius:8px; font-size:16px; white-space:pre-wrap; line-height:1.7; display:none; }
+  .ok { background:#dcfce7; color:#166534; }
+  .fail { background:#fee2e2; color:#991b1b; }
+  #loginBox, #testBox { display:none; }
+</style>
+</head>
+<body>
+
+<h2>📦 연락처/배송지 테스트</h2>
+
+<div id="loginBox" style="display:block;">
+  <input id="email" type="email" placeholder="관리자 이메일">
+  <input id="pw" type="password" placeholder="비밀번호">
+  <button onclick="login()">로그인</button>
+  <div id="loginResult" style="color:#991b1b; margin-top:8px; font-size:14px;"></div>
+</div>
+
+<div id="testBox">
+  <p style="color:#166534;">✅ 로그인됨</p>
+  <input id="boardId" placeholder="boards 문서 ID 붙여넣기">
+  <button onclick="check()">조회</button>
+  <div id="result"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const config = {
+  apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+  authDomain: "board-291e3.firebaseapp.com",
+  projectId: "board-291e3",
+  storageBucket: "board-291e3.firebasestorage.app",
+  messagingSenderId: "25881766316",
+  appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
+const app = initializeApp(config);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, (user) => {
+  document.getElementById("loginBox").style.display = user ? "none" : "block";
+  document.getElementById("testBox").style.display = user ? "block" : "none";
+});
+
+window.login = async function() {
+  const email = document.getElementById("email").value.trim();
+  const pw = document.getElementById("pw").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch (e) {
+    document.getElementById("loginResult").textContent = "로그인 실패: " + e.message;
+  }
+};
+
+window.check = async function() {
+  const resultEl = document.getElementById("result");
+  const boardId = document.getElementById("boardId").value.trim();
+  resultEl.style.display = "block";
+  resultEl.className = "";
+  resultEl.textContent = "조회 중...";
+
+  if (!boardId) {
+    resultEl.className = "fail";
+    resultEl.textContent = "boards 문서 ID를 입력해주세요.";
+    return;
+  }
+
+  try {
+    const snap = await getDoc(doc(db, "adminOrders", boardId));
+    if (snap.exists()) {
+      const d = snap.data();
+      resultEl.className = "ok";
+      resultEl.textContent =
+        "✅ 조회 성공!\n\n연락처: " + (d.phone || "(없음)") +
+        "\n배송지: " + (d.address || "(없음)") +
+        "\n메모: " + (d.message || "(없음)");
+    } else {
+      resultEl.className = "fail";
+      resultEl.textContent = "❌ adminOrders 문서가 존재하지 않습니다.\n\n→ 이 boardId로 만든 adminOrders 문서가 아예 없다는 뜻입니다. (주문 저장 시 adminOrders 쓰기가 안 되고 있거나, boardId를 잘못 입력했을 수 있어요)";
+    }
+  } catch (e) {
+    resultEl.className = "fail";
+    resultEl.textContent = "⚠️ 오류: " + (e.code || "") + " " + e.message;
+  }
+};
+</script>
+</body>
+</html>
