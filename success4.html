@@ -49,7 +49,7 @@
 
             try {
                 // 상태 업데이트 전에 로그인 세션(같은 브라우저에서 이어받은 익명 계정)이 준비될 때까지 대기
-                await ensureAnonymousLogin();
+                const currentUser = await ensureAnonymousLogin();
 
                 // 1. 상태가 '대기'인 문서들 조회
                 const q = query(collection(db, "boards"), where("status", "==", "대기"));
@@ -57,9 +57,11 @@
 
                 let found = false;
                 
-                // 2. 가격 비교 및 업데이트
+                // 2. 가격 + 내 uid가 둘 다 일치하는 문서만 업데이트
+                //    (가격만으로 찾으면, 같은 가격의 다른 사람 대기중 주문을 잘못 찾아
+                //     uid가 달라 permission-denied가 나는 경우가 있었음)
                 for (const doc of querySnapshot.docs) {
-                    if (String(doc.data().price) === String(price)) {
+                    if (String(doc.data().price) === String(price) && doc.data().uid === currentUser.uid) {
                         await updateDoc(doc.ref, { status: "카드결제" });
                         found = true;
                         break;
