@@ -92,6 +92,30 @@ let currentSelected = { id: "" };
 // 주문별 private 서브컬렉션 문서 참조를 캐싱 (운송장URL 저장 시 재사용)
 let privateRefCache = {};
 
+// 표를 5개까지만 먼저 보여주고, 나머지는 "펼쳐보기" 버튼으로 펼치게 만드는 공통 헬퍼
+function buildExpandableTable(headerRowHtml, rowsHtml, keyPrefix) {
+  const visible = rowsHtml.slice(0, 5).join('');
+  const rest = rowsHtml.slice(5);
+  let html = `<table><thead>${headerRowHtml}</thead><tbody>${visible}</tbody>`;
+  if (rest.length > 0) {
+    html += `<tbody id="${keyPrefix}-more" style="display:none">${rest.join('')}</tbody>`;
+  }
+  html += `</table>`;
+  if (rest.length > 0) {
+    html += `<button id="${keyPrefix}-toggle-btn" data-label="펼쳐보기 (${rest.length}건 더보기)" onclick="toggleMore('${keyPrefix}')" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">펼쳐보기 (${rest.length}건 더보기)</button>`;
+  }
+  return html;
+}
+
+window.toggleMore = (keyPrefix) => {
+  const more = document.getElementById(keyPrefix + '-more');
+  const btn = document.getElementById(keyPrefix + '-toggle-btn');
+  if (!more || !btn) return;
+  const isHidden = more.style.display === 'none';
+  more.style.display = isHidden ? 'table-row-group' : 'none';
+  btn.textContent = isHidden ? '접기' : btn.dataset.label;
+};
+
 window.toggleSelect = (checkbox, id, author) => {
   if (checkbox.checked) {
     currentSelected = { id };
@@ -220,7 +244,7 @@ async function loadCashRequests() {
       return;
     }
 
-    let html = "<table><tr><th>작성자</th><th>발행희망번호</th><th>상태</th></tr>";
+    const rows = [];
     snap3.forEach(d => {
       const data = d.data();
       let statusCell;
@@ -229,10 +253,13 @@ async function loadCashRequests() {
       } else {
         statusCell = `<div class="url-row"><input id="cashurl-${d.id}" placeholder="전표 jpg URL"><button onclick="saveCashUrl('${d.id}')">저장</button></div>`;
       }
-      html += `<tr><td>${data.author || '-'}</td><td>${data.cashNumber || '-'}</td><td>${statusCell}</td></tr>`;
+      rows.push(`<tr><td>${data.author || '-'}</td><td>${data.cashNumber || '-'}</td><td>${statusCell}</td></tr>`);
     });
-    html += "</table>";
-    el.innerHTML = html;
+
+    el.innerHTML = buildExpandableTable(
+      "<tr><th>작성자</th><th>발행희망번호</th><th>상태</th></tr>",
+      rows, "cash"
+    );
   } catch (e) {
     el.innerHTML = `<span class="fail">⚠️ 신청 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
   }
@@ -252,10 +279,13 @@ async function loadRecentOrders() {
     const adminPrivates = await Promise.all(snap1.docs.map(d => fetchPrivate(d.id)));
     const rawPrivates = await Promise.all(snap1.docs.map(d => fetchPrivateRef(d.id)));
 
-    let html = "<table><tr><th></th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>";
+    const rows = [];
     snap1.docs.forEach((d, idx) => {
-      const data = d.data();
       const adminPriv = adminPrivates[idx];
+      // adminOrders 문서 자체가 없는 주문은 목록에서 아예 제외
+      if (adminPriv._err === "adminOrders 문서 없음") return;
+
+      const data = d.data();
       const rawPriv = rawPrivates[idx] || {};
       const date = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('ko-KR') : '-';
       const author = data.author || '-';
@@ -282,7 +312,7 @@ async function loadRecentOrders() {
         cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
       }
 
-      html += `<tr>
+      rows.push(`<tr>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td>${date}</td>
         <td>${author}</td>
@@ -291,10 +321,18 @@ async function loadRecentOrders() {
         <td>${status}</td>
         <td>${trackingCell}</td>
         <td>${cardCell}</td>
-      </tr>`;
+      </tr>`);
     });
-    html += "</table>";
-    resultEl.innerHTML = html;
+
+    if (rows.length === 0) {
+      resultEl.textContent = "표시할 주문이 없습니다.";
+      return;
+    }
+
+    resultEl.innerHTML = buildExpandableTable(
+      "<tr><th></th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
+      rows, "orders"
+    );
   } catch (e) {
     resultEl.innerHTML = `<span class="fail">⚠️ 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
   }
