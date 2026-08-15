@@ -30,11 +30,24 @@
 <div id="listBox">
   <p class="ok">✅ 로그인됨 — 최근 주문 10건</p>
   <div id="result">불러오는 중...</div>
+
+  <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:10px;">
+    <p style="margin:0 0 10px; font-size:14px;">선택된 주문: <b id="selected-name">없음</b></p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button onclick="updateStatus('대기')" style="background:#64748b;">대기</button>
+      <button onclick="updateStatus('무통장')" style="background:#059669;">무통장</button>
+      <button onclick="updateStatus('카드결제')" style="background:#2563eb;">카드결제</button>
+      <button onclick="updateStatus('접수에러')" style="background:#dc2626;">접수에러</button>
+      <button onclick="updateStatus('주문취소')" style="background:#1e293b;">주문취소</button>
+      <button onclick="deleteSelectedOrder()" style="background:#b91c1c;">주문삭제</button>
+      <button onclick="window.open('https://sowonnamoo.github.io/myboard/index1', '_blank', 'width=800,height=900')" style="background:#4f46e5;">✏️ 글쓰기</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const config = {
@@ -65,6 +78,59 @@ window.login = async function() {
   }
 };
 
+let currentSelected = { id: "" };
+
+window.toggleSelect = (checkbox, id, author) => {
+  if (checkbox.checked) {
+    currentSelected = { id };
+    document.getElementById('selected-name').innerText = author;
+    document.querySelectorAll('input[type="checkbox"]').forEach(el => {
+      if (el !== checkbox) el.checked = false;
+    });
+  } else {
+    currentSelected = { id: "" };
+    document.getElementById('selected-name').innerText = "없음";
+  }
+};
+
+window.updateStatus = async (value) => {
+  if (!currentSelected.id) return alert("표에서 주문을 체크해주세요.");
+  try {
+    const docRef = doc(db, "boards", currentSelected.id);
+    const updateData = { status: value };
+    if (value === '접수에러') updateData.sian = '에러';
+    if (value === '무통장' || value === '카드결제') {
+      const snap = await getDoc(docRef);
+      if (snap.exists() && !snap.data().paidAt) {
+        updateData.paidAt = serverTimestamp();
+      }
+    }
+    await updateDoc(docRef, updateData);
+    alert("상태 변경 완료: " + value);
+    loadRecentOrders();
+  } catch (e) {
+    alert("업데이트 실패: " + e.message);
+  }
+};
+
+window.deleteSelectedOrder = async () => {
+  if (!currentSelected.id) return alert("표에서 주문을 체크해주세요.");
+  if (!confirm("정말로 이 주문을 삭제하시겠습니까?\n삭제한 주문은 복구할 수 없습니다.")) return;
+  try {
+    // private 서브컬렉션 + adminOrders 문서까지 같이 정리 (고아 데이터 방지)
+    const privSnap = await getDocs(collection(db, "boards", currentSelected.id, "private"));
+    await Promise.all(privSnap.docs.map(d => deleteDoc(d.ref)));
+    await deleteDoc(doc(db, "adminOrders", currentSelected.id)).catch(() => {});
+    await deleteDoc(doc(db, "boards", currentSelected.id));
+    alert("주문이 삭제되었습니다.");
+    currentSelected = { id: "" };
+    document.getElementById('selected-name').innerText = "없음";
+    loadRecentOrders();
+  } catch (e) {
+    alert("삭제 실패: " + e.message);
+  }
+};
+
 async function fetchPrivate(docId) {
   try {
     const snap = await getDoc(doc(db, "adminOrders", docId));
@@ -86,7 +152,7 @@ async function loadRecentOrders() {
       return;
     }
 
-    let html = "<table><tr><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th></tr>";
+    let html = "<table><tr><th></th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th></tr>";
     snap1.docs.forEach((d, idx) => {
       const data = d.data();
       const priv = privates[idx];
@@ -100,7 +166,8 @@ async function loadRecentOrders() {
         phone = priv.phone || '<span class="fail">(비어있음)</span>';
         address = priv.address || '<span class="fail">(비어있음)</span>';
       }
-      html += `<tr><td>${date}</td><td>${author}</td><td>${phone}</td><td>${address}</td></tr>`;
+      const authorEsc = author.replace(/'/g, "\\'");
+      html += `<tr><td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td><td>${date}</td><td>${author}</td><td>${phone}</td><td>${address}</td></tr>`;
     });
     html += "</table>";
     resultEl.innerHTML = html;
