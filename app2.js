@@ -308,6 +308,11 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoDisplay.className = "text-sm text-gray-700 mb-3 italic";
         const latest = snapshot.docs[0].data();
         memoDisplay.innerText = latest.text;
+        const requestedAt = latest.createdAt && latest.createdAt.toDate
+            ? latest.createdAt.toDate().toLocaleString('ko-KR')
+            : '';
+        memoStatus.innerHTML = ' - 🔊 수정요청이 등록되셨습니다. [교정 제작중/잠시 기다려주세요]' +
+            (requestedAt ? `<span class="font-normal text-xs ml-1">(요청: ${requestedAt})</span>` : '');
         memoStatus.classList.remove("hidden");
         if (fileDownloadArea) {
             if (latest.fileUrl) {
@@ -322,10 +327,11 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
             }
         }
     } else if (!isDone && sianRefreshedAt) {
-        // 관리자가 새 시안을 등록하고 초기화한 직후 - 굵은 글씨로 재업로드 안내
+        // 관리자가 새 시안을 등록하고 초기화한 직후 - 굵은 글씨로 등록 안내 + 갱신 시각
         const timeStr = sianRefreshedAt.toDate ? sianRefreshedAt.toDate().toLocaleString('ko-KR') : '';
         memoDisplay.className = "text-sm mb-3 font-bold text-blue-700";
-        memoDisplay.innerText = `수정내용이 ${timeStr}에 재업로드 되셨습니다. 확인 후 인쇄승인 클릭 부탁드립니다.`;
+        memoDisplay.innerHTML = `시안이 등록되셨습니다. (인쇄승인 가능상태)` +
+            (timeStr ? `<span class="text-gray-400 font-normal text-xs ml-1">(등록: ${timeStr})</span>` : '');
         memoStatus.classList.add("hidden");
         if (fileDownloadArea) fileDownloadArea.innerHTML = "";
     } else {
