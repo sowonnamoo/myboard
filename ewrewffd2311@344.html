@@ -1,276 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>관리자 전용 게시판</title>
-    <style>
-        body { font-family: 'Pretendard', sans-serif; background-color: #f4f7f6; padding: 20px; display: flex; justify-content: center; }
-        .main-box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 650px; }
-        
-        /* 로그인 전 본문 숨김 처리 */
-        #mainContent { display: none; }
-        
-        /* 초기 로그인 화면 스타일 */
-        #loginSection { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 10px; }
-        
-        h2 { font-size: 1.1rem; color: #4a5568; margin-top: 20px; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
-        h2:first-child { margin-top: 0; }
-        
-        button { background: #4a5568; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
-        button.danger { background: #e53e3e; }
-        button.active { background: #38a169; }
-        
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input { padding: 5px; border: 1px solid #cbd5e0; border-radius: 4px; text-align: center; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
-        th { background: #f8fafc; color: #718096; padding: 10px; border-bottom: 2px solid #edf2f7; }
-        td { padding: 8px; border-bottom: 1px solid #edf2f7; text-align: center; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>주문작성 및 공지게시판</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="bg-white" oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
 
-<div class="main-box">
-    <!-- 1. 초기 로그인 화면 -->
-    <div id="loginSection">
-        <h2>관리자 로그인</h2>
-        <input type="email" id="adminEmail" placeholder="관리자 이메일" style="width: 220px;">
-        <input type="password" id="adminPassword" placeholder="비밀번호" style="width: 220px;">
-        <button onclick="loginAdmin()">로그인하여 접속</button>
+    <div class="w-[744px] mx-auto min-h-screen">
+        
+        <header class="w-full flex justify-center pb-4">           
+            <img src="https://sowonnamoo1005.cafe24.com/web/1new/26062901.jpg" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
+            <map name="Map">
+                <area shape="rect" coords="0,-1,211,57" href="https://sowonnamoo.github.io/myboard" target="_self">
+                <area shape="rect" coords="211,-1,383,55" href="https://sowonnamoo.github.io/myboard/index2" target="_self">
+                <area shape="rect" coords="383,-1,572,58" href="https://sowonnamoo.github.io/myboard/index5" target="_self">
+                <area shape="rect" coords="572,-3,742,58" href="https://sowonnamoo.github.io/myboard/index6" target="_self">
+            </map>
+        </header>
+
+        <div class="py-0">
+            <!-- 목록 화면 -->
+            <section id="view-list" class="space-y-4">
+                <div class="border p-3 bg-gray-50 text-sm text-gray-600 rounded">
+                    🎁 <strong>공지사항 및 VIP 비밀글 접수게시판</strong> &nbsp;
+                </div>
+
+                <table class="w-full text-sm border-t-2 border-gray-400 border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 border-b">
+                            <th class="py-3 px-4 text-left">제목</th>
+                            <th class="py-3 w-28 text-center">작성자</th>
+                            <th class="py-3 w-32 text-center">작성일</th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-body" class="divide-y"></tbody>
+                </table>
+
+                <div id="pagination" class="flex justify-center items-center space-x-2 py-4 text-sm font-medium text-gray-600"></div>
+
+                <div class="flex justify-between items-center py-4 border-t border-gray-100 w-full">
+                    <div class="flex items-center space-x-2 whitespace-nowrap">
+                        <button onclick="window.open('https://sowonnamoo.github.io/myboard/search', '_blank', 'width=800,height=800')" 
+                                class="bg-gray-600 text-white text-sm px-4 py-2 rounded font-bold hover:bg-gray-700 transition">
+                            내 주문조회
+                        </button>
+                    </div>
+
+                    <!-- 글쓰기 버튼 -->
+                    <button id="go-write-btn" 
+                            class="flex-shrink-0 bg-blue-600 text-white font-bold text-lg px-12 py-2.5 rounded-full hover:bg-blue-700 transition shadow">
+                        글쓰기
+                    </button>
+                </div>
+            </section>
+
+            <!-- 글쓰기 화면 -->
+            <section id="view-write" class="hidden w-full">
+                <h2 class="text-xl font-bold text-gray-800 mb-6">🔹 공지 / VIP 글 작성</h2>                
+                <table class="w-full text-sm border-collapse">
+                    <tr class="form-row">
+                        <td class="w-28 font-bold text-gray-700 py-3">구입 제품명 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="product-name" class="form-input" placeholder="제품명을 입력하세요"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">수량 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="quantity" class="form-input" placeholder="수량 입력"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">사이즈 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="size" class="form-input" placeholder="사이즈 입력"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">결제금액 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="price" class="form-input" placeholder="숫자만 입력하세요" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></td>
+                    </tr>                  
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">파일1 (필수) <span class="text-red-500">*</span></td>
+                        <td><input type="file" id="file-1"></td>
+                    </tr>
+                    <tr class="form-row" id="file-2-wrap">
+                        <td class="font-bold text-gray-700 py-3">파일2</td>
+                        <td><input type="file" id="file-2"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3 align-top">작업메시지</td>
+                        <td><textarea id="message" rows="4" class="form-input resize-none" placeholder="내용을 입력하세요"></textarea></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td>
+                        <td><input type="text" id="input-author" class="form-input" placeholder="이름 또는 관리자명"></td>
+                    </tr>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">접수자핸드폰 <span class="text-red-500">*</span></td>
+                        <td>
+                            <input type="text" id="phone" class="form-input" placeholder="010-XXXX-XXXX" 
+                                   maxlength="11" 
+                                   oninput="this.value = this.value.replace(/[^0-9-]/g, '')">
+                        </td>
+                    </tr>
+                    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+                    <tr class="form-row">
+                        <td class="font-bold text-gray-700 py-3">배송지 <span class="text-red-500">*</span></td>
+                        <td class="space-y-2">
+                            <div class="flex items-center space-x-2 flex-nowrap">
+                                <input type="text" id="address" class="form-input flex-grow" placeholder="주소" readonly>
+                                <button type="button" onclick="execDaumPostcode()" class="bg-gray-500 text-white px-2 py-2 rounded text-sm whitespace-nowrap">주소찾기</button>
+                            </div>
+                            <input type="text" id="address-detail" class="form-input w-full" placeholder="상세주소 입력">
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="flex justify-between items-center mt-6">
+                    <button onclick="switchView('list')" class="border px-4 py-1.5 text-sm rounded bg-gray-50 hover:bg-gray-100">목록</button>
+                    <button id="save-btn" class="bg-gray-600 text-white font-semibold px-8 py-1.5 text-sm rounded hover:bg-gray-700">접수하기</button>
+                </div>
+            </section>
+
+            <!-- 상세 화면 -->
+            <section id="view-detail" class="hidden w-full space-y-5">
+                <!-- 상세 내용 영역 (app.js 연동) -->
+            </section>
+        </div>
     </div>
 
-    <!-- 2. 로그인 후 노출되는 본문 영역 -->
-    <div id="mainContent">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="margin:0; border:none;">게시판 관리 시스템</h2>
-            <button class="danger" onclick="logoutAdmin()">로그아웃</button>
-        </div>
-
-        <h2>게시글 작성</h2>
-        <button onclick="savePost()">공지 및 업무 등록</button>
-        <div style="margin-top:10px;">
-            <input type="number" id="baseInterval" value="60" style="width:40px;">초 마다 
-            <input type="number" id="probInput" value="50" style="width:30px;">% 확률로 
-            <button id="autoBtn" onclick="toggleAuto()" class="active">자동 등록 시작</button>
-        </div>
-
-        <h2>데이터 관리</h2>
-        <p>삭제 기준: <input type="number" id="daysInput" value="360" style="width:50px;"> 일 지난 데이터</p>
-        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-            <button class="danger" onclick="deleteOldPosts(1)">1번 삭제</button>
-            <button class="danger" onclick="deleteOldPosts(2)">2번 삭제</button>
-            <button class="danger" onclick="deleteOldPosts(3)">3번 삭제</button>
-            <button class="danger" onclick="deleteOldPosts(4)">4번 삭제</button>
-            <button class="danger" onclick="deleteWaitingPosts()">"대기" 삭제</button>
-        </div>
-        <div style="margin-top:15px; font-weight:bold; color:#4a5568;">전체 게시글 수: <span id="totalCount">0</span>개</div>
-
-        <h2>게시판 목록 (최신 4개)</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>제목</th><th>작성자</th><th>테스트번호</th><th>비번</th><th>삭제</th>
-                </tr>
-            </thead>
-            <tbody id="postList"></tbody>
-        </table>
-    </div>
-</div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc, where, Timestamp, getCountFromServer, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
-        authDomain: "board-291e3.firebaseapp.com",
-        projectId: "board-291e3",
-        storageBucket: "board-291e3.firebasestorage.app",
-        messagingSenderId: "25881766316",
-        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    let autoTimeout = null;
-    const titles = [`공지안내`, `휴무일안내`];
-    const authors = [`김가영`, `김가온`];
-
-    // 관리자 로그인 함수
-    window.loginAdmin = async () => {
-        const email = document.getElementById('adminEmail').value;
-        const password = document.getElementById('adminPassword').value;
-        if (!email || !password) {
-            alert("이메일과 비밀번호를 입력해주세요.");
-            return;
-        }
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const adminDoc = await getDoc(doc(db, "admins", userCredential.user.uid));
+    <!-- 입력 잠금 방지 및 기능 안정화 스크립트 -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // 글쓰기 진입 시 입력창이 잠기는(readonly) 현상을 강제로 해제하는 안전장치
+            const targetIds = ['product-name', 'quantity', 'size', 'price', 'input-author', 'phone', 'address', 'address-detail', 'message'];
             
-            if (adminDoc.exists()) {
-                document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('mainContent').style.display = 'block';
-                loadPosts();
-                updateStats();
-            } else {
-                alert("이 계정은 관리자 권한이 없습니다.");
-                signOut(auth);
+            const unlockFields = () => {
+                targetIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.readOnly = false;
+                        el.disabled = false;
+                        el.style.backgroundColor = '#ffffff';
+                    }
+                });
+            };
+
+            // 페이지 로드 직후 및 글쓰기 버튼 클릭 시 강제 해제 적용
+            unlockFields();
+
+            const writeBtn = document.getElementById("go-write-btn");
+            if (writeBtn) {
+                writeBtn.addEventListener("click", function() {
+                    setTimeout(unlockFields, 50); // 뷰 전환 직후 필드 활성화 보장
+                });
             }
-        } catch (e) {
-            alert("로그인 실패: " + e.message);
-        }
-    };
-
-    window.logoutAdmin = () => {
-        signOut(auth).then(() => location.reload());
-    };
-
-    function generateComplexPassword() {
-        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
-        let retVal = "";
-        for (let i = 0; i < 10; ++i) {
-            retVal += charset.charAt(Math.floor(Math.random() * charset.length));
-        }
-        return retVal;
-    }
-
-    window.toggleAuto = () => {
-        const btn = document.getElementById('autoBtn');
-        if (autoTimeout) {
-            clearTimeout(autoTimeout);
-            autoTimeout = null;
-            btn.innerText = "자동 등록 시작";
-            btn.className = "active";
-        } else {
-            btn.innerText = "자동 등록 중단";
-            btn.className = "danger";
-            scheduleNext();
-        }
-    };
-
-    function scheduleNext() {
-        if (document.getElementById('autoBtn').innerText !== "자동 등록 중단") return;
-        const base = parseInt(document.getElementById('baseInterval').value);
-        const prob = parseInt(document.getElementById('probInput').value);
-        const delay = (Math.random() * (base * 0.4) + (base * 0.8)) * 1000;
-        
-        autoTimeout = setTimeout(() => {
-            if (Math.random() * 100 < prob) savePost();
-            scheduleNext();
-        }, delay);
-    }
-
-    async function updateStats() {
-        const snapshot = await getCountFromServer(collection(db, "boards"));
-        document.getElementById('totalCount').innerText = snapshot.data().count;
-    }
-
-    window.savePost = async () => {
-        if (!auth.currentUser) return;
-
-        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(44));
-        const snapshot = await getDocs(q);
-        const recentDocs = snapshot.docs.map(doc => doc.data());
-
-        let randomTitle, randomAuthor;
-        let isDuplicate = true;
-        let retryCount = 0;
-
-        while (isDuplicate && retryCount < 10) {
-            randomTitle = titles[Math.floor(Math.random() * titles.length)];
-            randomAuthor = authors[Math.floor(Math.random() * authors.length)];
-            isDuplicate = recentDocs.some(data => data.author && data.author[0] === randomAuthor[0]);
-            if (!isDuplicate) break;
-            retryCount++;
-        }
-        
-        await addDoc(collection(db, "boards"), {
-            productName: randomTitle,
-            author: randomAuthor,
-            password: generateComplexPassword(),
-            createdAt: new Date(),
-            status: Math.random() > 0.5 ? "완료" : "대기",
-            test: Math.floor(Math.random() * 4) + 1,
-            uid: auth.currentUser.uid
         });
-        
-        loadPosts();
-        updateStats();
-    };
+    </script>
 
-    window.removePost = async (id) => {
-        if (confirm("정말로 이 게시글을 삭제하시겠습니까?")) {
-            await deleteDoc(doc(db, "boards", id));
-            loadPosts();
-            updateStats();
-        }
-    };
-
-    window.deleteWaitingPosts = async () => {
-        const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
-        const now = Date.now();
-
-        const q = query(collection(db, "boards"), where("status", "==", "대기"));
-        const snapshot = await getDocs(q);
-
-        const targets = snapshot.docs.filter(doc => {
-            const data = doc.data();
-            const createdAt = data.createdAt.toDate().getTime();
-            return (now - createdAt) > thirtyDaysInMs;
-        });
-
-        if (targets.length === 0) {
-            alert("30일이 지난 '대기' 상태의 게시글이 없습니다.");
-            return;
-        }
-
-        if (confirm(`${targets.length}개의 30일 지난 '대기' 게시글을 삭제하시겠습니까?`)) {
-            for (const docSnapshot of targets) {
-                await deleteDoc(doc(db, "boards", docSnapshot.id));
-            }
-            loadPosts();
-            updateStats();
-            alert("삭제가 완료되었습니다.");
-        }
-    };
-
-    window.deleteOldPosts = async (testValue) => {
-        const days = parseInt(document.getElementById('daysInput').value);
-        const thresholdDate = new Date(Date.now() - (days * 24 * 60 * 60 * 1000));
-        const q = days === 0 
-            ? query(collection(db, "boards"), where("test", "==", testValue))
-            : query(collection(db, "boards"), where("test", "==", testValue), where("createdAt", "<=", Timestamp.fromDate(thresholdDate)));
-        const snapshot = await getDocs(q);
-        for (const document of snapshot.docs) await deleteDoc(doc(db, "boards", document.id));
-        loadPosts();
-        updateStats();
-    };
-
-    async function loadPosts() {
-        const list = document.getElementById('postList');
-        list.innerHTML = "";
-        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(4));
-        const snapshot = await getDocs(q);
-        snapshot.forEach((doc) => {
-            const d = doc.data();
-            list.innerHTML += `<tr>
-                <td>${d.productName}</td><td>${d.author}</td>
-                <td>${d.test || "-"}</td>
-                <td><input type="password" id="input_${doc.id}" style="width:30px">
-                <button onclick="checkPassword('${doc.id}', '${d.password}')" style="padding:1px 4px;">확인</button></td>
-                <td><button class="danger" onclick="removePost('${doc.id}')" style="padding:1px 4px;">삭제</button></td>
-            </tr>`;
-        });
-    }
-
-    window.checkPassword = (docId, realPassword) => {
-        const input = document.getElementById(`input_${docId}`).value;
-        alert(input === realPassword ? "인증 성공!" : "비밀번호 오류");
-    };
-</script>
+    <!-- 기존 외부 앱 로직 연동 -->
+    <script type="module" src="app.js"></script>
 </body>
 </html>
