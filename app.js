@@ -670,18 +670,35 @@ function uploadToR2(fileInputId, authorName, onProgress) {
     });
 }
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 7; // 화면에 한 번에 보여줄 개수 (기존과 동일, 변경 없음)
 
-// Firestore에서 lastVisible 이후로 유효한(숨김 처리 안 된) 글을 목표 개수만큼 모을 때까지
-// 필요한 만큼 반복해서 가져옵니다. 숨겨진 글을 건너뛴 만큼 목록 개수가 줄어드는 문제를 방지합니다.
+// [최적화] 삭제된(isDeleted:true) 글이 섞여 있을 때, 예전에는 매번 PAGE_SIZE(7개)씩만
+// 가져와서 부족하면 또 7개, 또 7개... 식으로 Firestore 왕복(round-trip)이 여러 번
+// 반복되어 느려졌습니다. (왕복 1번당 네트워크 지연이 그대로 누적됨)
+// 이제는 삭제된 글 때문에 목표 개수가 부족할 경우, 두 번째 시도부터는 부족한 개수보다
+// 넉넉하게(OVER_FETCH_MULTIPLIER배) 한 번에 가져와서 왕복 횟수를 최소화합니다.
+// - 삭제된 글이 아예 없다면: 기존과 동일하게 딱 1번 왕복으로 끝남 (더 느려지지 않음)
+// - 삭제된 글이 섞여 있다면: 왕복 횟수가 크게 줄어듦
+// - isDeleted 필드가 없는 예전 글도 그대로 유효 처리되므로(data.isDeleted !== true),
+//   데이터 유실 위험 없이 안전하게 동작합니다.
+const OVER_FETCH_MULTIPLIER = 3;
+const MAX_FETCH_LIMIT = 50; // 한 번에 과도하게 많이 읽지 않도록 상한
+
 async function fetchValidOrders(targetCount) {
     const collected = [];
     let exhausted = false;
 
     while (collected.length < targetCount && !exhausted) {
+        const remaining = targetCount - collected.length;
+        // 첫 시도는 필요한 만큼만, 그 다음부터는 여유 있게 가져와서 왕복 횟수를 줄입니다.
+        const fetchLimit = Math.min(
+            collected.length === 0 ? remaining : remaining * OVER_FETCH_MULTIPLIER,
+            MAX_FETCH_LIMIT
+        );
+
         const q = lastVisible
-            ? query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(PAGE_SIZE))
-            : query(ordersCollection, orderBy("createdAt", "desc"), limit(PAGE_SIZE));
+            ? query(ordersCollection, orderBy("createdAt", "desc"), startAfter(lastVisible), limit(fetchLimit))
+            : query(ordersCollection, orderBy("createdAt", "desc"), limit(fetchLimit));
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) { exhausted = true; break; }
@@ -695,7 +712,7 @@ async function fetchValidOrders(targetCount) {
             }
         }
 
-        if (snapshot.docs.length < PAGE_SIZE) {
+        if (snapshot.docs.length < fetchLimit) {
             exhausted = true; // Firestore에 더 가져올 문서가 없음
         }
     }
