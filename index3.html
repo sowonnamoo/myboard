@@ -28,7 +28,7 @@
         <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity" readonly></div>
         <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size" readonly></div>
     </div>
-    <div class="input-group"><label>결제금액</label><input type="text" id="price" placeholder="상품 가격 금액을 정확히 입력해 주세요." inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+    <div class="input-group"><label>결제금액</label><input type="text" id="price" placeholder="상품가격+배송비 금액을 정확히 입력 (오류시 제작보류) 해주세요." inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
     <div class="input-group"><label>이미지 번호</label>
         <div style="display:flex; gap:10px;">
             <input type="text" id="imgCode" readonly>
@@ -56,9 +56,19 @@
     </div>
 </div>
 
+<!-- 카드결제 성공 안내 모달 (기본 숨김) -->
+<div id="pay-success-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
+    <div style="background:white; padding:30px; border-radius:10px; max-width:320px; width:90%; text-align:center;">
+        <div style="font-size:40px; margin-bottom:10px;">✅</div>
+        <h3 style="margin:0 0 8px; font-size:16px; color:#333;">결제 성공</h3>
+        <p style="margin:0 0 20px; font-size:13px; color:#666;">재주문이 정상적으로 접수되었습니다.</p>
+        <button id="pay-success-goto-btn" style="width:100%; padding:12px; background:#1e3a8a; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">주문조회 바로가기</button>
+    </div>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = { 
@@ -84,6 +94,41 @@
         else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
     });
     function ensureAnonymousLogin() { return authReadyPromise; }
+
+    // 카드결제 팝업(payment.html)이 성공 메시지를 보낼 때 어느 주문을 업데이트할지 알기 위한 값
+    let currentOrderId = null;
+    let paymentHandled = false; // 메시지가 중복으로 와도 한 번만 처리되도록
+
+    // ---- payment.html에서 보내는 결제 성공 메시지 수신 ----
+    // payment.html과 index3.html은 실제로는 같은 origin(sowonnamoo.github.io)이라
+    // 경로(myjs vs myboard)가 달라도 postMessage가 그대로 전달됩니다.
+    window.addEventListener('message', async (event) => {
+        if (event.origin !== 'https://sowonnamoo.github.io') return;
+        if (!event.data || event.data.type !== 'PAYMENT_SUCCESS') return;
+        if (!currentOrderId || paymentHandled) return;
+        paymentHandled = true;
+
+        try {
+            await ensureAnonymousLogin();
+            await updateDoc(doc(db, "jjjj", currentOrderId), { status: '카드결제' });
+        } catch (e) {
+            console.error('재주문 상태 업데이트 실패:', e);
+            alert('결제는 완료되었으나 주문 상태 반영 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
+        }
+
+        document.getElementById('pay-success-modal').style.display = 'flex';
+    });
+
+    document.getElementById('pay-success-goto-btn').onclick = () => {
+        // index3는 index2에서 팝업으로 열렸으므로, 원래 창(index2)을 index5로 이동시키고
+        // 이 팝업(index3)은 닫습니다. (팝업이 아니라 opener가 없으면 이 창 자체를 이동)
+        if (window.opener && !window.opener.closed) {
+            window.opener.location.href = 'https://sowonnamoo.github.io/myboard/index5';
+            window.close();
+        } else {
+            window.location.href = 'https://sowonnamoo.github.io/myboard/index5';
+        }
+    };
 
     // ---- 개인정보 조회키(secretId) 계산 - app.js/app2.js와 반드시 동일한 방식 ----
     async function sha256Hex(text) {
@@ -122,6 +167,10 @@
         if (params.get('message')) document.getElementById('message').value = params.get('message');
         if (params.get('file1Url')) document.getElementById('file1Url').value = params.get('file1Url');
         if (params.get('file2Url')) document.getElementById('file2Url').value = params.get('file2Url');
+        // 작성자명/전화번호는 이전 페이지(index2)에서 넘겨준 값을 그대로 채워둡니다.
+        // 결제금액은 매번 달라지므로 여기서 채우지 않고 직접 입력하게 둡니다.
+        if (params.get('author')) document.getElementById('name').value = params.get('author');
+        if (params.get('phone')) document.getElementById('phone').value = params.get('phone');
     };
 
     window.openImage = () => {
@@ -145,7 +194,7 @@
         }
 
         if (!price || parseInt(price, 10) <= 0) {
-            alert("상품 가격 금액을 정확히 입력해 주세요.");
+            alert("상품가격+배송비 금액을 정확히 입력 (오류시 제작보류) 해주세요.");
             return;
         }
         
@@ -199,14 +248,16 @@ try {
                 message: messageVal,
                 uid: currentUser.uid
             });
-            const docRef = { id: orderId };
             
             if (type === '무통장') {
                 // 무통장 결제: 기존 로직 유지
                 window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
             } else {
-                // 카드결제: 현재 창에서 jaecard.html로 이동 (주문 ID 전달)
-                window.location.href = `jaecard.html?price=${encodeURIComponent(price)}&orderId=${docRef.id}`;
+                // 카드결제: payment.html을 팝업으로 열고, 이 창은 그대로 열어둔 채 결제 완료 메시지를 기다립니다.
+                currentOrderId = orderId;
+                paymentHandled = false;
+                const paymentUrl = `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`;
+                window.open(paymentUrl, 'paymentWindow', 'width=811,height=649,scrollbars=yes,resizable=yes');
             }
         } catch (e) { alert('오류: ' + e.message); }
     };

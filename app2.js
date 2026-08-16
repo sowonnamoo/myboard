@@ -174,6 +174,10 @@ const POSTS_PER_PAGE = 8;
 // 현재 상세보기 중인 게시글의 "시안 이미지 번호"(finalCode)를 담아둡니다.
 // 재구입 버튼이 화면 텍스트를 파싱하지 않고 이 값을 바로 사용합니다.
 let currentSianImgCode = "";
+// 재구입 버튼이 index3.html에 작성자명/전화번호를 그대로 넘길 수 있도록,
+// 비밀번호 확인 성공 시(viewDetail/autoViewDetail) 여기에 저장해둡니다.
+let currentAuthorName = "";
+let currentAuthorPhone = "";
 
 async function loadMemo(boardId) {
     const memoDisplay = document.getElementById("memo-display");
@@ -478,6 +482,8 @@ window.viewDetail = async function(id) {
 
     modal.classList.add("hidden");
     currentViewId = id;
+    currentAuthorName = data.author || "";
+    currentAuthorPhone = privateData.phone || "";
 
     document.getElementById("view-list").classList.add("hidden");
     document.getElementById("view-detail").classList.remove("hidden");
@@ -770,7 +776,9 @@ setInterval(() => {
                 }
 
                 // [수정된 부분] window.location.href 대신 window.open으로 새 창(팝업) 오픈
-                const url = `index3.html?productName=${encodeURIComponent(title)}&imgCode=${encodeURIComponent(imgCode)}`;
+                // 작성자명/전화번호도 함께 넘겨서 index3.html에 자동으로 채워지게 함
+                // (가격은 매번 달라지므로 의도적으로 넘기지 않음 - 직접 입력)
+                const url = `index3.html?productName=${encodeURIComponent(title)}&imgCode=${encodeURIComponent(imgCode)}&author=${encodeURIComponent(currentAuthorName)}&phone=${encodeURIComponent(currentAuthorPhone)}`;
                 window.open(url, '_blank', 'width=500,height=800,scrollbars=yes');
             };
             
@@ -831,6 +839,8 @@ async function autoViewDetail(id, secretId) {
     
     const data = snap.data();
     currentViewId = id;
+    currentAuthorName = data.author || "";
+    currentAuthorPhone = privateData.phone || "";
 
     // 화면 전환
     document.getElementById("view-list").classList.add("hidden");
