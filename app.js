@@ -670,7 +670,7 @@ function uploadToR2(fileInputId, authorName, onProgress) {
     });
 }
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 7;
 
 // Firestore에서 lastVisible 이후로 유효한(숨김 처리 안 된) 글을 목표 개수만큼 모을 때까지
 // 필요한 만큼 반복해서 가져옵니다. 숨겨진 글을 건너뛴 만큼 목록 개수가 줄어드는 문제를 방지합니다.
