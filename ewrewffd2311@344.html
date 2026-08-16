@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>관리자 전용 게시판</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f4f7f6; padding: 20px; display: flex; justify-content: center; }
+        .main-box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 650px; }
+        
+        /* 게시판 숨김 처리 */
+        #mainContent { display: none; }
+        
+        /* 로그인 화면 스타일 */
+        #loginSection { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 10px; }
+        
+        h2 { font-size: 1.1rem; color: #4a5568; margin-top: 20px; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
+        button { background: #4a5568; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        button.danger { background: #e53e3e; }
+        input { padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px; width: 200px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
+        th { background: #f8fafc; color: #718096; padding: 10px; border-bottom: 2px solid #edf2f7; }
+        td { padding: 8px; border-bottom: 1px solid #edf2f7; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="main-box">
+    <!-- 1. 초기 로그인 화면 -->
+    <div id="loginSection">
+        <h2>관리자 로그인</h2>
+        <input type="email" id="adminEmail" placeholder="이메일">
+        <input type="password" id="adminPassword" placeholder="비밀번호">
+        <button onclick="loginAdmin()">로그인하여 접속</button>
+    </div>
+
+    <!-- 2. 로그인 후 나타날 게시판 본문 -->
+    <div id="mainContent">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0; border:none;">게시판 관리 시스템</h2>
+            <button class="danger" onclick="logoutAdmin()">로그아웃</button>
+        </div>
+        
+        <button onclick="savePost()" style="margin-top:20px;">공지 및 업무 등록</button>
+        
+        <h2>데이터 관리</h2>
+        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button class="danger" onclick="deleteWaitingPosts()">"대기" 삭제</button>
+        </div>
+        
+        <div style="margin-top:15px; font-weight:bold; color:#4a5568;">전체 게시글 수: <span id="totalCount">0</span>개</div>
+
+        <table>
+            <thead><tr><th>제목</th><th>작성자</th><th>삭제</th></tr></thead>
+            <tbody id="postList"></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc, getDoc, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    window.loginAdmin = async () => {
+        const email = document.getElementById('adminEmail').value;
+        const password = document.getElementById('adminPassword').value;
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const adminDoc = await getDoc(doc(db, "admins", userCredential.user.uid));
+            
+            if (adminDoc.exists()) {
+                showBoard();
+            } else {
+                alert("관리자 권한이 없습니다.");
+                signOut(auth);
+            }
+        } catch (e) { alert("로그인 실패: " + e.message); }
+    };
+
+    function showBoard() {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        loadPosts();
+        updateStats();
+    }
+
+    window.logoutAdmin = () => {
+        signOut(auth).then(() => location.reload());
+    };
+
+    async function loadPosts() {
+        const list = document.getElementById('postList');
+        list.innerHTML = "";
+        const snapshot = await getDocs(query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(4)));
+        snapshot.forEach((doc) => {
+            const d = doc.data();
+            list.innerHTML += `<tr><td>${d.productName}</td><td>${d.author}</td>
+            <td><button class="danger" onclick="removePost('${doc.id}')">삭제</button></td></tr>`;
+        });
+    }
+
+    async function updateStats() {
+        const snapshot = await getCountFromServer(collection(db, "boards"));
+        document.getElementById('totalCount').innerText = snapshot.data().count;
+    }
+
+    window.savePost = async () => {
+        await addDoc(collection(db, "boards"), {
+            productName: "공지안내",
+            author: "관리자",
+            createdAt: new Date(),
+            status: "완료",
+            uid: auth.currentUser.uid
+        });
+        loadPosts();
+    };
+
+    window.removePost = async (id) => {
+        await deleteDoc(doc(db, "boards", id));
+        loadPosts();
+        updateStats();
+    };
+</script>
+</body>
+</html>
