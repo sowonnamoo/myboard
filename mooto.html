@@ -53,9 +53,28 @@
             • 주문서 접수후 3일내 결제되지 않는 주문접수건은 자동 삭제됩니다. 
         </div>
 
-        <button onclick="confirmAndClose()" class="w-full mt-6 py-3 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-900 transition">
+        <button onclick="requestDepositConfirm()" class="w-full mt-6 py-3 bg-blue-700 text-white font-semibold rounded-xl hover:bg-blue-800 transition">
+            입금완료함 (입금확인요청) 보내기
+        </button>
+
+        <button onclick="confirmAndClose()" class="w-full mt-3 py-3 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-900 transition">
             창 닫기
         </button>
+    </div>
+
+    <!-- 입금확인 요청 완료 모달 (기본 숨김) -->
+    <div id="deposit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-sm">
+            <div class="text-4xl mb-3">✅</div>
+            <p class="text-sm text-gray-700 leading-relaxed">
+                입금확인 요청이 접수되셨습니다.<br>
+                빠른 확인후 시안 등록 되시겠습니다.<br>
+                <span class="text-xs text-gray-500">(확인시간 : 평일 09~18:00 주말 공휴일 제외)</span>
+            </p>
+            <button onclick="goToOrderList()" class="w-full mt-6 py-3 bg-blue-700 text-white font-semibold rounded-xl hover:bg-blue-800 transition">
+                주문접수내역 바로가기
+            </button>
+        </div>
     </div>
 
     <script>
@@ -78,6 +97,14 @@
         function confirmAndClose() {
             alert("무통장 결제로 주문이 접수되었습니다.\n무통장 결제는 3일간 보관되며 결제지연시 주문삭제 됩니다.");
             window.close();
+        }
+
+        function requestDepositConfirm() {
+            document.getElementById('deposit-modal').classList.remove('hidden');
+        }
+
+        function goToOrderList() {
+            window.location.href = 'https://sowonnamoo.github.io/myboard/index5';
         }
     </script>
 </body>
