@@ -915,18 +915,8 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         }
     }
     
-    // 수정 버튼 안전하게 연결 (익명 로그인 확인 후 배송지 수정 페이지가 열림.
-    // 실제로 본인 글인지는 Firestore 규칙이 uid로 검사합니다.)
-    const editBtn = document.getElementById("detail-edit-btn");
-    if (editBtn) {
-        editBtn.onclick = async () => {
-            await ensureAnonymousLogin();
-            // ⚠️ edit.html도 이 key(secretId)로 boards/{id}/private/{key} 문서를 직접 읽어와서
-            // phone/address를 채우도록 별도로 수정해야 합니다 (더 이상 URL로 전화번호/주소를 넘기지 않음).
-            const url = `edit.html?id=${currentViewId}&key=${secretId}&author=${encodeURIComponent(data.author)}`;
-            window.open(url, "editWindow", "width=400,height=500");
-        };
-    }
+    // 배송지 수정하기 기능은 개인정보(전화번호/주소) 보호를 위해 제거되었습니다.
+    // 주소 변경이 필요한 경우 관리자에게 별도로 요청해야 합니다.
     
    
  // 파일교체 버튼은 접수상태가 '대기'일 때만(=아직 결제/작업 전) 보여줍니다.
@@ -1391,8 +1381,7 @@ window.openCardPage = async () => {
 window.syncStatusOverlay = function(status) {
     const targets = [
         { id: 'target-box-notice', imgId: 'img-1' },
-        { id: 'target-btn-tax',    imgId: 'img-2' },
-        { id: 'detail-edit-btn',   imgId: 'img-3' }
+        { id: 'target-btn-tax',    imgId: 'img-2' }
     ];
 
     // 1. 초기화: 일단 다 숨김
@@ -1542,10 +1531,9 @@ window.syncStatusOverlay = function(status) {
             // 대기일 때는 '세금계산서 버튼(segum-btn-id)' 위에 'img-3'을 띄움
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
-            // 결제 완료일 때는 3개 이미지 모두 표시
+            // 결제 완료일 때는 이미지 표시
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
-            positionImage('detail-edit-btn', 'img-3', -8, -10);
         }
     };
 
