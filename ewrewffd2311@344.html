@@ -6,16 +6,23 @@
         body { font-family: 'Pretendard', sans-serif; background-color: #f4f7f6; padding: 20px; display: flex; justify-content: center; }
         .main-box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 650px; }
         
-        /* 게시판 숨김 처리 */
+        /* 로그인 전 본문 숨김 처리 */
         #mainContent { display: none; }
         
-        /* 로그인 화면 스타일 */
+        /* 초기 로그인 화면 스타일 */
         #loginSection { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 10px; }
         
         h2 { font-size: 1.1rem; color: #4a5568; margin-top: 20px; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
-        button { background: #4a5568; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        h2:first-child { margin-top: 0; }
+        
+        button { background: #4a5568; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         button.danger { background: #e53e3e; }
-        input { padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px; width: 200px; }
+        button.active { background: #38a169; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input { padding: 5px; border: 1px solid #cbd5e0; border-radius: 4px; text-align: center; }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
         th { background: #f8fafc; color: #718096; padding: 10px; border-bottom: 2px solid #edf2f7; }
         td { padding: 8px; border-bottom: 1px solid #edf2f7; text-align: center; }
@@ -27,29 +34,44 @@
     <!-- 1. 초기 로그인 화면 -->
     <div id="loginSection">
         <h2>관리자 로그인</h2>
-        <input type="email" id="adminEmail" placeholder="이메일">
-        <input type="password" id="adminPassword" placeholder="비밀번호">
+        <input type="email" id="adminEmail" placeholder="관리자 이메일" style="width: 220px;">
+        <input type="password" id="adminPassword" placeholder="비밀번호" style="width: 220px;">
         <button onclick="loginAdmin()">로그인하여 접속</button>
     </div>
 
-    <!-- 2. 로그인 후 나타날 게시판 본문 -->
+    <!-- 2. 로그인 후 노출되는 본문 영역 -->
     <div id="mainContent">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="margin:0; border:none;">게시판 관리 시스템</h2>
             <button class="danger" onclick="logoutAdmin()">로그아웃</button>
         </div>
-        
-        <button onclick="savePost()" style="margin-top:20px;">공지 및 업무 등록</button>
-        
+
+        <h2>게시글 작성</h2>
+        <button onclick="savePost()">공지 및 업무 등록</button>
+        <div style="margin-top:10px;">
+            <input type="number" id="baseInterval" value="60" style="width:40px;">초 마다 
+            <input type="number" id="probInput" value="50" style="width:30px;">% 확률로 
+            <button id="autoBtn" onclick="toggleAuto()" class="active">자동 등록 시작</button>
+        </div>
+
         <h2>데이터 관리</h2>
+        <p>삭제 기준: <input type="number" id="daysInput" value="360" style="width:50px;"> 일 지난 데이터</p>
         <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button class="danger" onclick="deleteOldPosts(1)">1번 삭제</button>
+            <button class="danger" onclick="deleteOldPosts(2)">2번 삭제</button>
+            <button class="danger" onclick="deleteOldPosts(3)">3번 삭제</button>
+            <button class="danger" onclick="deleteOldPosts(4)">4번 삭제</button>
             <button class="danger" onclick="deleteWaitingPosts()">"대기" 삭제</button>
         </div>
-        
         <div style="margin-top:15px; font-weight:bold; color:#4a5568;">전체 게시글 수: <span id="totalCount">0</span>개</div>
 
+        <h2>게시판 목록 (최신 4개)</h2>
         <table>
-            <thead><tr><th>제목</th><th>작성자</th><th>삭제</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>제목</th><th>작성자</th><th>테스트번호</th><th>비번</th><th>삭제</th>
+                </tr>
+            </thead>
             <tbody id="postList"></tbody>
         </table>
     </div>
@@ -57,8 +79,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc, getDoc, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc, where, Timestamp, getCountFromServer, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
@@ -73,42 +95,73 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    let autoTimeout = null;
+    const titles = [`공지안내`, `휴무일안내`];
+    const authors = [`김가영`, `김가온`];
+
+    // 관리자 로그인 함수
     window.loginAdmin = async () => {
         const email = document.getElementById('adminEmail').value;
         const password = document.getElementById('adminPassword').value;
+        if (!email || !password) {
+            alert("이메일과 비밀번호를 입력해주세요.");
+            return;
+        }
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const adminDoc = await getDoc(doc(db, "admins", userCredential.user.uid));
             
             if (adminDoc.exists()) {
-                showBoard();
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                loadPosts();
+                updateStats();
             } else {
-                alert("관리자 권한이 없습니다.");
+                alert("이 계정은 관리자 권한이 없습니다.");
                 signOut(auth);
             }
-        } catch (e) { alert("로그인 실패: " + e.message); }
+        } catch (e) {
+            alert("로그인 실패: " + e.message);
+        }
     };
-
-    function showBoard() {
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'block';
-        loadPosts();
-        updateStats();
-    }
 
     window.logoutAdmin = () => {
         signOut(auth).then(() => location.reload());
     };
 
-    async function loadPosts() {
-        const list = document.getElementById('postList');
-        list.innerHTML = "";
-        const snapshot = await getDocs(query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(4)));
-        snapshot.forEach((doc) => {
-            const d = doc.data();
-            list.innerHTML += `<tr><td>${d.productName}</td><td>${d.author}</td>
-            <td><button class="danger" onclick="removePost('${doc.id}')">삭제</button></td></tr>`;
-        });
+    function generateComplexPassword() {
+        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+        let retVal = "";
+        for (let i = 0; i < 10; ++i) {
+            retVal += charset.charAt(Math.floor(Math.random() * charset.length));
+        }
+        return retVal;
+    }
+
+    window.toggleAuto = () => {
+        const btn = document.getElementById('autoBtn');
+        if (autoTimeout) {
+            clearTimeout(autoTimeout);
+            autoTimeout = null;
+            btn.innerText = "자동 등록 시작";
+            btn.className = "active";
+        } else {
+            btn.innerText = "자동 등록 중단";
+            btn.className = "danger";
+            scheduleNext();
+        }
+    };
+
+    function scheduleNext() {
+        if (document.getElementById('autoBtn').innerText !== "자동 등록 중단") return;
+        const base = parseInt(document.getElementById('baseInterval').value);
+        const prob = parseInt(document.getElementById('probInput').value);
+        const delay = (Math.random() * (base * 0.4) + (base * 0.8)) * 1000;
+        
+        autoTimeout = setTimeout(() => {
+            if (Math.random() * 100 < prob) savePost();
+            scheduleNext();
+        }, delay);
     }
 
     async function updateStats() {
@@ -117,20 +170,106 @@
     }
 
     window.savePost = async () => {
+        if (!auth.currentUser) return;
+
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(44));
+        const snapshot = await getDocs(q);
+        const recentDocs = snapshot.docs.map(doc => doc.data());
+
+        let randomTitle, randomAuthor;
+        let isDuplicate = true;
+        let retryCount = 0;
+
+        while (isDuplicate && retryCount < 10) {
+            randomTitle = titles[Math.floor(Math.random() * titles.length)];
+            randomAuthor = authors[Math.floor(Math.random() * authors.length)];
+            isDuplicate = recentDocs.some(data => data.author && data.author[0] === randomAuthor[0]);
+            if (!isDuplicate) break;
+            retryCount++;
+        }
+        
         await addDoc(collection(db, "boards"), {
-            productName: "공지안내",
-            author: "관리자",
+            productName: randomTitle,
+            author: randomAuthor,
+            password: generateComplexPassword(),
             createdAt: new Date(),
-            status: "완료",
+            status: Math.random() > 0.5 ? "완료" : "대기",
+            test: Math.floor(Math.random() * 4) + 1,
             uid: auth.currentUser.uid
         });
+        
         loadPosts();
+        updateStats();
     };
 
     window.removePost = async (id) => {
-        await deleteDoc(doc(db, "boards", id));
+        if (confirm("정말로 이 게시글을 삭제하시겠습니까?")) {
+            await deleteDoc(doc(db, "boards", id));
+            loadPosts();
+            updateStats();
+        }
+    };
+
+    window.deleteWaitingPosts = async () => {
+        const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        const q = query(collection(db, "boards"), where("status", "==", "대기"));
+        const snapshot = await getDocs(q);
+
+        const targets = snapshot.docs.filter(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt.toDate().getTime();
+            return (now - createdAt) > thirtyDaysInMs;
+        });
+
+        if (targets.length === 0) {
+            alert("30일이 지난 '대기' 상태의 게시글이 없습니다.");
+            return;
+        }
+
+        if (confirm(`${targets.length}개의 30일 지난 '대기' 게시글을 삭제하시겠습니까?`)) {
+            for (const docSnapshot of targets) {
+                await deleteDoc(doc(db, "boards", docSnapshot.id));
+            }
+            loadPosts();
+            updateStats();
+            alert("삭제가 완료되었습니다.");
+        }
+    };
+
+    window.deleteOldPosts = async (testValue) => {
+        const days = parseInt(document.getElementById('daysInput').value);
+        const thresholdDate = new Date(Date.now() - (days * 24 * 60 * 60 * 1000));
+        const q = days === 0 
+            ? query(collection(db, "boards"), where("test", "==", testValue))
+            : query(collection(db, "boards"), where("test", "==", testValue), where("createdAt", "<=", Timestamp.fromDate(thresholdDate)));
+        const snapshot = await getDocs(q);
+        for (const document of snapshot.docs) await deleteDoc(doc(db, "boards", document.id));
         loadPosts();
         updateStats();
+    };
+
+    async function loadPosts() {
+        const list = document.getElementById('postList');
+        list.innerHTML = "";
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(4));
+        const snapshot = await getDocs(q);
+        snapshot.forEach((doc) => {
+            const d = doc.data();
+            list.innerHTML += `<tr>
+                <td>${d.productName}</td><td>${d.author}</td>
+                <td>${d.test || "-"}</td>
+                <td><input type="password" id="input_${doc.id}" style="width:30px">
+                <button onclick="checkPassword('${doc.id}', '${d.password}')" style="padding:1px 4px;">확인</button></td>
+                <td><button class="danger" onclick="removePost('${doc.id}')" style="padding:1px 4px;">삭제</button></td>
+            </tr>`;
+        });
+    }
+
+    window.checkPassword = (docId, realPassword) => {
+        const input = document.getElementById(`input_${docId}`).value;
+        alert(input === realPassword ? "인증 성공!" : "비밀번호 오류");
     };
 </script>
 </body>
