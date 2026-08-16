@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, updateDoc, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, updateDoc, startAfter, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -109,6 +109,61 @@ window.downloadFile = async (url, filename) => {
         console.error(e);
     }
 };
+
+// R2 워커는 업로드 후 `.../?name=파일명` 형태(쿼리스트링)의 URL을 돌려줌.
+// 삭제도 같은 워커에 DELETE + ?name=파일명으로 요청함 (워커 코드로 확인 완료).
+async function deleteFileFromR2(fileUrl) {
+    try {
+        const key = new URL(fileUrl).searchParams.get('name');
+        if (!key) return;
+        await fetch(`https://r2.ecogr.workers.dev/?name=${encodeURIComponent(key)}`, { method: 'DELETE' });
+    } catch (e) {
+        console.warn('R2 파일 삭제 시도 실패(무시):', e);
+    }
+}
+
+// 까페24의 시안 이미지가 재업로드됐는지 자동 감지해서, 재업로드됐으면
+// 기존 수정요청(첨부파일 포함)을 R2 + 파이어베이스 양쪽에서 자동으로 정리함.
+// 까페24 서버가 Last-Modified/ETag를 CORS로 노출해주는 경우에만 동작하고,
+// 그렇지 않으면(대부분의 정적 파일 서버가 이렇게 막혀있음) 조용히 아무 것도 안 하고 넘어감.
+// -> 이 경우엔 지금까지처럼 quick_check.html의 "해제" 버튼으로 수동 처리하면 됨.
+async function checkImageRefreshAndCleanup(boardId, imgUrl) {
+    try {
+        const res = await fetch(imgUrl, { method: 'HEAD', cache: 'no-store', mode: 'cors' });
+        const marker = res.headers.get('last-modified') || res.headers.get('etag');
+        if (!marker) return; // 헤더를 못 읽으면(CORS 미허용 등) 자동 감지 불가 - 그냥 넘어감
+
+        const boardSnap = await getDoc(doc(db, "boards", boardId));
+        if (!boardSnap.exists()) return;
+        const prevMarker = boardSnap.data().sianImageMarker;
+
+        if (!prevMarker) {
+            // 처음 확인하는 경우 - 기준값만 저장 (아직 "변경"으로 판단할 근거가 없음)
+            await updateDoc(doc(db, "boards", boardId), { sianImageMarker: marker }).catch(() => {});
+            return;
+        }
+        if (prevMarker === marker) return; // 변경 없음
+
+        // 이미지가 재업로드된 것으로 판단 - 기존 수정요청(첨부파일 포함) 자동 정리
+        const hanjoolSnap = await getDocs(collection(db, "boards", boardId, "hanjool"));
+        await Promise.all(hanjoolSnap.docs.map(d => {
+            const data = d.data();
+            return data.fileUrl ? deleteFileFromR2(data.fileUrl) : Promise.resolve();
+        }));
+        await Promise.all(hanjoolSnap.docs.map(d => deleteDoc(d.ref)));
+        await updateDoc(doc(db, "boards", boardId), {
+            sianImageMarker: marker,
+            fileLocked: false,
+            sianRefreshedAt: serverTimestamp()
+        });
+
+        // 방금 정리된 최신 상태를 화면에 다시 반영
+        await checkMemoAndSetButton(boardId, (await getDoc(doc(db, "boards", boardId))).data().sian);
+    } catch (e) {
+        // CORS 등으로 헤더 자체를 못 읽는 경우 fetch가 여기로 떨어짐 - 조용히 무시
+        console.warn('시안 이미지 변경 자동 감지 실패(무시, 수동 "해제"로 처리 가능):', e);
+    }
+}
 
 let allOrders = [];
 let currentPage = 1;
@@ -457,6 +512,9 @@ const dImage = document.getElementById("detail-image");
                 const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
                 const timestamp = new Date().getTime();
 
+                // 까페24 이미지가 재업로드됐는지 자동 확인 (비동기, 화면 렌더링을 막지 않음)
+                checkImageRefreshAndCleanup(id, imgUrl);
+
                dImage.innerHTML = `
     <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">
         <img id="loading-msg" src="https://sowonnamoo1005.cafe24.com/web/1new/preview_v1.jpg" alt="제작중" style="max-width: 100%; max-height: 100%; display: none; position: absolute;">
@@ -804,6 +862,9 @@ async function autoViewDetail(id, secretId) {
         currentSianImgCode = finalCode; // 재구입 버튼이 사용할 이미지번호 저장
         const imgUrl = `https://sowonnamoo1005.cafe24.com/1/${finalCode}.jpg`;
         const timestamp = new Date().getTime();
+
+        // 까페24 이미지가 재업로드됐는지 자동 확인 (비동기, 화면 렌더링을 막지 않음)
+        checkImageRefreshAndCleanup(id, imgUrl);
 
         dImage.innerHTML = `
             <div id="image-container" style="position: relative; width: 744px; min-height: 500px; margin: 0; background-color: #f9f9f9; display: flex; align-items: center; justify-content: center;">

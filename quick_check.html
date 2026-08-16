@@ -257,11 +257,11 @@ window.saveTrackingUrl = async (boardId) => {
   }
 };
 
-// R2 워커의 업로드가 PUT + ?name=파일키 방식이라, 삭제도 대칭적으로 DELETE + ?name=파일키로 시도함.
-// 워커가 이 방식을 지원하지 않으면 이 부분만 조용히 실패하고 나머지 처리는 계속 진행됨.
+// R2 워커는 업로드 후 `.../?name=파일명` 형태(쿼리스트링)의 URL을 돌려줌.
+// 삭제도 같은 워커에 DELETE + ?name=파일명으로 요청함 (워커 코드로 확인 완료).
 async function deleteFromR2(fileUrl) {
   try {
-    const key = decodeURIComponent(new URL(fileUrl).pathname.split('/').pop());
+    const key = new URL(fileUrl).searchParams.get('name');
     if (!key) return;
     await fetch(`https://r2.ecogr.workers.dev/?name=${encodeURIComponent(key)}`, { method: 'DELETE' });
   } catch (e) {
