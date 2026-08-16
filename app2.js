@@ -274,12 +274,16 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     // 조판 완료 상태 여부 확인
     const isDone = (sianStatus === "done");
 
-    // 파일 재업로드 잠금 여부 확인 (이미 파일을 올려서 처리 대기중이면, 관리자가 새 시안을
-    // 등록하고 잠금을 풀어주기 전까지는 다시 못 올리게 함)
+    // 파일 재업로드 잠금 여부 + 관리자가 새 시안을 등록해 초기화한 시각 확인
     let fileLocked = false;
+    let sianRefreshedAt = null;
     try {
         const boardSnap = await getDoc(doc(db, "boards", boardId));
-        fileLocked = !!(boardSnap.exists() && boardSnap.data().fileLocked);
+        if (boardSnap.exists()) {
+            const bd = boardSnap.data();
+            fileLocked = !!bd.fileLocked;
+            sianRefreshedAt = bd.sianRefreshedAt || null;
+        }
     } catch (e) { /* 조회 실패해도 나머지 UI는 정상 진행 */ }
 
     // [핵심] 조판 완료 시 입력창과 버튼 비활성화
@@ -303,6 +307,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const hasMemo = !snapshot.empty;
 
     if (hasMemo) {
+        memoDisplay.className = "text-sm text-gray-700 mb-3 italic";
         const latest = snapshot.docs[0].data();
         memoDisplay.innerText = latest.text;
         memoStatus.classList.remove("hidden");
@@ -311,7 +316,15 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
                 ? `<a href="javascript:void(0)" onclick="downloadFile('${latest.fileUrl}', '${(latest.fileName || 'file').replace(/'/g, "")}')" class="text-blue-600 underline text-xs">📎 내가 올린 파일 다운로드 (${latest.fileName || '파일'})</a>`
                 : "";
         }
+    } else if (!isDone && sianRefreshedAt) {
+        // 관리자가 새 시안을 등록하고 초기화한 직후 - 굵은 글씨로 재업로드 안내
+        const timeStr = sianRefreshedAt.toDate ? sianRefreshedAt.toDate().toLocaleString('ko-KR') : '';
+        memoDisplay.className = "text-sm mb-3 font-bold text-blue-700";
+        memoDisplay.innerText = `수정내용이 ${timeStr}에 재업로드 되셨습니다. 확인 후 인쇄승인 클릭 부탁드립니다.`;
+        memoStatus.classList.add("hidden");
+        if (fileDownloadArea) fileDownloadArea.innerHTML = "";
     } else {
+        memoDisplay.className = "text-sm text-gray-700 mb-3 italic";
         memoDisplay.innerText = isDone ? "조판 완료로 인해 수정 요청이 불가능합니다." : "작성된 수정요청 없습니다.(인쇄승인 가능상태)";
         memoStatus.classList.add("hidden");
         if (fileDownloadArea) fileDownloadArea.innerHTML = "";
@@ -502,6 +515,8 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
         }
         await addDoc(collection(db, "boards", currentViewId, "hanjool"), newEntry);
         input.value = "";
+        // 이전 "재업로드 되었습니다" 알림이 있었다면, 새 수정요청을 남겼으니 지워서 다음에 남지 않게 함
+        await updateDoc(doc(db, "boards", currentViewId), { sianRefreshedAt: null }).catch(() => {});
 
         // 3. (핵심) 최신 상태를 DB에서 다시 읽어온 후 버튼과 레이어 동기화
         const snap = await getDoc(doc(db, "boards", currentViewId));
@@ -525,6 +540,8 @@ document.getElementById("delete-memo-btn").addEventListener("click", async () =>
         const snapshot = await getDocs(q);
         const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
         await Promise.all(deletePromises);
+        // 이전 "재업로드 되었습니다" 알림이 있었다면 같이 지움
+        await updateDoc(doc(db, "boards", currentViewId), { sianRefreshedAt: null }).catch(() => {});
 
         // 최신 sian 데이터를 다시 읽어서 버튼 갱신
         const snap = await getDoc(doc(db, "boards", currentViewId));
@@ -588,7 +605,8 @@ document.getElementById("revision-file-input").addEventListener("change", async 
         });
 
         // 새 시안이 등록되어 관리자가 잠금을 풀어주기 전까지 재업로드 잠금
-        await updateDoc(doc(db, "boards", currentViewId), { fileLocked: true });
+        // + 이전 "재업로드 되었습니다" 알림이 있었다면 같이 지움
+        await updateDoc(doc(db, "boards", currentViewId), { fileLocked: true, sianRefreshedAt: null });
 
         const freshSnap = await getDoc(doc(db, "boards", currentViewId));
         await checkMemoAndSetButton(currentViewId, freshSnap.data().sian);

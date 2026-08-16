@@ -257,15 +257,35 @@ window.saveTrackingUrl = async (boardId) => {
   }
 };
 
+// R2 워커의 업로드가 PUT + ?name=파일키 방식이라, 삭제도 대칭적으로 DELETE + ?name=파일키로 시도함.
+// 워커가 이 방식을 지원하지 않으면 이 부분만 조용히 실패하고 나머지 처리는 계속 진행됨.
+async function deleteFromR2(fileUrl) {
+  try {
+    const key = decodeURIComponent(new URL(fileUrl).pathname.split('/').pop());
+    if (!key) return;
+    await fetch(`https://r2.ecogr.workers.dev/?name=${encodeURIComponent(key)}`, { method: 'DELETE' });
+  } catch (e) {
+    console.error('R2 파일 삭제 시도 실패(무시하고 계속 진행):', e);
+  }
+}
+
 // 고객이 index2에서 파일을 첨부하면 boards/{id}.fileLocked = true 로 잠김.
-// 관리자가 새 시안을 등록한 뒤 여기서 눌러 풀어줘야 고객이 다시 파일을 첨부할 수 있음.
-// 이전 수정요청(첨부파일/텍스트)은 이미 반영된 것이므로 같이 지워서 새 라운드로 초기화함.
+// 관리자가 카페24에 새 시안을 등록한 뒤 여기서 눌러야, 이전 수정요청(첨부파일/텍스트)이
+// R2/파이어베이스 양쪽에서 삭제되고, 고객 화면에는 "재업로드 되었습니다" 안내가 뜨며,
+// 파일 재첨부도 다시 가능해짐.
 window.unlockFileUpload = async (boardId) => {
-  if (!confirm("새 시안을 등록하셨나요?\n확인을 누르면 고객이 남긴 첨부파일/수정요청 내용이 지워지고, 다시 파일을 첨부할 수 있게 됩니다.")) return;
+  if (!confirm("새 시안을 등록하셨나요?\n확인을 누르면 고객이 남긴 첨부파일/수정요청 내용이 삭제되고, 다시 파일을 첨부할 수 있게 됩니다.")) return;
   try {
     const hanjoolSnap = await getDocs(collection(db, "boards", boardId, "hanjool"));
+    // 1. R2에 올라간 실제 파일 삭제 시도 (best-effort)
+    await Promise.all(hanjoolSnap.docs.map(d => {
+      const data = d.data();
+      return data.fileUrl ? deleteFromR2(data.fileUrl) : Promise.resolve();
+    }));
+    // 2. 파이어베이스의 수정요청(텍스트/파일 참조) 문서 삭제
     await Promise.all(hanjoolSnap.docs.map(d => deleteDoc(d.ref)));
-    await updateDoc(doc(db, "boards", boardId), { fileLocked: false });
+    // 3. 잠금 해제 + "재업로드 되었습니다" 안내를 위한 시각 기록
+    await updateDoc(doc(db, "boards", boardId), { fileLocked: false, sianRefreshedAt: serverTimestamp() });
     loadRecentOrders();
   } catch (e) {
     alert("잠금 해제 실패: " + e.message);
