@@ -6,91 +6,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-blue-900 min-h-screen flex items-center justify-center text-white">
-    <h2 id="status-text" class="text-xl font-bold">결제 처리 중입니다...</h2>
+    <h2 id="status-text" class="text-xl font-bold">결제가 완료되었습니다!</h2>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-
-        // Firebase 설정 (board-291e3 프로젝트 전용)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-            authDomain: "board-291e3.firebaseapp.com",
-            projectId: "board-291e3",
-            storageBucket: "board-291e3.firebasestorage.app",
-            messagingSenderId: "25881766316",
-            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // ---- 익명 로그인 ----
-        // boards 문서의 status 업데이트는 규칙상 auth가 있어야 통과됩니다.
-        // 같은 브라우저(같은 origin)에서 이미 로그인된 세션이 있으면 그대로 이어받습니다.
-        const auth = getAuth(app);
-        let resolveAuthReady;
-        const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
-        onAuthStateChanged(auth, (user) => {
-            if (user) resolveAuthReady(user);
-            else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
-        });
-        function ensureAnonymousLogin() { return authReadyPromise; }
-
-        async function processPaymentStatus() {
-            const statusText = document.getElementById("status-text");
-            const price = new URLSearchParams(window.location.search).get('price');
-
-            if (!price) {
-                statusText.innerText = "결제 정보 오류";
-                return;
-            }
-
-            try {
-                // 상태 업데이트 전에 로그인 세션(같은 브라우저에서 이어받은 익명 계정)이 준비될 때까지 대기
-                const currentUser = await ensureAnonymousLogin();
-
-                // 1. 상태가 '대기'인 문서들 조회
-                const q = query(collection(db, "boards"), where("status", "==", "대기"));
-                const querySnapshot = await getDocs(q);
-
-                let found = false;
-                
-                // 2. 가격 + 내 uid가 둘 다 일치하는 문서만 업데이트
-                //    (가격만으로 찾으면, 같은 가격의 다른 사람 대기중 주문을 잘못 찾아
-                //     uid가 달라 permission-denied가 나는 경우가 있었음)
-                for (const doc of querySnapshot.docs) {
-                    if (String(doc.data().price) === String(price) && doc.data().uid === currentUser.uid) {
-                        await updateDoc(doc.ref, { status: "카드결제" });
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (found) {
-                    statusText.innerText = "결제가 완료되었습니다!";
-                    
-                    // 3. 부모창 새로고침 후 닫기
-                    if (window.opener && !window.opener.closed) {
-                        window.opener.location.reload();
-                    }
-                    setTimeout(() => window.close(), 1000);
-                } else {
-                    statusText.innerText = "결제전송완료";
-                }
-            } catch (err) {
-                console.error(err);
-                if (err.code === "permission-denied") {
-                    statusText.innerText = "결제는 완료되었으나 상태 반영에 실패했습니다. 관리자에게 문의해주세요.";
-                } else {
-                    statusText.innerText = "결제전송완료";
-                }
-            }
-        }
-
-        // 실행
-        processPaymentStatus();
+    <script>
+        // ---- 안내 및 자동 닫기 전용 화면 ----
+        // 실제 주문 상태(대기 → 카드결제) 변경은 더 이상 여기서 하지 않습니다.
+        // payment.html이 결제 성공 직후 window.opener로 postMessage('PAYMENT_SUCCESS')를 보내고,
+        // 그걸 app.js가 받아서 "지금 보고 있던 그 주문(currentViewId)"만 정확히 업데이트합니다.
+        // (여기서 가격만 보고 아무 '대기' 주문이나 골라 바꾸던 기존 방식은 오매칭 위험이 있어 제거했습니다.)
+        //
+        // 이 페이지는 결제창(payment.html)이 최상위 창을 이동시키면서 잠깐 보여주는
+        // "결제 완료" 안내 화면 역할만 하고, 잠시 후 스스로 닫힙니다.
+        setTimeout(() => {
+            window.close();
+        }, 1500);
     </script>
 </body>
 </html>

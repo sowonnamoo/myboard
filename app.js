@@ -1334,41 +1334,57 @@ window.onfocus = () => {
 
 // 카드결제 결제 완료 후 부모창 상태 업데이트 로직 (app.js 하단)
 window.addEventListener("message", async (event) => {
-    if (event.data && event.data.type === 'PAYMENT_SUCCESS') {
-        const paidPrice = event.data.price;
+    // 신뢰할 수 있는 출처(payment.html이 떠 있는 도메인)에서 온 메시지만 처리
+    if (event.origin !== 'https://sowonnamoo.github.io') return;
+    if (!event.data || event.data.type !== 'PAYMENT_SUCCESS') return;
 
+    if (!currentViewId) {
+        console.warn('결제 확인 메시지를 받았지만 현재 열려있는 주문이 없습니다.');
+        return;
+    }
+
+    // 가격 비교 시 "50,000원" / "50000" / 50000 처럼 표기 형식이 달라도 안전하게 비교되도록
+    // 양쪽 모두 숫자만 추출해서 비교합니다.
+    const paidPriceDigits = String(event.data.price ?? '').replace(/[^0-9]/g, '');
+
+    try {
         // 1. 현재 상세 페이지에 떠 있는 주문 정보를 가져옵니다.
         const docRef = doc(db, "boards", currentViewId);
         const snap = await getDoc(docRef);
-        
+
         if (!snap.exists()) return;
 
         const data = snap.data();
+        const dbPriceDigits = String(data.price ?? '').replace(/[^0-9]/g, '');
 
         // 2. [핵심] 상태가 '대기'이고 금액이 일치할 때만 업데이트!
-        if (data.status === '대기' && data.price === paidPrice) {
-            
+        if (data.status === '대기' && dbPriceDigits === paidPriceDigits) {
+
             // DB 상태 변경
             await updateDoc(docRef, {
                 status: '카드결제'
             });
 
             alert("결제가 정상적으로 확인되었습니다.");
-            
+
             // 3. 화면 상태 즉시 갱신 (이미지 변경)
             // 상세 정보를 다시 불러와서 status 필드가 '카드결제'로 바뀐 것을 반영합니다.
             window.syncStatusOverlay('카드결제');
-            
+
             // viewDetail을 다시 호출하면 DB에서 바뀐 status를 다시 읽어와 화면을 갱신합니다.
             // (만약 팝업 닫기나 화면 리로드가 필요하면 여기서 처리하세요)
-            location.reload(); 
+            location.reload();
         } else if (data.status !== '대기') {
             console.log("이미 처리된 주문입니다.");
         } else {
-            console.log("금액이 일치하지 않습니다.");
+            console.log("금액이 일치하지 않습니다.", { dbPriceDigits, paidPriceDigits });
         }
+    } catch (e) {
+        console.error("결제 상태 반영 실패:", e);
+        alert("결제는 완료되었으나 상태 반영 중 오류가 발생했습니다. 새로고침 후 다시 확인해주시거나, 계속되면 관리자에게 문의해주세요.");
     }
 });
+
 
 
 
