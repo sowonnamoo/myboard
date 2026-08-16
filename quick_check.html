@@ -570,7 +570,7 @@ async function loadRecentOrders() {
       const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
 
       rowObjs.push({ pinned: pinToTop, html: `<tr>
-        <td>${taxIconCell}</td>
+        <td>${statusCellHtml}<br>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
         <td>${attachHtml}</td>
@@ -578,7 +578,6 @@ async function loadRecentOrders() {
         <td>${authorCell}</td>
         <td>${phone}</td>
         <td>${address}</td>
-        <td>${statusCellHtml}</td>
         <td>${trackingCell}</td>
         <td>${cardCell}</td>
       </tr>` });
@@ -594,7 +593,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = buildExpandableTable(
-      "<tr><th></th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
+      "<tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th></tr>",
       rows, "orders"
     );
   } catch (e) {
