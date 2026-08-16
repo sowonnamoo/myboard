@@ -116,6 +116,54 @@ async function fetchSegumMatch(author, phone) {
 let taxDataMap = {};
 // boardId -> 이 주문건의 세금계산서 발행 여부 캐시 (버튼 토글/정렬에 사용)
 let taxIssuedMap = {};
+// boardId -> 주문서(메모장 텍스트) 생성에 필요한 데이터 캐시
+let orderSheetDataMap = {};
+
+// 날짜를 "2026 8/16 12:48" 형식으로 변환 (0-padding 없이 그대로)
+function formatOrderSheetDate(d) {
+  if (!d) return '-';
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${y} ${m}/${day} ${hh}:${mi}`;
+}
+
+// 주문서(메모장) 다운로드
+window.downloadOrderSheet = (boardId) => {
+  const o = orderSheetDataMap[boardId];
+  if (!o) { alert('주문 정보를 찾을 수 없습니다.'); return; }
+
+  const priceDigits = String(o.price || '').replace(/[^0-9]/g, '') || '0';
+  const messageLine = (o.message && o.message.trim()) ? o.message.trim() : '-';
+
+  const content = [
+    `${o.author}${o.phone}`,
+    o.address || '-',
+    `상품: ${o.productName} / 사이즈: ${o.size} / 수량: ${o.quantity}`,
+    `금액: ${priceDigits}원`,
+    `접수일: ${formatOrderSheetDate(o.createdAtDate)}`,
+    `[메시지]`,
+    messageLine
+  ].join('\r\n');
+
+  // 윈도우 메모장에서 한글이 안 깨지도록 UTF-8 BOM을 붙임
+  const blob = new Blob(["\ufeff" + content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+
+  const dateCode = o.createdAtDate
+    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}_${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
+    : 'unknown';
+  a.download = `주문서_${o.author}_${dateCode}.txt`;
+
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 window.showTaxInfo = (boardId) => {
   const t = taxDataMap[boardId];
   if (!t) return;
@@ -391,6 +439,22 @@ async function loadRecentOrders() {
         address = adminPriv.address || '<span class="fail">(비어있음)</span>';
       }
 
+      // 주문서(메모장) 다운로드용 원본 데이터 저장 (adminOrders 조회 실패 시 boards/private 값으로 대체)
+      const sheetPhone = (!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || '');
+      const sheetAddress = (!adminPriv._err && adminPriv.address) ? adminPriv.address : (rawPriv.address || '');
+      const sheetMessage = (!adminPriv._err && adminPriv.message) ? adminPriv.message : (rawPriv.message || '');
+      orderSheetDataMap[d.id] = {
+        author,
+        phone: sheetPhone,
+        address: sheetAddress,
+        message: sheetMessage,
+        productName: data.productName || '-',
+        size: data.size || '-',
+        quantity: data.quantity || '-',
+        price: data.price || '',
+        createdAtDate: data.createdAt?.toDate ? data.createdAt.toDate() : null
+      };
+
       const authorEsc = author.replace(/'/g, "\\'");
       const existingTracking = rawPriv.trackingUrl || '';
       const trackingCell = existingTracking
@@ -426,6 +490,7 @@ async function loadRecentOrders() {
       rowObjs.push({ pinned: pinToTop, html: `<tr>
         <td>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
+        <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
         <td>${date}</td>
         <td>${authorCell}</td>
         <td>${phone}</td>
@@ -446,7 +511,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = buildExpandableTable(
-      "<tr><th></th><th></th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
+      "<tr><th></th><th></th><th>주문서</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
       rows, "orders"
     );
   } catch (e) {
