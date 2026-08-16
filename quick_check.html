@@ -4,19 +4,26 @@
 <meta charset="UTF-8">
 <title>최근 주문 관리</title>
 <style>
-  body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+  body { font-family: sans-serif; max-width: 1600px; margin: 40px auto; padding: 0 20px; }
   input { box-sizing:border-box; padding:10px; margin:2px 0; border:1px solid #ccc; border-radius:8px; font-size:14px; }
   input.wide { display:block; width:100%; padding:12px; font-size:16px; margin:8px 0; }
   button { padding:12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:15px; }
-  table { width:100%; border-collapse: collapse; margin-top:20px; font-size:13px; }
-  th, td { border:1px solid #e2e8f0; padding:8px 8px; text-align:left; vertical-align: top; }
-  th { background:#f1f5f9; }
+  .table-wrap { overflow-x:auto; margin-top:20px; }
+  table { width:100%; min-width:1200px; border-collapse: collapse; font-size:14px; }
+  th, td { border:1px solid #e2e8f0; padding:10px 10px; text-align:left; vertical-align: top; white-space:normal; }
+  th { background:#f1f5f9; font-size:13px; white-space:nowrap; }
+  tbody tr:nth-child(even) { background:#fafbfc; }
+  tbody tr:hover { background:#f0f9ff; }
   .fail { color:#991b1b; }
   .ok { color:#166534; font-weight:bold; }
+  .author { font-weight:700; }
   .url-row { display:flex; gap:4px; margin-top:4px; }
-  .url-row input { flex:1; width:auto; font-size:12px; padding:6px; }
-  .url-row button { padding:6px 10px; font-size:12px; }
+  .url-row input { flex:0 1 50%; max-width:150px; width:auto; font-size:12px; padding:6px; }
+  .url-row button { padding:6px 10px; font-size:12px; white-space:nowrap; }
   .url-saved { font-size:12px; color:#166534; }
+  .file-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; font-size:12px; white-space:nowrap; }
+  .file-row a { color:#2563eb; text-decoration:underline; }
+  .small-btn { padding:3px 8px; font-size:11px; background:#dc2626; border-radius:6px; }
   #loginBox { display:block; }
   #listBox { display:none; }
 </style>
@@ -57,7 +64,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const config = {
@@ -118,6 +125,22 @@ let taxDataMap = {};
 let taxIssuedMap = {};
 // boardId -> 주문서(메모장 텍스트) 생성에 필요한 데이터 캐시
 let orderSheetDataMap = {};
+// boardId -> 접수 시 첨부된 원본 파일 URL들 (boards/{boardId}.file1Url / file2Url)
+let attachedFileMap = {};
+// boardId -> 고객이 재첨부한 파일 목록 [{id, fileUrl}] (boards/{boardId}/hanjool/*)
+let hanjoolMap = {};
+
+// 상태값별 표시 색상
+function statusColor(status) {
+  switch (status) {
+    case '대기': return '#64748b';
+    case '무통장': return '#059669';
+    case '카드결제': return '#2563eb';
+    case '접수에러': return '#dc2626';
+    case '주문취소': return '#1e293b';
+    default: return '#334155';
+  }
+}
 
 // 날짜를 "2026 8/16 12:48" 형식으로 변환 (0-padding 없이 그대로)
 function formatOrderSheetDate(d) {
@@ -194,11 +217,11 @@ window.toggleTaxIssued = async (boardId) => {
 function buildExpandableTable(headerRowHtml, rowsHtml, keyPrefix) {
   const visible = rowsHtml.slice(0, 5).join('');
   const rest = rowsHtml.slice(5);
-  let html = `<table><thead>${headerRowHtml}</thead><tbody>${visible}</tbody>`;
+  let html = `<div class="table-wrap"><table><thead>${headerRowHtml}</thead><tbody>${visible}</tbody>`;
   if (rest.length > 0) {
     html += `<tbody id="${keyPrefix}-more" style="display:none">${rest.join('')}</tbody>`;
   }
-  html += `</table>`;
+  html += `</table></div>`;
   if (rest.length > 0) {
     html += `<button id="${keyPrefix}-toggle-btn" data-label="펼쳐보기 (${rest.length}건 더보기)" onclick="toggleMore('${keyPrefix}')" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">펼쳐보기 (${rest.length}건 더보기)</button>`;
   }
@@ -340,6 +363,41 @@ window.unlockFileUpload = async (boardId) => {
   }
 };
 
+// 접수 시 올라온 원본 첨부파일 삭제 (R2 파일 + boards.file1Url/file2Url 필드)
+window.deleteAttachedFile = async (boardId, slot) => {
+  const files = attachedFileMap[boardId] || {};
+  const field = slot === 1 ? 'file1Url' : 'file2Url';
+  const fileUrl = files[field];
+  if (!fileUrl) return alert("삭제할 첨부파일이 없습니다.");
+  if (!confirm(`첨부파일 ${slot}을(를) 삭제하시겠습니까?\n삭제한 파일은 복구할 수 없습니다.`)) return;
+  try {
+    await deleteFromR2(fileUrl);
+    await updateDoc(doc(db, "boards", boardId), { [field]: deleteField() });
+    loadRecentOrders();
+  } catch (e) {
+    alert("삭제 실패: " + e.message);
+  }
+};
+
+// 고객이 재첨부한 파일 삭제 (R2 파일 + hanjool 문서). 마지막 재첨부 파일까지 지우면
+// 자동으로 fileLocked를 해제해서 고객이 다시 첨부할 수 있게 함.
+window.deleteHanjoolFile = async (boardId, memoId) => {
+  const items = hanjoolMap[boardId] || [];
+  const item = items.find(it => it.id === memoId);
+  if (!confirm("재첨부된 파일을 삭제하시겠습니까?\n삭제한 파일은 복구할 수 없습니다.")) return;
+  try {
+    if (item && item.fileUrl) await deleteFromR2(item.fileUrl);
+    await deleteDoc(doc(db, "boards", boardId, "hanjool", memoId));
+    const remain = await getDocs(collection(db, "boards", boardId, "hanjool"));
+    if (remain.empty) {
+      await updateDoc(doc(db, "boards", boardId), { fileLocked: false, sianRefreshedAt: serverTimestamp() });
+    }
+    loadRecentOrders();
+  } catch (e) {
+    alert("삭제 실패: " + e.message);
+  }
+};
+
 window.saveCardReceiptUrl = async (boardId) => {
   const input = document.getElementById('card-' + boardId);
   const url = input.value.trim();
@@ -411,6 +469,8 @@ async function loadRecentOrders() {
 
     const adminPrivates = await Promise.all(snap1.docs.map(d => fetchPrivate(d.id)));
     const rawPrivates = await Promise.all(snap1.docs.map(d => fetchPrivateRef(d.id)));
+    // 각 주문의 재첨부(hanjool) 파일 목록도 함께 조회
+    const hanjoolSnaps = await Promise.all(snap1.docs.map(d => getDocs(collection(db, "boards", d.id, "hanjool"))));
     // 이 10건 각각의 작성자+전화번호가 segum1(세금계산서)에 이미 등록돼 있는지 확인
     const taxMatches = await Promise.all(snap1.docs.map((d, idx) => {
       const ap = adminPrivates[idx];
@@ -482,20 +542,38 @@ async function loadRecentOrders() {
           <button onclick="toggleTaxIssued('${d.id}')" style="${btnStyle} padding:3px 6px; font-size:11px; margin-left:4px;">${btnLabel}</button>`;
       }
 
-      // 고객이 index2에서 파일을 첨부해 잠긴 상태면, 작성자 옆에 잠금 배지 + 해제 버튼 표시
-      const authorCell = data.fileLocked
-        ? `${author}<br><span style="color:#b45309; font-size:11px;">📎🔒 파일첨부됨</span> <button onclick="unlockFileUpload('${d.id}')" style="padding:2px 6px; font-size:11px;">해제</button>`
-        : author;
+      const authorCell = `<span class="author">${author}</span>`;
+
+      // 원본 첨부파일(접수 시 boards.file1Url/file2Url) + 재첨부 파일(hanjool) 목록으로 다운로드/삭제 버튼 구성
+      attachedFileMap[d.id] = { file1Url: data.file1Url || '', file2Url: data.file2Url || '' };
+      const hanjoolItems = hanjoolSnaps[idx].docs.map(hd => ({ id: hd.id, fileUrl: hd.data().fileUrl || '' })).filter(it => it.fileUrl);
+      hanjoolMap[d.id] = hanjoolItems;
+
+      let attachHtml = '';
+      if (data.file1Url) {
+        attachHtml += `<div class="file-row">📎 <a href="${data.file1Url}" target="_blank">첨부파일1 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',1)">삭제</button></div>`;
+      }
+      if (data.file2Url) {
+        attachHtml += `<div class="file-row">📎 <a href="${data.file2Url}" target="_blank">첨부파일2 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',2)">삭제</button></div>`;
+      }
+      hanjoolItems.forEach((item, i) => {
+        const label = hanjoolItems.length > 1 ? `재첨부${i + 1}` : '재첨부';
+        attachHtml += `<div class="file-row">🔁 <a href="${item.fileUrl}" target="_blank">${label} 다운로드</a> <button class="small-btn" onclick="deleteHanjoolFile('${d.id}','${item.id}')">삭제</button></div>`;
+      });
+      if (!attachHtml) attachHtml = '<span style="color:#94a3b8;">-</span>';
+
+      const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
 
       rowObjs.push({ pinned: pinToTop, html: `<tr>
         <td>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
+        <td>${attachHtml}</td>
         <td>${date}</td>
         <td>${authorCell}</td>
         <td>${phone}</td>
         <td>${address}</td>
-        <td>${status}</td>
+        <td>${statusCellHtml}</td>
         <td>${trackingCell}</td>
         <td>${cardCell}</td>
       </tr>` });
@@ -511,7 +589,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = buildExpandableTable(
-      "<tr><th></th><th></th><th>주문서</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
+      "<tr><th></th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>상태</th><th>운송장URL</th><th>카드전표URL</th></tr>",
       rows, "orders"
     );
   } catch (e) {
