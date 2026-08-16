@@ -827,7 +827,9 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
 
     const privateData = privateSnap.data(); // phone, address, message - private 문서에서만 얻음
     currentViewAuthor = data.author;
-    currentViewPhone = privateData.phone;
+    // 고객이 배송지 수정하기로 나중에 boards/{id}.phone을 직접 고쳤을 수도 있으므로,
+    // 있으면 그 값을 우선 사용하고 없으면 원본(private) 값을 사용합니다.
+    currentViewPhone = data.phone || privateData.phone;
 
     // 양방향 제한: 신청 자체는 openCashPage/segum.html에서 막고,
     // 여기는 "이미 신청/등록된 쪽의 버튼을 즉시 숨기는" UI 노출만 담당
@@ -881,8 +883,8 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     // toLocaleString() + '원'을 또 붙여서 "원원"으로 중복 표시되는 문제가 있었습니다)
     const priceDigits = data.price ? Number(String(data.price).replace(/[^0-9]/g, '')) || 0 : 0;
     document.getElementById("detail-price").innerText = priceDigits.toLocaleString() + '원';
-    document.getElementById("detail-phone").innerText = privateData.phone;
-    document.getElementById("detail-address").innerText = privateData.address;
+    document.getElementById("detail-phone").innerText = data.phone || privateData.phone;
+    document.getElementById("detail-address").innerText = data.address || privateData.address;
     document.getElementById("detail-msg").innerText = privateData.message || "내용 없음";
     window.syncStatusOverlay(data.status);
 

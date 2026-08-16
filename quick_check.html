@@ -490,8 +490,13 @@ async function loadRecentOrders() {
       const author = data.author || '-';
       const status = data.status || '대기';
 
+      // 고객이 "배송지 수정하기"로 boards/{id}.phone/address를 직접 고쳤을 수 있으므로,
+      // 그 값이 있으면 최우선으로 쓰고, 없으면 adminOrders → boards/private 순으로 대체합니다.
       let phone, address;
-      if (adminPriv._err) {
+      if (data.phone || data.address) {
+        phone = data.phone || '<span class="fail">(비어있음)</span>';
+        address = data.address || '<span class="fail">(비어있음)</span>';
+      } else if (adminPriv._err) {
         phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
         address = '-';
       } else {
@@ -499,9 +504,9 @@ async function loadRecentOrders() {
         address = adminPriv.address || '<span class="fail">(비어있음)</span>';
       }
 
-      // 주문서(메모장) 다운로드용 원본 데이터 저장 (adminOrders 조회 실패 시 boards/private 값으로 대체)
-      const sheetPhone = (!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || '');
-      const sheetAddress = (!adminPriv._err && adminPriv.address) ? adminPriv.address : (rawPriv.address || '');
+      // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
+      const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
+      const sheetAddress = data.address || ((!adminPriv._err && adminPriv.address) ? adminPriv.address : (rawPriv.address || ''));
       const sheetMessage = (!adminPriv._err && adminPriv.message) ? adminPriv.message : (rawPriv.message || '');
       orderSheetDataMap[d.id] = {
         author,
