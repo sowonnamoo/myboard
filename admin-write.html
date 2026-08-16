@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 관리자 전용 페이지: 검색엔진 노출 차단 -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>관리자 - 시안/접수오류건 등록</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+  .form-input {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 0.375rem;
+    padding: 0.55rem 0.75rem; font-size: 0.875rem; background: #fff; color: #111827;
+  }
+  .form-input:focus { outline: none; border-color: #4b5563; box-shadow: 0 0 0 1px #4b5563; }
+</style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <div class="w-full max-w-[560px] mx-auto py-10 px-4">
+
+    <header class="mb-5">
+      <h1 class="text-lg font-bold text-gray-800">🛠️ 관리자 등록 - 접수오류건 시안</h1>
+      <p class="text-xs text-gray-500 mt-1">
+        여기서 등록하면 고객용 게시판(index)에 다른 주문건과 동일한 형태로 즉시 노출됩니다.<br>
+        접수상태는 자동으로 <b>'접수에러'</b>로 저장되어, 고객이 열면 결제 버튼 대신 "시안보기에서 상태를 확인하라"는 안내가 뜹니다.
+      </p>
+    </header>
+
+    <div class="bg-white border border-gray-200 rounded p-5">
+      <table class="w-full text-sm border-collapse">
+        <tr class="border-b">
+          <td class="w-32 font-bold text-gray-700 py-3 align-top">제목 <span class="text-red-500">*</span></td>
+          <td class="py-3"><input type="text" id="a-title" class="form-input" placeholder="예) OO스티커 시안 재확인 요청"></td>
+        </tr>
+        <tr class="border-b">
+          <td class="font-bold text-gray-700 py-3 align-top">작성자 <span class="text-red-500">*</span></td>
+          <td class="py-3"><input type="text" id="a-author" class="form-input" placeholder="고객명 또는 회사명"></td>
+        </tr>
+        <tr class="border-b">
+          <td class="font-bold text-gray-700 py-3 align-top">작업메시지<br><span class="text-xs font-normal text-gray-400">(특이사항 안내)</span></td>
+          <td class="py-3"><textarea id="a-message" rows="5" class="form-input resize-none" placeholder="고객에게 전달할 특이사항/안내 내용을 입력하세요"></textarea></td>
+        </tr>
+        <tr>
+          <td class="font-bold text-gray-700 py-3 align-top">비밀번호 <span class="text-red-500">*</span><br><span class="text-xs font-normal text-gray-400">(숫자 4자리)</span></td>
+          <td class="py-3">
+            <input type="text" id="a-password" maxlength="4" inputmode="numeric"
+                   class="form-input" placeholder="숫자 4자리"
+                   oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,4)">
+            <p class="text-xs text-gray-400 mt-1">고객이 게시판에서 이 글을 열 때 "작성자명 + 이 4자리"로 확인합니다. 고객에게 이 4자리를 전달해주세요.</p>
+          </td>
+        </tr>
+      </table>
+
+      <div class="flex justify-end mt-6">
+        <button id="a-submit-btn" class="bg-gray-800 text-white font-semibold px-8 py-2 text-sm rounded hover:bg-gray-900">
+          등록하기
+        </button>
+      </div>
+    </div>
+
+    <div id="a-result" class="hidden mt-4 border border-green-200 bg-green-50 text-green-700 text-sm rounded p-4"></div>
+  </div>
+
+  <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+      <p class="font-bold text-gray-800 text-sm">등록 중...</p>
+    </div>
+  </div>
+
+  <script type="module" src="admin-write.js"></script>
+</body>
+</html>
