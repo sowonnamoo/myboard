@@ -621,7 +621,7 @@ document.getElementById("delete-memo-btn").addEventListener("click", async () =>
         // 최신 sian 데이터를 다시 읽어서 버튼 갱신
         const snap = await getDoc(doc(db, "boards", currentViewId));
         await checkMemoAndSetButton(currentViewId, snap.data().sian);
-        alert("수정내용이 삭제/취소 되었습니다.");
+        alert("수정내용이 삭제/취소 되었습니다. (삭제된건은 관리자가 확인할수 없습니다.)");
     } catch (e) {
         if (e.code === "permission-denied") {
             alert("본인이 작성한 글의 수정요청만 삭제할 수 있습니다.");
