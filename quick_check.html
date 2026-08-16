@@ -259,8 +259,12 @@ window.saveTrackingUrl = async (boardId) => {
 
 // 고객이 index2에서 파일을 첨부하면 boards/{id}.fileLocked = true 로 잠김.
 // 관리자가 새 시안을 등록한 뒤 여기서 눌러 풀어줘야 고객이 다시 파일을 첨부할 수 있음.
+// 이전 수정요청(첨부파일/텍스트)은 이미 반영된 것이므로 같이 지워서 새 라운드로 초기화함.
 window.unlockFileUpload = async (boardId) => {
+  if (!confirm("새 시안을 등록하셨나요?\n확인을 누르면 고객이 남긴 첨부파일/수정요청 내용이 지워지고, 다시 파일을 첨부할 수 있게 됩니다.")) return;
   try {
+    const hanjoolSnap = await getDocs(collection(db, "boards", boardId, "hanjool"));
+    await Promise.all(hanjoolSnap.docs.map(d => deleteDoc(d.ref)));
     await updateDoc(doc(db, "boards", boardId), { fileLocked: false });
     loadRecentOrders();
   } catch (e) {

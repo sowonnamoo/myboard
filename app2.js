@@ -466,6 +466,20 @@ const dImage = document.getElementById("detail-image");
     };
 };
 
+// hanjool(수정요청)은 규칙상 update가 없어서 항상 "전부 삭제 후 하나만 새로 생성"하는 방식.
+// 그래서 텍스트만 새로 남기거나 파일만 새로 올릴 때 상대방 값(파일링크 또는 텍스트)이
+// 같이 날아가지 않도록, 새로 쓰기 전에 기존 값을 먼저 읽어서 없는 필드는 이어받는다.
+async function getLatestHanjool(boardId) {
+    const q = query(collection(db, "boards", boardId, "hanjool"), orderBy("createdAt", "desc"), limit(1));
+    const snap = await getDocs(q);
+    return snap.empty ? null : snap.docs[0].data();
+}
+async function deleteAllHanjool(boardId) {
+    const q = query(collection(db, "boards", boardId, "hanjool"));
+    const snap = await getDocs(q);
+    await Promise.allSettled(snap.docs.map(d => deleteDoc(d.ref)));
+}
+
 document.getElementById("save-memo-btn").addEventListener("click", async () => {
     if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
     const input = document.getElementById("memo-input");
@@ -474,18 +488,19 @@ document.getElementById("save-memo-btn").addEventListener("click", async () => {
     const currentUser = await ensureAnonymousLogin();
 
     try {
-        // 1. 기존 메모 삭제 (예전에 uid 없이 저장된 메모는 규칙상 삭제가 거부될 수 있으므로,
-        //    하나가 실패해도 나머지 진행에는 영향 없게 처리)
-        const q = query(collection(db, "boards", currentViewId, "hanjool"));
-        const snapshot = await getDocs(q);
-        await Promise.allSettled(snapshot.docs.map(doc => deleteDoc(doc.ref)));
+        // 1. 기존 메모(+ 첨부파일 정보) 확인 후 전부 삭제
+        //    (예전에 uid 없이 저장된 메모는 규칙상 삭제가 거부될 수 있으므로,
+        //     하나가 실패해도 나머지 진행에는 영향 없게 처리)
+        const existing = await getLatestHanjool(currentViewId);
+        await deleteAllHanjool(currentViewId);
 
-        // 2. 새 메모 저장
-        await addDoc(collection(db, "boards", currentViewId, "hanjool"), { 
-            text: input.value, 
-            createdAt: new Date(),
-            uid: currentUser.uid
-        });
+        // 2. 새 메모 저장 - 기존에 첨부파일이 있었다면 그 링크는 그대로 이어받음
+        const newEntry = { text: input.value, createdAt: new Date(), uid: currentUser.uid };
+        if (existing && existing.fileUrl) {
+            newEntry.fileUrl = existing.fileUrl;
+            newEntry.fileName = existing.fileName;
+        }
+        await addDoc(collection(db, "boards", currentViewId, "hanjool"), newEntry);
         input.value = "";
 
         // 3. (핵심) 최신 상태를 DB에서 다시 읽어온 후 버튼과 레이어 동기화
@@ -560,13 +575,12 @@ document.getElementById("revision-file-input").addEventListener("change", async 
 
         const fileUrl = await uploadFileToR2(file, boardData.author || "고객");
 
-        // 기존 수정요청(hanjool) 삭제 후 새로 등록 - 텍스트 메모 등록과 동일한 방식
-        const q = query(collection(db, "boards", currentViewId, "hanjool"));
-        const existing = await getDocs(q);
-        await Promise.allSettled(existing.docs.map(d => deleteDoc(d.ref)));
+        // 기존 수정요청(텍스트) 확인 후 전부 삭제 - 있던 텍스트는 그대로 이어받고 파일만 새로 붙임
+        const existing = await getLatestHanjool(currentViewId);
+        await deleteAllHanjool(currentViewId);
 
         await addDoc(collection(db, "boards", currentViewId, "hanjool"), {
-            text: "📎 파일이 첨부되었습니다. (수정중입니다)",
+            text: (existing && existing.text) ? existing.text : "📎 파일이 첨부되었습니다. (수정중입니다)",
             fileUrl: fileUrl,
             fileName: file.name,
             createdAt: new Date(),
