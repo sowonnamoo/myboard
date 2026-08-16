@@ -92,7 +92,7 @@ let currentViewPhone = null;
 let currentDetailStatus = null; // 현재 상세보기 중인 주문의 접수상태('대기'/'카드결제'/'무통장'/'접수에러' 등)
 let currentFile1Url = null;     // 파일교체 시 화면을 즉시 갱신하기 위해 따로 보관
 let currentFile2Url = null;
-const POSTS_PER_PAGE = 8; 
+const POSTS_PER_PAGE = 6; 
 
 // ---- 장바구니(01my.html 등에서 담은 여러 상품) 통합 주문작성 ----
 // 이 기능은 index1.html에만 있는 #cart-summary-card 요소가 있을 때만 동작합니다.
@@ -670,7 +670,7 @@ function uploadToR2(fileInputId, authorName, onProgress) {
     });
 }
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 6;
 
 // Firestore에서 lastVisible 이후로 유효한(숨김 처리 안 된) 글을 목표 개수만큼 모을 때까지
 // 필요한 만큼 반복해서 가져옵니다. 숨겨진 글을 건너뛴 만큼 목록 개수가 줄어드는 문제를 방지합니다.
@@ -827,9 +827,7 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
 
     const privateData = privateSnap.data(); // phone, address, message - private 문서에서만 얻음
     currentViewAuthor = data.author;
-    // 고객이 배송지 수정하기로 나중에 boards/{id}.phone을 직접 고쳤을 수도 있으므로,
-    // 있으면 그 값을 우선 사용하고 없으면 원본(private) 값을 사용합니다.
-    currentViewPhone = data.phone || privateData.phone;
+    currentViewPhone = privateData.phone;
 
     // 양방향 제한: 신청 자체는 openCashPage/segum.html에서 막고,
     // 여기는 "이미 신청/등록된 쪽의 버튼을 즉시 숨기는" UI 노출만 담당
@@ -883,8 +881,8 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     // toLocaleString() + '원'을 또 붙여서 "원원"으로 중복 표시되는 문제가 있었습니다)
     const priceDigits = data.price ? Number(String(data.price).replace(/[^0-9]/g, '')) || 0 : 0;
     document.getElementById("detail-price").innerText = priceDigits.toLocaleString() + '원';
-    document.getElementById("detail-phone").innerText = data.phone || privateData.phone;
-    document.getElementById("detail-address").innerText = data.address || privateData.address;
+    document.getElementById("detail-phone").innerText = privateData.phone;
+    document.getElementById("detail-address").innerText = privateData.address;
     document.getElementById("detail-msg").innerText = privateData.message || "내용 없음";
     window.syncStatusOverlay(data.status);
 

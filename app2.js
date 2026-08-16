@@ -170,7 +170,7 @@ let currentPage = 1;
 let currentViewId = ""; 
 let lastVisible = null;
 let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
-const POSTS_PER_PAGE = 8;
+const POSTS_PER_PAGE = 6;
 // 현재 상세보기 중인 게시글의 "시안 이미지 번호"(finalCode)를 담아둡니다.
 // 재구입 버튼이 화면 텍스트를 파싱하지 않고 이 값을 바로 사용합니다.
 let currentSianImgCode = "";
