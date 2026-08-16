@@ -97,7 +97,7 @@
 
 <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         // 팝업 열기 함수 추가
@@ -435,16 +435,25 @@ if (d.status !== '대기' && d.status !== '접수에러') {
             <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
             <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
             
-       <div class="mt-2 flex items-center gap-2">
+       <div class="mt-2 flex items-center gap-2 flex-wrap">
     <span class="font-semibold">첨부파일:</span>
-    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
+    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" id="file1-link-${d.id}" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
     ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
-    
-    ${d.status === '접수에러' ? `
-        <button onclick="openPopup('upload.html?docId=${d.id}&col=${d.isJajoo ? 'jjjj' : 'boards'}')" 
-        class="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">파일재업로드</button>
-    ` : ''}
 </div>
+
+${d.status === '접수에러' ? `
+<div class="mt-2 flex items-center gap-2 flex-wrap">
+    <button type="button" id="reupload-btn-${d.id}"
+        data-doc-id="${d.id}" data-col="${d.isJajoo ? 'jjjj' : 'boards'}" data-author="${escapeAttr(d.author)}"
+        onclick="window.triggerFileReupload(this)"
+        class="bg-red-600 text-white font-bold px-3 py-1.5 text-xs rounded hover:bg-red-700 border border-red-700">
+        파일재업로드
+    </button>
+    <span id="reupload-msg-${d.id}" class="text-red-600 text-xs font-semibold">
+        파일오류 사유로 접수에러 됬습니다. 내 시안&gt;에러내용 확인후 재업로드 바랍니다.
+    </span>
+</div>
+` : ''}
 
 <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
 
@@ -510,6 +519,120 @@ ${
         resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
     }
         });
+
+// ---- 접수에러 상태에서 '파일재업로드' 클릭 시: 팝업(upload.html) 없이 바로 파일선택창을 띄우고,
+//      고른 파일을 즉시 R2에 업로드한 뒤 해당 주문의 file1Url을 새 파일로 교체합니다. ----
+window.triggerFileReupload = function(btn) {
+    if (!btn || btn.disabled) return;
+
+    const docId = btn.dataset.docId;
+    const col = btn.dataset.col;
+    const authorName = btn.dataset.author || '재업로드';
+
+    const tempInput = document.createElement('input');
+    tempInput.type = 'file';
+    tempInput.style.display = 'none';
+    document.body.appendChild(tempInput);
+
+    tempInput.addEventListener('change', async () => {
+        const file = tempInput.files && tempInput.files[0];
+        if (!file) { document.body.removeChild(tempInput); return; }
+
+        // 500MB 용량 제한
+        const MAX_SIZE = 500 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            alert("⚠️ 파일 용량이 500MB를 넘습니다. 500MB 미만의 파일로 다시 접수해주세요.");
+            document.body.removeChild(tempInput);
+            return;
+        }
+
+        if (!confirm('선택한 파일로 다시 접수하시겠습니까?')) {
+            document.body.removeChild(tempInput);
+            return;
+        }
+
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.textContent = '업로드 중...';
+
+        try {
+            await ensureAnonymousLogin();
+            const newUrl = await uploadFileToR2(file, authorName);
+
+            await updateDoc(doc(db, col, docId), {
+                file1Url: newUrl,
+                reuploadedAt: new Date()
+            });
+
+            // 버튼을 "수정파일 접수완료(접수시간)"으로 바꾸고 비활성화 상태를 유지
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} `
+                + `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            btn.textContent = `수정파일 접수완료(${timeStr})`;
+            btn.classList.remove('bg-red-600', 'hover:bg-red-700', 'border-red-700', 'opacity-50', 'cursor-not-allowed');
+            btn.classList.add('bg-gray-400', 'cursor-not-allowed', 'border', 'border-gray-400');
+            btn.disabled = true;
+
+            const msgEl = document.getElementById('reupload-msg-' + docId);
+            if (msgEl) msgEl.classList.add('hidden');
+
+            // 파일 1 다운로드 링크도 새 파일 주소로 즉시 갱신
+            const fileLink = document.getElementById('file1-link-' + docId);
+            if (fileLink) fileLink.href = newUrl;
+
+        } catch (e) {
+            if (e.code === 'permission-denied') {
+                alert('본인이 작성한 글만 파일을 재업로드할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)');
+            } else {
+                alert('재업로드 중 오류가 발생했습니다: ' + e.message);
+            }
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.textContent = '파일재업로드';
+        } finally {
+            document.body.removeChild(tempInput);
+        }
+    });
+
+    tempInput.click();
+};
+
+// [R2 업로드 함수] app.js의 uploadToR2와 동일한 방식(용량/확장자 검사 포함)이되,
+// 파일 input을 미리 화면에 둘 필요 없이 File 객체를 바로 넘겨 업로드합니다.
+function uploadFileToR2(file, authorName) {
+    return new Promise((resolve, reject) => {
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!allowedExtensions.includes(ext)) {
+            reject(new Error("허용되지 않는 파일 형식입니다."));
+            return;
+        }
+
+        const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+        const WORKER_URL = "https://r2.ecogr.workers.dev/";
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", `${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, true);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.setRequestHeader("X-File-Size", file.size);
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const result = JSON.parse(xhr.responseText);
+                    resolve(result.url);
+                } catch (e) {
+                    reject(new Error("업로드 응답을 처리하지 못했습니다."));
+                }
+            } else {
+                reject(new Error("업로드 실패: " + xhr.statusText));
+            }
+        };
+        xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다."));
+        xhr.send(file);
+    });
+}
 
 window.deleteOrder = async (docId, isJajoo) => {
     if (confirm("정말로 이 주문을 삭제하시겠습니까?")) {

@@ -77,6 +77,13 @@
             }
         }
 
+        // 카드결제 완료 후, 장바구니에 담긴 각 주문(접수일건)의 접수상태를 '카드결제'로 변경
+        window.addEventListener("message", (event) => {
+            if (event.origin !== 'https://sowonnamoo.github.io') return;
+            if (!event.data || event.data.type !== 'PAYMENT_SUCCESS') return;
+            window.__handleCartCardPaymentSuccess && window.__handleCartCardPaymentSuccess(event.data);
+        });
+
         // 견적서 출력 함수 (별도 파일 없이 팝업 생성)
         function printEstimate() {
     const cart = JSON.parse(localStorage.getItem('myCart') || '[]');
@@ -144,6 +151,68 @@
 }
         
         loadCart();
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // index.html(app.js)과 동일한 프로젝트를 사용해야 같은 주문 문서(boards/{boardId})를 갱신할 수 있습니다.
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        onAuthStateChanged(auth, (user) => {
+            if (!user) signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+        });
+
+        // 카드결제 완료 메시지를 받으면, 장바구니(myCart)에 담긴 접수일건들을 하나씩 확인해서
+        // 결제 전 상태('대기')인 것만 '카드결제'로 바꿔줍니다. (금액이 결제창에서 낸 금액과 같을 때만 처리)
+        window.__handleCartCardPaymentSuccess = async (paymentData) => {
+            const cart = JSON.parse(localStorage.getItem('myCart') || '[]');
+            if (!Array.isArray(cart) || cart.length === 0) return;
+
+            const paidPriceDigits = String(paymentData.price ?? '').replace(/[^0-9]/g, '');
+            const totalEl = document.getElementById('total-price');
+            const cartTotalDigits = (totalEl ? totalEl.innerText : '').replace(/[^0-9]/g, '');
+
+            if (!paidPriceDigits || paidPriceDigits !== cartTotalDigits) {
+                console.log("결제 금액이 장바구니 합계와 일치하지 않습니다.", { paidPriceDigits, cartTotalDigits });
+                return;
+            }
+
+            let updatedCount = 0;
+            for (const item of cart) {
+                if (!item.boardId) continue; // boardId가 없는(예전 방식으로 담긴) 항목은 건너뜀
+                try {
+                    const docRef = doc(db, "boards", item.boardId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists() && snap.data().status === '대기') {
+                        await updateDoc(docRef, { status: '카드결제' });
+                        updatedCount++;
+                    }
+                } catch (e) {
+                    console.error("접수상태 변경 실패:", item.boardId, e);
+                }
+            }
+
+            if (updatedCount > 0) {
+                alert("결제가 정상적으로 확인되어 접수상태가 카드결제로 변경되었습니다.");
+            }
+
+            // 처리 완료된 장바구니는 비우고 화면을 갱신
+            localStorage.removeItem('myCart');
+            if (typeof loadCart === 'function') loadCart();
+        };
     </script>
 </body>
 </html>

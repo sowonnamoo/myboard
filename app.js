@@ -89,6 +89,9 @@ let currentPage = 1;
 let currentViewId = null;
 let currentViewAuthor = null; // 현금영수증 신청 시 세금계산서 등록 여부를 확인하는 데 사용
 let currentViewPhone = null;
+let currentDetailStatus = null; // 현재 상세보기 중인 주문의 접수상태('대기'/'카드결제'/'무통장'/'접수에러' 등)
+let currentFile1Url = null;     // 파일교체 시 화면을 즉시 갱신하기 위해 따로 보관
+let currentFile2Url = null;
 const POSTS_PER_PAGE = 8; 
 
 // ---- 장바구니(01my.html 등에서 담은 여러 상품) 통합 주문작성 ----
@@ -504,6 +507,99 @@ window.viewDetail = function(id) {
 
 
 
+// 상세보기의 첨부파일 목록을 그려줍니다.
+// 접수상태가 '대기'일 때만 각 파일 옆에 '파일교체' 버튼을 함께 보여주고,
+// 다른 상태(카드결제/무통장/접수에러 등)로 바뀌면 교체버튼은 자동으로 사라집니다.
+function renderDetailFiles() {
+    const filesDiv = document.getElementById("detail-files");
+    if (!filesDiv) return;
+    filesDiv.innerHTML = "";
+
+    const isWaitingStatus = currentDetailStatus === '대기';
+
+    const buildRow = (url, label, slot) => {
+        const row = document.createElement('div');
+        row.className = "flex items-center gap-2 mb-1";
+
+        const a = document.createElement('a');
+        // 이모지를 회색으로 만들기 위해 grayscale 필터 클래스 추가
+        a.innerHTML = `<span class="grayscale inline-block mr-1">📁</span>${label} (다운로드)`;
+        a.className = "text-xs text-blue-600 hover:underline cursor-pointer";
+        a.onclick = () => window.downloadFile(url, `${slot === 1 ? 'file1' : 'file2'}_download.png`);
+        row.appendChild(a);
+
+        if (isWaitingStatus) {
+            const replaceBtn = document.createElement('button');
+            replaceBtn.type = 'button';
+            replaceBtn.textContent = '파일교체';
+            replaceBtn.className = "text-xs text-orange-600 border border-orange-300 rounded px-1.5 py-0.5 hover:bg-orange-50";
+            replaceBtn.onclick = () => window.triggerFileReplace(slot);
+            row.appendChild(replaceBtn);
+        }
+
+        filesDiv.appendChild(row);
+    };
+
+    if (currentFile1Url) buildRow(currentFile1Url, '첨부파일 1', 1);
+    if (currentFile2Url) buildRow(currentFile2Url, '첨부파일 2', 2);
+}
+
+// '파일교체' 버튼 클릭 시: 새 파일을 골라 R2에 업로드하고, 성공하면 해당 주문 문서의
+// file1Url/file2Url을 새 주소로 덮어씁니다. (접수상태가 '대기'일 때만 버튼이 보이므로
+// 여기서도 다시 한 번 상태를 확인해 안전하게 막습니다)
+window.triggerFileReplace = function(slot) {
+    if (!currentViewId) return;
+    if (currentDetailStatus !== '대기') {
+        alert("접수상태가 '대기'일 때만 파일을 교체할 수 있습니다.");
+        return;
+    }
+
+    const tempInput = document.createElement('input');
+    tempInput.type = 'file';
+    tempInput.id = 'temp-replace-file-input-' + Date.now();
+    tempInput.style.display = 'none';
+    document.body.appendChild(tempInput);
+
+    tempInput.addEventListener('change', async () => {
+        if (!tempInput.files || tempInput.files.length === 0) {
+            document.body.removeChild(tempInput);
+            return;
+        }
+        if (!confirm('선택한 파일로 교체하시겠습니까? 기존 첨부파일은 새 파일로 대체됩니다.')) {
+            document.body.removeChild(tempInput);
+            return;
+        }
+
+        try {
+            await ensureAnonymousLogin();
+            const authorName = currentViewAuthor || '주문자';
+            const newUrl = await uploadToR2(tempInput.id, authorName);
+            if (!newUrl) {
+                alert('업로드에 실패했습니다.');
+                return;
+            }
+
+            const fieldName = slot === 1 ? 'file1Url' : 'file2Url';
+            await updateDoc(doc(db, "boards", currentViewId), { [fieldName]: newUrl });
+
+            if (slot === 1) currentFile1Url = newUrl; else currentFile2Url = newUrl;
+            renderDetailFiles();
+
+            alert('파일이 교체되었습니다.');
+        } catch (e) {
+            if (e.code === "permission-denied") {
+                alert("본인이 작성한 글만 파일을 교체할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)");
+            } else {
+                alert('파일 교체 중 오류가 발생했습니다: ' + e.message);
+            }
+        } finally {
+            document.body.removeChild(tempInput);
+        }
+    });
+
+    tempInput.click();
+};
+
 // [R2 업로드 함수] 업로드 및 보안 검사 포함
 // onProgress(loaded, total)을 넘기면 실제 업로드된 바이트 수를 실시간으로 알려줍니다.
 function uploadToR2(fileInputId, authorName, onProgress) {
@@ -790,6 +886,20 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     document.getElementById("detail-msg").innerText = privateData.message || "내용 없음";
     window.syncStatusOverlay(data.status);
 
+    // 현재 주문의 접수상태를 기억해둠 (파일교체 버튼 노출 여부 등에서 재사용)
+    currentDetailStatus = data.status;
+
+    // 접수상태가 '접수에러'이면 견적서~주문삭제 버튼 영역을 숨기고 안내문구를 대신 보여줍니다.
+    const actionButtons = document.getElementById("detail-action-buttons");
+    const errorNotice = document.getElementById("error-status-notice");
+    if (data.status === '접수에러') {
+        if (actionButtons) actionButtons.classList.add('hidden');
+        if (errorNotice) errorNotice.classList.remove('hidden');
+    } else {
+        if (actionButtons) actionButtons.classList.remove('hidden');
+        if (errorNotice) errorNotice.classList.add('hidden');
+    }
+
     // 장바구니(01my.html 쿼리 등)로 자동 입력되어 저장된 주문이면 "장바구니담기" 버튼을 숨기고 클릭도 막습니다.
     // 작성자가 제품명/수량/사이즈를 직접 입력해서 작성한 주문일 때만 이 버튼이 보이고 클릭됩니다.
     const addCartBtn = document.getElementById("add-cart-btn");
@@ -819,24 +929,10 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
     }
     
    
- const filesDiv = document.getElementById("detail-files"); 
-    filesDiv.innerHTML = "";
-    
-    if(data.file1Url) {
-       const a = document.createElement('a');
-       // 이모지를 회색으로 만들기 위해 grayscale 필터 클래스 추가
-       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 1 (다운로드)';
-       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-       a.onclick = () => window.downloadFile(data.file1Url, "file1_download.png");
-       filesDiv.appendChild(a);
-   }
-   if(data.file2Url) {
-       const a = document.createElement('a');
-       a.innerHTML = '<span class="grayscale inline-block mr-1">📁</span>첨부파일 2 (다운로드)';
-       a.className = "block text-xs text-blue-600 hover:underline cursor-pointer";
-       a.onclick = () => window.downloadFile(data.file2Url, "file2_download.png");
-       filesDiv.appendChild(a);
-    }
+ // 파일교체 버튼은 접수상태가 '대기'일 때만(=아직 결제/작업 전) 보여줍니다.
+    currentFile1Url = data.file1Url || null;
+    currentFile2Url = data.file2Url || null;
+    renderDetailFiles();
 
     // 삭제 버튼 설정 (익명 로그인 확인 후 진행. 실제로 문서를 삭제합니다.
     // 본인 글인지 여부(또는 관리자 이메일 로그인 여부)는 Firestore 규칙이 검사하며,
@@ -1039,21 +1135,39 @@ loadAndRender();
 
 // 장바구니 담기 + 팝업 열기 통합 코드
 document.getElementById("add-cart-btn").addEventListener("click", () => {
+    if (!currentViewId) {
+        alert("주문 정보를 찾을 수 없습니다.");
+        return;
+    }
+
     // 상세 페이지에서 현재 정보 가져오기
     const titleText = document.getElementById("detail-title").innerText;
+    const dateText = document.getElementById("detail-date").innerText; // 작성일
     const qtyText = document.getElementById("detail-qty").innerText;
     const sizeText = document.getElementById("detail-size").innerText;
     const priceText = document.getElementById("detail-price").innerText.replace(/[^0-9]/g, '');
 
+    let cart = JSON.parse(localStorage.getItem('myCart') || '[]');
+    if (!Array.isArray(cart)) cart = [];
+
+    // 작성일(=주문 접수건)이 같은 상품은 중복으로 담을 수 없도록 boardId로 확인합니다.
+    // (같은 주문은 항상 같은 boardId를 가지므로, 이 값이 곧 "동일한 작성일의 그 상품"인지 판별하는 기준입니다)
+    const alreadyInCart = cart.some(it => it.boardId === currentViewId);
+    if (alreadyInCart) {
+        alert("이미 장바구니에 담긴 상품입니다. (동일 접수일 상품은 중복으로 담을 수 없습니다)");
+        return;
+    }
+
     const item = {
+        boardId: currentViewId, // 결제 완료 시 이 주문의 접수상태를 갱신하는 데 사용됩니다.
         name: titleText,
+        date: dateText,
         qty: qtyText,
         size: sizeText,
         price: priceText
     };
 
     // 장바구니에 저장
-    let cart = JSON.parse(localStorage.getItem('myCart') || '[]');
     cart.push(item);
     localStorage.setItem('myCart', JSON.stringify(cart));
 
