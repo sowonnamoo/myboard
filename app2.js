@@ -274,15 +274,13 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     // 조판 완료 상태 여부 확인
     const isDone = (sianStatus === "done");
 
-    // 파일 재업로드 잠금 여부 + 관리자가 새 시안을 등록해 초기화한 시각 확인
-    let fileLocked = false;
+    // 관리자가 새 시안을 등록해 초기화한 시각 확인 (재업로드 안내 문구용)
+    // fileLocked는 더 이상 파일교체 버튼을 막는 데 쓰지 않음 - 관리자 쪽 "미확인 첨부" 표시 용도로만 남겨둠
     let sianRefreshedAt = null;
     try {
         const boardSnap = await getDoc(doc(db, "boards", boardId));
         if (boardSnap.exists()) {
-            const bd = boardSnap.data();
-            fileLocked = !!bd.fileLocked;
-            sianRefreshedAt = bd.sianRefreshedAt || null;
+            sianRefreshedAt = boardSnap.data().sianRefreshedAt || null;
         }
     } catch (e) { /* 조회 실패해도 나머지 UI는 정상 진행 */ }
 
@@ -290,14 +288,14 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     memoInput.disabled = isDone;
     saveBtn.disabled = isDone;
     deleteBtn.disabled = isDone;
-    if (fileBtn) fileBtn.disabled = isDone || fileLocked;
+    if (fileBtn) fileBtn.disabled = isDone;
     
     // 버튼 스타일 조정 (비활성화 시 흐리게)
     saveBtn.style.opacity = isDone ? "0.5" : "1";
     deleteBtn.style.opacity = isDone ? "0.5" : "1";
     if (fileBtn) {
-        fileBtn.style.opacity = (isDone || fileLocked) ? "0.5" : "1";
-        fileBtn.title = fileLocked ? "새 시안이 등록된 후 다시 첨부할 수 있습니다." : "";
+        fileBtn.style.opacity = isDone ? "0.5" : "1";
+        fileBtn.title = "";
     }
 
     approveBtn.onclick = null;
@@ -312,9 +310,16 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoDisplay.innerText = latest.text;
         memoStatus.classList.remove("hidden");
         if (fileDownloadArea) {
-            fileDownloadArea.innerHTML = latest.fileUrl
-                ? `<a href="javascript:void(0)" onclick="downloadFile('${latest.fileUrl}', '${(latest.fileName || 'file').replace(/'/g, "")}')" class="text-blue-600 underline text-xs">📎 내가 올린 파일 다운로드 (${latest.fileName || '파일'})</a>`
-                : "";
+            if (latest.fileUrl) {
+                const uploadedAt = latest.createdAt && latest.createdAt.toDate
+                    ? latest.createdAt.toDate().toLocaleString('ko-KR')
+                    : '';
+                fileDownloadArea.innerHTML =
+                    `<a href="javascript:void(0)" onclick="downloadFile('${latest.fileUrl}', '${(latest.fileName || 'file').replace(/'/g, "")}')" class="text-blue-600 underline text-xs">📎 내가 올린 파일 다운로드 (${latest.fileName || '파일'})</a>` +
+                    (uploadedAt ? `<span class="text-gray-400 text-xs ml-1">(등록: ${uploadedAt})</span>` : '');
+            } else {
+                fileDownloadArea.innerHTML = "";
+            }
         }
     } else if (!isDone && sianRefreshedAt) {
         // 관리자가 새 시안을 등록하고 초기화한 직후 - 굵은 글씨로 재업로드 안내
@@ -577,14 +582,11 @@ document.getElementById("revision-file-input").addEventListener("change", async 
     const fileBtn = document.getElementById("file-replace-btn");
 
     try {
-        // 업로드 직전에 최신 잠금/조판 상태를 다시 확인 (다른 창에서 이미 처리됐을 수 있으므로)
+        // 업로드 직전에 최신 조판 상태만 다시 확인 (다른 창에서 이미 조판완료 처리됐을 수 있으므로)
         const boardSnap = await getDoc(doc(db, "boards", currentViewId));
         const boardData = boardSnap.data() || {};
         if (boardData.sian === "done") {
             return alert("조판 완료로 인해 파일 첨부가 불가능합니다.");
-        }
-        if (boardData.fileLocked) {
-            return alert("이미 첨부하신 파일이 처리 대기중입니다. 새 시안이 등록된 후 다시 첨부해주세요.");
         }
 
         fileBtn.disabled = true;
@@ -611,7 +613,7 @@ document.getElementById("revision-file-input").addEventListener("change", async 
         const freshSnap = await getDoc(doc(db, "boards", currentViewId));
         await checkMemoAndSetButton(currentViewId, freshSnap.data().sian);
 
-        alert("파일이 첨부되었습니다. 수정중 상태로 변경되었습니다.");
+        alert("수정내용이 접수되셨습니다.");
     } catch (err) {
         if (err.code === "permission-denied") {
             alert("본인이 작성한 글에만 파일을 첨부할 수 있습니다.");
@@ -621,7 +623,7 @@ document.getElementById("revision-file-input").addEventListener("change", async 
     } finally {
         fileBtn.disabled = false;
         fileBtn.innerText = "📎 파일교체";
-        // 실제 잠금 여부는 checkMemoAndSetButton이 다시 반영해줌 (성공 시 비활성 상태 유지)
+        // 최신 상태(조판완료 여부 등)를 다시 반영
         const snap = await getDoc(doc(db, "boards", currentViewId)).catch(() => null);
         if (snap && snap.exists()) {
             await checkMemoAndSetButton(currentViewId, snap.data().sian);
