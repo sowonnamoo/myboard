@@ -31,6 +31,10 @@
   #ip-modal-value { display:block; width:100%; text-align:left; font-family:monospace; font-size:14px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:10px 12px; margin:8px 0 6px; cursor:pointer; word-break:break-all; }
   #ip-modal-copied { display:none; font-size:12px; color:#166534; text-align:center; margin-bottom:8px; }
   #ip-modal-box .close-btn { width:100%; background:#fff; color:#334155; border:1px solid #cbd5e1; padding:8px; font-size:13px; }
+  #ip-modal-block-btn { width:100%; background:#dc2626; padding:10px; font-size:13px; margin-bottom:6px; }
+  #ip-modal-block-btn.blocked { background:#f8fafc; color:#dc2626; border:1px solid #fca5a5; }
+  #ip-modal-status.blocked { color:#dc2626; font-weight:bold; }
+  #ip-modal-status.ok { color:#64748b; }
 </style>
 </head>
 <body>
@@ -72,6 +76,8 @@
     <p style="font-size:12px; color:#64748b; margin:0 0 2px;">작성자 IP</p>
     <button id="ip-modal-value" onclick="copyIpValue()"></button>
     <p id="ip-modal-copied">✅ 복사되었습니다</p>
+    <p id="ip-modal-status" style="font-size:12px; text-align:center; margin:0 0 8px; display:none;"></p>
+    <button id="ip-modal-block-btn" onclick="toggleBlockIp()">🚫 이 IP 차단하기</button>
     <button class="close-btn" onclick="closeIpModal()">닫기</button>
   </div>
 </div>
@@ -214,15 +220,95 @@ window.showTaxInfo = (boardId) => {
   );
 };
 
-// ============= 작성자 IP 확인/복사 모달 =============
-window.showIpModal = (ip) => {
+// ============= 작성자 IP 확인/복사/차단 모달 =============
+// index1(고객 글쓰기)의 app.js가 접속 시 이 컬렉션(blocked_ips, 문서ID=IP)을 조회해서
+// 차단된 IP면 접수하기 버튼을 숨기고, 클릭해도 저장을 막습니다. 여기서는 그 목록에 추가/제거만 합니다.
+let currentModalIp = '';
+
+window.showIpModal = async (ip) => {
   const overlay = document.getElementById('ip-modal-overlay');
   const valueBtn = document.getElementById('ip-modal-value');
   const copiedText = document.getElementById('ip-modal-copied');
+  const statusText = document.getElementById('ip-modal-status');
+  const blockBtn = document.getElementById('ip-modal-block-btn');
+
+  currentModalIp = ip || '';
   valueBtn.textContent = ip || '(IP 정보 없음)';
   copiedText.style.display = 'none';
   overlay.style.display = 'flex';
+
+  if (!ip) {
+    blockBtn.style.display = 'none';
+    statusText.style.display = 'none';
+    return;
+  }
+  blockBtn.style.display = 'block';
+  blockBtn.disabled = true;
+  blockBtn.textContent = '확인 중...';
+  statusText.style.display = 'none';
+
+  try {
+    const snap = await getDoc(doc(db, "blocked_ips", ip));
+    renderBlockState(snap.exists());
+  } catch (e) {
+    blockBtn.disabled = false;
+    blockBtn.textContent = '🚫 이 IP 차단하기';
+    statusText.textContent = '차단 상태 확인 실패: ' + e.message;
+    statusText.className = '';
+    statusText.style.display = 'block';
+  }
 };
+
+function renderBlockState(isBlocked) {
+  const statusText = document.getElementById('ip-modal-status');
+  const blockBtn = document.getElementById('ip-modal-block-btn');
+  blockBtn.disabled = false;
+  if (isBlocked) {
+    blockBtn.textContent = '✅ 차단 해제하기';
+    blockBtn.classList.add('blocked');
+    statusText.textContent = '⚠️ 현재 차단된 IP입니다 — 이 IP는 글쓰기(접수하기)가 불가능합니다.';
+    statusText.className = 'blocked';
+  } else {
+    blockBtn.textContent = '🚫 이 IP 차단하기';
+    blockBtn.classList.remove('blocked');
+    statusText.textContent = '현재 차단되어 있지 않습니다.';
+    statusText.className = 'ok';
+  }
+  statusText.style.display = 'block';
+}
+
+window.toggleBlockIp = async () => {
+  const ip = currentModalIp;
+  if (!ip) return;
+  const blockBtn = document.getElementById('ip-modal-block-btn');
+  const isCurrentlyBlocked = blockBtn.classList.contains('blocked');
+
+  if (isCurrentlyBlocked) {
+    if (!confirm(`이 IP(${ip})의 차단을 해제하시겠습니까?\n해제하면 이 IP에서 다시 글쓰기(접수)가 가능해집니다.`)) return;
+    blockBtn.disabled = true;
+    try {
+      await deleteDoc(doc(db, "blocked_ips", ip));
+      renderBlockState(false);
+    } catch (e) {
+      alert('차단 해제 실패: ' + e.message);
+      blockBtn.disabled = false;
+    }
+  } else {
+    if (!confirm(`⚠️ 경고\n이 IP(${ip})를 차단하시겠습니까?\n\n차단하면 이 IP로 접속한 사용자는 글쓰기(접수하기) 버튼이 사라지고, 새 주문을 접수할 수 없게 됩니다.\n같은 IP를 쓰는 다른 사용자(예: 회사/공용 와이파이)도 함께 막힐 수 있으니 신중히 진행해주세요.`)) return;
+    blockBtn.disabled = true;
+    try {
+      await setDoc(doc(db, "blocked_ips", ip), {
+        blockedAt: serverTimestamp(),
+        blockedBy: auth.currentUser ? (auth.currentUser.email || '') : ''
+      });
+      renderBlockState(true);
+    } catch (e) {
+      alert('차단 실패: ' + e.message);
+      blockBtn.disabled = false;
+    }
+  }
+};
+
 window.copyIpValue = async () => {
   const valueBtn = document.getElementById('ip-modal-value');
   const ip = valueBtn.textContent;
