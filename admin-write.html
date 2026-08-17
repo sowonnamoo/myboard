@@ -14,58 +14,147 @@
     padding: 0.55rem 0.75rem; font-size: 0.875rem; background: #fff; color: #111827;
   }
   .form-input:focus { outline: none; border-color: #4b5563; box-shadow: 0 0 0 1px #4b5563; }
+  .mode-btn.active { background:#1f2937; color:#fff; }
+  .offset-btn.active { background:#1f2937; color:#fff; }
 </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
 
-  <div class="w-full max-w-[560px] mx-auto py-10 px-4">
+  <div class="w-full max-w-[640px] mx-auto py-10 px-4">
 
-    <header class="mb-5">
-      <h1 class="text-lg font-bold text-gray-800">🛠️ 관리자 등록 - 접수오류건 시안</h1>
-      <p class="text-xs text-gray-500 mt-1">
-        여기서 등록하면 고객용 게시판(index)에 다른 주문건과 동일한 형태로 즉시 노출됩니다.<br>
-        접수상태는 자동으로 <b>'접수에러'</b>로 저장되어, 고객이 열면 결제 버튼 대신 "시안보기에서 상태를 확인하라"는 안내가 뜹니다.
-      </p>
+    <header class="mb-5 flex items-center justify-between">
+      <div>
+        <h1 class="text-lg font-bold text-gray-800">🛠️ 관리자 등록 - 접수오류건 시안</h1>
+        <p class="text-xs text-gray-500 mt-1">
+          등록하면 고객용 게시판(index)에 다른 주문건과 동일한 형태로 노출됩니다.<br>
+          접수상태는 자동으로 <b>'접수에러'</b>로 저장되어, 고객이 열면 결제 버튼 대신 안내 문구가 뜹니다.
+        </p>
+      </div>
+      <div id="login-status" class="hidden text-right shrink-0 ml-3">
+        <p id="login-email-text" class="text-xs text-gray-500 mb-1"></p>
+        <button id="logout-btn" class="text-xs text-gray-500 border border-gray-300 rounded px-2 py-1 hover:bg-gray-100">로그아웃</button>
+      </div>
     </header>
 
-    <div class="bg-white border border-gray-200 rounded p-5">
-      <table class="w-full text-sm border-collapse">
-        <tr class="border-b">
-          <td class="w-32 font-bold text-gray-700 py-3 align-top">제목 <span class="text-red-500">*</span></td>
-          <td class="py-3"><input type="text" id="a-title" class="form-input" placeholder="예) OO스티커 시안 재확인 요청"></td>
-        </tr>
-        <tr class="border-b">
-          <td class="font-bold text-gray-700 py-3 align-top">작성자 <span class="text-red-500">*</span></td>
-          <td class="py-3"><input type="text" id="a-author" class="form-input" placeholder="고객명 또는 회사명"></td>
-        </tr>
-        <tr class="border-b">
-          <td class="font-bold text-gray-700 py-3 align-top">작업메시지<br><span class="text-xs font-normal text-gray-400">(특이사항 안내)</span></td>
-          <td class="py-3"><textarea id="a-message" rows="5" class="form-input resize-none" placeholder="고객에게 전달할 특이사항/안내 내용을 입력하세요"></textarea></td>
-        </tr>
-        <tr>
-          <td class="font-bold text-gray-700 py-3 align-top">비밀번호 <span class="text-red-500">*</span><br><span class="text-xs font-normal text-gray-400">(숫자 4자리)</span></td>
-          <td class="py-3">
-            <input type="text" id="a-password" maxlength="4" inputmode="numeric"
-                   class="form-input" placeholder="숫자 4자리"
-                   oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,4)">
-            <p class="text-xs text-gray-400 mt-1">고객이 게시판에서 이 글을 열 때 "작성자명 + 이 4자리"로 확인합니다. 고객에게 이 4자리를 전달해주세요.</p>
-          </td>
-        </tr>
-      </table>
+    <!-- ================= 로그인 전: 관리자 이메일 로그인 화면 ================= -->
+    <div id="view-login" class="bg-white border border-gray-200 rounded p-6">
+      <h2 class="text-base font-bold text-gray-800 mb-1">🔒 관리자 로그인</h2>
+      <p class="text-xs text-gray-500 mb-4">관리자 계정으로 로그인해야 글을 등록할 수 있습니다.</p>
 
-      <div class="flex justify-end mt-6">
-        <button id="a-submit-btn" class="bg-gray-800 text-white font-semibold px-8 py-2 text-sm rounded hover:bg-gray-900">
-          등록하기
-        </button>
+      <div class="space-y-3">
+        <input type="email" id="login-email" class="form-input" placeholder="관리자 이메일" autocomplete="username">
+        <input type="password" id="login-password" class="form-input" placeholder="비밀번호" autocomplete="current-password">
       </div>
+
+      <p id="login-error" class="hidden text-xs text-red-500 mt-2"></p>
+
+      <button id="login-btn" class="w-full mt-4 bg-gray-800 text-white font-semibold py-2.5 text-sm rounded hover:bg-gray-900">
+        로그인
+      </button>
     </div>
 
-    <div id="a-result" class="hidden mt-4 border border-green-200 bg-green-50 text-green-700 text-sm rounded p-4"></div>
+    <!-- ================= 로그인 후: 글 작성 화면 ================= -->
+    <div id="view-write-wrap" class="hidden space-y-4">
+
+      <!-- 등록 방식: 즉시 / 예약 -->
+      <div class="bg-white border border-gray-200 rounded p-4">
+        <div class="flex gap-2 mb-3">
+          <button type="button" id="mode-now-btn" class="mode-btn active flex-1 border rounded py-2 text-sm font-semibold bg-gray-100">⚡ 즉시 등록</button>
+          <button type="button" id="mode-schedule-btn" class="mode-btn flex-1 border rounded py-2 text-sm font-semibold bg-gray-100">⏰ 예약 등록</button>
+        </div>
+
+        <div id="schedule-options" class="hidden pt-2 border-t">
+          <p class="text-xs text-gray-500 mb-2">몇 시간 뒤에 등록할지 선택하거나, 날짜/시간을 직접 지정하세요.</p>
+          <div class="flex gap-2 mb-3">
+            <button type="button" class="offset-btn flex-1 border rounded py-2 text-xs bg-gray-50 hover:bg-gray-100" data-hours="1">1시간 후</button>
+            <button type="button" class="offset-btn flex-1 border rounded py-2 text-xs bg-gray-50 hover:bg-gray-100" data-hours="2">2시간 후</button>
+            <button type="button" class="offset-btn flex-1 border rounded py-2 text-xs bg-gray-50 hover:bg-gray-100" data-hours="3">3시간 후</button>
+            <button type="button" class="offset-btn flex-1 border rounded py-2 text-xs bg-gray-50 hover:bg-gray-100" data-hours="6">6시간 후</button>
+          </div>
+          <input type="datetime-local" id="a-schedule-datetime" class="form-input">
+          <p id="schedule-preview" class="text-xs text-gray-500 mt-1"></p>
+        </div>
+      </div>
+
+      <!-- 본문 입력 -->
+      <div class="bg-white border border-gray-200 rounded p-5">
+        <table class="w-full text-sm border-collapse">
+          <tr class="border-b">
+            <td class="w-32 font-bold text-gray-700 py-3 align-top">제목 <span class="text-red-500">*</span></td>
+            <td class="py-3"><input type="text" id="a-title" class="form-input" placeholder="예) OO스티커 시안 재확인 요청"></td>
+          </tr>
+          <tr class="border-b">
+            <td class="font-bold text-gray-700 py-3 align-top">작성자 <span class="text-red-500">*</span></td>
+            <td class="py-3"><input type="text" id="a-author" class="form-input" placeholder="고객명 또는 회사명"></td>
+          </tr>
+          <tr class="border-b">
+            <td class="font-bold text-gray-700 py-3 align-top">작업메시지<br><span class="text-xs font-normal text-gray-400">(특이사항 안내)</span></td>
+            <td class="py-3"><textarea id="a-message" rows="4" class="form-input resize-none" placeholder="고객에게 전달할 특이사항/안내 내용을 입력하세요"></textarea></td>
+          </tr>
+          <tr class="border-b">
+            <td class="font-bold text-gray-700 py-3 align-top">비밀번호 <span class="text-red-500">*</span><br><span class="text-xs font-normal text-gray-400">(숫자 4자리)</span></td>
+            <td class="py-3">
+              <input type="text" id="a-password" maxlength="4" inputmode="numeric"
+                     class="form-input" placeholder="숫자 4자리"
+                     oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,4)">
+              <p class="text-xs text-gray-400 mt-1">고객은 "작성자명 + 이 4자리"로 게시글을 엽니다. 고객에게 이 4자리를 전달해주세요.</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="font-bold text-gray-700 py-3 align-top">첨부파일<br><span class="text-xs font-normal text-gray-400">(선택, 최대 2개)</span></td>
+            <td class="py-3 space-y-3">
+              <div class="border border-gray-200 rounded p-2.5">
+                <input type="file" id="a-file1" class="text-xs w-full">
+                <select id="a-file1-type" class="form-input mt-2 text-xs">
+                  <option value="">분류 안 함</option>
+                  <option value="m">m — 워터마크 필요</option>
+                  <option value="k">k — 워터마크 불필요(원본)</option>
+                  <option value="s">s — 원본 제공 후 삭제(용량확보)</option>
+                </select>
+              </div>
+              <div class="border border-gray-200 rounded p-2.5">
+                <input type="file" id="a-file2" class="text-xs w-full">
+                <select id="a-file2-type" class="form-input mt-2 text-xs">
+                  <option value="">분류 안 함</option>
+                  <option value="m">m — 워터마크 필요</option>
+                  <option value="k">k — 워터마크 불필요(원본)</option>
+                  <option value="s">s — 원본 제공 후 삭제(용량확보)</option>
+                </select>
+              </div>
+              <p class="text-xs text-gray-400">이 분류값(m/k/s)은 게시글에는 표시되지 않고, 관리자만 볼 수 있는 저장소에만 남습니다.</p>
+            </td>
+          </tr>
+        </table>
+
+        <div class="flex justify-end mt-6">
+          <button id="a-submit-btn" class="bg-gray-800 text-white font-semibold px-8 py-2 text-sm rounded hover:bg-gray-900">
+            등록하기
+          </button>
+        </div>
+      </div>
+
+      <div id="a-result" class="hidden border border-green-200 bg-green-50 text-green-700 text-sm rounded p-4"></div>
+
+      <!-- 예약 대기 목록 -->
+      <div class="bg-white border border-gray-200 rounded p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-800">⏳ 예약 대기 목록</h3>
+          <span id="schedule-count-text" class="text-xs text-gray-400">0 / 20건</span>
+        </div>
+        <p class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2 mb-3">
+          이 페이지를 열어둔 브라우저 탭이 있어야 예약 시간에 자동으로 등록됩니다(약 20초 주기 확인).
+          탭을 계속 켜두기 어렵다면, 별도로 안내해드린 Cloud Functions 예약 배포를 사용하시면 탭을 안 켜둬도 자동 등록됩니다.
+        </p>
+        <div id="schedule-list" class="divide-y text-sm"></div>
+      </div>
+
+    </div>
+    <!-- /view-write-wrap -->
   </div>
 
   <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
     <div class="bg-white p-6 rounded-lg shadow-xl text-center">
-      <p class="font-bold text-gray-800 text-sm">등록 중...</p>
+      <p id="loading-text" class="font-bold text-gray-800 text-sm">처리 중...</p>
     </div>
   </div>
 
