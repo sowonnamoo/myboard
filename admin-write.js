@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import {
     getFirestore, collection, doc, setDoc, getDoc, getDocs,
-    query, where, orderBy, limit, updateDoc, Timestamp
+    query, where, orderBy, limit, updateDoc, deleteDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
@@ -124,7 +124,8 @@ function escapeHtml(str) {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
-function showLoading(show) {
+function showLoading(show, text) {
+    if (text) document.getElementById("loading-text").textContent = text;
     document.getElementById("loading-spinner").classList.toggle("hidden", !show);
 }
 
@@ -152,9 +153,13 @@ async function publishBoardEntry({ title, author, message, password, classificat
     });
 
     // m/k/s 분류는 게시글/고객 열람 경로에는 절대 넣지 않고, 관리자 전용 저장소에만 기록.
+    // secretId·createdAt도 함께 저장해서, 나중에 삭제관리(60일/1년 경과)에서
+    // boards 문서를 매번 다시 조회하지 않고 이 컬렉션만 보고 정리할 수 있게 합니다.
     await setDoc(doc(db, "adminOrders", boardId), {
         phone: password, address: "", message, uid: adminUid,
-        classification: classification || null
+        classification: classification || null,
+        secretId,
+        createdAt: new Date()
     });
 
     return boardId;
@@ -278,3 +283,54 @@ function startPolling() {
 function stopPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
+
+// ============= 삭제관리: 등록 후 일정 기간 지난 m/k/s 분류 글 정리 =============
+// 문자로 발송되는 링크라, 오래된 글은 보안/용량 확보를 위해 주기적으로 정리가 필요합니다.
+// adminOrders에 저장해둔 classification + createdAt만 보고 대상(60일/1년 경과)을 찾아
+// boards 본문 + private 서브문서 + adminOrders 문서를 함께 삭제합니다.
+async function runDeleteOldClassified(days, label) {
+    if (!currentAdminUser) { alert("관리자 로그인이 필요합니다."); return; }
+
+    showLoading(true, "삭제 대상 확인 중...");
+    let snap;
+    try {
+        const cutoff = Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+        const q = query(
+            collection(db, "adminOrders"),
+            where("classification", "in", ["m", "k", "s"]),
+            where("createdAt", "<=", cutoff)
+        );
+        snap = await getDocs(q);
+    } catch (e) {
+        console.error(e);
+        showLoading(false);
+        alert("대상 확인 중 오류가 발생했습니다: " + e.message + "\n(Firestore 색인 생성이 필요할 수 있습니다. 콘솔의 오류 링크를 확인해주세요.)");
+        return;
+    }
+    showLoading(false);
+
+    if (snap.empty) { alert(`${label} 대상 글이 없습니다.`); return; }
+    if (!confirm(`${label} 대상 ${snap.size}건을 삭제하시겠습니까?\n삭제하면 되돌릴 수 없습니다.`)) return;
+
+    showLoading(true, "삭제 중...");
+    let successCount = 0;
+    for (const docSnap of snap.docs) {
+        const data = docSnap.data();
+        const boardId = docSnap.id;
+        try {
+            if (data.secretId) {
+                await deleteDoc(doc(db, "boards", boardId, "private", data.secretId));
+            }
+            await deleteDoc(doc(db, "boards", boardId));
+            await deleteDoc(doc(db, "adminOrders", boardId));
+            successCount++;
+        } catch (e) {
+            console.error("삭제 실패:", boardId, e);
+        }
+    }
+    showLoading(false);
+    alert(`${successCount}건 삭제되었습니다.` + (successCount < snap.size ? ` (${snap.size - successCount}건 실패, 콘솔 로그 확인)` : ""));
+}
+
+document.getElementById("delete-60d-btn").addEventListener("click", () => runDeleteOldClassified(60, "60일 지난 글"));
+document.getElementById("delete-1y-btn").addEventListener("click", () => runDeleteOldClassified(365, "1년 지난 글"));
