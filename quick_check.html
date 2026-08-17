@@ -26,6 +26,11 @@
   .small-btn { padding:3px 8px; font-size:11px; background:#dc2626; border-radius:6px; }
   #loginBox { display:block; }
   #listBox { display:none; }
+  #ip-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:999; }
+  #ip-modal-box { background:#fff; border-radius:10px; padding:20px; width:100%; max-width:280px; box-shadow:0 10px 30px rgba(0,0,0,0.2); }
+  #ip-modal-value { display:block; width:100%; text-align:left; font-family:monospace; font-size:14px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:10px 12px; margin:8px 0 6px; cursor:pointer; word-break:break-all; }
+  #ip-modal-copied { display:none; font-size:12px; color:#166534; text-align:center; margin-bottom:8px; }
+  #ip-modal-box .close-btn { width:100%; background:#fff; color:#334155; border:1px solid #cbd5e1; padding:8px; font-size:13px; }
 </style>
 </head>
 <body>
@@ -59,6 +64,15 @@
   <div style="margin-top:20px; padding:16px; background:#fefce8; border-radius:10px;">
     <p style="margin:0 0 10px; font-size:14px; font-weight:bold;">🧾 현금영수증 최신 신청 목록</p>
     <div id="cashResult">불러오는 중...</div>
+  </div>
+</div>
+
+<div id="ip-modal-overlay">
+  <div id="ip-modal-box">
+    <p style="font-size:12px; color:#64748b; margin:0 0 2px;">작성자 IP</p>
+    <button id="ip-modal-value" onclick="copyIpValue()"></button>
+    <p id="ip-modal-copied">✅ 복사되었습니다</p>
+    <button class="close-btn" onclick="closeIpModal()">닫기</button>
   </div>
 </div>
 
@@ -198,6 +212,30 @@ window.showTaxInfo = (boardId) => {
     `이메일: ${t.email || '-'}\n` +
     `담당자: ${t.manager || '-'} (${t.managerPhone || '-'})`
   );
+};
+
+// ============= 작성자 IP 확인/복사 모달 =============
+window.showIpModal = (ip) => {
+  const overlay = document.getElementById('ip-modal-overlay');
+  const valueBtn = document.getElementById('ip-modal-value');
+  const copiedText = document.getElementById('ip-modal-copied');
+  valueBtn.textContent = ip || '(IP 정보 없음)';
+  copiedText.style.display = 'none';
+  overlay.style.display = 'flex';
+};
+window.copyIpValue = async () => {
+  const valueBtn = document.getElementById('ip-modal-value');
+  const ip = valueBtn.textContent;
+  if (!ip || ip === '(IP 정보 없음)') return;
+  try {
+    await navigator.clipboard.writeText(ip);
+    document.getElementById('ip-modal-copied').style.display = 'block';
+  } catch (e) {
+    alert('복사에 실패했습니다. 직접 선택해서 복사해주세요.');
+  }
+};
+window.closeIpModal = () => {
+  document.getElementById('ip-modal-overlay').style.display = 'none';
 };
 
 // 세금계산서 발행 여부는 (운송장URL과 동일하게) 이 주문의 private 문서에 저장 - 관리자만 수정 가능
@@ -586,6 +624,7 @@ async function loadRecentOrders() {
         <td>${address}</td>
         <td>${trackingCell}</td>
         <td>${cardCell}</td>
+        <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
       </tr>` });
     });
 
@@ -599,7 +638,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = buildExpandableTable(
-      "<tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th></tr>",
+      "<tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>",
       rows, "orders"
     );
   } catch (e) {
