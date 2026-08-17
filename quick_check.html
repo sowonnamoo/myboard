@@ -493,16 +493,22 @@ async function loadRecentOrders() {
       // 고객이 "배송지 수정하기"로 boards/{id}.phone/address를 직접 고쳤을 수 있으므로,
       // 그 값이 있으면 최우선으로 쓰고, 없으면 adminOrders → boards/private 순으로 대체합니다.
       let phone, address;
+      let rawAddressVal = '';
       if (data.phone || data.address) {
         phone = data.phone || '<span class="fail">(비어있음)</span>';
-        address = data.address || '<span class="fail">(비어있음)</span>';
+        rawAddressVal = data.address || '';
+        address = rawAddressVal || '<span class="fail">(비어있음)</span>';
       } else if (adminPriv._err) {
         phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
         address = '-';
       } else {
         phone = adminPriv.phone || '<span class="fail">(비어있음)</span>';
-        address = adminPriv.address || '<span class="fail">(비어있음)</span>';
+        rawAddressVal = adminPriv.address || '';
+        address = rawAddressVal || '<span class="fail">(비어있음)</span>';
       }
+
+      // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
+      if (!adminPriv._err && !rawAddressVal) return;
 
       // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
       const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
