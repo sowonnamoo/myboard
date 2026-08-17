@@ -360,6 +360,37 @@ document.getElementById("schedule-more-btn").addEventListener("click", () => {
     renderScheduleList();
 });
 
+// ============= 최근 등록글 개별 삭제 =============
+// "삭제" 버튼 클릭 시, 관리자 기록(adminOrders + private 하위문서)과
+// 고객용 게시글(boards)을 한 번에 함께 삭제합니다.
+async function deleteSingleBoard(boardId, title) {
+    if (!currentAdminUser) { alert("관리자 로그인이 필요합니다."); return false; }
+    if (!confirm(`"${title}" 글을 삭제하시겠습니까?\n관리자 등록 정보와 게시글이 모두 삭제되며, 되돌릴 수 없습니다.`)) return false;
+
+    showLoading(true, "삭제 중...");
+    try {
+        let secretId = null;
+        try {
+            const orderSnap = await getDoc(doc(db, "adminOrders", boardId));
+            if (orderSnap.exists()) secretId = orderSnap.data().secretId || null;
+        } catch (e) {
+            console.error("adminOrders 조회 실패:", e);
+        }
+        if (secretId) {
+            await deleteDoc(doc(db, "boards", boardId, "private", secretId));
+        }
+        await deleteDoc(doc(db, "boards", boardId));
+        await deleteDoc(doc(db, "adminOrders", boardId));
+        showLoading(false);
+        return true;
+    } catch (e) {
+        console.error("삭제 실패:", boardId, e);
+        showLoading(false);
+        alert("삭제 중 오류가 발생했습니다: " + e.message);
+        return false;
+    }
+}
+
 // ============= 최근 등록글 (index와 동일하게 createdAt desc, 최신순) =============
 // boards는 누구나 read 가능한 공개 컬렉션이라 별도 색인 없이 바로 조회됩니다.
 // 처음엔 5개만 보여주고, "더보기" 클릭 시 5개씩 추가로 불러옵니다.
@@ -394,12 +425,20 @@ async function renderRecentBoards() {
             const dateStr = d
                 ? `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
                 : "-";
+            const titleText = data.title || data.productName || "(제목없음)";
             const row = document.createElement("div");
-            row.className = "p-2.5";
+            row.className = "flex items-center justify-between p-2.5";
             row.innerHTML = `
-                <p class="font-medium text-gray-800 truncate">${escapeHtml(data.title || data.productName || "(제목없음)")} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(data.author || "")}</span></p>
-                <p class="text-xs text-gray-400">${dateStr}</p>
+                <div class="min-w-0">
+                    <p class="font-medium text-gray-800 truncate">${escapeHtml(titleText)} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(data.author || "")}</span></p>
+                    <p class="text-xs text-gray-400">${dateStr}</p>
+                </div>
+                <button class="delete-recent-btn text-xs border border-red-200 text-red-600 rounded px-2.5 py-1 hover:bg-red-50 shrink-0 ml-2">삭제</button>
             `;
+            row.querySelector(".delete-recent-btn").addEventListener("click", async () => {
+                const ok = await deleteSingleBoard(docSnap.id, titleText);
+                if (ok) refreshRecentBoards();
+            });
             listEl.appendChild(row);
         });
 
