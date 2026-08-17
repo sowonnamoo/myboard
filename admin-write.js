@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import {
     getFirestore, collection, doc, setDoc, getDoc, getDocs,
-    query, where, orderBy, limit, deleteDoc, updateDoc, Timestamp
+    query, where, orderBy, limit, updateDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
@@ -25,8 +25,6 @@ const MAX_SCHEDULED = 20;
 const scheduledCollection = collection(db, "scheduledBoards");
 
 let currentAdminUser = null;
-let registerMode = "now"; // "now" | "schedule"
-let scheduledOffsetHours = null;
 let pollTimer = null;
 
 // ============= 화면 전환 (로그인) =============
@@ -41,7 +39,6 @@ function showWriteView(user) {
     document.getElementById("view-write-wrap").classList.remove("hidden");
     document.getElementById("login-status").classList.remove("hidden");
     document.getElementById("login-email-text").textContent = user.email || "";
-    refreshScheduleList();
     startPolling();
 }
 
@@ -113,48 +110,6 @@ document.getElementById("login-btn").addEventListener("click", async () => {
 });
 document.getElementById("logout-btn").addEventListener("click", async () => { await signOut(auth); });
 
-// ============= 등록 방식 (즉시 / 예약) =============
-document.getElementById("mode-now-btn").addEventListener("click", () => {
-    registerMode = "now";
-    document.getElementById("mode-now-btn").classList.add("active");
-    document.getElementById("mode-schedule-btn").classList.remove("active");
-    document.getElementById("schedule-options").classList.add("hidden");
-    document.getElementById("a-submit-btn").textContent = "등록하기";
-});
-document.getElementById("mode-schedule-btn").addEventListener("click", () => {
-    registerMode = "schedule";
-    document.getElementById("mode-schedule-btn").classList.add("active");
-    document.getElementById("mode-now-btn").classList.remove("active");
-    document.getElementById("schedule-options").classList.remove("hidden");
-    document.getElementById("a-submit-btn").textContent = "예약 등록하기";
-});
-
-document.querySelectorAll(".offset-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        document.querySelectorAll(".offset-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        const hours = parseInt(btn.dataset.hours, 10);
-        const target = new Date(Date.now() + hours * 60 * 60 * 1000);
-        document.getElementById("a-schedule-datetime").value = toLocalDatetimeInputValue(target);
-        updateSchedulePreview();
-    });
-});
-document.getElementById("a-schedule-datetime").addEventListener("change", () => {
-    document.querySelectorAll(".offset-btn").forEach(b => b.classList.remove("active"));
-    updateSchedulePreview();
-});
-function toLocalDatetimeInputValue(d) {
-    const pad = n => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-function updateSchedulePreview() {
-    const val = document.getElementById("a-schedule-datetime").value;
-    const preview = document.getElementById("schedule-preview");
-    if (!val) { preview.textContent = ""; return; }
-    const d = new Date(val);
-    preview.textContent = `➡ ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}에 자동 등록됩니다.`;
-}
-
 // ============= 유틸 =============
 async function sha256Hex(text) {
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -169,53 +124,12 @@ function escapeHtml(str) {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
-function showLoading(show, text) {
-    document.getElementById("loading-text").textContent = text || "처리 중...";
+function showLoading(show) {
     document.getElementById("loading-spinner").classList.toggle("hidden", !show);
 }
 
-// ============= 파일 업로드 (기존 사이트와 동일한 R2 업로드 방식) =============
-function uploadToR2(fileInputId, authorName) {
-    return new Promise((resolve, reject) => {
-        const fileInput = document.getElementById(fileInputId);
-        if (!fileInput || fileInput.files.length === 0) { resolve(null); return; }
-        const file = fileInput.files[0];
-
-        const MAX_SIZE = 500 * 1024 * 1024;
-        if (file.size > MAX_SIZE) {
-            alert("⚠️ 파일 용량이 너무 큽니다. 500MB 이하만 업로드 가능합니다.");
-            reject(new Error("파일 크기 초과"));
-            return;
-        }
-        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp', 'xlsx'];
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (!allowedExtensions.includes(ext)) {
-            alert("⚠️ 허용되지 않는 파일 형식입니다.");
-            reject(new Error("허용되지 않는 확장자: " + ext));
-            return;
-        }
-
-        const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
-        const WORKER_URL = "https://r2.ecogr.workers.dev/";
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", `${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, true);
-        xhr.setRequestHeader("Content-Type", file.type);
-        xhr.setRequestHeader("X-File-Size", file.size);
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try { resolve(JSON.parse(xhr.responseText).url); }
-                catch (e) { reject(new Error("업로드 응답 처리 실패")); }
-            } else {
-                reject(new Error("업로드 실패: " + xhr.statusText));
-            }
-        };
-        xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류"));
-        xhr.send(file);
-    });
-}
-
 // ============= 실제 게시 로직 (즉시 등록 / 예약 발행 공용) =============
-async function publishBoardEntry({ title, author, message, password, file1Url, file1Type, file2Url, file2Type, adminUid, adminEmail }) {
+async function publishBoardEntry({ title, author, message, password, classification, adminUid, adminEmail }) {
     const boardRef = doc(collection(db, "boards"));
     const boardId = boardRef.id;
     const secretId = await computeSecretId(boardId, author, password);
@@ -223,7 +137,7 @@ async function publishBoardEntry({ title, author, message, password, file1Url, f
     await setDoc(boardRef, {
         author, productName: title, title,
         quantity: "", size: "", price: "",
-        file1Url: file1Url || null, file2Url: file2Url || null,
+        file1Url: null, file2Url: null,
         uid: adminUid,
         createdAt: new Date(),
         isDeleted: false,
@@ -237,11 +151,10 @@ async function publishBoardEntry({ title, author, message, password, file1Url, f
         phone: password, address: "", message, uid: adminUid
     });
 
-    // m/k/s 파일 분류는 게시글/고객 열람 경로에는 절대 넣지 않고, 관리자 전용 저장소에만 기록.
+    // m/k/s 분류는 게시글/고객 열람 경로에는 절대 넣지 않고, 관리자 전용 저장소에만 기록.
     await setDoc(doc(db, "adminOrders", boardId), {
         phone: password, address: "", message, uid: adminUid,
-        file1Type: file1Type || null,
-        file2Type: file2Type || null
+        classification: classification || null
     });
 
     return boardId;
@@ -252,59 +165,41 @@ document.getElementById("a-submit-btn").addEventListener("click", async () => {
     if (!currentAdminUser) { alert("관리자 로그인이 필요합니다."); showLoginView(); return; }
 
     const title = document.getElementById("a-title").value.trim();
+    const classification = document.getElementById("a-type").value || null;
+    const delayHours = parseInt(document.getElementById("a-delay").value, 10);
     const author = document.getElementById("a-author").value.trim();
     const message = document.getElementById("a-message").value.trim();
     const password = document.getElementById("a-password").value.trim();
-    const file1Type = document.getElementById("a-file1-type").value || null;
-    const file2Type = document.getElementById("a-file2-type").value || null;
 
     if (!title) { alert("제목을 입력해주세요."); return; }
     if (!author) { alert("작성자를 입력해주세요."); return; }
     if (password.length !== 4) { alert("비밀번호(숫자 4자리)를 정확히 입력해주세요."); return; }
 
-    let scheduledDate = null;
-    if (registerMode === "schedule") {
-        const val = document.getElementById("a-schedule-datetime").value;
-        if (!val) { alert("예약할 날짜/시간을 선택해주세요."); return; }
-        scheduledDate = new Date(val);
-        if (scheduledDate.getTime() <= Date.now()) { alert("예약 시간은 현재 시간보다 이후여야 합니다."); return; }
-
-        const pendingCount = await countPending();
-        if (pendingCount >= MAX_SCHEDULED) {
-            alert(`예약은 최대 ${MAX_SCHEDULED}건까지 가능합니다. 대기 목록에서 정리 후 다시 시도해주세요.`);
-            return;
-        }
-    }
-
-    showLoading(true, registerMode === "schedule" ? "파일 업로드 중..." : "등록 중...");
+    showLoading(true);
     try {
-        const file1Url = await uploadToR2("a-file1", author);
-        const file2Url = await uploadToR2("a-file2", author);
-
-        if (registerMode === "now") {
-            showLoading(true, "등록 중...");
+        if (delayHours === 0) {
             await publishBoardEntry({
-                title, author, message, password,
-                file1Url, file1Type, file2Url, file2Type,
+                title, author, message, password, classification,
                 adminUid: currentAdminUser.uid, adminEmail: currentAdminUser.email
             });
             showResult(`✅ 즉시 등록되었습니다. 작성자: <b>${escapeHtml(author)}</b> / 비밀번호: <b>${password}</b>`);
         } else {
-            showLoading(true, "예약 저장 중...");
+            const pendingCount = await countPending();
+            if (pendingCount >= MAX_SCHEDULED) {
+                alert(`예약은 최대 ${MAX_SCHEDULED}건까지 가능합니다. 기존 예약이 등록된 후 다시 시도해주세요.`);
+                return;
+            }
+            const scheduledDate = new Date(Date.now() + delayHours * 60 * 60 * 1000);
             await setDoc(doc(scheduledCollection), {
-                title, author, message, password,
-                file1Url: file1Url || null, file1Type,
-                file2Url: file2Url || null, file2Type,
+                title, author, message, password, classification,
                 scheduledAt: Timestamp.fromDate(scheduledDate),
                 status: "pending",
                 createdAt: new Date(),
                 createdByAdminUid: currentAdminUser.uid,
                 createdByAdminEmail: currentAdminUser.email || ""
             });
-            showResult(`⏰ 예약 등록되었습니다. ${scheduledDate.getFullYear()}년 ${scheduledDate.getMonth() + 1}월 ${scheduledDate.getDate()}일 ${String(scheduledDate.getHours()).padStart(2, "0")}:${String(scheduledDate.getMinutes()).padStart(2, "0")}에 자동으로 게시됩니다.`);
-            refreshScheduleList();
+            showResult(`⏰ ${delayHours}시간 뒤(${scheduledDate.getMonth() + 1}월 ${scheduledDate.getDate()}일 ${String(scheduledDate.getHours()).padStart(2, "0")}:${String(scheduledDate.getMinutes()).padStart(2, "0")})에 자동 등록됩니다. 작성자: <b>${escapeHtml(author)}</b> / 비밀번호: <b>${password}</b>`);
         }
-
         clearForm();
     } catch (e) {
         console.error(e);
@@ -325,62 +220,22 @@ function showResult(html) {
 }
 function clearForm() {
     document.getElementById("a-title").value = "";
+    document.getElementById("a-type").value = "";
+    document.getElementById("a-delay").value = "0";
     document.getElementById("a-author").value = "";
     document.getElementById("a-message").value = "";
     document.getElementById("a-password").value = "";
-    document.getElementById("a-file1").value = "";
-    document.getElementById("a-file2").value = "";
-    document.getElementById("a-file1-type").value = "";
-    document.getElementById("a-file2-type").value = "";
-    document.getElementById("a-schedule-datetime").value = "";
-    document.querySelectorAll(".offset-btn").forEach(b => b.classList.remove("active"));
-    document.getElementById("schedule-preview").textContent = "";
 }
 
-// ============= 예약 대기 목록 =============
+// ============= 예약 관련 (화면에 목록은 안 보여주고, 조용히 개수만 체크 + 자동발행) =============
 async function countPending() {
     const q = query(scheduledCollection, where("status", "==", "pending"), limit(MAX_SCHEDULED + 1));
     const snap = await getDocs(q);
     return snap.size;
 }
 
-async function refreshScheduleList() {
-    const q = query(scheduledCollection, where("status", "==", "pending"), orderBy("scheduledAt", "asc"), limit(MAX_SCHEDULED));
-    const snap = await getDocs(q);
-
-    const listEl = document.getElementById("schedule-list");
-    const countEl = document.getElementById("schedule-count-text");
-    countEl.textContent = `${snap.size} / ${MAX_SCHEDULED}건`;
-
-    if (snap.empty) {
-        listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">예약된 글이 없습니다.</p>`;
-        return;
-    }
-
-    listEl.innerHTML = "";
-    snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const d = data.scheduledAt.toDate();
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-        const row = document.createElement("div");
-        row.className = "flex items-center justify-between py-2.5";
-        row.innerHTML = `
-            <div class="min-w-0">
-                <p class="font-medium text-gray-800 truncate">${escapeHtml(data.title)}</p>
-                <p class="text-xs text-gray-400">${escapeHtml(data.author)} · ⏰ ${dateStr}</p>
-            </div>
-            <button class="cancel-schedule-btn text-xs border border-red-200 text-red-600 rounded px-2.5 py-1 hover:bg-red-50 shrink-0 ml-2">취소</button>
-        `;
-        row.querySelector(".cancel-schedule-btn").addEventListener("click", async () => {
-            if (!confirm("이 예약을 취소하시겠습니까?")) return;
-            await deleteDoc(doc(db, "scheduledBoards", docSnap.id));
-            refreshScheduleList();
-        });
-        listEl.appendChild(row);
-    });
-}
-
-// ============= 예약 시간 도래 시 자동 발행 (페이지가 열려 있는 동안 폴링) =============
+// 예약 시간이 된 글을 이 페이지가 열려 있는 동안 자동으로 게시합니다.
+// (탭을 닫으면 동작하지 않으며, 완전 자동화가 필요하면 별도 안내된 Cloud Functions를 쓰시면 됩니다.)
 async function publishDueScheduledItems() {
     if (!currentAdminUser) return;
     try {
@@ -400,8 +255,7 @@ async function publishDueScheduledItems() {
             try {
                 const boardId = await publishBoardEntry({
                     title: data.title, author: data.author, message: data.message, password: data.password,
-                    file1Url: data.file1Url, file1Type: data.file1Type,
-                    file2Url: data.file2Url, file2Type: data.file2Type,
+                    classification: data.classification,
                     adminUid: data.createdByAdminUid, adminEmail: data.createdByAdminEmail
                 });
                 await updateDoc(doc(db, "scheduledBoards", docSnap.id), {
@@ -411,7 +265,6 @@ async function publishDueScheduledItems() {
                 console.error("예약 발행 실패:", docSnap.id, e);
             }
         }
-        refreshScheduleList();
     } catch (e) {
         console.error("예약 확인 중 오류:", e);
     }
