@@ -325,8 +325,16 @@ async function refreshScheduleList() {
             listEl.appendChild(row);
         });
     } catch (e) {
-        console.error(e);
-        listEl.innerHTML = `<p class="text-xs text-red-500 py-4 text-center">목록을 불러오지 못했습니다.</p>`;
+        console.error("예약 목록 조회 실패:", e);
+        let hint = "";
+        if (e.code === "permission-denied") {
+            hint = "권한 오류 — firestore.rules를 게시(Publish)했는지, admins/{uid} 문서를 만들었는지 확인해주세요.";
+        } else if (e.code === "failed-precondition") {
+            hint = "Firestore 색인이 필요합니다. 브라우저 개발자도구(F12) → Console 탭에서 이 오류를 클릭하면 나오는 링크로 색인을 만들어주세요.";
+        } else {
+            hint = e.message || "";
+        }
+        listEl.innerHTML = `<p class="text-xs text-red-500 py-4 text-center px-2">목록을 불러오지 못했습니다.<br>${escapeHtml(hint)}</p>`;
     }
 }
 
