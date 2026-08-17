@@ -403,3 +403,21 @@ document.querySelectorAll(".delete-cls-btn").forEach(btn => {
         runDeleteOldClassified(cls, days, `${periodLabel} '${cls}' 분류 글`);
     });
 });
+
+
+
+
+// admin-write.js 맨 아랫줄에 추가할 코드
+window.addEventListener('DOMContentLoaded', () => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.has('rand_title')) {
+        setTimeout(() => {
+            if(document.getElementById('a-title')) document.getElementById('a-title').value = p.get('rand_title');
+            if(document.getElementById('a-type')) document.getElementById('a-type').value = p.get('rand_type');
+            if(document.getElementById('a-delay')) document.getElementById('a-delay').value = p.get('rand_delay');
+            if(document.getElementById('a-author')) document.getElementById('a-author').value = p.get('rand_author');
+            if(document.getElementById('a-message')) document.getElementById('a-message').value = p.get('rand_msg');
+            if(document.getElementById('a-password')) document.getElementById('a-password').value = p.get('rand_pass');
+        }, 500); // 로그인 체크 후 폼이 나타나는 시간을 고려해 0.5초 뒤 입력
+    }
+});
