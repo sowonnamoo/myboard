@@ -39,6 +39,7 @@ function showWriteView(user) {
     document.getElementById("view-write-wrap").classList.remove("hidden");
     document.getElementById("login-status").classList.remove("hidden");
     document.getElementById("login-email-text").textContent = user.email || "";
+    refreshScheduleList();
     startPolling();
 }
 
@@ -204,6 +205,7 @@ document.getElementById("a-submit-btn").addEventListener("click", async () => {
                 createdByAdminEmail: currentAdminUser.email || ""
             });
             showResult(`⏰ ${delayHours}시간 뒤(${scheduledDate.getMonth() + 1}월 ${scheduledDate.getDate()}일 ${String(scheduledDate.getHours()).padStart(2, "0")}:${String(scheduledDate.getMinutes()).padStart(2, "0")})에 자동 등록됩니다. 작성자: <b>${escapeHtml(author)}</b> / 비밀번호: <b>${password}</b>`);
+            refreshScheduleList();
         }
         clearForm();
     } catch (e) {
@@ -270,8 +272,61 @@ async function publishDueScheduledItems() {
                 console.error("예약 발행 실패:", docSnap.id, e);
             }
         }
+        refreshScheduleList();
     } catch (e) {
         console.error("예약 확인 중 오류:", e);
+    }
+}
+
+// ============= 예약 대기 목록 표시 (최대 5개) + 취소 =============
+async function refreshScheduleList() {
+    const listEl = document.getElementById("schedule-list");
+    const countEl = document.getElementById("schedule-count-text");
+    try {
+        const q = query(
+            scheduledCollection,
+            where("status", "==", "pending"),
+            orderBy("scheduledAt", "asc"),
+            limit(5)
+        );
+        const snap = await getDocs(q);
+        const totalPending = await countPending();
+        countEl.textContent = `대기 ${totalPending} / ${MAX_SCHEDULED}건${totalPending > 5 ? " (최근 5건만 표시)" : ""}`;
+
+        if (snap.empty) {
+            listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">예약된 글이 없습니다.</p>`;
+            return;
+        }
+
+        listEl.innerHTML = "";
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const d = data.scheduledAt.toDate();
+            const dateStr = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+            const row = document.createElement("div");
+            row.className = "flex items-center justify-between p-2.5";
+            row.innerHTML = `
+                <div class="min-w-0">
+                    <p class="font-medium text-gray-800 truncate">${escapeHtml(data.title)} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(data.author)}</span></p>
+                    <p class="text-xs text-gray-400">⏰ ${dateStr} 예약 · <span class="text-amber-600">대기중</span></p>
+                </div>
+                <button class="cancel-schedule-btn text-xs border border-gray-300 text-gray-600 rounded px-2.5 py-1 hover:bg-gray-100 shrink-0 ml-2">예약취소</button>
+            `;
+            row.querySelector(".cancel-schedule-btn").addEventListener("click", async () => {
+                if (!confirm(`"${data.title}" 예약을 취소하시겠습니까?`)) return;
+                try {
+                    await deleteDoc(doc(db, "scheduledBoards", docSnap.id));
+                    refreshScheduleList();
+                } catch (e) {
+                    console.error(e);
+                    alert("취소 중 오류가 발생했습니다: " + e.message);
+                }
+            });
+            listEl.appendChild(row);
+        });
+    } catch (e) {
+        console.error(e);
+        listEl.innerHTML = `<p class="text-xs text-red-500 py-4 text-center">목록을 불러오지 못했습니다.</p>`;
     }
 }
 
