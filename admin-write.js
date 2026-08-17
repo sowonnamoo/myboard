@@ -284,11 +284,11 @@ function stopPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
-// ============= 삭제관리: 등록 후 일정 기간 지난 m/k/s 분류 글 정리 =============
+// ============= 삭제관리: 등록 후 일정 기간 지난 m/k/s 분류 글 정리 (분류별로 각각 실행) =============
 // 문자로 발송되는 링크라, 오래된 글은 보안/용량 확보를 위해 주기적으로 정리가 필요합니다.
-// adminOrders에 저장해둔 classification + createdAt만 보고 대상(60일/1년 경과)을 찾아
+// adminOrders에 저장해둔 classification + createdAt만 보고 대상(분류 1개 + 60일/1년 경과)을 찾아
 // boards 본문 + private 서브문서 + adminOrders 문서를 함께 삭제합니다.
-async function runDeleteOldClassified(days, label) {
+async function runDeleteOldClassified(classification, days, label) {
     if (!currentAdminUser) { alert("관리자 로그인이 필요합니다."); return; }
 
     showLoading(true, "삭제 대상 확인 중...");
@@ -297,7 +297,7 @@ async function runDeleteOldClassified(days, label) {
         const cutoff = Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
         const q = query(
             collection(db, "adminOrders"),
-            where("classification", "in", ["m", "k", "s"]),
+            where("classification", "==", classification),
             where("createdAt", "<=", cutoff)
         );
         snap = await getDocs(q);
@@ -332,5 +332,11 @@ async function runDeleteOldClassified(days, label) {
     alert(`${successCount}건 삭제되었습니다.` + (successCount < snap.size ? ` (${snap.size - successCount}건 실패, 콘솔 로그 확인)` : ""));
 }
 
-document.getElementById("delete-60d-btn").addEventListener("click", () => runDeleteOldClassified(60, "60일 지난 글"));
-document.getElementById("delete-1y-btn").addEventListener("click", () => runDeleteOldClassified(365, "1년 지난 글"));
+document.querySelectorAll(".delete-cls-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const cls = btn.dataset.cls;
+        const days = parseInt(btn.dataset.days, 10);
+        const periodLabel = days === 60 ? "60일 지난" : "1년 지난";
+        runDeleteOldClassified(cls, days, `${periodLabel} '${cls}' 분류 글`);
+    });
+});

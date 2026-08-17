@@ -106,15 +106,29 @@
       <!-- ================= 삭제관리 ================= -->
       <div class="mt-6 pt-4 border-t">
         <h3 class="text-sm font-bold text-gray-700 mb-1">🗑️ 삭제관리</h3>
-        <p class="text-xs text-gray-400 mb-3">문자로 발송된 링크라 기간이 지나면 정리가 필요합니다. m/k/s로 분류된 글만 대상입니다.</p>
-        <div class="flex gap-2">
-          <button id="delete-60d-btn" class="flex-1 border border-red-200 text-red-600 text-xs font-semibold py-2 rounded hover:bg-red-50">
-            60일 지난 m,k,s 글 삭제
-          </button>
-          <button id="delete-1y-btn" class="flex-1 border border-red-200 text-red-600 text-xs font-semibold py-2 rounded hover:bg-red-50">
-            1년 지난 m,k,s 글 삭제
-          </button>
-        </div>
+        <p class="text-xs text-gray-400 mb-3">문자로 발송된 링크라 기간이 지나면 정리가 필요합니다. 분류별로 따로 삭제할 수 있습니다.</p>
+        <table class="w-full text-xs border-collapse">
+          <tr class="text-gray-400">
+            <td class="w-10"></td>
+            <td class="text-center py-1">60일 경과</td>
+            <td class="text-center py-1">1년 경과</td>
+          </tr>
+          <tr>
+            <td class="font-bold text-gray-600">m</td>
+            <td class="p-1"><button class="delete-cls-btn w-full border border-red-200 text-red-600 font-semibold py-2 rounded hover:bg-red-50" data-cls="m" data-days="60">삭제</button></td>
+            <td class="p-1"><button class="delete-cls-btn w-full border border-red-200 text-red-600 font-semibold py-2 rounded hover:bg-red-50" data-cls="m" data-days="365">삭제</button></td>
+          </tr>
+          <tr>
+            <td class="font-bold text-gray-600">k</td>
+            <td class="p-1"><button class="delete-cls-btn w-full border border-red-200 text-red-600 font-semibold py-2 rounded hover:bg-red-50" data-cls="k" data-days="60">삭제</button></td>
+            <td class="p-1"><button class="delete-cls-btn w-full border border-red-200 text-red-600 font-semibold py-2 rounded hover:bg-red-50" data-cls="k" data-days="365">삭제</button></td>
+          </tr>
+          <tr>
+            <td class="font-bold text-gray-600">s</td>
+            <td class="p-1"><button class="delete-cls-btn w-full border border-red-200 text-red-600 font-semibold py-2 rounded hover:bg-red-50" data-cls="s" data-days="60">삭제</button></td>
+            <td class="p-1"><button class="delete-cls-btn w-full border border-red-200 text-red-600 font-semibold py-2 rounded hover:bg-red-50" data-cls="s" data-days="365">삭제</button></td>
+          </tr>
+        </table>
       </div>
     </div>
     <!-- /view-write-wrap -->
