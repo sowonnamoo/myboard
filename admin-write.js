@@ -40,6 +40,7 @@ function showWriteView(user) {
     document.getElementById("login-status").classList.remove("hidden");
     document.getElementById("login-email-text").textContent = user.email || "";
     refreshScheduleList();
+    refreshRecentBoards();
     startPolling();
 }
 
@@ -337,6 +338,70 @@ async function refreshScheduleList() {
         listEl.innerHTML = `<p class="text-xs text-red-500 py-4 text-center px-2">목록을 불러오지 못했습니다.<br>${escapeHtml(hint)}</p>`;
     }
 }
+
+// ============= 최근 등록글 (index와 동일하게 createdAt desc, 최신순 상위 10건) =============
+// boards는 누구나 read 가능한 공개 컬렉션이라 별도 색인 없이 바로 조회됩니다.
+async function refreshRecentBoards() {
+    const listEl = document.getElementById("recent-list");
+    try {
+        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(10));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">등록된 글이 없습니다.</p>`;
+            return;
+        }
+
+        listEl.innerHTML = "";
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const d = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null;
+            const dateStr = d
+                ? `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+                : "-";
+            const row = document.createElement("div");
+            row.className = "flex items-center justify-between p-2.5 gap-2";
+            row.innerHTML = `
+                <div class="min-w-0">
+                    <p class="font-medium text-gray-800 truncate">${escapeHtml(data.title || data.productName || "(제목없음)")} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(data.author || "")}</span></p>
+                    <p class="text-xs text-gray-400">${dateStr}</p>
+                </div>
+                <button class="show-ip-btn text-xs border border-gray-300 text-gray-600 rounded px-2.5 py-1 hover:bg-gray-100 shrink-0">IP</button>
+            `;
+            row.querySelector(".show-ip-btn").addEventListener("click", () => {
+                openIpModal(data.ip);
+            });
+            listEl.appendChild(row);
+        });
+    } catch (e) {
+        console.error("최근 등록글 조회 실패:", e);
+        listEl.innerHTML = `<p class="text-xs text-red-500 py-4 text-center px-2">목록을 불러오지 못했습니다.<br>${escapeHtml(e.message || "")}</p>`;
+    }
+}
+
+// ============= IP 확인/복사 모달 =============
+function openIpModal(ip) {
+    const modal = document.getElementById("ip-modal");
+    const valueBtn = document.getElementById("ip-modal-value");
+    const copiedText = document.getElementById("ip-modal-copied");
+    valueBtn.textContent = ip || "(IP 정보 없음)";
+    copiedText.classList.add("hidden");
+    modal.classList.remove("hidden");
+}
+document.getElementById("ip-modal-value").addEventListener("click", async () => {
+    const ip = document.getElementById("ip-modal-value").textContent;
+    if (!ip || ip === "(IP 정보 없음)") return;
+    try {
+        await navigator.clipboard.writeText(ip);
+        document.getElementById("ip-modal-copied").classList.remove("hidden");
+    } catch (e) {
+        console.error("복사 실패:", e);
+        alert("복사에 실패했습니다. 직접 선택해서 복사해주세요.");
+    }
+});
+document.getElementById("ip-modal-close").addEventListener("click", () => {
+    document.getElementById("ip-modal").classList.add("hidden");
+});
 
 function startPolling() {
     stopPolling();
