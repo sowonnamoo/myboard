@@ -742,9 +742,11 @@ async function loadRecentOrders() {
 
       let attachHtml = '';
       if (it.isJajoo && data.imgCode) {
-        // 재주문건은 새로 첨부한 파일이 아니라 기존 주문의 이미지 번호(designNo)를 그대로 재사용하므로,
-        // 삭제 버튼 없이 이미지 조회 링크만 보여줍니다.
-        attachHtml += `<div class="file-row">🖼️ <a href="https://sowonnamoo.github.io/myboard/photo1.html?designNo=${encodeURIComponent(data.imgCode)}" target="_blank">재주문 이미지(${data.imgCode}) 보기</a></div>`;
+        // 재주문건은 새로 첨부한 파일이 아니라 기존 주문의 이미지 번호(designNo)를 그대로 재사용합니다.
+        // photo1.html 같은 뷰어 페이지로 보내는 대신, 실제 이미지 파일(cafe24)로 바로 연결해서
+        // 버튼 클릭 한 번으로 다운로드/저장할 수 있게 합니다. (삭제 버튼 없음)
+        const jajooImgUrl = `https://sowonnamoo1005.cafe24.com/1/${encodeURIComponent(data.imgCode)}.jpg`;
+        attachHtml += `<div class="file-row">🖼️ <a href="${jajooImgUrl}" target="_blank" download="재주문_${data.imgCode}.jpg" class="small-btn" style="background:#2563eb; color:#fff; text-decoration:none; display:inline-block;">재주문 이미지 다운로드</a></div>`;
       }
       if (data.file1Url) {
         attachHtml += `<div class="file-row">📎 <a href="${data.file1Url}" target="_blank">첨부파일1 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',1)">삭제</button></div>`;
