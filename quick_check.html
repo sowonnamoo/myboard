@@ -655,7 +655,11 @@ async function loadRecentOrders() {
     const adminPrivates = await Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({})));
     const rawPrivates = await Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col)));
     // 각 주문의 재첨부(hanjool) 파일 목록도 함께 조회
-    const hanjoolSnaps = await Promise.all(items.map(it => getDocs(collection(db, it.col, it.doc.id, "hanjool"))));
+    // jjjj(재주문)에는 hanjool 서브컬렉션 보안규칙이 없어서(재주문건은 재첨부 기능 대상이 아님)
+    // 조회 시도 자체가 permission-denied를 일으킵니다. boards건만 조회합니다.
+    const hanjoolSnaps = await Promise.all(items.map(it =>
+      it.col === "boards" ? getDocs(collection(db, it.col, it.doc.id, "hanjool")) : Promise.resolve({ docs: [] })
+    ));
     // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
     // 예전엔 10건 전부 미리 조회(최대 10 read)해서 미발행 건을 상단 고정했지만,
     // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
