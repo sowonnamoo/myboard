@@ -473,9 +473,9 @@ ${
 
                 <button type="button" id="cash-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
-                    onclick="${(isPending || d.isJajoo || isCardPay) ? '' : "window.openCashPageFor('" + d.id + "', this.dataset.name, this.dataset.phone)"}"
-                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo && !isCardPay) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
-                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : '')}>현금영수증</button>
+                    onclick="${(isPending || isCardPay || (d.isJajoo && !isBankTransfer)) ? '' : "window.openCashPageFor('" + d.id + "', this.dataset.name, this.dataset.phone)"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !isCardPay && (!d.isJajoo || isBankTransfer)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${(d.isJajoo && !isBankTransfer) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : '')}>현금영수증</button>
 
                 <a href="javascript:void(0)" 
                    onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + params + "')"}" 

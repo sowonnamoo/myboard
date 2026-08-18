@@ -166,6 +166,7 @@
             email: document.getElementById('email').value.trim(),
             manager: document.getElementById('manager').value.trim(),
             managerPhone: document.getElementById('managerPhone').value.trim(),
+            issued: false, // 재신청/수정 시 관리자 발행완료 목록에 다시 노출되도록 리셋
             updatedAt: serverTimestamp()
         };
 
