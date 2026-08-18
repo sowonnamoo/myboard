@@ -482,9 +482,9 @@ ${
                    class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
                 
                 <button type="button" id="card-btn-${d.id}"
-                    onclick="${(isPending || d.isJajoo || isBankTransfer) ? '' : "window.openCardPageFor('" + d.id + "')"}"
-                    class="border px-2 py-1 text-xs ${(!isPending && !d.isJajoo && !isBankTransfer) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
-                    ${d.isJajoo ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isBankTransfer ? 'title="무통장 입금 건은 세금계산서/현금영수증을 이용해주세요."' : '')}>카드전표</button>
+                    onclick="${(isPending || isBankTransfer || (d.isJajoo && !isCardPay)) ? '' : "window.openCardPageFor('" + d.id + "')"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !isBankTransfer && (!d.isJajoo || isCardPay)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${(d.isJajoo && !isCardPay) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isBankTransfer ? 'title="무통장 입금 건은 세금계산서/현금영수증을 이용해주세요."' : '')}>카드전표</button>
          
 <a href="javascript:void(0)" 
    onclick="${d.trackingUrl ? "openPopup('" + d.trackingUrl + "')" : ""}"
