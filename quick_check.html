@@ -143,6 +143,8 @@ async function fetchSegumMatch(author, phone) {
 let taxDataMap = {};
 // boardId -> 이 주문건의 세금계산서 발행 여부 캐시 (버튼 토글/정렬에 사용)
 let taxIssuedMap = {};
+// boardId -> boards/{id}/private 문서 데이터 캐시 (세금계산서 버튼을 나중에 눌렀을 때 taxIssued 조회용)
+let rawPrivDataMap = {};
 // boardId -> 주문서(메모장 텍스트) 생성에 필요한 데이터 캐시
 let orderSheetDataMap = {};
 // boardId -> 접수 시 첨부된 원본 파일 URL들 (boards/{boardId}.file1Url / file2Url)
@@ -325,17 +327,54 @@ window.closeIpModal = () => {
 };
 
 // 세금계산서 발행 여부는 (운송장URL과 동일하게) 이 주문의 private 문서에 저장 - 관리자만 수정 가능
+// 목록 전체를 다시 불러오지 않고, 해당 셀만 즉시 갱신합니다 (읽기 절약).
 window.toggleTaxIssued = async (boardId) => {
   const ref = privateRefCache[boardId];
   if (!ref) return alert("이 주문의 개인정보(private) 문서를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.");
   const newVal = !taxIssuedMap[boardId];
   try {
     await updateDoc(ref, { taxIssued: newVal });
-    loadRecentOrders();
+    taxIssuedMap[boardId] = newVal;
+    renderTaxCell(boardId);
   } catch (e) {
     alert("상태 변경 실패: " + e.message);
   }
 };
+
+// 세금계산서 매칭 확인 버튼을 눌렀을 때만 segum1을 조회합니다 (읽기 절약 - 예전엔 목록 로딩 시 10건 전부 자동 조회했음)
+window.checkTaxMatch = async (boardId) => {
+  const cell = document.getElementById('tax-cell-' + boardId);
+  if (!cell) return;
+  cell.innerHTML = '<span style="font-size:11px; color:#94a3b8;">확인 중...</span>';
+
+  const o = orderSheetDataMap[boardId];
+  if (!o) { cell.innerHTML = '<span style="font-size:11px; color:#dc2626;">확인 실패</span>'; return; }
+
+  try {
+    const tax = await fetchSegumMatch(o.author, o.phone);
+    if (!tax) {
+      cell.innerHTML = '<span style="font-size:11px; color:#94a3b8;">등록 정보 없음</span>';
+      return;
+    }
+    taxDataMap[boardId] = tax;
+    const rawPriv = rawPrivDataMap[boardId] || {};
+    taxIssuedMap[boardId] = !!rawPriv.taxIssued;
+    renderTaxCell(boardId);
+  } catch (e) {
+    cell.innerHTML = '<span style="font-size:11px; color:#dc2626;">확인 실패</span>';
+  }
+};
+
+// 🧾 아이콘 + 발행상태 버튼을 tax-cell-{boardId}에 그려주는 공통 헬퍼
+function renderTaxCell(boardId) {
+  const cell = document.getElementById('tax-cell-' + boardId);
+  if (!cell) return;
+  const issued = !!taxIssuedMap[boardId];
+  const btnLabel = issued ? '✅ 발행완' : '🔴 미발행';
+  const btnStyle = issued ? 'background:#166534;' : 'background:#dc2626;';
+  cell.innerHTML = `<span style="cursor:pointer; font-size:16px;" title="세금계산서 신청됨 - 클릭해서 정보 보기" onclick="showTaxInfo('${boardId}')">🧾</span>
+    <button onclick="toggleTaxIssued('${boardId}')" style="${btnStyle} padding:3px 6px; font-size:11px; margin-left:4px;">${btnLabel}</button>`;
+}
 
 // 표를 5개까지만 먼저 보여주고, 나머지는 "펼쳐보기" 버튼으로 펼치게 만드는 공통 헬퍼
 function buildExpandableTable(headerRowHtml, rowsHtml, keyPrefix) {
@@ -595,14 +634,11 @@ async function loadRecentOrders() {
     const rawPrivates = await Promise.all(snap1.docs.map(d => fetchPrivateRef(d.id)));
     // 각 주문의 재첨부(hanjool) 파일 목록도 함께 조회
     const hanjoolSnaps = await Promise.all(snap1.docs.map(d => getDocs(collection(db, "boards", d.id, "hanjool"))));
-    // 이 10건 각각의 작성자+전화번호가 segum1(세금계산서)에 이미 등록돼 있는지 확인
-    const taxMatches = await Promise.all(snap1.docs.map((d, idx) => {
-      const ap = adminPrivates[idx];
-      if (ap._err) return null;
-      return fetchSegumMatch(d.data().author || '', ap.phone || '');
-    }));
+    // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
+    // 예전엔 10건 전부 미리 조회(최대 10 read)해서 미발행 건을 상단 고정했지만,
+    // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
 
-    const rowObjs = [];
+    const rows = [];
     snap1.docs.forEach((d, idx) => {
       const adminPriv = adminPrivates[idx];
       // adminOrders 문서 자체가 없는 주문은 목록에서 아예 제외
@@ -662,20 +698,9 @@ async function loadRecentOrders() {
         cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
       }
 
-      // 세금계산서가 이미 등록된 작성자+전화번호면 아이콘+발행 상태 버튼 표시
-      const tax = taxMatches[idx];
-      let taxIconCell = '';
-      let pinToTop = false;
-      if (tax) {
-        taxDataMap[d.id] = tax;
-        const issued = !!rawPriv.taxIssued;
-        taxIssuedMap[d.id] = issued;
-        pinToTop = !issued; // 이 주문건이 미발행이면 최상단 고정 대상
-        const btnLabel = issued ? '✅ 발행완' : '🔴 미발행';
-        const btnStyle = issued ? 'background:#166534;' : 'background:#dc2626;';
-        taxIconCell = `<span style="cursor:pointer; font-size:16px;" title="세금계산서 신청됨 - 클릭해서 정보 보기" onclick="showTaxInfo('${d.id}')">🧾</span>
-          <button onclick="toggleTaxIssued('${d.id}')" style="${btnStyle} padding:3px 6px; font-size:11px; margin-left:4px;">${btnLabel}</button>`;
-      }
+      // 세금계산서 확인/발행상태 버튼 - "🧾 확인" 클릭 시에만 segum1을 조회합니다 (checkTaxMatch).
+      rawPrivDataMap[d.id] = rawPriv;
+      const taxIconCell = `<span id="tax-cell-${d.id}"><button onclick="checkTaxMatch('${d.id}')" style="padding:3px 6px; font-size:11px; background:#64748b; color:white; border:none; border-radius:4px; cursor:pointer;">🧾 확인</button></span>`;
 
       const authorCell = `<span class="author">${author}</span>`;
 
@@ -699,7 +724,7 @@ async function loadRecentOrders() {
 
       const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
 
-      rowObjs.push({ pinned: pinToTop, html: `<tr>
+      rows.push(`<tr>
         <td>${statusCellHtml}<br>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
@@ -711,12 +736,8 @@ async function loadRecentOrders() {
         <td>${trackingCell}</td>
         <td>${cardCell}</td>
         <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
-      </tr>` });
+      </tr>`);
     });
-
-    // 세금계산서 미발행 건을 최상단으로 (그 외에는 원래(최신순) 순서 유지 - stable sort)
-    rowObjs.sort((a, b) => (a.pinned === b.pinned) ? 0 : (a.pinned ? -1 : 1));
-    const rows = rowObjs.map(r => r.html);
 
     if (rows.length === 0) {
       resultEl.textContent = "표시할 주문이 없습니다.";
