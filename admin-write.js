@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import {
     getFirestore, collection, doc, setDoc, getDoc, getDocs,
-    query, where, orderBy, limit, updateDoc, deleteDoc, Timestamp
+    query, where, orderBy, limit, updateDoc, deleteDoc, Timestamp, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
     getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
@@ -167,6 +167,55 @@ async function publishBoardEntry({ title, author, message, password, classificat
     return boardId;
 }
 
+// ============= 예약글 발행 전용: 트랜잭션으로 원자적(atomic) 처리 =============
+// 관리자 페이지를 여러 탭/창으로 열어두면 각 탭마다 20초 폴링 타이머가 따로 돌아서,
+// "대기중" 상태인 같은 예약글을 여러 탭이 동시에 읽고 각자 게시글을 만들어버리는
+// 중복 발행 버그가 있었습니다. Firestore 트랜잭션으로 "상태 확인 → 게시 → 상태 변경"을
+// 하나의 원자적 작업으로 묶어서, 여러 탭이 동시에 같은 예약글을 집어도 단 하나만
+// 성공하고 나머지는 자동으로 중단되도록 합니다(재시도 시 이미 pending이 아니므로 종료).
+async function publishScheduledItemAtomic(scheduledDocId) {
+    const scheduledRef = doc(db, "scheduledBoards", scheduledDocId);
+    return await runTransaction(db, async (tx) => {
+        const scheduledSnap = await tx.get(scheduledRef);
+        if (!scheduledSnap.exists()) return null;
+        const data = scheduledSnap.data();
+        // 이미 다른 탭(또는 이전 폴링)이 먼저 처리했다면 여기서 멈춰서 중복 게시를 막습니다.
+        if (data.status !== "pending") return null;
+
+        const boardRef = doc(collection(db, "boards"));
+        const boardId = boardRef.id;
+        const secretId = await computeSecretId(boardId, data.author, data.password);
+
+        tx.set(boardRef, {
+            author: data.author, productName: data.title, title: data.title,
+            quantity: "", size: "", price: "",
+            file1Url: null, file2Url: null,
+            uid: data.createdByAdminUid,
+            createdAt: new Date(),
+            isDeleted: false,
+            status: "접수에러",
+            fromCart: false,
+            createdByAdmin: true,
+            createdByAdminEmail: data.createdByAdminEmail || ""
+        });
+
+        tx.set(doc(db, "boards", boardId, "private", secretId), {
+            phone: data.password, address: "", message: data.message, uid: data.createdByAdminUid
+        });
+
+        tx.set(doc(db, "adminOrders", boardId), {
+            phone: data.password, address: "", message: data.message, uid: data.createdByAdminUid,
+            classification: data.classification || null,
+            secretId,
+            createdAt: new Date()
+        });
+
+        tx.update(scheduledRef, { status: "published", publishedBoardId: boardId, publishedAt: new Date() });
+
+        return boardId;
+    });
+}
+
 // ============= 등록 버튼 =============
 document.getElementById("a-submit-btn").addEventListener("click", async () => {
     if (!currentAdminUser) { alert("관리자 로그인이 필요합니다."); showLoginView(); return; }
@@ -259,16 +308,12 @@ async function publishDueScheduledItems() {
         if (snap.empty) return;
 
         for (const docSnap of snap.docs) {
-            const data = docSnap.data();
             try {
-                const boardId = await publishBoardEntry({
-                    title: data.title, author: data.author, message: data.message, password: data.password,
-                    classification: data.classification,
-                    adminUid: data.createdByAdminUid, adminEmail: data.createdByAdminEmail
-                });
-                await updateDoc(doc(db, "scheduledBoards", docSnap.id), {
-                    status: "published", publishedBoardId: boardId, publishedAt: new Date()
-                });
+                const boardId = await publishScheduledItemAtomic(docSnap.id);
+                if (boardId === null) {
+                    // 다른 탭이 먼저 처리했거나 이미 처리된 항목 - 정상적인 상황이므로 조용히 건너뜁니다.
+                    continue;
+                }
             } catch (e) {
                 console.error("예약 발행 실패:", docSnap.id, e);
             }
@@ -458,7 +503,7 @@ document.getElementById("recent-more-btn").addEventListener("click", () => {
 function startPolling() {
     stopPolling();
     publishDueScheduledItems();
-    pollTimer = setInterval(publishDueScheduledItems, 20 * 1000);
+    pollTimer = setInterval(publishDueScheduledItems, 30 * 60 * 1000); // 30분 간격 (읽기 절약 - 예약 발행 시각 오차는 최대 30분)
 }
 function stopPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
