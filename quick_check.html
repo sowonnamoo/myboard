@@ -69,11 +69,6 @@
     <p style="margin:0 0 10px; font-size:14px; font-weight:bold;">🧾 현금영수증 최신 신청 목록</p>
     <div id="cashResult">불러오는 중...</div>
   </div>
-
-  <div style="margin-top:20px; padding:16px; background:#eff6ff; border-radius:10px;">
-    <p style="margin:0 0 10px; font-size:14px; font-weight:bold;">🧾 세금계산서 최신 신청 목록</p>
-    <div id="taxResult">불러오는 중...</div>
-  </div>
 </div>
 
 <div id="ip-modal-overlay">
@@ -107,7 +102,7 @@ const auth = getAuth(app);
 onAuthStateChanged(auth, (user) => {
   document.getElementById("loginBox").style.display = user ? "none" : "block";
   document.getElementById("listBox").style.display = user ? "block" : "none";
-  if (user) { loadRecentOrders(); loadCashRequests(); loadTaxRequests(); }
+  if (user) { loadRecentOrders(); loadCashRequests(); }
 });
 
 window.login = async function() {
@@ -216,37 +211,17 @@ window.downloadOrderSheet = (boardId) => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
-// 세금계산서 등록정보를 알림창 대신 주문서(📄)와 동일한 방식으로
-// 실제 메모장(.txt) 파일로 저장해줍니다.
 window.showTaxInfo = (boardId) => {
   const t = taxDataMap[boardId];
   if (!t) return;
-  const o = orderSheetDataMap[boardId] || {};
-
-  const content = [
-    `📋 세금계산서 등록 정보`,
-    `상호명: ${t.bizName || '-'}`,
-    `사업자등록번호: ${t.bizNum || '-'}`,
-    `업태/종목: ${t.bizType || '-'} / ${t.bizItem || '-'}`,
-    `이메일: ${t.email || '-'}`,
+  alert(
+    `📋 세금계산서 등록 정보\n\n` +
+    `상호명: ${t.bizName || '-'}\n` +
+    `사업자등록번호: ${t.bizNum || '-'}\n` +
+    `업태/종목: ${t.bizType || '-'} / ${t.bizItem || '-'}\n` +
+    `이메일: ${t.email || '-'}\n` +
     `담당자: ${t.manager || '-'} (${t.managerPhone || '-'})`
-  ].join('\r\n');
-
-  // 윈도우 메모장에서 한글이 안 깨지도록 UTF-8 BOM을 붙임
-  const blob = new Blob(["\ufeff" + content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-
-  const dateCode = o.createdAtDate
-    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}_${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
-    : 'unknown';
-  a.download = `세금계산서_등록정보_${o.author || '주문자'}_${dateCode}.txt`;
-
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  );
 };
 
 // ============= 작성자 IP 확인/복사/차단 모달 =============
@@ -651,57 +626,6 @@ async function loadCashRequests() {
   }
 }
 
-// 세금계산서(segum1)에 새 신청/수정이 들어오면 현금영수증 목록 아래에 노출하고,
-// "발행완료" 버튼을 누르면 해당 문서에 issued:true 를 저장해 목록에서 숨깁니다.
-// segum.html 저장 로직 기준: 작성자 필드는 "name", 시각 필드는 "updatedAt" (매 신청/수정마다 갱신됨) 입니다.
-async function loadTaxRequests() {
-  const el = document.getElementById("taxResult");
-  try {
-    const q4 = query(collection(db, "segum1"), orderBy("updatedAt", "desc"), limit(20));
-    const snap4 = await getDocs(q4);
-
-    if (snap4.empty) {
-      el.textContent = "신청 내역이 없습니다.";
-      return;
-    }
-
-    const rows = [];
-    snap4.forEach(d => {
-      const data = d.data();
-      if (data.issued) return; // 이미 발행완료 처리된 건은 목록에서 숨김
-      rows.push(`<tr>
-        <td>${data.name || '-'}</td>
-        <td>${data.phone || '-'}</td>
-        <td>${data.bizName || '-'}</td>
-        <td>${data.bizNum || '-'}</td>
-        <td><button onclick="markTaxIssued('${d.id}')" style="padding:6px 12px; font-size:12px; background:#166534; color:#fff; border:none; border-radius:6px; cursor:pointer;">발행완료</button></td>
-      </tr>`);
-    });
-
-    if (rows.length === 0) {
-      el.textContent = "신청 내역이 없습니다.";
-      return;
-    }
-
-    el.innerHTML = buildExpandableTable(
-      "<tr><th>작성자</th><th>연락처</th><th>상호명</th><th>사업자등록번호</th><th>상태</th></tr>",
-      rows, "tax"
-    );
-  } catch (e) {
-    el.innerHTML = `<span class="fail">⚠️ 신청 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
-  }
-}
-
-window.markTaxIssued = async (segumId) => {
-  if (!confirm("세금계산서 발행을 완료 처리하시겠습니까?\n처리하면 이 목록에서 사라집니다.")) return;
-  try {
-    await updateDoc(doc(db, "segum1", segumId), { issued: true });
-    loadTaxRequests();
-  } catch (e) {
-    alert("처리 실패: " + e.message);
-  }
-};
-
 async function loadRecentOrders() {
   const resultEl = document.getElementById("result");
   try {
@@ -736,8 +660,6 @@ async function loadRecentOrders() {
     const hanjoolSnaps = await Promise.all(items.map(it =>
       it.col === "boards" ? getDocs(collection(db, it.col, it.doc.id, "hanjool")) : Promise.resolve({ docs: [] })
     ));
-    // 카드전표 URL 등록 여부(cardjun1)도 운송장URL과 동일하게 "✅ 등록됨" 표시를 위해 함께 조회
-    const cardReceiptSnaps = await Promise.all(items.map(it => getDoc(doc(db, "cardjun1", it.doc.id))));
     // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
     // 예전엔 10건 전부 미리 조회(최대 10 read)해서 미발행 건을 상단 고정했지만,
     // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
@@ -798,17 +720,13 @@ async function loadRecentOrders() {
       const authorEsc = author.replace(/'/g, "\\'");
       const existingTracking = rawPriv.trackingUrl || '';
       const trackingCell = existingTracking
-        ? `<span class="url-saved">✅ 등록됨</span> <a href="${existingTracking}" target="_blank">보기</a><div class="url-row"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">수정</button></div>`
+        ? `<span class="url-saved">✅ 등록됨</span><div class="url-row"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">수정</button></div>`
         : `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
 
-      // 카드결제 상태일 때만 카드전표 URL 입력칸 표시 (운송장URL과 동일하게 등록 여부/보기 링크 표시)
+      // 카드결제 상태일 때만 카드전표 URL 입력칸 표시
       let cardCell = '-';
       if (status === '카드결제') {
-        const cardSnap = cardReceiptSnaps[idx];
-        const existingCard = (cardSnap && cardSnap.exists && cardSnap.exists()) ? (cardSnap.data().fileUrl || '') : '';
-        cardCell = existingCard
-          ? `<span class="url-saved">✅ 등록됨</span> <a href="${existingCard}" target="_blank">보기</a><div class="url-row"><input id="card-${d.id}" value="${existingCard.replace(/"/g,'&quot;')}"><button onclick="saveCardReceiptUrl('${d.id}')">수정</button></div>`
-          : `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
+        cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
       }
 
       // 세금계산서 확인/발행상태 버튼 - "🧾 확인" 클릭 시에만 segum1을 조회합니다 (checkTaxMatch).
@@ -823,6 +741,11 @@ async function loadRecentOrders() {
       hanjoolMap[d.id] = hanjoolItems;
 
       let attachHtml = '';
+      if (it.isJajoo && data.imgCode) {
+        // 재주문건은 새로 첨부한 파일이 아니라 기존 주문의 이미지 번호(designNo)를 그대로 재사용하므로,
+        // 삭제 버튼 없이 이미지 조회 링크만 보여줍니다.
+        attachHtml += `<div class="file-row">🖼️ <a href="https://sowonnamoo.github.io/myboard/photo1.html?designNo=${encodeURIComponent(data.imgCode)}" target="_blank">재주문 이미지(${data.imgCode}) 보기</a></div>`;
+      }
       if (data.file1Url) {
         attachHtml += `<div class="file-row">📎 <a href="${data.file1Url}" target="_blank">첨부파일1 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',1)">삭제</button></div>`;
       }
