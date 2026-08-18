@@ -118,6 +118,8 @@ window.login = async function() {
 let currentSelected = { id: "" };
 // 주문별 private 서브컬렉션 문서 참조를 캐싱 (운송장URL 저장 시 재사용)
 let privateRefCache = {};
+// 주문 id -> 원본 컬렉션("boards" 일반주문 / "jjjj" 재주문) 매핑 (재주문건도 같이 다루기 위함)
+let orderColMap = {};
 
 // 세금계산서(segum1) 문서 ID 계산 - app.js/segum.html과 완전히 동일한 방식이어야
 // 같은 사람이면 같은 ID가 나옴 (이름 + 전화번호 전체자리 해싱)
@@ -416,7 +418,8 @@ window.toggleSelect = (checkbox, id, author) => {
 window.updateStatus = async (value) => {
   if (!currentSelected.id) return alert("표에서 주문을 체크해주세요.");
   try {
-    const docRef = doc(db, "boards", currentSelected.id);
+    const col = orderColMap[currentSelected.id] || "boards";
+    const docRef = doc(db, col, currentSelected.id);
     const updateData = { status: value };
     if (value === '접수에러') updateData.sian = '에러';
     if (value === '무통장' || value === '카드결제') {
@@ -437,12 +440,13 @@ window.deleteSelectedOrder = async () => {
   if (!currentSelected.id) return alert("표에서 주문을 체크해주세요.");
   if (!confirm("정말로 이 주문을 삭제하시겠습니까?\n삭제한 주문은 복구할 수 없습니다.")) return;
   try {
-    const privSnap = await getDocs(collection(db, "boards", currentSelected.id, "private"));
+    const col = orderColMap[currentSelected.id] || "boards";
+    const privSnap = await getDocs(collection(db, col, currentSelected.id, "private"));
     await Promise.all(privSnap.docs.map(d => deleteDoc(d.ref)));
     await deleteDoc(doc(db, "adminOrders", currentSelected.id)).catch(() => {});
     await deleteDoc(doc(db, "cardjun1", currentSelected.id)).catch(() => {});
     await deleteDoc(doc(db, "cashReceipt1", currentSelected.id)).catch(() => {});
-    await deleteDoc(doc(db, "boards", currentSelected.id));
+    await deleteDoc(doc(db, col, currentSelected.id));
     alert("주문이 삭제되었습니다.");
     currentSelected = { id: "" };
     document.getElementById('selected-name').innerText = "없음";
@@ -464,9 +468,9 @@ async function fetchPrivate(docId) {
 
 // 운송장URL은 고객 본인만 볼 수 있는 boards/{id}/private 문서에 저장합니다.
 // isAdmin()은 list 권한이 있어서, secretId를 몰라도 그 주문의 private 문서를 찾아올 수 있습니다.
-async function fetchPrivateRef(boardId) {
+async function fetchPrivateRef(boardId, col) {
   try {
-    const snap = await getDocs(collection(db, "boards", boardId, "private"));
+    const snap = await getDocs(collection(db, col || "boards", boardId, "private"));
     if (snap.empty) return null;
     const d = snap.docs[0];
     privateRefCache[boardId] = d.ref;
@@ -510,7 +514,8 @@ async function deleteFromR2(fileUrl) {
 window.unlockFileUpload = async (boardId) => {
   if (!confirm("새 시안을 등록하셨나요?\n확인을 누르면 고객이 남긴 첨부파일/수정요청 내용이 삭제되고, 다시 파일을 첨부할 수 있게 됩니다.")) return;
   try {
-    const hanjoolSnap = await getDocs(collection(db, "boards", boardId, "hanjool"));
+    const col = orderColMap[boardId] || "boards";
+    const hanjoolSnap = await getDocs(collection(db, col, boardId, "hanjool"));
     // 1. R2에 올라간 실제 파일 삭제 시도 (best-effort)
     await Promise.all(hanjoolSnap.docs.map(d => {
       const data = d.data();
@@ -519,7 +524,7 @@ window.unlockFileUpload = async (boardId) => {
     // 2. 파이어베이스의 수정요청(텍스트/파일 참조) 문서 삭제
     await Promise.all(hanjoolSnap.docs.map(d => deleteDoc(d.ref)));
     // 3. 잠금 해제 + "재업로드 되었습니다" 안내를 위한 시각 기록
-    await updateDoc(doc(db, "boards", boardId), { fileLocked: false, sianRefreshedAt: serverTimestamp() });
+    await updateDoc(doc(db, col, boardId), { fileLocked: false, sianRefreshedAt: serverTimestamp() });
     loadRecentOrders();
   } catch (e) {
     alert("잠금 해제 실패: " + e.message);
@@ -534,8 +539,9 @@ window.deleteAttachedFile = async (boardId, slot) => {
   if (!fileUrl) return alert("삭제할 첨부파일이 없습니다.");
   if (!confirm(`첨부파일 ${slot}을(를) 삭제하시겠습니까?\n삭제한 파일은 복구할 수 없습니다.`)) return;
   try {
+    const col = orderColMap[boardId] || "boards";
     await deleteFromR2(fileUrl);
-    await updateDoc(doc(db, "boards", boardId), { [field]: deleteField() });
+    await updateDoc(doc(db, col, boardId), { [field]: deleteField() });
     loadRecentOrders();
   } catch (e) {
     alert("삭제 실패: " + e.message);
@@ -549,11 +555,12 @@ window.deleteHanjoolFile = async (boardId, memoId) => {
   const item = items.find(it => it.id === memoId);
   if (!confirm("재첨부된 파일을 삭제하시겠습니까?\n삭제한 파일은 복구할 수 없습니다.")) return;
   try {
+    const col = orderColMap[boardId] || "boards";
     if (item && item.fileUrl) await deleteFromR2(item.fileUrl);
-    await deleteDoc(doc(db, "boards", boardId, "hanjool", memoId));
-    const remain = await getDocs(collection(db, "boards", boardId, "hanjool"));
+    await deleteDoc(doc(db, col, boardId, "hanjool", memoId));
+    const remain = await getDocs(collection(db, col, boardId, "hanjool"));
     if (remain.empty) {
-      await updateDoc(doc(db, "boards", boardId), { fileLocked: false, sianRefreshedAt: serverTimestamp() });
+      await updateDoc(doc(db, col, boardId), { fileLocked: false, sianRefreshedAt: serverTimestamp() });
     }
     loadRecentOrders();
   } catch (e) {
@@ -622,27 +629,45 @@ async function loadCashRequests() {
 async function loadRecentOrders() {
   const resultEl = document.getElementById("result");
   try {
+    // boards(일반 주문) + jjjj(재주문/재구입) 둘 다 조회해서 합친 뒤 작성일 기준으로 다시 정렬합니다.
+    // (예전엔 boards만 조회해서 재주문건이 최근 목록/상단에 전혀 뜨지 않았음)
     const q1 = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(10));
-    const snap1 = await getDocs(q1);
+    const q2 = query(collection(db, "jjjj"), orderBy("createdAt", "desc"), limit(10));
+    const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
-    if (snap1.empty) {
+    const combined = [
+      ...snap1.docs.map(d => ({ doc: d, col: "boards", isJajoo: false })),
+      ...snap2.docs.map(d => ({ doc: d, col: "jjjj", isJajoo: true }))
+    ];
+    combined.sort((a, b) => {
+      const ta = a.doc.data().createdAt?.toDate ? a.doc.data().createdAt.toDate() : new Date(0);
+      const tb = b.doc.data().createdAt?.toDate ? b.doc.data().createdAt.toDate() : new Date(0);
+      return tb - ta;
+    });
+    const items = combined.slice(0, 10);
+
+    if (items.length === 0) {
       resultEl.textContent = "주문이 없습니다.";
       return;
     }
 
-    const adminPrivates = await Promise.all(snap1.docs.map(d => fetchPrivate(d.id)));
-    const rawPrivates = await Promise.all(snap1.docs.map(d => fetchPrivateRef(d.id)));
+    // adminOrders는 일반 주문(boards)에만 존재하므로, 재주문(jjjj)건은 이 조회를 건너뜁니다.
+    const adminPrivates = await Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({})));
+    const rawPrivates = await Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col)));
     // 각 주문의 재첨부(hanjool) 파일 목록도 함께 조회
-    const hanjoolSnaps = await Promise.all(snap1.docs.map(d => getDocs(collection(db, "boards", d.id, "hanjool"))));
+    const hanjoolSnaps = await Promise.all(items.map(it => getDocs(collection(db, it.col, it.doc.id, "hanjool"))));
     // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
     // 예전엔 10건 전부 미리 조회(최대 10 read)해서 미발행 건을 상단 고정했지만,
     // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
 
     const rows = [];
-    snap1.docs.forEach((d, idx) => {
+    items.forEach((it, idx) => {
+      const d = it.doc;
+      const col = it.col;
+      orderColMap[d.id] = col;
       const adminPriv = adminPrivates[idx];
-      // adminOrders 문서 자체가 없는 주문은 목록에서 아예 제외
-      if (adminPriv._err === "adminOrders 문서 없음") return;
+      // adminOrders 문서 자체가 없는 주문은 목록에서 아예 제외 (일반 주문에만 해당, 재주문은 제외 검사 안 함)
+      if (col === "boards" && adminPriv._err === "adminOrders 문서 없음") return;
 
       const data = d.data();
       const rawPriv = rawPrivates[idx] || {};
@@ -658,12 +683,14 @@ async function loadRecentOrders() {
         phone = data.phone || '<span class="fail">(비어있음)</span>';
         rawAddressVal = data.address || '';
         address = rawAddressVal || '<span class="fail">(비어있음)</span>';
-      } else if (adminPriv._err) {
+      } else if (col === 'boards' && adminPriv._err) {
         phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
         address = '-';
       } else {
-        phone = adminPriv.phone || '<span class="fail">(비어있음)</span>';
-        rawAddressVal = adminPriv.address || '';
+        // 재주문(jjjj)건은 adminOrders가 없으므로 private 서브컬렉션(rawPriv)에서 바로 가져옵니다.
+        const fallback = col === 'boards' ? adminPriv : rawPriv;
+        phone = fallback.phone || '<span class="fail">(비어있음)</span>';
+        rawAddressVal = fallback.address || '';
         address = rawAddressVal || '<span class="fail">(비어있음)</span>';
       }
 
@@ -702,7 +729,7 @@ async function loadRecentOrders() {
       rawPrivDataMap[d.id] = rawPriv;
       const taxIconCell = `<span id="tax-cell-${d.id}"><button onclick="checkTaxMatch('${d.id}')" style="padding:3px 6px; font-size:11px; background:#64748b; color:white; border:none; border-radius:4px; cursor:pointer;">🧾 확인</button></span>`;
 
-      const authorCell = `<span class="author">${author}</span>`;
+      const authorCell = `<span class="author">${it.isJajoo ? '📦 재주문 ' : ''}${author}</span>`;
 
       // 원본 첨부파일(접수 시 boards.file1Url/file2Url) + 재첨부 파일(hanjool) 목록으로 다운로드/삭제 버튼 구성
       attachedFileMap[d.id] = { file1Url: data.file1Url || '', file2Url: data.file2Url || '' };
@@ -724,7 +751,7 @@ async function loadRecentOrders() {
 
       const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
 
-      rows.push(`<tr>
+      rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
         <td>${statusCellHtml}<br>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
