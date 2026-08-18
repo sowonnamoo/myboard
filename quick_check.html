@@ -758,6 +758,13 @@ async function loadRecentOrders() {
         const label = hanjoolItems.length > 1 ? `재첨부${i + 1}` : '재첨부';
         attachHtml += `<div class="file-row">🔁 <a href="${item.fileUrl}" target="_blank">${label} 다운로드</a> <button class="small-btn" onclick="deleteHanjoolFile('${d.id}','${item.id}')">삭제</button></div>`;
       });
+      // app2.js의 자동 재업로드 감지(checkImageRefreshAndCleanup)는 cafe24가
+      // Last-Modified/ETag 헤더를 CORS로 내려줄 때만 동작하고, 대부분의 정적 서버는
+      // 이 헤더를 막고 있어서 조용히 실패합니다. 그래서 여기 수동 버튼을 항상 노출해서
+      // 확실하게 처리할 수 있게 합니다. (수정요청/첨부파일이 있거나 fileLocked 상태일 때만)
+      if (col === "boards" && (hanjoolItems.length > 0 || data.fileLocked)) {
+        attachHtml += `<div class="file-row"><button class="small-btn" style="background:#f97316;" onclick="unlockFileUpload('${d.id}')">🔓 새 시안 등록함(수정요청 삭제)</button></div>`;
+      }
       if (!attachHtml) attachHtml = '<span style="color:#94a3b8;">-</span>';
 
       const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
