@@ -621,7 +621,7 @@ function uploadToR2(fileInputId, authorName, onProgress) {
         }
 
         // 2. 보안을 위한 확장자 필터링
-        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx'];
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx', 'ppt', 'pptx'];
         const ext = file.name.split('.').pop().toLowerCase();
 
         if (!allowedExtensions.includes(ext)) {
