@@ -7,6 +7,15 @@
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        @keyframes softBlink {
+            0%, 100% { color: #374151; }   /* gray-700 */
+            50% { color: #dc2626; }        /* red-600, 은은하게 */
+        }
+        #target-box-notice {
+            animation: softBlink 1.8s ease-in-out infinite;
+        }
+    </style>
 </head>
 <body class="bg-white" oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
 
