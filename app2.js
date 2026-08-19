@@ -298,8 +298,8 @@ function renderTable(dataToRender = allOrders) {
         <tr class="hover:bg-gray-50 border-b border-gray-100"> 
             <td class="py-3 px-4 text-left font-medium text-gray-900 truncate">
                 <div class="flex items-center gap-2">
-                    <span class="whitespace-nowrap">🔒 ${author}님</span>
-                    <button onclick="viewDetail('${data.id}')" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full hover:bg-blue-700 whitespace-nowrap">시안보기 / 인쇄승인</button>
+                    <span class="w-[76px] shrink-0 truncate">🔒 ${author}님</span>
+                    <button onclick="viewDetail('${data.id}')" class="shrink-0 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full hover:bg-blue-700 whitespace-nowrap">시안보기 / 인쇄승인</button>
                     <span class="text-xs text-gray-500 truncate">${displayInfo}</span>
                 </div>
             </td>
