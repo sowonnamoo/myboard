@@ -984,6 +984,11 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     if (f1 && f2 && f1.name === f2.name) {
         alert("⚠️ 경고: 파일명이 동일합니다. 다른 이름의 파일로 다시 선택해주세요.");
         return;
+    }
+    // [추가] 파일명은 달라도 용량이 100% 일치하면 같은 파일을 중복 업로드했을 가능성이 높으므로 차단
+    if (f1 && f2 && f1.size === f2.size) {
+        alert("⚠️ 경고: 두 파일의 용량이 동일합니다. 같은 파일 중복업로드가 의심됩니다. 다른 용량의 파일로 올려주세요.");
+        return;
     }    // 1. 기존 유효성 검사 (침범 안 함)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
