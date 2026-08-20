@@ -141,6 +141,22 @@ async function fetchSegumMatch(author, phone) {
     return null;
   }
 }
+
+// 시안 확인 페이지(index2/app2.js) 자동입장 key 계산 - app2.js의 computeSecretId와
+// 반드시 동일한 방식이어야 함(전화번호 뒷4자리만 사용). 관리자는 비번 입력창 없이
+// autoId+key로 바로 시안 상세로 들어감.
+function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
+async function computeSianKey(boardId, author, phone) {
+  return sha256Hex(`${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`);
+}
+window.goToSianView = async function(boardId, author, phone) {
+  try {
+    const key = await computeSianKey(boardId, author, phone);
+    window.open(`https://sowonnamoo.github.io/myboard/index2?autoId=${boardId}&key=${key}`, '_blank');
+  } catch (e) {
+    alert("시안 페이지 이동 실패: " + e.message);
+  }
+};
 // boardId -> segum1 등록 정보 캐시 (아이콘 클릭 시 재조회 없이 바로 보여주기 위함)
 let taxDataMap = {};
 // boardId -> 이 주문건의 세금계산서 발행 여부 캐시 (버튼 토글/정렬에 사용)
@@ -769,11 +785,18 @@ async function loadRecentOrders() {
 
       const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
 
+      // 시안 확인 페이지(index2)는 boards(일반주문)건에만 존재하므로 재주문(jjjj)건은 버튼을 표시하지 않음
+      const phoneForKey = sheetPhone.replace(/'/g, "\\'");
+      const sianBtnCell = col === "boards"
+        ? `<button onclick="goToSianView('${d.id}','${authorEsc}','${phoneForKey}')" style="padding:3px 8px; font-size:11px; background:#0ea5e9; color:white; border:none; border-radius:4px; cursor:pointer; white-space:nowrap;">🖼️ 시안바로가기</button>`
+        : '<span style="color:#94a3b8;">-</span>';
+
       rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
         <td>${statusCellHtml}<br>${taxIconCell}</td>
         <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
         <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
         <td>${attachHtml}</td>
+        <td>${sianBtnCell}</td>
         <td>${date}</td>
         <td>${authorCell}</td>
         <td>${phone}</td>
@@ -790,7 +813,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = buildExpandableTable(
-      "<tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>",
+      "<tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>시안</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>",
       rows, "orders"
     );
   } catch (e) {
