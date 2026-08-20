@@ -1531,13 +1531,6 @@ window.syncStatusOverlay = function(status) {
         img.style.position = 'absolute';
         img.style.top = (rect.top + window.scrollY + dy) + 'px';
         img.style.left = (rect.left + window.scrollX + dx) + 'px';
-        // 버그 수정: 크기를 지정하지 않으면 이미지 원본 크기 그대로 표시되어
-        // 아래에 있는 "시안보기" 버튼 등을 가려버리는 문제가 있었음.
-        // 기준 요소(rect) 크기에 맞춰 이미지 크기를 제한해서 다른 버튼을 침범하지 않도록 함.
-        img.style.width = (rect.width - dx * 2) + 'px';
-        img.style.height = 'auto';
-        img.style.maxHeight = (rect.height - dy * 2) + 'px';
-        img.style.objectFit = 'contain';
         img.style.display = 'block'; 
         img.style.zIndex = '9999';
         img.style.pointerEvents = 'auto'; // 버튼 클릭 차단 (링크 막음)
@@ -1558,11 +1551,7 @@ window.syncStatusOverlay = function(status) {
             positionImage('segum-btn-id', 'img-3', -8, -10);
         } else if (isCard || isBank) {
             // 결제 완료일 때는 이미지 표시
-            // 버그 수정: 아주 작은 'anchor-text' 글자 크기 기준으로 좌표만 잡고 크기를
-            // 지정하지 않아서, 이미지가 원본 크기 그대로 커져 아래 "시안보기" 버튼을
-            // 가리던 문제가 있었음. 배너 전체 영역인 'target-box-notice'를 기준으로
-            // 위치/크기를 잡아서 정해진 영역 안에서만 표시되도록 수정.
-            positionImage('target-box-notice', 'img-1', 0, 0);
+            positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
         }
     };
