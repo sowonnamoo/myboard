@@ -132,12 +132,6 @@ function normalizePhoneFull(phone) { return String(phone || "").replace(/[^0-9]/
 async function computeSegumId(name, phone) {
   return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
 }
-// index2.html(시안 확인 게시판)이 app.js/app2.js와 동일한 방식으로 계산하는 secretId.
-// 퀵체크에서 "시안보기" 클릭 시 비밀번호 입력 없이 바로 열리게 하려면 이 값을 URL(key=)로 넘겨야 합니다.
-function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
-async function computeSecretId(boardId, author, phone) {
-  return sha256Hex(`${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`);
-}
 async function fetchSegumMatch(author, phone) {
   try {
     const segumId = await computeSegumId(author, phone);
@@ -677,7 +671,7 @@ async function loadRecentOrders() {
 
     const restCount = orderBaseItems.length - firstItems.length;
     let html = `<div class="table-wrap"><table><thead>
-      <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th><th>시안보기</th></tr>
+      <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>
       </thead><tbody id="orders-body">${firstRows.join('')}</tbody>
       <tbody id="orders-body-more" style="display:none"></tbody>
       </table></div>`;
@@ -737,8 +731,7 @@ async function buildOrderRows(items) {
   // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
 
   const rows = [];
-  for (let idx = 0; idx < items.length; idx++) {
-    const it = items[idx];
+  items.forEach((it, idx) => {
     const d = it.doc;
     const col = it.col;
     orderColMap[d.id] = col;
@@ -757,18 +750,19 @@ async function buildOrderRows(items) {
       phone = data.phone || '<span class="fail">(비어있음)</span>';
       rawAddressVal = data.address || '';
       address = rawAddressVal || '<span class="fail">(비어있음)</span>';
+    } else if (col === 'boards' && adminPriv._err) {
+      phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
+      address = '-';
     } else {
       // 재주문(jjjj)건은 adminOrders가 없으므로 private 서브컬렉션(rawPriv)에서 바로 가져옵니다.
-      // adminOrders 문서 자체가 없는 경우(adminPriv._err)도 에러 문구를 띄우지 않고
-      // rawPriv로 대체 조회하며, 그래도 주소가 없으면 아래에서 목록에서 제외됩니다.
-      const fallback = (col === 'boards' && !adminPriv._err) ? adminPriv : rawPriv;
+      const fallback = col === 'boards' ? adminPriv : rawPriv;
       phone = fallback.phone || '<span class="fail">(비어있음)</span>';
       rawAddressVal = fallback.address || '';
       address = rawAddressVal || '<span class="fail">(비어있음)</span>';
     }
 
-    // 배송지가 비어있는 주문(adminOrders/private 어디에도 address가 없는 경우)은 목록에서 제외
-    if (!rawAddressVal) continue;
+    // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
+    if (!adminPriv._err && !rawAddressVal) return;
 
     // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
     const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
@@ -838,20 +832,6 @@ async function buildOrderRows(items) {
 
     const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
 
-    // 시안보기(index2 게시판)는 재주문(jjjj) 건에는 해당 게시글이 없어서 boards건에만 만듭니다.
-    // app.js/app2.js와 동일한 방식(boardId+작성자명+전화번호뒷4자리)으로 secretId를 계산해서
-    // key로 함께 넘기면, index2에서 비밀번호 입력 없이 바로 상세화면이 열립니다.
-    let sianCell = '<span style="color:#94a3b8;">-</span>';
-    if (col === 'boards') {
-      try {
-        const secretId = await computeSecretId(d.id, author, sheetPhone);
-        const sianUrl = `https://sowonnamoo.github.io/myboard/index2?autoId=${d.id}&key=${secretId}`;
-        sianCell = `<a href="${sianUrl}" target="_blank" style="text-decoration:none;"><button style="padding:5px 10px; font-size:11px; background:#4f46e5; color:white; border:none; border-radius:6px; cursor:pointer;">🔍 시안보기</button></a>`;
-      } catch (e) {
-        console.error('시안보기 링크 생성 실패:', d.id, e);
-      }
-    }
-
     rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
       <td>${statusCellHtml}<br>${taxIconCell}</td>
       <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
@@ -864,9 +844,8 @@ async function buildOrderRows(items) {
       <td>${trackingCell}</td>
       <td>${cardCell}</td>
       <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
-      <td>${sianCell}</td>
     </tr>`);
-  }
+  });
 
   return rows;
 }
