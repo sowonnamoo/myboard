@@ -759,7 +759,9 @@ function renderTable() {
             // 작성자 이름 끝자리 블라인드 처리 로직 (예전엔 3일 지난 글만 가렸는데,
             // 신규로 작성되는 글도 처음부터 똑같이 가려지도록 통일함)
             let author = data.author || "김준혁";
-            if (author.length > 1) {
+            if (author.length > 2) {
+                author = author.substring(0, 2) + "*".repeat(author.length - 2) + "(정보보호)";
+            } else if (author.length > 1) {
                 author = author.substring(0, author.length - 1) + "*(정보보호)";
             }
 
