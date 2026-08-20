@@ -752,19 +752,18 @@ async function buildOrderRows(items) {
       phone = data.phone || '<span class="fail">(비어있음)</span>';
       rawAddressVal = data.address || '';
       address = rawAddressVal || '<span class="fail">(비어있음)</span>';
-    } else if (col === 'boards' && adminPriv._err) {
-      phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
-      address = '-';
     } else {
       // 재주문(jjjj)건은 adminOrders가 없으므로 private 서브컬렉션(rawPriv)에서 바로 가져옵니다.
-      const fallback = col === 'boards' ? adminPriv : rawPriv;
+      // adminOrders 문서 자체가 없는 경우(adminPriv._err)도 에러 문구를 띄우지 않고
+      // rawPriv로 대체 조회하며, 그래도 주소가 없으면 아래에서 목록에서 제외됩니다.
+      const fallback = (col === 'boards' && !adminPriv._err) ? adminPriv : rawPriv;
       phone = fallback.phone || '<span class="fail">(비어있음)</span>';
       rawAddressVal = fallback.address || '';
       address = rawAddressVal || '<span class="fail">(비어있음)</span>';
     }
 
-    // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
-    if (!adminPriv._err && !rawAddressVal) return;
+    // 배송지가 비어있는 주문(adminOrders/private 어디에도 address가 없는 경우)은 목록에서 제외
+    if (!rawAddressVal) return;
 
     // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
     const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
