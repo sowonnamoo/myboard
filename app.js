@@ -1399,52 +1399,21 @@ window.openCardPage = async () => {
 };
 
 
-// 기존 syncStatusOverlay 함수를 이 코드로 덮어쓰세요 (타이밍 보완)
-window.syncStatusOverlay = function(status) {
-    const targets = [
-        { id: 'target-box-notice', imgId: 'img-1' },
-        { id: 'target-btn-tax',    imgId: 'img-2' }
-    ];
-
-    // 1. 초기화: 일단 다 숨김
-    targets.forEach(t => {
-        const img = document.getElementById(t.imgId);
-        if (img) img.classList.add('hidden');
-    });
-
-    // 2. 상태가 '카드결제'일 때만 실행
-    if (status === '카드결제') {
-        // 화면 렌더링 후 좌표를 잡기 위해 약간의 지연시간을 둠
-        setTimeout(() => {
-            targets.forEach(t => {
-                const targetEl = document.getElementById(t.id);
-                const imgEl = document.getElementById(t.imgId);
-                
-                if (targetEl && imgEl) {
-                    const rect = targetEl.getBoundingClientRect();
-                    imgEl.style.position = 'absolute';
-                    imgEl.style.top = (rect.top + window.scrollY) + 'px';
-                    imgEl.style.left = (rect.left + window.scrollX) + 'px';
-                    imgEl.style.width = rect.width + 'px';
-                    imgEl.style.height = rect.height + 'px';
-                    imgEl.style.zIndex = '9999';
-                    imgEl.classList.remove('hidden');
-                }
-            });
-        }, 100); 
-    }
-};
+// (예전 syncStatusOverlay 초안은 아래쪽에서 다시 window.syncStatusOverlay로 덮어써져서
+//  실제로는 한 번도 실행되지 않는 죽은 코드였습니다. 혼동을 막기 위해 정리했습니다 —
+//  실제로 쓰이는 정의는 아래 "앙카 png 주문내용 강제 링크 막음소스" 부분입니다.)
 
 
 
 // 카결창 끝나면 자동 부모값이전
+// (기존엔 어디에도 선언되지 않은 currentStatus 변수를 참조하고 있어서 이 코드가 항상 실행되지
+//  않았습니다 — 그래서 헤더 이미지 등 리소스 로딩이 늦어져 페이지 레이아웃이 아래로 밀려도
+//  "결제완료" 안내 이미지(img-1)가 재정렬되지 않고 시안보기 버튼 줄에 걸쳐 보이는 문제가 있었습니다.
+//  실제 상태를 담고 있는 currentDetailStatus로 바로잡아, 페이지의 모든 리소스가 다 로드된 뒤
+//  한 번 더 위치를 재계산하도록 합니다.)
 window.addEventListener('load', () => {
-    // 1. 현재 로드된 주문 데이터에서 status를 가져옵니다 (예: 전역변수나 DOM에서 추출)
-    // 예시: const currentStatus = document.getElementById('status-hidden').value;
-    
-    // 2. 만약 데이터를 불러온 상태라면 즉시 갱신
-    if (typeof currentStatus !== 'undefined') {
-        syncStatusOverlay(currentStatus);
+    if (currentDetailStatus) {
+        window.syncStatusOverlay(currentDetailStatus);
     }
 });
 
