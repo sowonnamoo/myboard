@@ -185,8 +185,17 @@ window.downloadOrderSheet = (boardId) => {
   const priceDigits = String(o.price || '').replace(/[^0-9]/g, '') || '0';
   const messageLine = (o.message && o.message.trim()) ? o.message.trim() : '-';
 
+  const dateCode = o.createdAtDate
+    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
+    : 'unknown';
+
+  // 이미지번호(제목): 전화번호에서 뒷 4자리(고객 비밀글 열람용이라 제외)를 뺀 나머지 + 접수시간
+  const phoneDigits = String(o.phone || '').replace(/[^0-9]/g, '');
+  const phoneNoLast4 = phoneDigits.length > 4 ? phoneDigits.slice(0, -4) : phoneDigits;
+  const imageNumber = `${phoneNoLast4}${dateCode}`;
+
   const content = [
-    `${o.author}${o.phone}`,
+    imageNumber,
     o.address || '-',
     `상품: ${o.productName} / 사이즈: ${o.size} / 수량: ${o.quantity}`,
     `금액: ${priceDigits}원`,
@@ -201,9 +210,6 @@ window.downloadOrderSheet = (boardId) => {
   const a = document.createElement('a');
   a.href = url;
 
-  const dateCode = o.createdAtDate
-    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}_${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
-    : 'unknown';
   a.download = `주문서_${o.author}_${dateCode}.txt`;
 
   document.body.appendChild(a);
@@ -642,10 +648,8 @@ async function loadRecentOrders() {
     const q2 = query(collection(db, "jjjj"), orderBy("createdAt", "desc"), limit(500));
     const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
-    // 어드민 라이트(admin-write.js)에서 등록한 글(createdByAdmin: true)은
-    // 퀵체크 목록에서 제외합니다. (접수오류건 시안 페이지에서만 관리)
     const combined = [
-      ...snap1.docs.filter(d => !d.data().createdByAdmin).map(d => ({ doc: d, col: "boards", isJajoo: false })),
+      ...snap1.docs.map(d => ({ doc: d, col: "boards", isJajoo: false })),
       ...snap2.docs.map(d => ({ doc: d, col: "jjjj", isJajoo: true }))
     ];
     combined.sort((a, b) => {
@@ -752,18 +756,19 @@ async function buildOrderRows(items) {
       phone = data.phone || '<span class="fail">(비어있음)</span>';
       rawAddressVal = data.address || '';
       address = rawAddressVal || '<span class="fail">(비어있음)</span>';
+    } else if (col === 'boards' && adminPriv._err) {
+      phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
+      address = '-';
     } else {
       // 재주문(jjjj)건은 adminOrders가 없으므로 private 서브컬렉션(rawPriv)에서 바로 가져옵니다.
-      // adminOrders 문서 자체가 없는 경우(adminPriv._err)도 에러 문구를 띄우지 않고
-      // rawPriv로 대체 조회하며, 그래도 주소가 없으면 아래에서 목록에서 제외됩니다.
-      const fallback = (col === 'boards' && !adminPriv._err) ? adminPriv : rawPriv;
+      const fallback = col === 'boards' ? adminPriv : rawPriv;
       phone = fallback.phone || '<span class="fail">(비어있음)</span>';
       rawAddressVal = fallback.address || '';
       address = rawAddressVal || '<span class="fail">(비어있음)</span>';
     }
 
-    // 배송지가 비어있는 주문(adminOrders/private 어디에도 address가 없는 경우)은 목록에서 제외
-    if (!rawAddressVal) return;
+    // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
+    if (!adminPriv._err && !rawAddressVal) return;
 
     // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
     const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
