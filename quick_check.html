@@ -218,9 +218,10 @@ window.downloadOrderSheet = (boardId) => {
   a.href = url;
 
   const dateCode = o.createdAtDate
-    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}_${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
+    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
     : 'unknown';
-  a.download = `주문서_${o.author}_${dateCode}.txt`;
+  const phoneDigits = String(o.phone || '').replace(/[^0-9]/g, '').slice(0, 7);
+  a.download = `${phoneDigits}${dateCode}.txt`;
 
   document.body.appendChild(a);
   a.click();
