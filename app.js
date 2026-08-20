@@ -756,11 +756,11 @@ function renderTable() {
             const d = data.createdAt.toDate();
             const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             
-            // 작성자 이름 블라인드 처리 로직 (이름 길이와 상관없이 앞 두 글자만 노출,
-            // 나머지는 전부 가림 — 3글자 이상 이름을 일부러 적어도 두 글자까지만 보이게 함)
+            // 작성자 이름 끝자리 블라인드 처리 로직 (예전엔 3일 지난 글만 가렸는데,
+            // 신규로 작성되는 글도 처음부터 똑같이 가려지도록 통일함)
             let author = data.author || "김준혁";
-            if (author.length > 2) {
-                author = author.substring(0, 2) + "*(정보보호)";
+            if (author.length > 1) {
+                author = author.substring(0, author.length - 1) + "*(정보보호)";
             }
 
             const diffInHours = (now - d) / (1000 * 60 * 60);
@@ -983,11 +983,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     const f2 = document.getElementById("file-2").files[0];
     if (f1 && f2 && f1.name === f2.name) {
         alert("⚠️ 경고: 파일명이 동일합니다. 다른 이름의 파일로 다시 선택해주세요.");
-        return;
-    }
-    // [추가] 파일명은 달라도 용량이 100% 일치하면 같은 파일을 중복 업로드했을 가능성이 높으므로 차단
-    if (f1 && f2 && f1.size === f2.size) {
-        alert("⚠️ 경고: 두 파일의 용량이 동일합니다. 같은 파일 중복업로드가 의심됩니다. 다른 용량의 파일로 올려주세요.");
         return;
     }    // 1. 기존 유효성 검사 (침범 안 함)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
@@ -1399,21 +1394,52 @@ window.openCardPage = async () => {
 };
 
 
-// (예전 syncStatusOverlay 초안은 아래쪽에서 다시 window.syncStatusOverlay로 덮어써져서
-//  실제로는 한 번도 실행되지 않는 죽은 코드였습니다. 혼동을 막기 위해 정리했습니다 —
-//  실제로 쓰이는 정의는 아래 "앙카 png 주문내용 강제 링크 막음소스" 부분입니다.)
+// 기존 syncStatusOverlay 함수를 이 코드로 덮어쓰세요 (타이밍 보완)
+window.syncStatusOverlay = function(status) {
+    const targets = [
+        { id: 'target-box-notice', imgId: 'img-1' },
+        { id: 'target-btn-tax',    imgId: 'img-2' }
+    ];
+
+    // 1. 초기화: 일단 다 숨김
+    targets.forEach(t => {
+        const img = document.getElementById(t.imgId);
+        if (img) img.classList.add('hidden');
+    });
+
+    // 2. 상태가 '카드결제'일 때만 실행
+    if (status === '카드결제') {
+        // 화면 렌더링 후 좌표를 잡기 위해 약간의 지연시간을 둠
+        setTimeout(() => {
+            targets.forEach(t => {
+                const targetEl = document.getElementById(t.id);
+                const imgEl = document.getElementById(t.imgId);
+                
+                if (targetEl && imgEl) {
+                    const rect = targetEl.getBoundingClientRect();
+                    imgEl.style.position = 'absolute';
+                    imgEl.style.top = (rect.top + window.scrollY) + 'px';
+                    imgEl.style.left = (rect.left + window.scrollX) + 'px';
+                    imgEl.style.width = rect.width + 'px';
+                    imgEl.style.height = rect.height + 'px';
+                    imgEl.style.zIndex = '9999';
+                    imgEl.classList.remove('hidden');
+                }
+            });
+        }, 100); 
+    }
+};
 
 
 
 // 카결창 끝나면 자동 부모값이전
-// (기존엔 어디에도 선언되지 않은 currentStatus 변수를 참조하고 있어서 이 코드가 항상 실행되지
-//  않았습니다 — 그래서 헤더 이미지 등 리소스 로딩이 늦어져 페이지 레이아웃이 아래로 밀려도
-//  "결제완료" 안내 이미지(img-1)가 재정렬되지 않고 시안보기 버튼 줄에 걸쳐 보이는 문제가 있었습니다.
-//  실제 상태를 담고 있는 currentDetailStatus로 바로잡아, 페이지의 모든 리소스가 다 로드된 뒤
-//  한 번 더 위치를 재계산하도록 합니다.)
 window.addEventListener('load', () => {
-    if (currentDetailStatus) {
-        window.syncStatusOverlay(currentDetailStatus);
+    // 1. 현재 로드된 주문 데이터에서 status를 가져옵니다 (예: 전역변수나 DOM에서 추출)
+    // 예시: const currentStatus = document.getElementById('status-hidden').value;
+    
+    // 2. 만약 데이터를 불러온 상태라면 즉시 갱신
+    if (typeof currentStatus !== 'undefined') {
+        syncStatusOverlay(currentStatus);
     }
 });
 
