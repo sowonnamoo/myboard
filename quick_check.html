@@ -49,7 +49,7 @@
 </div>
 
 <div id="listBox">
-  <p class="ok">✅ 로그인됨 — 최근 주문 최대 500건 (처음엔 5건만 조회, 나머지는 펼쳐보기 시 조회)</p>
+  <p class="ok">✅ 로그인됨 — 최근 주문 10건</p>
   <div id="result">불러오는 중...</div>
 
   <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:10px;">
@@ -185,17 +185,8 @@ window.downloadOrderSheet = (boardId) => {
   const priceDigits = String(o.price || '').replace(/[^0-9]/g, '') || '0';
   const messageLine = (o.message && o.message.trim()) ? o.message.trim() : '-';
 
-  const dateCode = o.createdAtDate
-    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
-    : 'unknown';
-
-  // 이미지번호(제목): 전화번호에서 뒷 4자리(고객 비밀글 열람용이라 제외)를 뺀 나머지 + 접수시간
-  const phoneDigits = String(o.phone || '').replace(/[^0-9]/g, '');
-  const phoneNoLast4 = phoneDigits.length > 4 ? phoneDigits.slice(0, -4) : phoneDigits;
-  const imageNumber = `${phoneNoLast4}${dateCode}`;
-
   const content = [
-    imageNumber,
+    `${o.author}${o.phone}`,
     o.address || '-',
     `상품: ${o.productName} / 사이즈: ${o.size} / 수량: ${o.quantity}`,
     `금액: ${priceDigits}원`,
@@ -210,6 +201,9 @@ window.downloadOrderSheet = (boardId) => {
   const a = document.createElement('a');
   a.href = url;
 
+  const dateCode = o.createdAtDate
+    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}_${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
+    : 'unknown';
   a.download = `주문서_${o.author}_${dateCode}.txt`;
 
   document.body.appendChild(a);
@@ -632,20 +626,13 @@ async function loadCashRequests() {
   }
 }
 
-// 목록(boards+jjjj 기본 문서)만 조회해서 정렬해둔 캐시. 펼쳐보기 시 여기서 잘라서 씁니다.
-let orderBaseItems = [];
-// "펼쳐보기"를 눌러 나머지 항목의 상세정보(private/adminOrders/hanjool)를 이미 조회했는지 여부.
-// 한 번 조회한 뒤에는 접었다 펼쳐도 재조회하지 않습니다.
-let orderMoreLoaded = false;
-const ORDERS_INITIAL_COUNT = 5;
-
 async function loadRecentOrders() {
   const resultEl = document.getElementById("result");
   try {
-    // 1단계: boards(일반 주문) + jjjj(재주문/재구입) 기본 문서만 조회해서 합친 뒤 작성일 기준 정렬합니다.
-    // 여기서는 아직 개별 항목의 private/adminOrders/hanjool 같은 상세 조회는 하지 않습니다 (읽기 절약).
-    const q1 = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(500));
-    const q2 = query(collection(db, "jjjj"), orderBy("createdAt", "desc"), limit(500));
+    // boards(일반 주문) + jjjj(재주문/재구입) 둘 다 조회해서 합친 뒤 작성일 기준으로 다시 정렬합니다.
+    // (예전엔 boards만 조회해서 재주문건이 최근 목록/상단에 전혀 뜨지 않았음)
+    const q1 = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(10));
+    const q2 = query(collection(db, "jjjj"), orderBy("createdAt", "desc"), limit(10));
     const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
     const combined = [
@@ -657,203 +644,158 @@ async function loadRecentOrders() {
       const tb = b.doc.data().createdAt?.toDate ? b.doc.data().createdAt.toDate() : new Date(0);
       return tb - ta;
     });
-    orderBaseItems = combined.slice(0, 500);
-    orderMoreLoaded = false;
+    const items = combined.slice(0, 10);
 
-    if (orderBaseItems.length === 0) {
+    if (items.length === 0) {
       resultEl.textContent = "주문이 없습니다.";
       return;
     }
 
-    // 2단계: 화면에 바로 보일 상위 5건에 대해서만 상세정보를 조회해서 행을 만듭니다.
-    // 나머지(최대 495건)는 아래 "펼쳐보기" 버튼을 실제로 눌렀을 때만 그 시점에 조회합니다.
-    const firstItems = orderBaseItems.slice(0, ORDERS_INITIAL_COUNT);
-    const firstRows = await buildOrderRows(firstItems);
+    // adminOrders는 일반 주문(boards)에만 존재하므로, 재주문(jjjj)건은 이 조회를 건너뜁니다.
+    const adminPrivates = await Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({})));
+    const rawPrivates = await Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col)));
+    // 각 주문의 재첨부(hanjool) 파일 목록도 함께 조회
+    // jjjj(재주문)에는 hanjool 서브컬렉션 보안규칙이 없어서(재주문건은 재첨부 기능 대상이 아님)
+    // 조회 시도 자체가 permission-denied를 일으킵니다. boards건만 조회합니다.
+    const hanjoolSnaps = await Promise.all(items.map(it =>
+      it.col === "boards" ? getDocs(collection(db, it.col, it.doc.id, "hanjool")) : Promise.resolve({ docs: [] })
+    ));
+    // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
+    // 예전엔 10건 전부 미리 조회(최대 10 read)해서 미발행 건을 상단 고정했지만,
+    // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
 
-    if (firstRows.length === 0) {
+    const rows = [];
+    items.forEach((it, idx) => {
+      const d = it.doc;
+      const col = it.col;
+      orderColMap[d.id] = col;
+      const adminPriv = adminPrivates[idx];
+      // adminOrders 문서 자체가 없는 주문은 목록에서 아예 제외 (일반 주문에만 해당, 재주문은 제외 검사 안 함)
+      if (col === "boards" && adminPriv._err === "adminOrders 문서 없음") return;
+
+      const data = d.data();
+      const rawPriv = rawPrivates[idx] || {};
+      const date = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('ko-KR') : '-';
+      const author = data.author || '-';
+      const status = data.status || '대기';
+
+      // 고객이 "배송지 수정하기"로 boards/{id}.phone/address를 직접 고쳤을 수 있으므로,
+      // 그 값이 있으면 최우선으로 쓰고, 없으면 adminOrders → boards/private 순으로 대체합니다.
+      let phone, address;
+      let rawAddressVal = '';
+      if (data.phone || data.address) {
+        phone = data.phone || '<span class="fail">(비어있음)</span>';
+        rawAddressVal = data.address || '';
+        address = rawAddressVal || '<span class="fail">(비어있음)</span>';
+      } else if (col === 'boards' && adminPriv._err) {
+        phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
+        address = '-';
+      } else {
+        // 재주문(jjjj)건은 adminOrders가 없으므로 private 서브컬렉션(rawPriv)에서 바로 가져옵니다.
+        const fallback = col === 'boards' ? adminPriv : rawPriv;
+        phone = fallback.phone || '<span class="fail">(비어있음)</span>';
+        rawAddressVal = fallback.address || '';
+        address = rawAddressVal || '<span class="fail">(비어있음)</span>';
+      }
+
+      // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
+      if (!adminPriv._err && !rawAddressVal) return;
+
+      // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
+      const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
+      const sheetAddress = data.address || ((!adminPriv._err && adminPriv.address) ? adminPriv.address : (rawPriv.address || ''));
+      const sheetMessage = (!adminPriv._err && adminPriv.message) ? adminPriv.message : (rawPriv.message || '');
+      orderSheetDataMap[d.id] = {
+        author,
+        phone: sheetPhone,
+        address: sheetAddress,
+        message: sheetMessage,
+        productName: data.productName || '-',
+        size: data.size || '-',
+        quantity: data.quantity || '-',
+        price: data.price || '',
+        createdAtDate: data.createdAt?.toDate ? data.createdAt.toDate() : null
+      };
+
+      const authorEsc = author.replace(/'/g, "\\'");
+      const existingTracking = rawPriv.trackingUrl || '';
+      const trackingCell = existingTracking
+        ? `<span class="url-saved">✅ 등록됨</span><div class="url-row"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">수정</button></div>`
+        : `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
+
+      // 카드결제 상태일 때만 카드전표 URL 입력칸 표시
+      let cardCell = '-';
+      if (status === '카드결제') {
+        cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
+      }
+
+      // 세금계산서 확인/발행상태 버튼 - "🧾 확인" 클릭 시에만 segum1을 조회합니다 (checkTaxMatch).
+      rawPrivDataMap[d.id] = rawPriv;
+      const taxIconCell = `<span id="tax-cell-${d.id}"><button onclick="checkTaxMatch('${d.id}')" style="padding:3px 6px; font-size:11px; background:#64748b; color:white; border:none; border-radius:4px; cursor:pointer;">🧾 확인</button></span>`;
+
+      const authorCell = `<span class="author">${it.isJajoo ? '📦 재주문 ' : ''}${author}</span>`;
+
+      // 원본 첨부파일(접수 시 boards.file1Url/file2Url) + 재첨부 파일(hanjool) 목록으로 다운로드/삭제 버튼 구성
+      attachedFileMap[d.id] = { file1Url: data.file1Url || '', file2Url: data.file2Url || '' };
+      const hanjoolItems = hanjoolSnaps[idx].docs.map(hd => ({ id: hd.id, fileUrl: hd.data().fileUrl || '' })).filter(it => it.fileUrl);
+      hanjoolMap[d.id] = hanjoolItems;
+
+      let attachHtml = '';
+      if (it.isJajoo && data.imgCode) {
+        // 재주문건은 새로 첨부한 파일이 아니라 기존 주문의 이미지 번호(designNo)를 그대로 재사용합니다.
+        // photo1.html 같은 뷰어 페이지로 보내는 대신, 실제 이미지 파일(cafe24)로 바로 연결해서
+        // 버튼 클릭 한 번으로 다운로드/저장할 수 있게 합니다. (삭제 버튼 없음)
+        const jajooImgUrl = `https://sowonnamoo1005.cafe24.com/1/${encodeURIComponent(data.imgCode)}.jpg`;
+        attachHtml += `<div class="file-row">🖼️ <a href="${jajooImgUrl}" target="_blank" download="재주문_${data.imgCode}.jpg" class="small-btn" style="background:#2563eb; color:#fff; text-decoration:none; display:inline-block;">재주문 이미지 다운로드</a></div>`;
+      }
+      if (data.file1Url) {
+        attachHtml += `<div class="file-row">📎 <a href="${data.file1Url}" target="_blank">첨부파일1 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',1)">삭제</button></div>`;
+      }
+      if (data.file2Url) {
+        attachHtml += `<div class="file-row">📎 <a href="${data.file2Url}" target="_blank">첨부파일2 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',2)">삭제</button></div>`;
+      }
+      hanjoolItems.forEach((item, i) => {
+        const label = hanjoolItems.length > 1 ? `재첨부${i + 1}` : '재첨부';
+        attachHtml += `<div class="file-row">🔁 <a href="${item.fileUrl}" target="_blank">${label} 다운로드</a> <button class="small-btn" onclick="deleteHanjoolFile('${d.id}','${item.id}')">삭제</button></div>`;
+      });
+      // app2.js의 자동 재업로드 감지(checkImageRefreshAndCleanup)는 cafe24가
+      // Last-Modified/ETag 헤더를 CORS로 내려줄 때만 동작하고, 대부분의 정적 서버는
+      // 이 헤더를 막고 있어서 조용히 실패합니다. 그래서 여기 수동 버튼을 항상 노출해서
+      // 확실하게 처리할 수 있게 합니다. (수정요청/첨부파일이 있거나 fileLocked 상태일 때만)
+      if (col === "boards" && (hanjoolItems.length > 0 || data.fileLocked)) {
+        attachHtml += `<div class="file-row"><button class="small-btn" style="background:#f97316;" onclick="unlockFileUpload('${d.id}')">🔓 새 시안 등록함(수정요청 삭제)</button></div>`;
+      }
+      if (!attachHtml) attachHtml = '<span style="color:#94a3b8;">-</span>';
+
+      const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
+
+      rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
+        <td>${statusCellHtml}<br>${taxIconCell}</td>
+        <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
+        <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
+        <td>${attachHtml}</td>
+        <td>${date}</td>
+        <td>${authorCell}</td>
+        <td>${phone}</td>
+        <td>${address}</td>
+        <td>${trackingCell}</td>
+        <td>${cardCell}</td>
+        <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
+      </tr>`);
+    });
+
+    if (rows.length === 0) {
       resultEl.textContent = "표시할 주문이 없습니다.";
       return;
     }
 
-    const restCount = orderBaseItems.length - firstItems.length;
-    let html = `<div class="table-wrap"><table><thead>
-      <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>
-      </thead><tbody id="orders-body">${firstRows.join('')}</tbody>
-      <tbody id="orders-body-more" style="display:none"></tbody>
-      </table></div>`;
-    if (restCount > 0) {
-      html += `<button id="orders-toggle-btn" data-label="펼쳐보기 (${restCount}건 더보기)" onclick="toggleMoreOrders()" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">펼쳐보기 (${restCount}건 더보기)</button>`;
-    }
-    resultEl.innerHTML = html;
+    resultEl.innerHTML = buildExpandableTable(
+      "<tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>",
+      rows, "orders"
+    );
   } catch (e) {
     resultEl.innerHTML = `<span class="fail">⚠️ 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
   }
-}
-
-// 펼쳐보기 버튼: 처음 클릭했을 때만 나머지 항목들의 상세정보를 조회하고, 이후에는 접기/펼치기만 토글합니다.
-window.toggleMoreOrders = async () => {
-  const btn = document.getElementById('orders-toggle-btn');
-  const moreBody = document.getElementById('orders-body-more');
-  if (!btn || !moreBody) return;
-
-  if (!orderMoreLoaded) {
-    btn.disabled = true;
-    btn.textContent = '불러오는 중...';
-    try {
-      const restItems = orderBaseItems.slice(ORDERS_INITIAL_COUNT);
-      const restRows = await buildOrderRows(restItems);
-      moreBody.innerHTML = restRows.join('');
-      orderMoreLoaded = true;
-    } catch (e) {
-      btn.disabled = false;
-      btn.textContent = '펼쳐보기 (다시 시도)';
-      alert('추가 목록 조회 실패: ' + e.message);
-      return;
-    }
-  }
-
-  const isHidden = moreBody.style.display === 'none';
-  moreBody.style.display = isHidden ? 'table-row-group' : 'none';
-  btn.disabled = false;
-  btn.textContent = isHidden ? '접기' : btn.dataset.label;
-};
-
-// 주문 항목 배열(items)을 받아 private/adminOrders/hanjool 상세정보를 조회하고 <tr> HTML 배열을 만듭니다.
-// 이 함수가 호출되는 시점에만 개별 문서 조회가 발생하므로, 처음 5건 / 펼쳐보기 클릭 시 나머지 건에만 각각 호출됩니다.
-async function buildOrderRows(items) {
-  if (items.length === 0) return [];
-
-  // adminOrders는 일반 주문(boards)에만 존재하므로, 재주문(jjjj)건은 이 조회를 건너뜁니다.
-  const adminPrivates = await Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({})));
-  const rawPrivates = await Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col)));
-  // 각 주문의 재첨부(hanjool) 파일 목록도 함께 조회
-  // jjjj(재주문)에는 hanjool 서브컬렉션 보안규칙이 없어서(재주문건은 재첨부 기능 대상이 아님)
-  // 조회 시도 자체가 permission-denied를 일으킵니다. boards건만 조회합니다.
-  const hanjoolSnaps = await Promise.all(items.map(it =>
-    it.col === "boards" ? getDocs(collection(db, it.col, it.doc.id, "hanjool")) : Promise.resolve({ docs: [] })
-  ));
-  // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
-  // 예전엔 목록 로딩 시 전부 미리 조회해서 미발행 건을 상단 고정했지만,
-  // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
-
-  const rows = [];
-  items.forEach((it, idx) => {
-    const d = it.doc;
-    const col = it.col;
-    orderColMap[d.id] = col;
-    const adminPriv = adminPrivates[idx];
-    const data = d.data();
-    const rawPriv = rawPrivates[idx] || {};
-    const date = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('ko-KR') : '-';
-    const author = data.author || '-';
-    const status = data.status || '대기';
-
-    // 고객이 "배송지 수정하기"로 boards/{id}.phone/address를 직접 고쳤을 수 있으므로,
-    // 그 값이 있으면 최우선으로 쓰고, 없으면 adminOrders → boards/private 순으로 대체합니다.
-    let phone, address;
-    let rawAddressVal = '';
-    if (data.phone || data.address) {
-      phone = data.phone || '<span class="fail">(비어있음)</span>';
-      rawAddressVal = data.address || '';
-      address = rawAddressVal || '<span class="fail">(비어있음)</span>';
-    } else if (col === 'boards' && adminPriv._err) {
-      phone = `<span class="fail">⚠️ ${adminPriv._err}</span>`;
-      address = '-';
-    } else {
-      // 재주문(jjjj)건은 adminOrders가 없으므로 private 서브컬렉션(rawPriv)에서 바로 가져옵니다.
-      const fallback = col === 'boards' ? adminPriv : rawPriv;
-      phone = fallback.phone || '<span class="fail">(비어있음)</span>';
-      rawAddressVal = fallback.address || '';
-      address = rawAddressVal || '<span class="fail">(비어있음)</span>';
-    }
-
-    // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
-    if (!adminPriv._err && !rawAddressVal) return;
-
-    // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
-    const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
-    const sheetAddress = data.address || ((!adminPriv._err && adminPriv.address) ? adminPriv.address : (rawPriv.address || ''));
-    const sheetMessage = (!adminPriv._err && adminPriv.message) ? adminPriv.message : (rawPriv.message || '');
-    orderSheetDataMap[d.id] = {
-      author,
-      phone: sheetPhone,
-      address: sheetAddress,
-      message: sheetMessage,
-      productName: data.productName || '-',
-      size: data.size || '-',
-      quantity: data.quantity || '-',
-      price: data.price || '',
-      createdAtDate: data.createdAt?.toDate ? data.createdAt.toDate() : null
-    };
-
-    const authorEsc = author.replace(/'/g, "\\'");
-    const existingTracking = rawPriv.trackingUrl || '';
-    const trackingCell = existingTracking
-      ? `<span class="url-saved">✅ 등록됨</span><div class="url-row"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">수정</button></div>`
-      : `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
-
-    // 카드결제 상태일 때만 카드전표 URL 입력칸 표시
-    let cardCell = '-';
-    if (status === '카드결제') {
-      cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
-    }
-
-    // 세금계산서 확인/발행상태 버튼 - "🧾 확인" 클릭 시에만 segum1을 조회합니다 (checkTaxMatch).
-    rawPrivDataMap[d.id] = rawPriv;
-    const taxIconCell = `<span id="tax-cell-${d.id}"><button onclick="checkTaxMatch('${d.id}')" style="padding:3px 6px; font-size:11px; background:#64748b; color:white; border:none; border-radius:4px; cursor:pointer;">🧾 확인</button></span>`;
-
-    const authorCell = `<span class="author">${it.isJajoo ? '📦 재주문 ' : ''}${author}</span>`;
-
-    // 원본 첨부파일(접수 시 boards.file1Url/file2Url) + 재첨부 파일(hanjool) 목록으로 다운로드/삭제 버튼 구성
-    attachedFileMap[d.id] = { file1Url: data.file1Url || '', file2Url: data.file2Url || '' };
-    const hanjoolItems = hanjoolSnaps[idx].docs.map(hd => ({ id: hd.id, fileUrl: hd.data().fileUrl || '' })).filter(it => it.fileUrl);
-    hanjoolMap[d.id] = hanjoolItems;
-
-    let attachHtml = '';
-    if (it.isJajoo && data.imgCode) {
-      // 재주문건은 새로 첨부한 파일이 아니라 기존 주문의 이미지 번호(designNo)를 그대로 재사용합니다.
-      // photo1.html 같은 뷰어 페이지로 보내는 대신, 실제 이미지 파일(cafe24)로 바로 연결해서
-      // 버튼 클릭 한 번으로 다운로드/저장할 수 있게 합니다. (삭제 버튼 없음)
-      const jajooImgUrl = `https://sowonnamoo1005.cafe24.com/1/${encodeURIComponent(data.imgCode)}.jpg`;
-      attachHtml += `<div class="file-row">🖼️ <a href="${jajooImgUrl}" target="_blank" download="재주문_${data.imgCode}.jpg" class="small-btn" style="background:#2563eb; color:#fff; text-decoration:none; display:inline-block;">재주문 이미지 다운로드</a></div>`;
-    }
-    if (data.file1Url) {
-      attachHtml += `<div class="file-row">📎 <a href="${data.file1Url}" target="_blank">첨부파일1 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',1)">삭제</button></div>`;
-    }
-    if (data.file2Url) {
-      attachHtml += `<div class="file-row">📎 <a href="${data.file2Url}" target="_blank">첨부파일2 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',2)">삭제</button></div>`;
-    }
-    hanjoolItems.forEach((item, i) => {
-      const label = hanjoolItems.length > 1 ? `재첨부${i + 1}` : '재첨부';
-      attachHtml += `<div class="file-row">🔁 <a href="${item.fileUrl}" target="_blank">${label} 다운로드</a> <button class="small-btn" onclick="deleteHanjoolFile('${d.id}','${item.id}')">삭제</button></div>`;
-    });
-    // app2.js의 자동 재업로드 감지(checkImageRefreshAndCleanup)는 cafe24가
-    // Last-Modified/ETag 헤더를 CORS로 내려줄 때만 동작하고, 대부분의 정적 서버는
-    // 이 헤더를 막고 있어서 조용히 실패합니다. 그래서 여기 수동 버튼을 항상 노출해서
-    // 확실하게 처리할 수 있게 합니다. (수정요청/첨부파일이 있거나 fileLocked 상태일 때만)
-    if (col === "boards" && (hanjoolItems.length > 0 || data.fileLocked)) {
-      attachHtml += `<div class="file-row"><button class="small-btn" style="background:#f97316;" onclick="unlockFileUpload('${d.id}')">🔓 새 시안 등록함(수정요청 삭제)</button></div>`;
-    }
-    if (!attachHtml) attachHtml = '<span style="color:#94a3b8;">-</span>';
-
-    const statusCellHtml = `<span style="color:${statusColor(status)}; font-weight:700;">${status}</span>`;
-
-    rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
-      <td>${statusCellHtml}<br>${taxIconCell}</td>
-      <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
-      <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
-      <td>${attachHtml}</td>
-      <td>${date}</td>
-      <td>${authorCell}</td>
-      <td>${phone}</td>
-      <td>${address}</td>
-      <td>${trackingCell}</td>
-      <td>${cardCell}</td>
-      <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
-    </tr>`);
-  });
-
-  return rows;
 }
 </script>
 </body>
