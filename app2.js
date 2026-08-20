@@ -284,7 +284,9 @@ function renderTable(dataToRender = allOrders) {
         }
 
         let author = data.author || "고객님";
-        if (author.length > 1) {
+        if (author.length > 2) {
+            author = author.substring(0, 2) + "*".repeat(author.length - 2);
+        } else if (author.length > 1) {
             author = author.substring(0, author.length - 1) + "*";
         }
 
