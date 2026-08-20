@@ -218,7 +218,7 @@ window.downloadOrderSheet = (boardId) => {
   a.href = url;
 
   const dateCode = o.createdAtDate
-    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
+    ? `${String(o.createdAtDate.getFullYear()).slice(-2)}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
     : 'unknown';
   const phoneDigits = String(o.phone || '').replace(/[^0-9]/g, '').slice(0, 7);
   a.download = `${phoneDigits}${dateCode}.txt`;
