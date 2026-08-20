@@ -670,9 +670,6 @@ async function loadRecentOrders() {
       const col = it.col;
       orderColMap[d.id] = col;
       const adminPriv = adminPrivates[idx];
-      // adminOrders 문서 자체가 없는 주문은 목록에서 아예 제외 (일반 주문에만 해당, 재주문은 제외 검사 안 함)
-      if (col === "boards" && adminPriv._err === "adminOrders 문서 없음") return;
-
       const data = d.data();
       const rawPriv = rawPrivates[idx] || {};
       const date = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('ko-KR') : '-';
@@ -697,9 +694,6 @@ async function loadRecentOrders() {
         rawAddressVal = fallback.address || '';
         address = rawAddressVal || '<span class="fail">(비어있음)</span>';
       }
-
-      // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
-      if (!adminPriv._err && !rawAddressVal) return;
 
       // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
       const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
