@@ -756,11 +756,11 @@ function renderTable() {
             const d = data.createdAt.toDate();
             const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             
-            // 작성자 이름 끝자리 블라인드 처리 로직 (예전엔 3일 지난 글만 가렸는데,
-            // 신규로 작성되는 글도 처음부터 똑같이 가려지도록 통일함)
+            // 작성자 이름 블라인드 처리 로직 (이름 길이와 상관없이 앞 두 글자만 노출,
+            // 나머지는 전부 가림 — 3글자 이상 이름을 일부러 적어도 두 글자까지만 보이게 함)
             let author = data.author || "김준혁";
-            if (author.length > 1) {
-                author = author.substring(0, author.length - 1) + "*(정보보호)";
+            if (author.length > 2) {
+                author = author.substring(0, 2) + "*(정보보호)";
             }
 
             const diffInHours = (now - d) / (1000 * 60 * 60);
