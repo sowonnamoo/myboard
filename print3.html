@@ -100,7 +100,27 @@
             tbody.innerHTML += `<tr class="h-10"><td></td><td></td><td></td><td></td><td></td></tr>`;
         }
 
-        window.onload = () => { setTimeout(window.print, 500); };
+        // 내용(특히 '규격' 칸처럼 텍스트가 길어지는 항목)이 많아지면 박스(195mm) 높이를 넘어서
+        // 2페이지로 밀려나던 문제 해결: 인쇄 직전에 실제 필요한 높이를 재서,
+        // 넘치는 만큼 비율대로 축소(scale)해 항상 한 페이지 안에 들어오게 만듭니다.
+        function fitReceiptToOnePage() {
+            const box = document.querySelector('.receipt-box');
+            box.style.transform = 'none';
+            box.style.transformOrigin = 'top left';
+            const targetHeight = box.clientHeight;  // CSS로 고정된 195mm 영역의 실제 픽셀 높이
+            const actualHeight = box.scrollHeight;  // 내용이 실제로 필요로 하는 높이(넘치면 더 큼)
+            if (actualHeight > targetHeight) {
+                const scale = targetHeight / actualHeight;
+                box.style.transform = `scale(${scale})`;
+            }
+        }
+
+        window.onload = () => {
+            setTimeout(() => {
+                fitReceiptToOnePage();
+                window.print();
+            }, 500);
+        };
     </script>
 </body>
 </html>
