@@ -71,19 +71,17 @@
 
             <div id="info-and-actions" class="flex justify-between items-center mt-4 px-2">
                 <div id="image-code" class="text-xs font-bold text-gray-600"></div>
-               <div class="flex gap-2">
+            </div>
 
-
-
-                   
-    <div class="relative inline-block group">
-        <button id="approve-btn" class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
-        <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap bg-gray-800 text-white text-xs rounded px-3 py-2 shadow-lg z-50">
-            <span id="approve-tooltip-text">이 버튼을 클릭해야 인쇄가 시작됩니다.</span>
-            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-        </div>
-    </div>
-</div>
+            <div class="flex justify-center items-center gap-3 mt-4">
+                <div class="relative inline-block group">
+                    <button id="approve-btn" class="bg-blue-500 text-white px-9 py-3 rounded font-bold hover:bg-blue-600 text-2xl">인쇄승인</button>
+                    <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap bg-gray-800 text-white text-xs rounded px-3 py-2 shadow-lg z-50">
+                        <span id="approve-tooltip-text">이 버튼을 클릭해야 인쇄가 시작됩니다.</span>
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                    </div>
+                </div>
+                <button id="reprint-btn" class="hidden bg-emerald-600 text-white px-9 py-3 rounded font-bold hover:bg-emerald-700 text-2xl">재인쇄</button>
             </div>
 
 
@@ -103,9 +101,9 @@
     <div id="file-download-area" class="mb-2"></div>
     <div class="flex gap-2">
         <input type="text" id="memo-input" class="flex-grow border p-2 rounded text-sm" placeholder="수정내용을 입력하세요">
-        <button id="file-replace-btn" class="bg-orange-500 text-white px-4 py-2 text-sm rounded hover:bg-orange-600 whitespace-nowrap">📎 파일교체</button>
-        <button id="save-memo-btn" class="bg-gray-600 text-white px-6 py-2 text-sm rounded hover:bg-gray-700">등록</button>
-        <button id="delete-memo-btn" class="bg-red-500 text-white px-6 py-2 text-sm rounded hover:bg-red-600">삭제</button>
+        <button id="file-replace-btn" class="bg-gray-400 text-white px-2 py-1 text-xs rounded hover:bg-gray-500 whitespace-nowrap">파일교체</button>
+        <button id="save-memo-btn" class="bg-gray-600 text-white px-3 py-1 text-xs rounded hover:bg-gray-700">등록</button>
+        <button id="delete-memo-btn" class="bg-red-500 text-white px-3 py-1 text-xs rounded hover:bg-red-600">삭제</button>
     </div>
     <input type="file" id="revision-file-input" class="hidden">
 </div>
