@@ -152,7 +152,11 @@
     <span id="anchor-text">주문서 접수</span>완료" 이제 "결제" 를 완료해주세요.
 </div>
 
-<div class="flex gap-3">
+<!-- 주문상태가 바뀌면(대기→카드결제/무통장 등) app.js의 syncStatusOverlay가 상단에 안내 도장 이미지(img-1/2/3)를
+     absolute + z-index:9999로 겹쳐 그리는데, 이 4개 버튼 영역이 그보다 낮은 스택 순서에 있으면 이미지에 가려
+     "사라진 것처럼" 보였습니다. 아래 position:relative + z-index를 오버레이보다 높게 고정해서,
+     주문상태가 무엇으로 바뀌든 이 4개 버튼은 항상 그 자리에 그대로 보이고 클릭 가능하게 만듭니다. -->
+<div id="top-action-buttons" class="flex gap-3" style="position: relative; z-index: 10000;">
 <a href="https://sowonnamoo.github.io/myboard/index2" id="sian-view-link" class="flex-1">
     <button class="w-full py-3 bg-gray-300 text-white font-bold rounded text-sm">시안보기</button>
 </a>    <button id="add-cart-btn" class="flex-1 py-3 bg-gray-300 text-white font-bold rounded text-sm">장바구니담기</button>
