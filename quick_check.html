@@ -35,6 +35,13 @@
   #ip-modal-block-btn.blocked { background:#f8fafc; color:#dc2626; border:1px solid #fca5a5; }
   #ip-modal-status.blocked { color:#dc2626; font-weight:bold; }
   #ip-modal-status.ok { color:#64748b; }
+  .done-btn { padding:6px 10px; font-size:12px; background:#166534; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+  .edit-toggle-btn { padding:4px 8px; font-size:11px; background:#94a3b8; color:#fff; border:none; border-radius:6px; cursor:pointer; margin-left:4px; }
+  #url-image-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:999; }
+  #url-image-modal-box { background:#fff; border-radius:10px; padding:16px; width:100%; max-width:520px; max-height:85vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.2); }
+  #url-image-modal-box img { display:block; width:100%; height:auto; border-radius:6px; border:1px solid #e2e8f0; }
+  #url-image-modal-box .close-btn { width:100%; background:#fff; color:#334155; border:1px solid #cbd5e1; padding:8px; font-size:13px; margin-top:10px; }
+  #url-image-modal-box .open-link { display:block; text-align:center; font-size:12px; margin-top:8px; color:#2563eb; }
 </style>
 </head>
 <body>
@@ -79,6 +86,15 @@
     <p id="ip-modal-status" style="font-size:12px; text-align:center; margin:0 0 8px; display:none;"></p>
     <button id="ip-modal-block-btn" onclick="toggleBlockIp()">🚫 이 IP 차단하기</button>
     <button class="close-btn" onclick="closeIpModal()">닫기</button>
+  </div>
+</div>
+
+<div id="url-image-modal-overlay">
+  <div id="url-image-modal-box">
+    <p id="url-image-modal-title" style="font-size:13px; font-weight:bold; color:#334155; margin:0 0 8px;"></p>
+    <img id="url-image-modal-img" src="" alt="등록된 이미지">
+    <a id="url-image-modal-link" class="open-link" href="#" target="_blank">🔗 새 창에서 원본 열기</a>
+    <button class="close-btn" onclick="closeUrlImageModal()">닫기</button>
   </div>
 </div>
 
@@ -159,6 +175,8 @@ let orderSheetDataMap = {};
 let attachedFileMap = {};
 // boardId -> 고객이 재첨부한 파일 목록 [{id, fileUrl}] (boards/{boardId}/hanjool/*)
 let hanjoolMap = {};
+// "boardId_track" / "boardId_card" -> 등록된 운송장/카드전표 URL (등록완료 버튼 클릭 시 이미지 모달에 쓰임)
+let urlImageMap = {};
 
 // 상태값별 표시 색상
 function statusColor(status) {
@@ -345,6 +363,33 @@ window.copyIpValue = async () => {
 };
 window.closeIpModal = () => {
   document.getElementById('ip-modal-overlay').style.display = 'none';
+};
+
+// ============= 운송장/카드전표 등록완료 버튼 -> 이미지 모달 =============
+// 등록된 URL이 이미지가 아닐 수도 있으므로(예: PDF), 이미지 로딩 실패 시 링크로만 열도록 안내합니다.
+window.showUrlImageModal = (boardId, type) => {
+  const url = urlImageMap[boardId + '_' + type];
+  if (!url) return alert('등록된 URL을 찾을 수 없습니다.');
+  const title = type === 'track' ? '🚚 운송장' : '💳 카드전표';
+  document.getElementById('url-image-modal-title').textContent = title;
+  const img = document.getElementById('url-image-modal-img');
+  img.onerror = () => { img.style.display = 'none'; };
+  img.onload = () => { img.style.display = 'block'; };
+  img.style.display = 'block';
+  img.src = url;
+  document.getElementById('url-image-modal-link').href = url;
+  document.getElementById('url-image-modal-overlay').style.display = 'flex';
+};
+window.closeUrlImageModal = () => {
+  document.getElementById('url-image-modal-overlay').style.display = 'none';
+  document.getElementById('url-image-modal-img').src = '';
+};
+
+// "수정" 버튼으로 등록완료 버튼 아래 URL 입력칸을 펼치고/접습니다.
+window.toggleUrlEdit = (boardId, type) => {
+  const row = document.getElementById(type + '-edit-' + boardId);
+  if (!row) return;
+  row.style.display = (row.style.display === 'none' || !row.style.display) ? 'flex' : 'none';
 };
 
 // 세금계산서 발행 여부는 (운송장URL과 동일하게) 이 주문의 private 문서에 저장 - 관리자만 수정 가능
@@ -735,6 +780,11 @@ async function buildOrderRows(items) {
   // 예전엔 목록 로딩 시 전부 미리 조회해서 미발행 건을 상단 고정했지만,
   // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
 
+  // 카드전표(cardjun1) 등록 여부 - 카드결제 상태인 건만 조회합니다.
+  const cardSnaps = await Promise.all(items.map(it =>
+    it.doc.data().status === '카드결제' ? getDoc(doc(db, "cardjun1", it.doc.id)) : Promise.resolve(null)
+  ));
+
   const rows = [];
   items.forEach((it, idx) => {
     const d = it.doc;
@@ -786,15 +836,31 @@ async function buildOrderRows(items) {
     };
 
     const authorEsc = author.replace(/'/g, "\\'");
-    const existingTracking = rawPriv.trackingUrl || '';
-    const trackingCell = existingTracking
-      ? `<span class="url-saved">✅ 등록됨</span><div class="url-row"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">수정</button></div>`
-      : `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
 
-    // 카드결제 상태일 때만 카드전표 URL 입력칸 표시
+    // 운송장 URL - 등록되어 있으면 "등록완료" 버튼으로 표시하고, 클릭 시 이미지 모달을 띄웁니다.
+    // "수정" 버튼을 누르면 그 아래에 URL 입력칸이 펼쳐집니다.
+    const existingTracking = rawPriv.trackingUrl || '';
+    let trackingCell;
+    if (existingTracking) {
+      urlImageMap[d.id + '_track'] = existingTracking;
+      trackingCell = `<button class="done-btn" onclick="showUrlImageModal('${d.id}','track')">✅ 등록완료</button><button class="edit-toggle-btn" onclick="toggleUrlEdit('${d.id}','track')">수정</button>
+        <div id="track-edit-${d.id}" class="url-row" style="display:none; margin-top:4px;"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
+    } else {
+      trackingCell = `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
+    }
+
+    // 카드결제 상태일 때만 카드전표 URL 칸 표시. 이미 등록된 경우엔 "등록완료" 버튼 + 이미지 모달로 확인합니다.
     let cardCell = '-';
     if (status === '카드결제') {
-      cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
+      const cardSnap = cardSnaps[idx];
+      const existingCard = (cardSnap && cardSnap.exists()) ? (cardSnap.data().fileUrl || '') : '';
+      if (existingCard) {
+        urlImageMap[d.id + '_card'] = existingCard;
+        cardCell = `<button class="done-btn" onclick="showUrlImageModal('${d.id}','card')">✅ 등록완료</button><button class="edit-toggle-btn" onclick="toggleUrlEdit('${d.id}','card')">수정</button>
+          <div id="card-edit-${d.id}" class="url-row" style="display:none; margin-top:4px;"><input id="card-${d.id}" value="${existingCard.replace(/"/g,'&quot;')}"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
+      } else {
+        cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
+      }
     }
 
     // 세금계산서 확인/발행상태 버튼 - "🧾 확인" 클릭 시에만 segum1을 조회합니다 (checkTaxMatch).
