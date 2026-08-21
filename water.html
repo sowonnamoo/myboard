@@ -30,12 +30,21 @@
             background-size: 200px; opacity: 0.3; z-index: 10;
         }
 
-        #zoom-btn {
+        #zoom-controls {
             position: fixed; bottom: 20px; right: 20px;
+            display: flex; flex-direction: column; gap: 10px;
+            z-index: 100;
+        }
+
+        .zoom-btn {
             width: 60px; height: 60px; background: #333; color: white;
             border-radius: 50%; border: none; font-size: 24px; cursor: pointer;
-            z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             display: flex; align-items: center; justify-content: center;
+        }
+
+        .zoom-btn:disabled {
+            background: #999; cursor: default;
         }
     </style>
 </head>
@@ -46,23 +55,46 @@
         <div class="watermark-overlay"></div>
     </div>
 
-    <button id="zoom-btn">🔍</button>
+    <div id="zoom-controls">
+        <button id="zoom-in-btn" class="zoom-btn">🔍+</button>
+        <button id="zoom-out-btn" class="zoom-btn">🔍−</button>
+    </div>
 
     <script>
         const params = new URLSearchParams(window.location.search);
         document.getElementById('main-img').src = params.get('url');
 
-        let isZoomed200 = false;
         const container = document.getElementById('container');
-        const btn = document.getElementById('zoom-btn');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
 
-        container.style.transform = 'scale(1.5)';
+        // 확대 배율 단계. 기존엔 1.5(기본)/2.0(버튼 클릭 시 최대)만 있었는데,
+        // 이제 처음부터 기존 최대 배율(2.0)로 보여주고, 그보다 더 확대할 수 있는
+        // 단계(2.5 / 3.0)를 추가로 열어둡니다.
+        const zoomLevels = [1.5, 2.0, 2.5, 3.0];
+        let zoomIndex = 1; // 1 = 2.0배, 처음 화면부터 기존 최대 배율로 시작
 
-        btn.onclick = () => {
-            isZoomed200 = !isZoomed200;
-            container.style.transform = isZoomed200 ? 'scale(2.0)' : 'scale(1.5)';
-            btn.innerText = isZoomed200 ? '➖' : '🔍';
+        function applyZoom() {
+            container.style.transform = `scale(${zoomLevels[zoomIndex]})`;
+            zoomOutBtn.disabled = zoomIndex === 0;
+            zoomInBtn.disabled = zoomIndex === zoomLevels.length - 1;
+        }
+
+        zoomInBtn.onclick = () => {
+            if (zoomIndex < zoomLevels.length - 1) {
+                zoomIndex++;
+                applyZoom();
+            }
         };
+
+        zoomOutBtn.onclick = () => {
+            if (zoomIndex > 0) {
+                zoomIndex--;
+                applyZoom();
+            }
+        };
+
+        applyZoom();
     </script>
 </body>
 </html>
