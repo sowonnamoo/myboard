@@ -519,7 +519,10 @@ const dImage = document.getElementById("detail-image");
 
             
             if (dTitle) {
-    const priceVal = data.price ? `${data.price.toLocaleString()}원` : "가격 미정";
+    // data.price가 "10000" 또는 이미 "10000원"처럼 '원'이 붙은 형태로 저장된 경우가 섞여 있어서,
+    // 항상 숫자만 뽑아낸 뒤 '원'을 한 번만 붙이도록 정규화합니다. (안 그러면 "10,000원원"처럼 중복 표시됨)
+    const priceDigits = data.price ? Number(String(data.price).replace(/[^0-9]/g, '')) || 0 : 0;
+    const priceVal = data.price ? `${priceDigits.toLocaleString()}원` : "가격 미정";
     dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size}) ${priceVal}`;
 }
             if (dImage) {
@@ -871,7 +874,9 @@ async function autoViewDetail(id, secretId) {
     // 제목 표시
     const dTitle = document.getElementById("detail-title");
     if (dTitle) {
-        const priceVal = data.price ? `${data.price.toLocaleString()}원` : "가격 미정";
+        // 위와 동일하게 숫자만 뽑아 '원' 중복 표시를 방지합니다.
+        const priceDigits = data.price ? Number(String(data.price).replace(/[^0-9]/g, '')) || 0 : 0;
+        const priceVal = data.price ? `${priceDigits.toLocaleString()}원` : "가격 미정";
         dTitle.innerText = `${data.author}님 (${data.productName}/${data.quantity}/${data.size}) ${priceVal}`;
     }
 
