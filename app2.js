@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, addDoc, limit, deleteDoc, updateDoc, startAfter, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, getDoc, onSnapshot, query, orderBy, addDoc, limit, deleteDoc, updateDoc, startAfter, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -168,6 +168,20 @@ async function checkImageRefreshAndCleanup(boardId, imgUrl) {
 let allOrders = [];
 let currentPage = 1;
 let currentViewId = ""; 
+// 다른 컴퓨터/탭에서 인쇄승인(조판완료) 처리를 해도 이 화면에 실시간으로 반영되도록
+// boards 문서를 구독합니다. 상세화면을 열 때마다 이전 구독은 해제하고 새로 구독합니다.
+let unsubscribeBoardStatus = null;
+function watchBoardStatus(boardId) {
+    if (unsubscribeBoardStatus) {
+        unsubscribeBoardStatus();
+        unsubscribeBoardStatus = null;
+    }
+    unsubscribeBoardStatus = onSnapshot(doc(db, "boards", boardId), (snap) => {
+        if (!snap.exists()) return;
+        // 다른 곳에서 상태가 바뀐 경우에만 반영 (내가 방금 처리한 직후의 중복 호출은 checkMemoAndSetButton이 알아서 처리)
+        checkMemoAndSetButton(boardId, snap.data().sian);
+    });
+}
 let lastVisible = null;
 let hasMoreOrders = true; // Firestore에 더 가져올 문서가 남아있는지 여부
 const POSTS_PER_PAGE = 6;
@@ -343,6 +357,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
     const approveBtn = document.getElementById("approve-btn");
+    const approveTooltip = document.getElementById("approve-tooltip-text");
     const memoInput = document.getElementById("memo-input"); // 입력창
     const saveBtn = document.getElementById("save-memo-btn"); // 등록버튼
     const deleteBtn = document.getElementById("delete-memo-btn"); // 삭제버튼
@@ -423,14 +438,17 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         approveBtn.innerText = "조판완료";
         approveBtn.className = "bg-red-600 text-white px-6 py-2 rounded font-bold cursor-default";
         approveBtn.onclick = null;
+        if (approveTooltip) approveTooltip.innerText = "인쇄가 시작되었습니다. 더 이상 누르지 않으셔도 됩니다.";
     } else if (hasMemo) {
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
         approveBtn.onclick = () => alert("수정내용이 작성된 상태에서는 인쇄승인이 불가능합니다. (삭제버튼 클릭) 수정내용을 삭제해주세요.");
+        if (approveTooltip) approveTooltip.innerText = "이 버튼을 클릭해야 인쇄가 시작됩니다.";
     } else {
         // 클릭 가능한(활성) 상태일 때만 계속 깜빡이도록 approve-blink 클래스를 붙입니다.
         approveBtn.innerText = "인쇄승인";
         approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 approve-blink";
+        if (approveTooltip) approveTooltip.innerText = "이 버튼을 클릭해야 인쇄가 시작됩니다.";
         approveBtn.onclick = async () => {
             // [핵심] 시안 이미지 로드 상태 체크
             const loadingMsg = document.getElementById('loading-msg');
@@ -510,6 +528,7 @@ window.viewDetail = async function(id) {
             
             // 1. 메모 및 버튼 제어 먼저 수행
 await checkMemoAndSetButton(id, data.sian);
+            watchBoardStatus(id); // 이후 다른 컴퓨터/탭에서 조판완료 처리되면 실시간으로 버튼에 반영
             
             // 2. 제목 및 이미지 로드 수행 (여기에 있어야 꼬이지 않음)
           const dTitle = document.getElementById("detail-title");
@@ -874,6 +893,7 @@ async function autoViewDetail(id, secretId) {
 
     // 메모 및 버튼 상태 설정
     await checkMemoAndSetButton(id, data.sian);
+    watchBoardStatus(id); // 이후 다른 컴퓨터/탭에서 조판완료 처리되면 실시간으로 버튼에 반영
 
     // 제목 표시
     const dTitle = document.getElementById("detail-title");
