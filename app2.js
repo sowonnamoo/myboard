@@ -363,7 +363,6 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const deleteBtn = document.getElementById("delete-memo-btn"); // 삭제버튼
     const fileBtn = document.getElementById("file-replace-btn"); // 파일교체 버튼
     const fileDownloadArea = document.getElementById("file-download-area");
-    const reprintBtn = document.getElementById("reprint-btn"); // 조판완료 후 옆에 나란히 뜨는 재인쇄 버튼
     
     // 조판 완료 상태 여부 확인
     const isDone = (sianStatus === "done");
@@ -440,19 +439,16 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         approveBtn.className = "bg-red-600 text-white px-9 py-3 rounded font-bold cursor-default text-2xl";
         approveBtn.onclick = null;
         if (approveTooltip) approveTooltip.innerText = "인쇄가 시작되었습니다. 더 이상 누르지 않으셔도 됩니다.";
-        if (reprintBtn) reprintBtn.classList.remove("hidden");
     } else if (hasMemo) {
         approveBtn.innerText = "인쇄승인(클릭)";
         approveBtn.className = "bg-gray-400 text-white px-9 py-3 rounded font-bold cursor-not-allowed text-2xl";
         approveBtn.onclick = () => alert("수정내용이 작성된 상태에서는 인쇄승인이 불가능합니다. (삭제버튼 클릭) 수정내용을 삭제해주세요.");
         if (approveTooltip) approveTooltip.innerText = "이 버튼을 클릭해야 인쇄가 시작됩니다.";
-        if (reprintBtn) reprintBtn.classList.add("hidden");
     } else {
         // 클릭 가능한(활성) 상태일 때만 계속 깜빡이도록 approve-blink 클래스를 붙입니다.
         approveBtn.innerText = "인쇄승인(클릭)";
         approveBtn.className = "bg-blue-600 text-white px-9 py-3 rounded font-bold hover:bg-blue-700 text-2xl approve-blink";
         if (approveTooltip) approveTooltip.innerText = "이 버튼을 클릭해야 인쇄가 시작됩니다.";
-        if (reprintBtn) reprintBtn.classList.add("hidden");
         approveBtn.onclick = async () => {
             // [핵심] 시안 이미지 로드 상태 체크
             const loadingMsg = document.getElementById('loading-msg');
@@ -613,12 +609,6 @@ async function deleteAllHanjool(boardId) {
     const snap = await getDocs(q);
     await Promise.allSettled(snap.docs.map(d => deleteDoc(d.ref)));
 }
-
-// [임시] 재인쇄 버튼 - 실제로 눌렀을 때 어떤 처리를 할지 아직 정해지지 않아서
-// 우선 안내만 띄워둡니다. (예: 상태를 되돌려 재승인 가능하게? 관리자에게 재인쇄 요청만 기록?)
-document.getElementById("reprint-btn").addEventListener("click", () => {
-    alert("재인쇄 기능은 아직 준비 중입니다.");
-});
 
 document.getElementById("save-memo-btn").addEventListener("click", async () => {
     if (!currentViewId) return alert("게시글을 먼저 선택해주세요.");
@@ -807,7 +797,7 @@ setInterval(() => {
         if (!document.getElementById('reorder-btn')) {
             const reorderBtn = document.createElement('button');
             reorderBtn.id = 'reorder-btn';
-            reorderBtn.className = 'bg-green-500 text-white px-6 py-2 rounded font-bold hover:bg-green-600';
+            reorderBtn.className = 'bg-green-500 text-white px-9 py-3 rounded font-bold hover:bg-green-600 text-2xl';
             reorderBtn.innerText = '재구입';
             
             reorderBtn.onclick = () => {
