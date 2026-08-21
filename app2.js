@@ -442,14 +442,14 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         if (approveTooltip) approveTooltip.innerText = "인쇄가 시작되었습니다. 더 이상 누르지 않으셔도 됩니다.";
         if (reprintBtn) reprintBtn.classList.remove("hidden");
     } else if (hasMemo) {
-        approveBtn.innerText = "인쇄승인";
+        approveBtn.innerText = "인쇄승인(클릭)";
         approveBtn.className = "bg-gray-400 text-white px-9 py-3 rounded font-bold cursor-not-allowed text-2xl";
         approveBtn.onclick = () => alert("수정내용이 작성된 상태에서는 인쇄승인이 불가능합니다. (삭제버튼 클릭) 수정내용을 삭제해주세요.");
         if (approveTooltip) approveTooltip.innerText = "이 버튼을 클릭해야 인쇄가 시작됩니다.";
         if (reprintBtn) reprintBtn.classList.add("hidden");
     } else {
         // 클릭 가능한(활성) 상태일 때만 계속 깜빡이도록 approve-blink 클래스를 붙입니다.
-        approveBtn.innerText = "인쇄승인";
+        approveBtn.innerText = "인쇄승인(클릭)";
         approveBtn.className = "bg-blue-600 text-white px-9 py-3 rounded font-bold hover:bg-blue-700 text-2xl approve-blink";
         if (approveTooltip) approveTooltip.innerText = "이 버튼을 클릭해야 인쇄가 시작됩니다.";
         if (reprintBtn) reprintBtn.classList.add("hidden");
