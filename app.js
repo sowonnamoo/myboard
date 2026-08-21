@@ -919,20 +919,9 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         if (errorNotice) errorNotice.classList.add('hidden');
     }
 
-    // 장바구니(01my.html 쿼리 등)로 자동 입력되어 저장된 주문이면 "장바구니담기" 버튼을 숨기고 클릭도 막습니다.
-    // 작성자가 제품명/수량/사이즈를 직접 입력해서 작성한 주문일 때만 이 버튼이 보이고 클릭됩니다.
-    const addCartBtn = document.getElementById("add-cart-btn");
-    if (addCartBtn) {
-        if (data.fromCart) {
-            addCartBtn.classList.add("hidden");
-            addCartBtn.disabled = true;
-            addCartBtn.style.pointerEvents = "none";
-        } else {
-            addCartBtn.classList.remove("hidden");
-            addCartBtn.disabled = false;
-            addCartBtn.style.pointerEvents = "";
-        }
-    }
+    // [수정됨] "장바구니담기" 버튼은 주문상태(대기/카드결제/무통장 등)나 fromCart 여부와 무관하게
+    // 항상 4개 버튼(시안보기/장바구니담기/무통장결제/카드결제) 그대로 보이고 자리도 유지합니다.
+    // (이전에는 data.fromCart가 true면 이 버튼을 숨겨서 버튼이 4개→3개로 줄어드는 문제가 있었습니다)
     
     // 배송지 수정하기 기능은 개인정보(전화번호/주소) 보호를 위해 제거되었습니다.
     // 주소 변경이 필요한 경우 관리자에게 별도로 요청해야 합니다.
