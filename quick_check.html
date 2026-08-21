@@ -132,6 +132,12 @@ function normalizePhoneFull(phone) { return String(phone || "").replace(/[^0-9]/
 async function computeSegumId(name, phone) {
   return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
 }
+// 시안 확인 페이지(index2/app2.js)의 computeSecretId와 완전히 동일한 방식이어야
+// 같은 주문이면 같은 secretId가 나와서 비밀번호 입력 없이 바로 열립니다.
+function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
+async function computeSecretId(boardId, author, phone) {
+  return sha256Hex(`${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`);
+}
 async function fetchSegumMatch(author, phone) {
   try {
     const segumId = await computeSegumId(author, phone);
@@ -211,6 +217,19 @@ window.downloadOrderSheet = (boardId) => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+// 관리자용: 해당 주문자의 시안 확인 페이지(index2)를 이름/전화번호 입력 없이 새창으로 바로 엽니다.
+// index2/app2.js가 이미 지원하는 autoId+key(secretId) 방식을 그대로 재사용합니다.
+window.viewSianDirect = async (boardId, author, phone) => {
+  if (!phone) { alert('전화번호 정보가 없어 시안을 열 수 없습니다.'); return; }
+  try {
+    const secretId = await computeSecretId(boardId, author, phone);
+    const url = `https://sowonnamoo.github.io/myboard/index2?autoId=${encodeURIComponent(boardId)}&key=${encodeURIComponent(secretId)}`;
+    window.open(url, '_blank', 'width=744,height=900,scrollbars=yes');
+  } catch (e) {
+    alert('시안 페이지를 여는 중 오류가 발생했습니다: ' + e.message);
+  }
+};
+
 window.showTaxInfo = (boardId) => {
   const t = taxDataMap[boardId];
   if (!t) return;
@@ -782,7 +801,13 @@ async function buildOrderRows(items) {
     rawPrivDataMap[d.id] = rawPriv;
     const taxIconCell = `<span id="tax-cell-${d.id}"><button onclick="checkTaxMatch('${d.id}')" style="padding:3px 6px; font-size:11px; background:#64748b; color:white; border:none; border-radius:4px; cursor:pointer;">🧾 확인</button></span>`;
 
-    const authorCell = `<span class="author">${it.isJajoo ? '📦 재주문 ' : ''}${author}</span>`;
+    // 재주문(jjjj)건은 boards/{id}/private 문서가 존재하지 않아 secretId 검증이 불가능하므로
+    // "시안보기" 버튼은 일반 주문(boards)건에만 표시합니다.
+    const phoneEsc = (sheetPhone || '').replace(/'/g, "\\'");
+    const sianBtn = col === 'boards'
+      ? `<button onclick="viewSianDirect('${d.id}','${authorEsc}','${phoneEsc}')" style="margin-top:4px; padding:3px 8px; font-size:11px; background:#7c3aed; color:white; border:none; border-radius:4px; cursor:pointer; white-space:nowrap;">🖼️ 시안보기</button>`
+      : '';
+    const authorCell = `<span class="author">${it.isJajoo ? '📦 재주문 ' : ''}${author}</span><br>${sianBtn}`;
 
     // 원본 첨부파일(접수 시 boards.file1Url/file2Url) + 재첨부 파일(hanjool) 목록으로 다운로드/삭제 버튼 구성
     attachedFileMap[d.id] = { file1Url: data.file1Url || '', file2Url: data.file2Url || '' };
