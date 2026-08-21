@@ -330,7 +330,7 @@ function renderTable(dataToRender = allOrders) {
     if (dataToRender.length > 0 && hasMoreOrders) {
         pager.innerHTML = `
             <button onclick="loadMore()" class="w-full mt-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 py-2 rounded font-bold text-sm transition">
-                더보기 (현재 ${dataToRender.length}개 표시)
+                과거 글 더보기 (현재 ${dataToRender.length}개 표시)
             </button>
         `;
     }
