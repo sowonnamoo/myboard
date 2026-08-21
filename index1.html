@@ -141,7 +141,8 @@
                         <td class="w-28 font-bold text-gray-700 py-3">작성자명 <span class="text-red-500">*</span></td>
                         <td>
                             <div class="flex items-center gap-3 flex-wrap">
-                                <input type="text" id="input-author" class="form-input flex-1 min-w-[140px]" placeholder="이름 또는 회사명">
+                                <input type="text" id="input-author" class="form-input flex-1 min-w-[140px]" placeholder="이름 또는 회사명"
+                                       oninput="this.value = this.value.replace(/\s/g, '')">
                                 <span class="font-bold text-gray-700 whitespace-nowrap">접수자핸드폰 <span class="text-red-500">*</span></span>
                                 <input type="text" id="phone" class="form-input flex-1 min-w-[150px]" placeholder="010-XXXX-XXXX"
                                        maxlength="11"
