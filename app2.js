@@ -428,8 +428,9 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         approveBtn.className = "bg-gray-400 text-white px-6 py-2 rounded font-bold cursor-not-allowed";
         approveBtn.onclick = () => alert("수정내용이 작성된 상태에서는 인쇄승인이 불가능합니다. (삭제버튼 클릭) 수정내용을 삭제해주세요.");
     } else {
+        // 클릭 가능한(활성) 상태일 때만 계속 깜빡이도록 approve-blink 클래스를 붙입니다.
         approveBtn.innerText = "인쇄승인";
-        approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700";
+        approveBtn.className = "bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 approve-blink";
         approveBtn.onclick = async () => {
             // [핵심] 시안 이미지 로드 상태 체크
             const loadingMsg = document.getElementById('loading-msg');
@@ -767,7 +768,10 @@ checkMemoAndSetButton = async function(boardId, sianStatus) {
 // 재구입 코드 (기존 로직 유지 + 숫자만 추출하는 기능 적용)
 setInterval(() => {
     const approveBtn = document.getElementById('approve-btn');
-    const container = approveBtn ? approveBtn.parentNode : null;
+    // approve-btn을 말풍선 툴팁용 wrapper(div.group)가 감싸고 있으므로,
+    // "재구입" 버튼은 그 wrapper 바깥쪽(같은 flex 줄)에 나란히 들어가야 합니다.
+    const approveWrapper = approveBtn ? approveBtn.closest('.group') || approveBtn.parentNode : null;
+    const container = approveWrapper ? approveWrapper.parentNode : null;
     
     // 조판완료 상태일 때 (기존 로직)
     if (approveBtn && approveBtn.innerText === "조판완료") {
@@ -804,9 +808,9 @@ setInterval(() => {
                 window.open(url, '_blank', 'width=500,height=800,scrollbars=yes');
             };
             
-            // 기존 approveBtn 앞에 삽입
+            // 기존 approveBtn(을 감싼 wrapper) 앞에 삽입
             if (container) {
-                container.insertBefore(reorderBtn, approveBtn);
+                container.insertBefore(reorderBtn, approveWrapper);
             }
         }
     } else {

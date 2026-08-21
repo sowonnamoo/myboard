@@ -7,6 +7,16 @@
     <title>시안 확인 게시판</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* 인쇄승인 버튼이 클릭 가능한(활성) 상태일 때 계속 깜빡이게 하는 애니메이션 */
+        @keyframes approveBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .approve-blink {
+            animation: approveBlink 1s ease-in-out infinite;
+        }
+    </style>
 </head>
 <body class="bg-white" oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
     
@@ -66,7 +76,13 @@
 
 
                    
-    <button id="approve-btn" class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
+    <div class="relative inline-block group">
+        <button id="approve-btn" class="bg-blue-500 text-white px-6 py-2 rounded font-bold hover:bg-blue-600">인쇄승인</button>
+        <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap bg-gray-800 text-white text-xs rounded px-3 py-2 shadow-lg z-50">
+            이 버튼을 클릭해야 인쇄가 시작됩니다.
+            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+        </div>
+    </div>
 </div>
             </div>
 
