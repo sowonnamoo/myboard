@@ -251,6 +251,20 @@
     <script src="shipping.js"></script>
     <script type="module" src="app.js"></script>
 
+    <!-- 목록에서 글을 클릭하면 app.js의 비밀번호(이름+뒷4자리) 모달을 띄우지 않고
+         바로 index5(주문조회)로 이동시킵니다. list-body에 클릭이 도달하기 전(캡처 단계)에
+         가로채서 app.js의 원래 클릭 동작이 실행되지 않도록 막습니다. -->
+    <script>
+        document.getElementById('list-body').addEventListener('click', function (e) {
+            const item = e.target.closest('tr, a, [onclick]');
+            if (!item) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            window.location.href = 'https://sowonnamoo.github.io/myboard/index5';
+        }, true);
+    </script>
+
     
 
 <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
