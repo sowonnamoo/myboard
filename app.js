@@ -1442,6 +1442,28 @@ window.openCashPage = async () => {
 };
 
 
+    // - cashjun1/{boardId} 문서에 관리자가 fileUrl을 등록해뒀으면 바로 열어줌
+    // - 아직 등록 전이면(문서가 없거나 fileUrl이 비어있으면) 안내 메시지만 표시
+    // - 무통장 주문 옆 관리자 페이지에서 등록한 URL을 그대로 사용합니다 (카드전표 방식과 동일)
+window.openCashReceiptPage = async () => {
+    if (!currentViewId) {
+        alert('주문 정보를 찾을 수 없습니다.');
+        return;
+    }
+
+    try {
+        const snap = await getDoc(doc(db, "cashjun1", currentViewId));
+        if (snap.exists() && snap.data().fileUrl) {
+            window.open(snap.data().fileUrl, '_blank');
+        } else {
+            alert('택배물 발송후 등록됩니다.');
+        }
+    } catch (e) {
+        alert('택배물 발송후 등록됩니다.');
+    }
+};
+
+
     // - cardjun1/{boardId} 문서에 관리자가 fileUrl을 등록해뒀으면 바로 열어줌
     // - 아직 등록 전이면(문서가 없거나 fileUrl이 비어있으면) 안내 메시지만 표시
     // - 고객이 직접 "신청"하는 절차는 없음 (관리자가 발송 후 알아서 등록)

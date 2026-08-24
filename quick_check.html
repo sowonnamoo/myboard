@@ -370,7 +370,7 @@ window.closeIpModal = () => {
 window.showUrlImageModal = (boardId, type) => {
   const url = urlImageMap[boardId + '_' + type];
   if (!url) return alert('등록된 URL을 찾을 수 없습니다.');
-  const title = type === 'track' ? '🚚 운송장' : '💳 카드전표';
+  const title = type === 'track' ? '🚚 운송장' : (type === 'cashjun' ? '🧾 현금영수증' : '💳 카드전표');
   document.getElementById('url-image-modal-title').textContent = title;
   const img = document.getElementById('url-image-modal-img');
   img.onerror = () => { img.style.display = 'none'; };
@@ -510,6 +510,7 @@ window.deleteSelectedOrder = async () => {
     await deleteDoc(doc(db, "adminOrders", currentSelected.id)).catch(() => {});
     await deleteDoc(doc(db, "cardjun1", currentSelected.id)).catch(() => {});
     await deleteDoc(doc(db, "cashReceipt1", currentSelected.id)).catch(() => {});
+    await deleteDoc(doc(db, "cashjun1", currentSelected.id)).catch(() => {});
     await deleteDoc(doc(db, col, currentSelected.id));
     alert("주문이 삭제되었습니다.");
     currentSelected = { id: "" };
@@ -645,6 +646,22 @@ window.saveCardReceiptUrl = async (boardId) => {
   }
 };
 
+// 무통장 주문건의 현금영수증 URL 등록 - 카드전표(cardjun1)와 동일한 방식으로,
+// boardId를 문서ID로 그대로 써서 index1.html에서 바로 조회할 수 있게 합니다.
+// (기존 cashReceipt1 = 고객이 직접 "신청"해야 생기는 별도 흐름이라, 이건 건드리지 않고 새 컬렉션을 씁니다)
+window.saveCashjunUrl = async (boardId) => {
+  const input = document.getElementById('cashjun-' + boardId);
+  const url = input.value.trim();
+  if (!url) return alert("현금영수증 URL을 입력해주세요.");
+  try {
+    await setDoc(doc(db, "cashjun1", boardId), { fileUrl: url }, { merge: true });
+    alert("현금영수증 URL이 저장되었습니다.");
+    loadRecentOrders();
+  } catch (e) {
+    alert("저장 실패: " + e.message);
+  }
+};
+
 window.saveCashUrl = async (boardId) => {
   const input = document.getElementById('cashurl-' + boardId);
   const url = input.value.trim();
@@ -724,7 +741,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = `<div class="table-wrap"><table><thead>
-      <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>
+      <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표/현금영수증URL</th><th>IP</th></tr>
       </thead><tbody id="orders-body"></tbody></table></div>
       <div id="orders-more-wrap"></div>`;
 
@@ -783,6 +800,11 @@ async function buildOrderRows(items) {
   // 카드전표(cardjun1) 등록 여부 - 카드결제 상태인 건만 조회합니다.
   const cardSnaps = await Promise.all(items.map(it =>
     it.doc.data().status === '카드결제' ? getDoc(doc(db, "cardjun1", it.doc.id)) : Promise.resolve(null)
+  ));
+
+  // 현금영수증(cashjun1) 등록 여부 - 무통장 상태인 건만 조회합니다.
+  const cashjunSnaps = await Promise.all(items.map(it =>
+    it.doc.data().status === '무통장' ? getDoc(doc(db, "cashjun1", it.doc.id)) : Promise.resolve(null)
   ));
 
   const rows = [];
@@ -850,6 +872,7 @@ async function buildOrderRows(items) {
     }
 
     // 카드결제 상태일 때만 카드전표 URL 칸 표시. 이미 등록된 경우엔 "등록완료" 버튼 + 이미지 모달로 확인합니다.
+    // 무통장 상태일 때는 같은 칸에 현금영수증 URL을 등록/확인할 수 있게 합니다.
     let cardCell = '-';
     if (status === '카드결제') {
       const cardSnap = cardSnaps[idx];
@@ -860,6 +883,16 @@ async function buildOrderRows(items) {
           <div id="card-edit-${d.id}" class="url-row" style="display:none; margin-top:4px;"><input id="card-${d.id}" value="${existingCard.replace(/"/g,'&quot;')}"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
       } else {
         cardCell = `<div class="url-row"><input id="card-${d.id}" placeholder="카드전표 URL"><button onclick="saveCardReceiptUrl('${d.id}')">저장</button></div>`;
+      }
+    } else if (status === '무통장') {
+      const cashjunSnap = cashjunSnaps[idx];
+      const existingCashjun = (cashjunSnap && cashjunSnap.exists()) ? (cashjunSnap.data().fileUrl || '') : '';
+      if (existingCashjun) {
+        urlImageMap[d.id + '_cashjun'] = existingCashjun;
+        cardCell = `<button class="done-btn" onclick="showUrlImageModal('${d.id}','cashjun')">✅ 등록완료</button><button class="edit-toggle-btn" onclick="toggleUrlEdit('${d.id}','cashjun')">수정</button>
+          <div id="cashjun-edit-${d.id}" class="url-row" style="display:none; margin-top:4px;"><input id="cashjun-${d.id}" value="${existingCashjun.replace(/"/g,'&quot;')}"><button onclick="saveCashjunUrl('${d.id}')">저장</button></div>`;
+      } else {
+        cardCell = `<div class="url-row"><input id="cashjun-${d.id}" placeholder="현금영수증 URL"><button onclick="saveCashjunUrl('${d.id}')">저장</button></div>`;
       }
     }
 
