@@ -56,7 +56,7 @@
 </div>
 
 <div id="listBox">
-  <p class="ok">✅ 로그인됨 — 접수상태(무통장/카드결제) 주문만 10건씩 표시 (더보기 클릭 시 과거 주문 10건씩 추가 조회)</p>
+  <p class="ok">✅ 로그인됨 — 최근 주문 최대 500건 (처음 5건 표시, 더보기 클릭 시 5건씩 추가 조회)</p>
   <div id="result">불러오는 중...</div>
 
   <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:10px;">
@@ -69,8 +69,12 @@
       <button onclick="updateStatus('주문취소')" style="background:#1e293b;">주문취소</button>
       <button onclick="deleteSelectedOrder()" style="background:#b91c1c;">주문삭제</button>
       <button onclick="window.open('https://sowonnamoo.github.io/myboard/index1', '_blank', 'width=800,height=900')" style="background:#4f46e5;">✏️ 글쓰기</button>
-      <button onclick="openTaxCashWindow()" style="background:#0d9488;">🧾 세금계산서·현금영수증 신청내역</button>
     </div>
+  </div>
+
+  <div style="margin-top:20px; padding:16px; background:#fefce8; border-radius:10px;">
+    <p style="margin:0 0 10px; font-size:14px; font-weight:bold;">🧾 현금영수증 최신 신청 목록</p>
+    <div id="cashResult">불러오는 중...</div>
   </div>
 </div>
 
@@ -96,7 +100,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, where, orderBy, limit, startAfter, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const config = {
@@ -114,7 +118,7 @@ const auth = getAuth(app);
 onAuthStateChanged(auth, (user) => {
   document.getElementById("loginBox").style.display = user ? "none" : "block";
   document.getElementById("listBox").style.display = user ? "block" : "none";
-  if (user) { loadRecentOrders(); }
+  if (user) { loadRecentOrders(); loadCashRequests(); }
 });
 
 window.login = async function() {
@@ -438,6 +442,30 @@ function renderTaxCell(boardId) {
     <button onclick="toggleTaxIssued('${boardId}')" style="${btnStyle} padding:3px 6px; font-size:11px; margin-left:4px;">${btnLabel}</button>`;
 }
 
+// 표를 5개까지만 먼저 보여주고, 나머지는 "펼쳐보기" 버튼으로 펼치게 만드는 공통 헬퍼
+function buildExpandableTable(headerRowHtml, rowsHtml, keyPrefix) {
+  const visible = rowsHtml.slice(0, 5).join('');
+  const rest = rowsHtml.slice(5);
+  let html = `<div class="table-wrap"><table><thead>${headerRowHtml}</thead><tbody>${visible}</tbody>`;
+  if (rest.length > 0) {
+    html += `<tbody id="${keyPrefix}-more" style="display:none">${rest.join('')}</tbody>`;
+  }
+  html += `</table></div>`;
+  if (rest.length > 0) {
+    html += `<button id="${keyPrefix}-toggle-btn" data-label="펼쳐보기 (${rest.length}건 더보기)" onclick="toggleMore('${keyPrefix}')" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">펼쳐보기 (${rest.length}건 더보기)</button>`;
+  }
+  return html;
+}
+
+window.toggleMore = (keyPrefix) => {
+  const more = document.getElementById(keyPrefix + '-more');
+  const btn = document.getElementById(keyPrefix + '-toggle-btn');
+  if (!more || !btn) return;
+  const isHidden = more.style.display === 'none';
+  more.style.display = isHidden ? 'table-row-group' : 'none';
+  btn.textContent = isHidden ? '접기' : btn.dataset.label;
+};
+
 window.toggleSelect = (checkbox, id, author) => {
   if (checkbox.checked) {
     currentSelected = { id };
@@ -633,106 +661,129 @@ window.saveCashUrlDirect = async (boardId) => {
   }
 };
 
-// 목록은 이제 Firestore 쿼리 단계(where + orderBy + limit)에서 바로 "무통장"/"카드결제" 상태만
-// 걸러서 가져옵니다. 대기/접수에러/주문취소 등 그 외 상태 문서는 애초에 조회 자체를 하지 않으므로
-// 읽기(=토큰) 소모가 발생하지 않습니다.
-// ⚠️ 이 필터가 정상 동작하려면 boards/jjjj 문서에 status 필드가 실제로 저장되어 있어야 합니다
-//    (status 필드 자체가 없는 문서는 where('status','in',[...]) 조건에 걸리지 않아 조회되지 않습니다).
-// ⚠️ Firestore 콘솔에서 where('status','in',[...]) + orderBy('createdAt') 조합의 복합 색인을
-//    한 번 만들어줘야 합니다(처음 실행 시 콘솔 에러 메시지에 색인 생성 링크가 뜹니다).
-const ORDERS_PAGE_SIZE = 10;
-const ORDER_STATUSES = ['무통장', '카드결제'];
-
-// boards/jjjj 두 컬렉션을 "최신순 병합"하기 위한 커서 상태.
-// buf: 아직 화면에 안 쓴 대기열, last: 다음 조회 시 startAfter로 넘길 마지막 문서, done: 더 가져올 게 없음
-function freshOrdersState() {
-  return { bufA: [], bufB: [], lastA: null, lastB: null, doneA: false, doneB: false };
-}
-let ordersState = null;
-
-// 컬렉션 한 곳에서 status가 무통장/카드결제인 문서만 최대 ORDERS_PAGE_SIZE개 다음 배치로 가져와 버퍼를 채웁니다.
-async function fillOrderBuffer(colName, isJajoo, state, bufKey, lastKey, doneKey) {
-  if (state[doneKey] || state[bufKey].length > 0) return;
-  const parts = [where('status', 'in', ORDER_STATUSES), orderBy('createdAt', 'desc')];
-  if (state[lastKey]) parts.push(startAfter(state[lastKey]));
-  parts.push(limit(ORDERS_PAGE_SIZE));
-  const snap = await getDocs(query(collection(db, colName), ...parts));
-  state[bufKey] = snap.docs.map(d => ({ doc: d, col: colName, isJajoo }));
-  if (snap.docs.length) state[lastKey] = snap.docs[snap.docs.length - 1];
-  if (snap.docs.length < ORDERS_PAGE_SIZE) state[doneKey] = true;
-}
-
-// boards/jjjj 버퍼를 필요한 만큼 채우면서 createdAt 기준으로 병합-정렬해 다음 pageSize개를 뽑아옵니다.
-async function pullNextOrderPage(state, pageSize) {
-  const picked = [];
-  while (picked.length < pageSize) {
-    if (state.bufA.length === 0 && !state.doneA) await fillOrderBuffer('boards', false, state, 'bufA', 'lastA', 'doneA');
-    if (state.bufB.length === 0 && !state.doneB) await fillOrderBuffer('jjjj', true, state, 'bufB', 'lastB', 'doneB');
-    if (state.bufA.length === 0 && state.bufB.length === 0) break;
-    let takeFromA;
-    if (state.bufA.length === 0) takeFromA = false;
-    else if (state.bufB.length === 0) takeFromA = true;
-    else {
-      const ta = state.bufA[0].doc.data().createdAt?.toDate ? state.bufA[0].doc.data().createdAt.toDate() : new Date(0);
-      const tb = state.bufB[0].doc.data().createdAt?.toDate ? state.bufB[0].doc.data().createdAt.toDate() : new Date(0);
-      takeFromA = ta >= tb;
-    }
-    picked.push(takeFromA ? state.bufA.shift() : state.bufB.shift());
+window.saveCashUrl = async (boardId) => {
+  const input = document.getElementById('cashurl-' + boardId);
+  const url = input.value.trim();
+  if (!url) return alert("전표 jpg URL을 입력해주세요.");
+  try {
+    await updateDoc(doc(db, "cashReceipt1", boardId), { fileUrl: url });
+    alert("현금영수증 URL이 저장되었습니다.");
+    loadCashRequests();
+  } catch (e) {
+    alert("저장 실패: " + e.message);
   }
-  return picked;
+};
+
+async function loadCashRequests() {
+  const el = document.getElementById("cashResult");
+  try {
+    const q3 = query(collection(db, "cashReceipt1"), orderBy("createdAt", "desc"), limit(20));
+    const snap3 = await getDocs(q3);
+
+    if (snap3.empty) {
+      el.textContent = "신청 내역이 없습니다.";
+      return;
+    }
+
+    const rows = [];
+    snap3.forEach(d => {
+      const data = d.data();
+      let statusCell;
+      if (data.fileUrl) {
+        statusCell = `<span class="ok">✅ 발행완료</span> <a href="${data.fileUrl}" target="_blank">보기</a>`;
+      } else {
+        statusCell = `<div class="url-row"><input id="cashurl-${d.id}" placeholder="전표 jpg URL"><button onclick="saveCashUrl('${d.id}')">저장</button></div>`;
+      }
+      rows.push(`<tr><td>${data.author || '-'}</td><td>${data.cashNumber || '-'}</td><td>${statusCell}</td></tr>`);
+    });
+
+    el.innerHTML = buildExpandableTable(
+      "<tr><th>작성자</th><th>발행희망번호</th><th>상태</th></tr>",
+      rows, "cash"
+    );
+  } catch (e) {
+    el.innerHTML = `<span class="fail">⚠️ 신청 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
+  }
 }
 
-function ordersExhausted(state) {
-  return state.doneA && state.doneB && state.bufA.length === 0 && state.bufB.length === 0;
-}
+// 목록(boards+jjjj 기본 문서)만 조회해서 정렬해둔 캐시. "더보기" 클릭 시 여기서 잘라서 씁니다.
+let orderBaseItems = [];
+// 지금까지 상세조회(private/adminOrders/hanjool)해서 화면에 표시한 건수.
+// "더보기"를 누를 때마다 이 지점부터 다음 5건만 추가로 조회합니다.
+let orderLoadedCount = 0;
+const ORDERS_PAGE_SIZE = 5;
 
 async function loadRecentOrders() {
   const resultEl = document.getElementById("result");
-  ordersState = freshOrdersState();
   try {
+    // 1단계: boards(일반 주문) + jjjj(재주문/재구입) 기본 문서만 조회해서 합친 뒤 작성일 기준 정렬합니다.
+    // 여기서는 아직 개별 항목의 private/adminOrders/hanjool 같은 상세 조회는 하지 않습니다 (읽기 절약).
+    const q1 = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(500));
+    const q2 = query(collection(db, "jjjj"), orderBy("createdAt", "desc"), limit(500));
+    const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+    const combined = [
+      ...snap1.docs.map(d => ({ doc: d, col: "boards", isJajoo: false })),
+      ...snap2.docs.map(d => ({ doc: d, col: "jjjj", isJajoo: true }))
+    ];
+    combined.sort((a, b) => {
+      const ta = a.doc.data().createdAt?.toDate ? a.doc.data().createdAt.toDate() : new Date(0);
+      const tb = b.doc.data().createdAt?.toDate ? b.doc.data().createdAt.toDate() : new Date(0);
+      return tb - ta;
+    });
+    orderBaseItems = combined.slice(0, 500);
+    orderLoadedCount = 0;
+
+    if (orderBaseItems.length === 0) {
+      resultEl.textContent = "주문이 없습니다.";
+      return;
+    }
+
     resultEl.innerHTML = `<div class="table-wrap"><table><thead>
       <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>현금영수증URL</th><th>IP</th></tr>
       </thead><tbody id="orders-body"></tbody></table></div>
       <div id="orders-more-wrap"></div>`;
 
-    // 창을 열었을 때는 딱 10건만 조회합니다. 이후 "더보기"를 눌러야만 과거 10건씩 추가 조회합니다.
+    // 2단계: 처음 5건만 상세조회해서 표시. 나머지는 "더보기" 누를 때마다 5건씩 그 시점에 조회합니다.
     await loadMoreOrders();
   } catch (e) {
     resultEl.innerHTML = `<span class="fail">⚠️ 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
   }
 }
 
-// "더보기" 버튼: 클릭할 때마다 Firestore에서 다음 10건(무통장/카드결제만)을 조회해서 이어붙입니다.
+// "더보기" 버튼: 클릭할 때마다 다음 5건에 대해서만 상세정보(private/adminOrders/hanjool)를 조회해서 이어붙입니다.
 window.loadMoreOrders = async () => {
   const body = document.getElementById('orders-body');
   const moreWrap = document.getElementById('orders-more-wrap');
-  if (!body || !moreWrap || !ordersState) return;
+  if (!body || !moreWrap) return;
+
+  if (orderLoadedCount >= orderBaseItems.length) return;
 
   const existingBtn = document.getElementById('orders-more-btn');
   if (existingBtn) { existingBtn.disabled = true; existingBtn.textContent = '불러오는 중...'; }
 
   try {
     // 배송지 없음(또는 adminOrders 문서 없음)인 건은 buildOrderRows에서 화면 표시가 제외되므로,
-    // 실제로 표시되는 행이 10건 채워지거나 더 이상 남은 항목이 없을 때까지 다음 10건씩 이어서 조회합니다.
+    // 실제로 표시되는 행이 ORDERS_PAGE_SIZE만큼 채워지거나 더 이상 남은 항목이 없을 때까지
+    // 다음 배치를 이어서 조회합니다. buildOrderRows 호출 1번당 네트워크 왕복 시간이 들기 때문에,
+    // 숨겨지는 건이 많을 때 5건씩 여러 번 호출하지 않도록 배치 크기를 점점 키워갑니다(5→10→20…).
     let visibleAdded = 0;
+    let batchSize = ORDERS_PAGE_SIZE;
     let allNewRows = [];
-    while (visibleAdded < ORDERS_PAGE_SIZE) {
-      const nextItems = await pullNextOrderPage(ordersState, ORDERS_PAGE_SIZE);
-      if (nextItems.length === 0) break;
+    while (visibleAdded < ORDERS_PAGE_SIZE && orderLoadedCount < orderBaseItems.length) {
+      const nextItems = orderBaseItems.slice(orderLoadedCount, orderLoadedCount + batchSize);
       const newRows = await buildOrderRows(nextItems);
       allNewRows = allNewRows.concat(newRows);
       visibleAdded += newRows.length;
+      orderLoadedCount += nextItems.length;
+      batchSize = Math.min(batchSize * 2, 40);
     }
     body.insertAdjacentHTML('beforeend', allNewRows.join(''));
 
-    const noMore = ordersExhausted(ordersState);
-    moreWrap.innerHTML = !noMore
-      ? `<button id="orders-more-btn" onclick="loadMoreOrders()" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">더보기 (10건씩 과거 주문 조회)</button>`
+    const remaining = orderBaseItems.length - orderLoadedCount;
+    moreWrap.innerHTML = remaining > 0
+      ? `<button id="orders-more-btn" onclick="loadMoreOrders()" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">더보기 (${remaining}건 남음, 5건씩)</button>`
       : '';
-
-    if (body.children.length === 0 && noMore) {
-      document.getElementById('result').insertAdjacentHTML('beforeend', '<p style="margin-top:10px; color:#64748b;">무통장/카드결제 상태의 주문이 없습니다.</p>');
-    }
   } catch (e) {
     if (existingBtn) { existingBtn.disabled = false; existingBtn.textContent = '더보기 (다시 시도)'; }
     alert('추가 목록 조회 실패: ' + e.message);
@@ -927,111 +978,6 @@ async function buildOrderRows(items) {
 
   return rows;
 }
-
-// ============= 세금계산서/현금영수증 신청내역 — "seghyn1" 새창 =============
-// 팝업을 열 때도 각 목록은 10건만 조회하고, "더보기"를 눌러야 과거 10건씩 추가 조회합니다(읽기 절약).
-let taxCashWin = null;
-let segumCursor = null;   // 세금계산서(segum1) 페이지네이션 커서
-let cashListCursor = null; // 현금영수증(cashReceipt1) 페이지네이션 커서
-const TAXCASH_PAGE_SIZE = 10;
-
-function freshCursor() { return { last: null, done: false }; }
-
-// colName 컬렉션에서 createdAt 내림차순으로 다음 pageSize개만 조회합니다 (커서 기반, 매번 전체를 다시 읽지 않음).
-async function fetchTaxCashPage(colName, cursor, pageSize) {
-  if (cursor.done) return [];
-  const parts = [orderBy('createdAt', 'desc')];
-  if (cursor.last) parts.push(startAfter(cursor.last));
-  parts.push(limit(pageSize));
-  const snap = await getDocs(query(collection(db, colName), ...parts));
-  if (snap.docs.length) cursor.last = snap.docs[snap.docs.length - 1];
-  if (snap.docs.length < pageSize) cursor.done = true;
-  return snap.docs;
-}
-
-function segumRowHtml(d) {
-  const t = d.data();
-  return `<tr><td>${t.manager || '-'}</td><td>${t.bizName || '-'}</td><td>${t.bizNum || '-'}</td><td>${t.email || '-'}</td></tr>`;
-}
-function cashRowHtml(d) {
-  const data = d.data();
-  const statusCell = data.fileUrl
-    ? `<span style="color:#166534; font-weight:bold;">✅ 발행완료</span> <a href="${data.fileUrl}" target="_blank">보기</a>`
-    : `<span style="color:#94a3b8;">미등록</span>`;
-  return `<tr><td>${data.author || '-'}</td><td>${data.cashNumber || '-'}</td><td>${statusCell}</td></tr>`;
-}
-
-// win.document 안의 (bodyId, moreWrapId) 표를 다음 페이지만큼 채우는 공통 로더.
-async function loadTaxCashSection(win, colName, cursor, bodyId, moreWrapId, colCount, rowFn, emptyText, btnLabel, onMore) {
-  const body = win.document.getElementById(bodyId);
-  const moreWrap = win.document.getElementById(moreWrapId);
-  if (!body || win.closed) return;
-  try {
-    const docs = await fetchTaxCashPage(colName, cursor, TAXCASH_PAGE_SIZE);
-    if (body.dataset.placeholder === '1') { body.innerHTML = ''; body.dataset.placeholder = '0'; }
-    body.insertAdjacentHTML('beforeend', docs.map(rowFn).join(''));
-    if (body.children.length === 0) {
-      body.innerHTML = `<tr><td colspan="${colCount}" style="color:#94a3b8;">${emptyText}</td></tr>`;
-    }
-    if (moreWrap) {
-      moreWrap.innerHTML = !cursor.done
-        ? `<button id="${moreWrapId}-btn" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px; border-radius:6px; border:none; cursor:pointer;">${btnLabel}</button>`
-        : '';
-      const btn = win.document.getElementById(moreWrapId + '-btn');
-      if (btn) btn.onclick = onMore;
-    }
-  } catch (e) {
-    body.insertAdjacentHTML('beforeend', `<tr><td colspan="${colCount}" style="color:#991b1b;">조회 오류: ${e.code || ''} ${e.message}</td></tr>`);
-  }
-}
-
-async function loadMoreSegum() {
-  if (!taxCashWin || taxCashWin.closed) return;
-  await loadTaxCashSection(taxCashWin, 'segum1', segumCursor, 'segum-body', 'segum-more-wrap', 4,
-    segumRowHtml, '신청 내역이 없습니다.', '더보기 (10건씩 과거 신청 조회)', loadMoreSegum);
-}
-async function loadMoreCashList() {
-  if (!taxCashWin || taxCashWin.closed) return;
-  await loadTaxCashSection(taxCashWin, 'cashReceipt1', cashListCursor, 'cash-body', 'cash-more-wrap', 3,
-    cashRowHtml, '신청 내역이 없습니다.', '더보기 (10건씩 과거 신청 조회)', loadMoreCashList);
-}
-
-// "🧾 세금계산서·현금영수증 신청내역" 버튼 — seghyn1 이름의 새창을 열어 두 목록을 각각 10건씩 보여줍니다.
-window.openTaxCashWindow = () => {
-  if (taxCashWin && !taxCashWin.closed) { taxCashWin.focus(); return; }
-  taxCashWin = window.open('', 'seghyn1', 'width=900,height=750,scrollbars=yes');
-  if (!taxCashWin) { alert('팝업이 차단되었습니다. 브라우저 팝업 차단을 해제한 뒤 다시 시도해주세요.'); return; }
-
-  taxCashWin.document.open();
-  taxCashWin.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
-<title>세금계산서·현금영수증 신청내역</title>
-<style>
-  body{font-family:sans-serif;margin:24px;color:#1e293b;}
-  h2{margin:0 0 4px;}
-  h3{margin:24px 0 8px;font-size:15px;}
-  .table-wrap{overflow-x:auto;}
-  table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;}
-  th,td{border:1px solid #e2e8f0;padding:8px 10px;text-align:left;vertical-align:top;}
-  th{background:#f1f5f9;}
-  tbody tr:nth-child(even){background:#fafbfc;}
-</style></head><body>
-<h2>🧾 세금계산서·현금영수증 신청내역</h2>
-<h3>세금계산서 신청 목록</h3>
-<div class="table-wrap"><table><thead><tr><th>담당자</th><th>상호명</th><th>사업자등록번호</th><th>이메일</th></tr></thead>
-<tbody id="segum-body" data-placeholder="1"><tr><td colspan="4">불러오는 중...</td></tr></tbody></table></div>
-<div id="segum-more-wrap"></div>
-<h3>현금영수증 신청 목록</h3>
-<div class="table-wrap"><table><thead><tr><th>작성자</th><th>발행희망번호</th><th>상태</th></tr></thead>
-<tbody id="cash-body" data-placeholder="1"><tr><td colspan="3">불러오는 중...</td></tr></tbody></table></div>
-<div id="cash-more-wrap"></div>
-</body></html>`);
-  taxCashWin.document.close();
-
-  segumCursor = freshCursor();
-  cashListCursor = freshCursor();
-  loadMoreSegum();
-  loadMoreCashList();
-};
 </script>
 </body>
 </html>
