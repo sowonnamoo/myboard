@@ -94,28 +94,58 @@
     });
     function ensureAnonymousLogin() { return authReadyPromise; }
 
-    // 카드결제 팝업(payment.html)이 성공 메시지를 보낼 때 어느 주문을 업데이트할지 알기 위한 값
-    let currentOrderId = null;
+    // 카드결제 팝업(payment.html)에서 결제가 "성공"했다는 메시지를 받기 전까지는
+    // Firestore에 아무 것도 저장하지 않습니다. 결제 시도 시점의 주문 데이터는
+    // 여기 pendingOrderData / pendingPrivateData에만 잠시 보관해 둡니다.
+    let pendingOrderData = null;
+    let pendingPrivateData = null;
     let paymentHandled = false; // 메시지가 중복으로 와도 한 번만 처리되도록
 
     // ---- payment.html에서 보내는 결제 성공 메시지 수신 ----
     // payment.html과 index3.html은 실제로는 같은 origin(sowonnamoo.github.io)이라
     // 경로(myjs vs myboard)가 달라도 postMessage가 그대로 전달됩니다.
+    // ★ 결제 성공 메시지를 받은 "이 시점"에 비로소 주문을 새로 생성합니다.
+    //   (결제창을 그냥 닫거나 결제를 취소하면 이 메시지가 오지 않으므로,
+    //    그 경우 주문은 저장되지 않습니다.)
     window.addEventListener('message', async (event) => {
         if (event.origin !== 'https://sowonnamoo.github.io') return;
         if (!event.data || event.data.type !== 'PAYMENT_SUCCESS') return;
-        if (!currentOrderId || paymentHandled) return;
+        if (!pendingOrderData || paymentHandled) return;
         paymentHandled = true;
 
         try {
-            await ensureAnonymousLogin();
+            const currentUser = await ensureAnonymousLogin();
             // payment.html에서 결제수단(payMethod)을 함께 보내줌: 'CARD' 또는 'TRANSFER'
             // 카드 -> '카드결제', 계좌이체 -> '무통장'으로 주문상태를 구분해서 저장합니다.
             const newStatus = (event.data.payMethod === 'TRANSFER') ? '무통장' : '카드결제';
-            await updateDoc(doc(db, "jjjj", currentOrderId), { status: newStatus });
+
+            // 문서 ID를 먼저 발급받고, 그 ID로 조회키(secretId)를 계산합니다.
+            const orderRef = doc(collection(db, "jjjj"));
+            const orderId = orderRef.id;
+            const secretId = await computeSecretId(orderId, pendingOrderData.author, pendingPrivateData.phone);
+
+            // 공개 문서: 개인정보(phone/address/message) 절대 포함하지 않음
+            await setDoc(orderRef, {
+                ...pendingOrderData,
+                status: newStatus,
+                createdAt: new Date(),
+                uid: currentUser.uid
+            });
+            await setDoc(doc(db, "jjjj", orderId, "private", secretId), {
+                ...pendingPrivateData,
+                uid: currentUser.uid
+            });
+            // 관리자 페이지 전용 조회용으로 동일한 개인정보를 adminOrders/{orderId}에도 저장
+            await setDoc(doc(db, "adminOrders", orderId), {
+                ...pendingPrivateData,
+                uid: currentUser.uid
+            });
         } catch (e) {
-            console.error('재주문 상태 업데이트 실패:', e);
-            alert('결제는 완료되었으나 주문 상태 반영 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
+            console.error('결제 성공 후 주문 저장 실패:', e);
+            alert('결제는 완료되었으나 주문 저장 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
+        } finally {
+            pendingOrderData = null;
+            pendingPrivateData = null;
         }
 
         document.getElementById('pay-success-modal').style.display = 'flex';
@@ -209,19 +239,51 @@
             return;
         }
 
-        // 저장 전에 익명 로그인이 끝났는지 확인 (uid 확정 대기)
-        const currentUser = await ensureAnonymousLogin();
-
-        // 문서 ID를 먼저 발급받고, 그 ID로 조회키(secretId)를 계산합니다.
-        const orderRef = doc(collection(db, "jjjj"));
-        const orderId = orderRef.id;
-        const secretId = await computeSecretId(orderId, name, phoneInput);
-
         const fullAddress = address + " " + addressDetail;
         const messageVal = document.getElementById('message').value;
 
-        // 공개 문서: 개인정보(phone/address/message/password) 절대 포함하지 않음
-        const orderData = {
+        if (type === '무통장') {
+            // 무통장(계좌이체 안내 페이지로 이동하는 기존 흐름): 관리자가 입금을 수동 확인해야 하므로
+            // 이 경로는 기존대로 '대기' 상태로 즉시 저장합니다. (PG 결제를 거치지 않는 별도 흐름)
+            try {
+                const currentUser = await ensureAnonymousLogin();
+                const orderRef = doc(collection(db, "jjjj"));
+                const orderId = orderRef.id;
+                const secretId = await computeSecretId(orderId, name, phoneInput);
+
+                await setDoc(orderRef, {
+                    productName: document.getElementById('productName').value,
+                    quantity: document.getElementById('quantity').value,
+                    size: document.getElementById('size').value,
+                    price: price,
+                    imgCode: document.getElementById('imgCode').value,
+                    author: name,
+                    file1Url: document.getElementById('file1Url').value,
+                    file2Url: document.getElementById('file2Url').value,
+                    type: type,
+                    createdAt: new Date(),
+                    status: '대기',
+                    uid: currentUser.uid
+                });
+                await setDoc(doc(db, "jjjj", orderId, "private", secretId), {
+                    phone: phoneInput, address: fullAddress, message: messageVal, uid: currentUser.uid
+                });
+                await setDoc(doc(db, "adminOrders", orderId), {
+                    phone: phoneInput, address: fullAddress, message: messageVal, uid: currentUser.uid
+                });
+
+                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
+            } catch (e) { alert('오류: ' + e.message); }
+            return;
+        }
+
+        // ---- 카드결제 ----
+        // ★ 핵심 수정: 여기서는 Firestore에 아무 것도 저장하지 않습니다.
+        // 결제창(payment.html)에서 결제가 실제로 성공해 PAYMENT_SUCCESS 메시지를
+        // 보내왔을 때(위 message 리스너) 비로소 주문이 저장됩니다.
+        // 이렇게 하면 사용자가 결제창을 닫거나 결제를 취소해도 '대기' 상태의
+        // 미결제 주문이 남지 않습니다.
+        pendingOrderData = {
             productName: document.getElementById('productName').value,
             quantity: document.getElementById('quantity').value,
             size: document.getElementById('size').value,
@@ -230,42 +292,17 @@
             author: name,
             file1Url: document.getElementById('file1Url').value,
             file2Url: document.getElementById('file2Url').value,
-type: (type === '카드') ? '재주문' : type,
-            createdAt: new Date(),
-            status: '대기',
-            uid: currentUser.uid
+            type: '재주문'
         };
+        pendingPrivateData = {
+            phone: phoneInput,
+            address: fullAddress,
+            message: messageVal
+        };
+        paymentHandled = false;
 
-try {
-            // 주문서 저장 (공개 문서 + 개인정보 private 문서를 함께 기록)
-            await setDoc(orderRef, orderData);
-            await setDoc(doc(db, "jjjj", orderId, "private", secretId), {
-                phone: phoneInput,
-                address: fullAddress,
-                message: messageVal,
-                uid: currentUser.uid
-            });
-            // 관리자 페이지 전용 조회용으로, 동일한 개인정보를 adminOrders/{orderId}에도 저장.
-            // 문서 ID가 orderId 그대로라 관리자가 secretId 계산 없이 바로 조회할 수 있고,
-            // Rules상 isAdmin()만 읽을 수 있어 고객/비관리자에게는 노출되지 않습니다.
-            await setDoc(doc(db, "adminOrders", orderId), {
-                phone: phoneInput,
-                address: fullAddress,
-                message: messageVal,
-                uid: currentUser.uid
-            });
-            
-            if (type === '무통장') {
-                // 무통장 결제: 기존 로직 유지
-                window.location.href = `https://sowonnamoo.github.io/myboard/mooto?price=${encodeURIComponent(price)}`;
-            } else {
-                // 카드결제: payment.html을 팝업으로 열고, 이 창은 그대로 열어둔 채 결제 완료 메시지를 기다립니다.
-                currentOrderId = orderId;
-                paymentHandled = false;
-                const paymentUrl = `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`;
-                window.open(paymentUrl, 'paymentWindow', 'width=811,height=649,scrollbars=yes,resizable=yes');
-            }
-        } catch (e) { alert('오류: ' + e.message); }
+        const paymentUrl = `https://sowonnamoo.github.io/myjs/payment?price=${encodeURIComponent(price)}`;
+        window.open(paymentUrl, 'paymentWindow', 'width=811,height=649,scrollbars=yes,resizable=yes');
     };
 </script>
 </body>
