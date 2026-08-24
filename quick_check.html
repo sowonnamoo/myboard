@@ -741,16 +741,25 @@ window.loadMoreOrders = async () => {
   const moreWrap = document.getElementById('orders-more-wrap');
   if (!body || !moreWrap) return;
 
-  const nextItems = orderBaseItems.slice(orderLoadedCount, orderLoadedCount + ORDERS_PAGE_SIZE);
-  if (nextItems.length === 0) return;
+  if (orderLoadedCount >= orderBaseItems.length) return;
 
   const existingBtn = document.getElementById('orders-more-btn');
   if (existingBtn) { existingBtn.disabled = true; existingBtn.textContent = '불러오는 중...'; }
 
   try {
-    const newRows = await buildOrderRows(nextItems);
-    body.insertAdjacentHTML('beforeend', newRows.join(''));
-    orderLoadedCount += nextItems.length;
+    // 배송지 없음(또는 adminOrders 문서 없음)인 건은 buildOrderRows에서 화면 표시가 제외되므로,
+    // 실제로 표시되는 행이 ORDERS_PAGE_SIZE만큼 채워지거나 더 이상 남은 항목이 없을 때까지
+    // 다음 배치를 이어서 조회합니다. (숨겨지는 건 때문에 "더보기"를 여러 번 눌러야 하는 문제 방지)
+    let visibleAdded = 0;
+    let allNewRows = [];
+    while (visibleAdded < ORDERS_PAGE_SIZE && orderLoadedCount < orderBaseItems.length) {
+      const nextItems = orderBaseItems.slice(orderLoadedCount, orderLoadedCount + ORDERS_PAGE_SIZE);
+      const newRows = await buildOrderRows(nextItems);
+      allNewRows = allNewRows.concat(newRows);
+      visibleAdded += newRows.length;
+      orderLoadedCount += nextItems.length;
+    }
+    body.insertAdjacentHTML('beforeend', allNewRows.join(''));
 
     const remaining = orderBaseItems.length - orderLoadedCount;
     moreWrap.innerHTML = remaining > 0
@@ -816,8 +825,10 @@ async function buildOrderRows(items) {
       address = rawAddressVal || '<span class="fail">(비어있음)</span>';
     }
 
-    // 배송지가 비어있는 주문(adminOrders/boards 어디에도 address가 없는 경우)은 목록에서 제외
-    if (!adminPriv._err && !rawAddressVal) return;
+    // 배송지가 비어있는 주문은 목록에서 제외합니다.
+    // adminOrders 문서 자체가 없는 경우(adminPriv._err)도 rawAddressVal이 채워지지 않으므로
+    // 이 조건 하나로 "주소없음"과 "⚠️ adminOrders 문서 없음" 두 경우 모두 걸러집니다.
+    if (!rawAddressVal) return;
 
     // 주문서(메모장) 다운로드용 원본 데이터 저장 (boards 직접수정 > adminOrders > boards/private 순으로 대체)
     const sheetPhone = data.phone || ((!adminPriv._err && adminPriv.phone) ? adminPriv.phone : (rawPriv.phone || ''));
