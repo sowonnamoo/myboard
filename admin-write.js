@@ -131,6 +131,22 @@ function showLoading(show, text) {
     document.getElementById("loading-spinner").classList.toggle("hidden", !show);
 }
 
+// ============= 예약 자동발행 상태 배너 =============
+// publishDueScheduledItems()가 콘솔에만 에러를 남기고 조용히 실패하면
+// 관리자가 "왜 예약글이 안 올라가는지" 알 방법이 없으므로, 화면에도 표시합니다.
+function showPollBanner(message, isError) {
+    let el = document.getElementById("poll-status-banner");
+    if (!el) {
+        el = document.createElement("div");
+        el.id = "poll-status-banner";
+        el.className = "w-full max-w-[560px] mx-auto -mt-4 mb-4 px-4";
+        const wrap = document.querySelector(".w-full.max-w-\\[560px\\].mx-auto.py-10.px-4");
+        if (wrap) wrap.insertAdjacentElement("afterbegin", el);
+    }
+    if (!message) { el.innerHTML = ""; return; }
+    el.innerHTML = `<div class="text-xs rounded px-3 py-2 border ${isError ? "bg-red-50 border-red-200 text-red-600" : "bg-amber-50 border-amber-200 text-amber-700"}">${escapeHtml(message)}</div>`;
+}
+
 // ============= 실제 게시 로직 (즉시 등록 / 예약 발행 공용) =============
 async function publishBoardEntry({ title, author, message, password, classification, adminUid, adminEmail }) {
     const boardRef = doc(collection(db, "boards"));
@@ -305,8 +321,9 @@ async function publishDueScheduledItems() {
             limit(MAX_SCHEDULED)
         );
         const snap = await getDocs(q);
-        if (snap.empty) return;
+        if (snap.empty) { showPollBanner(null); return; }
 
+        let failCount = 0;
         for (const docSnap of snap.docs) {
             try {
                 const boardId = await publishScheduledItemAtomic(docSnap.id);
@@ -316,11 +333,24 @@ async function publishDueScheduledItems() {
                 }
             } catch (e) {
                 console.error("예약 발행 실패:", docSnap.id, e);
+                failCount++;
             }
+        }
+        if (failCount > 0) {
+            showPollBanner(`⚠️ 예약글 ${failCount}건 자동 발행에 실패했습니다. 콘솔(F12)을 확인해주세요.`, true);
+        } else {
+            showPollBanner(null);
         }
         refreshScheduleList();
     } catch (e) {
         console.error("예약 확인 중 오류:", e);
+        let hint = e.message || "";
+        if (e.code === "permission-denied") {
+            hint = "권한 오류 — firestore.rules 또는 admins/{uid} 문서를 확인해주세요.";
+        } else if (e.code === "failed-precondition") {
+            hint = "Firestore 색인이 필요합니다. 콘솔(F12)에 뜨는 링크로 색인을 생성해주세요.";
+        }
+        showPollBanner(`⚠️ 예약 확인 중 오류로 이번 주기에는 발행되지 않았습니다: ${hint}`, true);
     }
 }
 
@@ -508,6 +538,17 @@ function startPolling() {
 function stopPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
+
+// 백그라운드 탭에서는 브라우저가 setInterval을 강하게 쓰로틀링(또는 정지)하기 때문에,
+// 30분 주기만 믿으면 실제로는 훨씬 늦게(또는 안) 돌 수 있습니다.
+// 관리자가 이 탭을 다시 볼 때(창 전환/복귀)마다 즉시 한 번 더 체크해서 그 공백을 줄입니다.
+// ※ 이것도 결국 "탭이 열려 있는 동안"에만 동작하는 보완일 뿐,
+//    탭을 완전히 닫은 경우까지 해결하려면 서버 쪽(Cloud Functions) 예약 실행이 필요합니다.
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && currentAdminUser) {
+        publishDueScheduledItems();
+    }
+});
 
 // ============= 삭제관리: 등록 후 일정 기간 지난 m/k/s 분류 글 정리 (분류별로 각각 실행) =============
 // 문자로 발송되는 링크라, 오래된 글은 보안/용량 확보를 위해 주기적으로 정리가 필요합니다.
