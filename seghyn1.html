@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>세금계산서 · 현금영수증 신청내역</title>
+<style>
+  body { font-family: sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+  input { box-sizing:border-box; padding:10px; margin:2px 0; border:1px solid #ccc; border-radius:8px; font-size:14px; }
+  input.wide { display:block; width:100%; padding:12px; font-size:16px; margin:8px 0; }
+  button { padding:10px 20px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:14px; }
+  .table-wrap { overflow-x:auto; margin-top:12px; }
+  table { width:100%; border-collapse: collapse; font-size:14px; }
+  th, td { border:1px solid #e2e8f0; padding:8px 10px; text-align:left; vertical-align: top; }
+  th { background:#f1f5f9; font-size:13px; white-space:nowrap; }
+  tbody tr:nth-child(even) { background:#fafbfc; }
+  .fail { color:#991b1b; }
+  .ok { color:#166534; font-weight:bold; }
+  .url-row { display:flex; gap:4px; }
+  .url-row input { flex:1; font-size:12px; padding:6px; }
+  .url-row button { padding:6px 10px; font-size:12px; white-space:nowrap; }
+  #loginBox { display:block; }
+  #listBox { display:none; }
+  section { margin-top:24px; padding:16px; border-radius:10px; }
+  #taxSection { background:#f8fafc; }
+  #cashSection { background:#fefce8; }
+  h3 { margin:0 0 10px; font-size:15px; }
+</style>
+</head>
+<body>
+
+<h2>🧾 세금계산서 · 현금영수증 신청내역</h2>
+<p style="font-size:12px; color:#64748b; margin-top:-8px;">각 목록 최근 10건만 표시 (단순 조회 전용 창)</p>
+
+<div id="loginBox">
+  <input class="wide" id="email" type="email" placeholder="관리자 이메일">
+  <input class="wide" id="pw" type="password" placeholder="비밀번호">
+  <button onclick="login()">로그인</button>
+  <div id="loginResult" class="fail" style="margin-top:8px; font-size:14px;"></div>
+</div>
+
+<div id="listBox">
+  <section id="taxSection">
+    <h3>📑 세금계산서 신청 목록 (최근 10건)</h3>
+    <div id="taxResult">불러오는 중...</div>
+  </section>
+
+  <section id="cashSection">
+    <h3>💵 현금영수증 신청 목록 (최근 10건)</h3>
+    <div id="cashResult">불러오는 중...</div>
+  </section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const config = {
+  apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+  authDomain: "board-291e3.firebaseapp.com",
+  projectId: "board-291e3",
+  storageBucket: "board-291e3.firebasestorage.app",
+  messagingSenderId: "25881766316",
+  appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
+const app = initializeApp(config);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, (user) => {
+  document.getElementById("loginBox").style.display = user ? "none" : "block";
+  document.getElementById("listBox").style.display = user ? "block" : "none";
+  if (user) { loadTaxRequests(); loadCashRequests(); }
+});
+
+window.login = async function() {
+  const email = document.getElementById("email").value.trim();
+  const pw = document.getElementById("pw").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch (e) {
+    document.getElementById("loginResult").textContent = "로그인 실패: " + e.message;
+  }
+};
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+// 세금계산서 신청 목록 (segum1 컬렉션) - 색인/펼쳐보기 없이 최근 10건만 단순 표시
+async function loadTaxRequests() {
+  const el = document.getElementById("taxResult");
+  try {
+    const q1 = query(collection(db, "segum1"), orderBy("createdAt", "desc"), limit(10));
+    const snap = await getDocs(q1);
+
+    if (snap.empty) {
+      el.textContent = "신청 내역이 없습니다.";
+      return;
+    }
+
+    const rows = [];
+    snap.forEach(d => {
+      const data = d.data();
+      rows.push(`<tr>
+        <td>${esc(data.author || data.manager || '-')}</td>
+        <td>${esc(data.bizName || '-')}</td>
+        <td>${esc(data.bizNum || '-')}</td>
+        <td>${esc(data.email || '-')}</td>
+        <td>${esc(data.managerPhone || '-')}</td>
+      </tr>`);
+    });
+
+    el.innerHTML = `<div class="table-wrap"><table><thead>
+      <tr><th>작성자</th><th>상호명</th><th>사업자번호</th><th>이메일</th><th>담당자 연락처</th></tr>
+      </thead><tbody>${rows.join('')}</tbody></table></div>`;
+  } catch (e) {
+    el.innerHTML = `<span class="fail">⚠️ 신청 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
+  }
+}
+
+// 현금영수증 신청 목록 (cashReceipt1 컬렉션) - 색인/펼쳐보기 없이 최근 10건만 단순 표시
+async function loadCashRequests() {
+  const el = document.getElementById("cashResult");
+  try {
+    const q2 = query(collection(db, "cashReceipt1"), orderBy("createdAt", "desc"), limit(10));
+    const snap = await getDocs(q2);
+
+    if (snap.empty) {
+      el.textContent = "신청 내역이 없습니다.";
+      return;
+    }
+
+    const rows = [];
+    snap.forEach(d => {
+      const data = d.data();
+      let statusCell;
+      if (data.fileUrl) {
+        statusCell = `<span class="ok">✅ 발행완료</span> <a href="${esc(data.fileUrl)}" target="_blank">보기</a>`;
+      } else {
+        statusCell = `<div class="url-row"><input id="cashurl-${d.id}" placeholder="전표 jpg URL"><button onclick="saveCashUrl('${d.id}')">저장</button></div>`;
+      }
+      rows.push(`<tr><td>${esc(data.author || '-')}</td><td>${esc(data.cashNumber || '-')}</td><td>${statusCell}</td></tr>`);
+    });
+
+    el.innerHTML = `<div class="table-wrap"><table><thead>
+      <tr><th>작성자</th><th>발행희망번호</th><th>상태</th></tr>
+      </thead><tbody>${rows.join('')}</tbody></table></div>`;
+  } catch (e) {
+    el.innerHTML = `<span class="fail">⚠️ 신청 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
+  }
+}
+
+window.saveCashUrl = async (boardId) => {
+  const input = document.getElementById('cashurl-' + boardId);
+  const url = input.value.trim();
+  if (!url) return alert("전표 jpg URL을 입력해주세요.");
+  try {
+    await updateDoc(doc(db, "cashReceipt1", boardId), { fileUrl: url });
+    alert("현금영수증 URL이 저장되었습니다.");
+    loadCashRequests();
+  } catch (e) {
+    alert("저장 실패: " + e.message);
+  }
+};
+</script>
+</body>
+</html>
