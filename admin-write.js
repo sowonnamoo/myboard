@@ -160,7 +160,7 @@ async function publishBoardEntry({ title, author, message, password, classificat
         uid: adminUid,
         createdAt: new Date(),
         isDeleted: false,
-        status: "접수에러",
+        status: "대기",
         fromCart: false,
         createdByAdmin: true,
         createdByAdminEmail: adminEmail || ""
@@ -209,7 +209,7 @@ async function publishScheduledItemAtomic(scheduledDocId) {
             uid: data.createdByAdminUid,
             createdAt: new Date(),
             isDeleted: false,
-            status: "접수에러",
+            status: "대기",
             fromCart: false,
             createdByAdmin: true,
             createdByAdminEmail: data.createdByAdminEmail || ""
