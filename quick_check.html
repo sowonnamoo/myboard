@@ -56,7 +56,7 @@
 </div>
 
 <div id="listBox">
-  <p class="ok">✅ 로그인됨 — 무통장/카드결제 건만 표시 (더보기 클릭 시 5건씩 조회)</p>
+  <p class="ok">✅ 로그인됨 — 무통장/카드결제/접수에러 건만 표시 (더보기 클릭 시 5건씩 조회)</p>
   <div id="result">불러오는 중...</div>
 
   <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:10px;">
@@ -639,7 +639,7 @@ window.saveCashUrlDirect = async (boardId) => {
 // 무통장/카드결제 필터는 받아온 배치 안에서 자바스크립트로 걸러냅니다.
 // 그래도 페이지를 열자마자 대량으로 가져오지 않도록, "더보기"를 누른 시점에만
 // 소량 배치 단위로 조회하고(부족하면 배치 크기를 키워가며 이어서 조회), 매번 5건씩만 화면에 붙입니다.
-const ORDER_STATUSES = ['무통장', '카드결제'];
+const ORDER_STATUSES = ['무통장', '카드결제', '접수에러'];
 const ORDERS_PAGE_SIZE = 5;
 const ORDERS_FETCH_MAX = 40; // 상태 필터로 많이 걸러지는 상황에서도 무한정 커지지 않도록 상한
 
@@ -725,7 +725,7 @@ window.loadMoreOrders = async () => {
     } else {
       moreWrap.innerHTML = '';
       if (body.children.length === 0) {
-        body.innerHTML = '<tr><td colspan="12" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제)이 없습니다.</td></tr>';
+        body.innerHTML = '<tr><td colspan="12" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제/접수에러)이 없습니다.</td></tr>';
       }
     }
   } catch (e) {
