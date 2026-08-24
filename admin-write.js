@@ -301,6 +301,12 @@ function clearForm() {
 }
 
 // ============= 예약 관련 (화면에 목록은 안 보여주고, 조용히 개수만 체크 + 자동발행) =============
+let lastPollCheckedAt = null; // 마지막으로 자동확인이 실행된 시각 (관리자 안심용 표시)
+
+function formatHHMM(d) {
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 async function countPending() {
     const q = query(scheduledCollection, where("status", "==", "pending"), limit(MAX_SCHEDULED + 1));
     const snap = await getDocs(q);
@@ -311,6 +317,7 @@ async function countPending() {
 // (탭을 닫으면 동작하지 않으며, 완전 자동화가 필요하면 별도 안내된 Cloud Functions를 쓰시면 됩니다.)
 async function publishDueScheduledItems() {
     if (!currentAdminUser) return;
+    lastPollCheckedAt = new Date();
     try {
         const now = Timestamp.fromDate(new Date());
         const q = query(
@@ -376,7 +383,8 @@ async function renderScheduleList() {
         );
         const snap = await getDocs(q);
         const totalPending = await countPending();
-        countEl.textContent = `대기 ${totalPending} / ${MAX_SCHEDULED}건`;
+        const checkedText = lastPollCheckedAt ? ` · 마지막 자동확인 ${formatHHMM(lastPollCheckedAt)}` : "";
+        countEl.textContent = `대기 ${totalPending} / ${MAX_SCHEDULED}건${checkedText}`;
 
         if (snap.empty) {
             listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">예약된 글이 없습니다.</p>`;
@@ -530,24 +538,40 @@ document.getElementById("recent-more-btn").addEventListener("click", () => {
     renderRecentBoards();
 });
 
+const POLL_INTERVAL_MS = 30 * 60 * 1000; // 30분 간격 (읽기 절약 - 예약 발행 시각 오차는 최대 30분)
+
+// setInterval 대신, "이전 체크가 끝난 뒤 30분 후 다음 체크"를 매번 다시 예약하는
+// 재귀 setTimeout 방식을 씁니다. PC가 절전모드에 들어갔다 깨어나거나 탭이 잠시
+// 멈췄다 재개되는 경우, setInterval은 밀린 시간만큼 계속 어긋날 수 있는데,
+// 이 방식은 그때그때 "지금부터 30분 뒤"로 다시 잡기 때문에 드리프트가 누적되지 않습니다.
+function scheduleNextPoll() {
+    pollTimer = setTimeout(async () => {
+        await publishDueScheduledItems();
+        scheduleNextPoll();
+    }, POLL_INTERVAL_MS);
+}
 function startPolling() {
     stopPolling();
-    publishDueScheduledItems();
-    pollTimer = setInterval(publishDueScheduledItems, 30 * 60 * 1000); // 30분 간격 (읽기 절약 - 예약 발행 시각 오차는 최대 30분)
+    publishDueScheduledItems(); // 로그인 직후 1회 즉시 확인
+    scheduleNextPoll();
 }
 function stopPolling() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
 }
 
-// 백그라운드 탭에서는 브라우저가 setInterval을 강하게 쓰로틀링(또는 정지)하기 때문에,
-// 30분 주기만 믿으면 실제로는 훨씬 늦게(또는 안) 돌 수 있습니다.
-// 관리자가 이 탭을 다시 볼 때(창 전환/복귀)마다 즉시 한 번 더 체크해서 그 공백을 줄입니다.
+// 백그라운드 탭에서는 브라우저가 타이머를 강하게 쓰로틀링(또는 정지)하기 때문에,
+// 30분 주기만 믿으면 실제로는 훨씬 늦게(또는 절전모드 중이었다면 그 시간만큼) 늦게 돌 수 있습니다.
+// 관리자가 이 탭을 다시 볼 때(창 전환/복귀, PC 깨어남)나 네트워크가 다시 연결될 때
+// 즉시 한 번 더 체크해서 그 공백을 최대한 줄입니다.
 // ※ 이것도 결국 "탭이 열려 있는 동안"에만 동작하는 보완일 뿐,
-//    탭을 완전히 닫은 경우까지 해결하려면 서버 쪽(Cloud Functions) 예약 실행이 필요합니다.
+//    탭을 완전히 닫은 경우까지 해결하려면 서버 쪽(Cloud Functions) 예약 실행이 필요합니다(3번, 나중에 진행).
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && currentAdminUser) {
         publishDueScheduledItems();
     }
+});
+window.addEventListener("online", () => {
+    if (currentAdminUser) publishDueScheduledItems();
 });
 
 // ============= 삭제관리: 등록 후 일정 기간 지난 m/k/s 분류 글 정리 (분류별로 각각 실행) =============
