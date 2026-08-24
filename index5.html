@@ -465,6 +465,10 @@ ${
     : ''
 }
             <div class="mt-4 flex gap-2 flex-wrap">
+                <a href="javascript:void(0)"
+                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print2.html?" + params + "')"}"
+                   class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">거래명세서</a>
+
                 <button type="button" id="segum-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
                     onclick="${(isPending || isCardPay) ? '' : "window.openSegumPageFor(this.dataset.name, this.dataset.phone)"}"
