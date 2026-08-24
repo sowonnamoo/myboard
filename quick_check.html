@@ -370,7 +370,7 @@ window.closeIpModal = () => {
 window.showUrlImageModal = (boardId, type) => {
   const url = urlImageMap[boardId + '_' + type];
   if (!url) return alert('등록된 URL을 찾을 수 없습니다.');
-  const title = type === 'track' ? '🚚 운송장' : '💳 카드전표';
+  const title = type === 'track' ? '🚚 운송장' : (type === 'cash' ? '🧾 현금영수증' : '💳 카드전표');
   document.getElementById('url-image-modal-title').textContent = title;
   const img = document.getElementById('url-image-modal-img');
   img.onerror = () => { img.style.display = 'none'; };
@@ -645,6 +645,22 @@ window.saveCardReceiptUrl = async (boardId) => {
   }
 };
 
+// 무통장건은 고객이 "현금영수증 신청"을 하지 않아도, 관리자가 미리 URL을 등록해두면
+// index5의 현금영수증 버튼 클릭 시 신청 절차 없이 바로 그 URL이 열리도록 합니다.
+// (cashReceipt1/{boardId} 문서가 없어도 setDoc(merge:true)로 새로 만들어서 저장 - updateDoc과 달리 신청 여부와 무관하게 동작)
+window.saveCashUrlDirect = async (boardId) => {
+  const input = document.getElementById('cashdirect-' + boardId);
+  const url = input.value.trim();
+  if (!url) return alert("현금영수증 URL을 입력해주세요.");
+  try {
+    await setDoc(doc(db, "cashReceipt1", boardId), { fileUrl: url }, { merge: true });
+    alert("현금영수증 URL이 저장되었습니다. (신청 여부와 상관없이 버튼 클릭 시 바로 열립니다)");
+    loadRecentOrders();
+  } catch (e) {
+    alert("저장 실패: " + e.message);
+  }
+};
+
 window.saveCashUrl = async (boardId) => {
   const input = document.getElementById('cashurl-' + boardId);
   const url = input.value.trim();
@@ -724,7 +740,7 @@ async function loadRecentOrders() {
     }
 
     resultEl.innerHTML = `<div class="table-wrap"><table><thead>
-      <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>IP</th></tr>
+      <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>현금영수증URL</th><th>IP</th></tr>
       </thead><tbody id="orders-body"></tbody></table></div>
       <div id="orders-more-wrap"></div>`;
 
@@ -781,7 +797,7 @@ async function buildOrderRows(items) {
 
   // 아래 4가지 조회는 서로 결과에 의존하지 않으므로(카드전표 조회에 필요한 status는 이미
   // top-level 문서에 있음), 순차로 기다리지 않고 한 번에 동시에 시작해서 왕복 횟수를 줄입니다.
-  const [adminPrivates, rawPrivates, hanjoolSnaps, cardSnaps] = await Promise.all([
+  const [adminPrivates, rawPrivates, hanjoolSnaps, cardSnaps, cashSnaps] = await Promise.all([
     Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({}))),
     Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col))),
     // jjjj(재주문)에는 hanjool 서브컬렉션 보안규칙이 없어서(재주문건은 재첨부 기능 대상이 아님)
@@ -792,6 +808,11 @@ async function buildOrderRows(items) {
     // 카드전표(cardjun1) 등록 여부 - 카드결제 상태인 건만 조회합니다.
     Promise.all(items.map(it =>
       it.doc.data().status === '카드결제' ? getDoc(doc(db, "cardjun1", it.doc.id)) : Promise.resolve(null)
+    )),
+    // 현금영수증(cashReceipt1) 등록 여부 - 무통장 상태인 건만 조회합니다.
+    // 고객이 신청하지 않아도 관리자가 미리 URL을 등록해둘 수 있도록 하기 위함입니다.
+    Promise.all(items.map(it =>
+      it.doc.data().status === '무통장' ? getDoc(doc(db, "cashReceipt1", it.doc.id)) : Promise.resolve(null)
     ))
   ]);
   // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
@@ -878,6 +899,21 @@ async function buildOrderRows(items) {
       }
     }
 
+    // 무통장 상태일 때만 현금영수증 URL 칸 표시. 고객의 "신청" 여부와 무관하게 미리 등록해둘 수 있고,
+    // 이미 등록된 경우엔 "등록완료" 버튼 + 이미지 모달로 확인합니다. (index5 현금영수증 버튼 클릭 시 바로 열림)
+    let cashCell = '-';
+    if (status === '무통장') {
+      const cashSnap = cashSnaps[idx];
+      const existingCash = (cashSnap && cashSnap.exists()) ? (cashSnap.data().fileUrl || '') : '';
+      if (existingCash) {
+        urlImageMap[d.id + '_cash'] = existingCash;
+        cashCell = `<button class="done-btn" onclick="showUrlImageModal('${d.id}','cash')">✅ 등록완료</button><button class="edit-toggle-btn" onclick="toggleUrlEdit('${d.id}','cash')">수정</button>
+          <div id="cash-edit-${d.id}" class="url-row" style="display:none; margin-top:4px;"><input id="cashdirect-${d.id}" value="${existingCash.replace(/"/g,'&quot;')}"><button onclick="saveCashUrlDirect('${d.id}')">저장</button></div>`;
+      } else {
+        cashCell = `<div class="url-row"><input id="cashdirect-${d.id}" placeholder="현금영수증 URL"><button onclick="saveCashUrlDirect('${d.id}')">저장</button></div>`;
+      }
+    }
+
     // 세금계산서 확인/발행상태 버튼 - "🧾 확인" 클릭 시에만 segum1을 조회합니다 (checkTaxMatch).
     rawPrivDataMap[d.id] = rawPriv;
     const taxIconCell = `<span id="tax-cell-${d.id}"><button onclick="checkTaxMatch('${d.id}')" style="padding:3px 6px; font-size:11px; background:#64748b; color:white; border:none; border-radius:4px; cursor:pointer;">🧾 확인</button></span>`;
@@ -935,6 +971,7 @@ async function buildOrderRows(items) {
       <td>${address}</td>
       <td>${trackingCell}</td>
       <td>${cardCell}</td>
+      <td>${cashCell}</td>
       <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
     </tr>`);
   });
