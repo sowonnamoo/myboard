@@ -96,7 +96,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, where, orderBy, limit, startAfter, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, startAfter, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const config = {
@@ -633,18 +633,21 @@ window.saveCashUrlDirect = async (boardId) => {
   }
 };
 
-// ============= 주문 목록 (무통장/카드결제 건만, 커서 기반 지연 로딩) =============
-// 예전에는 boards/jjjj에서 최대 500건씩을 페이지 열자마자 무조건 긁어와서(읽기량 폭탄),
-// 그 중 화면에는 5건씩만 표시하는 방식이었습니다.
-// 지금은 Firestore 쿼리 자체에 상태 필터(무통장/카드결제)를 걸고, "더보기"를 누른 시점에만
-// 그만큼(5건씩)만 실제로 조회합니다. 페이지를 처음 열었을 때는 아무 것도 조회하지 않습니다.
+// ============= 주문 목록 (무통장/카드결제 건만, 커서 기반 지연 로딩 / 색인 불필요) =============
+// Firestore에서 where(status in [...]) + orderBy(createdAt)를 같이 쓰면 복합 색인이 필수라서,
+// 색인을 만들지 않는 대신 orderBy(createdAt)만 서버에 보내고(단일 필드라 색인 불필요),
+// 무통장/카드결제 필터는 받아온 배치 안에서 자바스크립트로 걸러냅니다.
+// 그래도 페이지를 열자마자 대량으로 가져오지 않도록, "더보기"를 누른 시점에만
+// 소량 배치 단위로 조회하고(부족하면 배치 크기를 키워가며 이어서 조회), 매번 5건씩만 화면에 붙입니다.
 const ORDER_STATUSES = ['무통장', '카드결제'];
 const ORDERS_PAGE_SIZE = 5;
+const ORDERS_FETCH_MAX = 40; // 상태 필터로 많이 걸러지는 상황에서도 무한정 커지지 않도록 상한
 
-// boards / jjjj 각각의 마지막으로 읽은 문서(커서)와 소진 여부
+// boards / jjjj 각각의 마지막으로 읽은 문서(커서), 소진 여부, 다음 조회 배치 크기
 let orderCursors = { boards: null, jjjj: null };
 let orderDone = { boards: false, jjjj: false };
-// 두 컬렉션에서 미리 읽어왔지만 아직 화면에 표시하지 않은 항목(날짜 내림차순으로 합쳐서 보관)
+let orderBatchSize = { boards: ORDERS_PAGE_SIZE, jjjj: ORDERS_PAGE_SIZE };
+// 두 컬렉션에서 미리 읽어와 상태 필터까지 통과했지만 아직 화면에 표시하지 않은 항목(날짜 내림차순 보관)
 let orderBuffer = [];
 
 function orderItemDate(item) {
@@ -652,23 +655,30 @@ function orderItemDate(item) {
   return t?.toDate ? t.toDate() : new Date(0);
 }
 
-// 특정 컬렉션에서 다음 5건(무통장/카드결제만)을 커서 이후로 조회
+// 특정 컬렉션에서 다음 배치를 커서 이후로 조회한 뒤, 무통장/카드결제 상태인 것만 걸러서 반환합니다.
+// (orderBy 단일 필드만 사용하므로 Firestore 복합 색인이 필요 없습니다.)
 async function fetchNextOrderBatch(col) {
   if (orderDone[col]) return [];
-  const base = [collection(db, col), where('status', 'in', ORDER_STATUSES), orderBy('createdAt', 'desc')];
+  const size = orderBatchSize[col];
+  const base = [collection(db, col), orderBy('createdAt', 'desc')];
   const qRef = orderCursors[col]
-    ? query(...base, startAfter(orderCursors[col]), limit(ORDERS_PAGE_SIZE))
-    : query(...base, limit(ORDERS_PAGE_SIZE));
+    ? query(...base, startAfter(orderCursors[col]), limit(size))
+    : query(...base, limit(size));
   const snap = await getDocs(qRef);
-  if (snap.docs.length < ORDERS_PAGE_SIZE) orderDone[col] = true;
+  if (snap.docs.length < size) orderDone[col] = true;
   if (!snap.empty) orderCursors[col] = snap.docs[snap.docs.length - 1];
-  return snap.docs.map(d => ({ doc: d, col, isJajoo: col === 'jjjj' }));
+  // 다음 번에도 부족하면 배치를 점점 키워서 왕복 횟수를 줄입니다 (5→10→20→40, 상한 유지).
+  orderBatchSize[col] = Math.min(size * 2, ORDERS_FETCH_MAX);
+  return snap.docs
+    .filter(d => ORDER_STATUSES.includes(d.data().status))
+    .map(d => ({ doc: d, col, isJajoo: col === 'jjjj' }));
 }
 
 async function loadRecentOrders() {
   const resultEl = document.getElementById("result");
   orderCursors = { boards: null, jjjj: null };
   orderDone = { boards: false, jjjj: false };
+  orderBatchSize = { boards: ORDERS_PAGE_SIZE, jjjj: ORDERS_PAGE_SIZE };
   orderBuffer = [];
 
   resultEl.innerHTML = `<div class="table-wrap"><table><thead>
@@ -677,7 +687,7 @@ async function loadRecentOrders() {
     <div id="orders-more-wrap"><button id="orders-more-btn" onclick="loadMoreOrders()" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">최근 5건 불러오기</button></div>`;
 }
 
-// "더보기"(또는 최초 "불러오기") 버튼: 클릭할 때마다 무통장/카드결제 건 5개만 실제로 조회해서 이어붙입니다.
+// "더보기"(또는 최초 "불러오기") 버튼: 클릭할 때마다 무통장/카드결제 건이 5개 찰 때까지만 조회해서 이어붙입니다.
 window.loadMoreOrders = async () => {
   const body = document.getElementById('orders-body');
   const moreWrap = document.getElementById('orders-more-wrap');
@@ -689,7 +699,7 @@ window.loadMoreOrders = async () => {
   try {
     let collectedRows = [];
     while (collectedRows.length < ORDERS_PAGE_SIZE) {
-      // 버퍼가 비어있고 아직 더 읽을 데이터가 남아있으면 boards/jjjj에서 각각 5건씩 더 채워옵니다.
+      // 버퍼가 비어있고 아직 더 읽을 데이터가 남아있으면 boards/jjjj에서 배치를 더 채워옵니다.
       while (orderBuffer.length === 0 && !(orderDone.boards && orderDone.jjjj)) {
         const [boardsBatch, jjjjBatch] = await Promise.all([
           fetchNextOrderBatch('boards'),
