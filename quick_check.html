@@ -749,15 +749,18 @@ window.loadMoreOrders = async () => {
   try {
     // 배송지 없음(또는 adminOrders 문서 없음)인 건은 buildOrderRows에서 화면 표시가 제외되므로,
     // 실제로 표시되는 행이 ORDERS_PAGE_SIZE만큼 채워지거나 더 이상 남은 항목이 없을 때까지
-    // 다음 배치를 이어서 조회합니다. (숨겨지는 건 때문에 "더보기"를 여러 번 눌러야 하는 문제 방지)
+    // 다음 배치를 이어서 조회합니다. buildOrderRows 호출 1번당 네트워크 왕복 시간이 들기 때문에,
+    // 숨겨지는 건이 많을 때 5건씩 여러 번 호출하지 않도록 배치 크기를 점점 키워갑니다(5→10→20…).
     let visibleAdded = 0;
+    let batchSize = ORDERS_PAGE_SIZE;
     let allNewRows = [];
     while (visibleAdded < ORDERS_PAGE_SIZE && orderLoadedCount < orderBaseItems.length) {
-      const nextItems = orderBaseItems.slice(orderLoadedCount, orderLoadedCount + ORDERS_PAGE_SIZE);
+      const nextItems = orderBaseItems.slice(orderLoadedCount, orderLoadedCount + batchSize);
       const newRows = await buildOrderRows(nextItems);
       allNewRows = allNewRows.concat(newRows);
       visibleAdded += newRows.length;
       orderLoadedCount += nextItems.length;
+      batchSize = Math.min(batchSize * 2, 40);
     }
     body.insertAdjacentHTML('beforeend', allNewRows.join(''));
 
@@ -776,23 +779,24 @@ window.loadMoreOrders = async () => {
 async function buildOrderRows(items) {
   if (items.length === 0) return [];
 
-  // adminOrders는 일반 주문(boards)에만 존재하므로, 재주문(jjjj)건은 이 조회를 건너뜁니다.
-  const adminPrivates = await Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({})));
-  const rawPrivates = await Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col)));
-  // 각 주문의 재첨부(hanjool) 파일 목록도 함께 조회
-  // jjjj(재주문)에는 hanjool 서브컬렉션 보안규칙이 없어서(재주문건은 재첨부 기능 대상이 아님)
-  // 조회 시도 자체가 permission-denied를 일으킵니다. boards건만 조회합니다.
-  const hanjoolSnaps = await Promise.all(items.map(it =>
-    it.col === "boards" ? getDocs(collection(db, it.col, it.doc.id, "hanjool")) : Promise.resolve({ docs: [] })
-  ));
+  // 아래 4가지 조회는 서로 결과에 의존하지 않으므로(카드전표 조회에 필요한 status는 이미
+  // top-level 문서에 있음), 순차로 기다리지 않고 한 번에 동시에 시작해서 왕복 횟수를 줄입니다.
+  const [adminPrivates, rawPrivates, hanjoolSnaps, cardSnaps] = await Promise.all([
+    Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({}))),
+    Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col))),
+    // jjjj(재주문)에는 hanjool 서브컬렉션 보안규칙이 없어서(재주문건은 재첨부 기능 대상이 아님)
+    // 조회 시도 자체가 permission-denied를 일으킵니다. boards건만 조회합니다.
+    Promise.all(items.map(it =>
+      it.col === "boards" ? getDocs(collection(db, it.col, it.doc.id, "hanjool")) : Promise.resolve({ docs: [] })
+    )),
+    // 카드전표(cardjun1) 등록 여부 - 카드결제 상태인 건만 조회합니다.
+    Promise.all(items.map(it =>
+      it.doc.data().status === '카드결제' ? getDoc(doc(db, "cardjun1", it.doc.id)) : Promise.resolve(null)
+    ))
+  ]);
   // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
   // 예전엔 목록 로딩 시 전부 미리 조회해서 미발행 건을 상단 고정했지만,
   // 지금은 각 행의 "🧾 확인" 버튼을 눌렀을 때만 조회합니다 (checkTaxMatch 참고).
-
-  // 카드전표(cardjun1) 등록 여부 - 카드결제 상태인 건만 조회합니다.
-  const cardSnaps = await Promise.all(items.map(it =>
-    it.doc.data().status === '카드결제' ? getDoc(doc(db, "cardjun1", it.doc.id)) : Promise.resolve(null)
-  ));
 
   const rows = [];
   items.forEach((it, idx) => {
