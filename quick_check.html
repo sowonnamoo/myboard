@@ -222,10 +222,17 @@ window.downloadOrderSheet = (boardId) => {
   const a = document.createElement('a');
   a.href = url;
 
-  const dateCode = o.createdAtDate
-    ? `${o.createdAtDate.getFullYear()}${String(o.createdAtDate.getMonth()+1).padStart(2,'0')}${String(o.createdAtDate.getDate()).padStart(2,'0')}_${String(o.createdAtDate.getHours()).padStart(2,'0')}${String(o.createdAtDate.getMinutes()).padStart(2,'0')}`
-    : 'unknown';
-  a.download = `주문서_${o.author}_${dateCode}.txt`;
+  // 파일명: 전화번호 앞 7자리 + 다운로드하는 "오늘" 날짜(YYMMDDHHmm)를 구분자 없이 그대로 이어붙임
+  // 예) 010-2366-XXXX, 2026-08-24 06:54 다운로드 -> 01023662608240654.txt
+  const phoneDigits = String(o.phone || '').replace(/[^0-9]/g, '').slice(0, 7);
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const todayCode = `${yy}${mm}${dd}${hh}${mi}`;
+  a.download = `${phoneDigits || '0000000'}${todayCode}.txt`;
 
   document.body.appendChild(a);
   a.click();
