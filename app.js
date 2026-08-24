@@ -919,6 +919,18 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         if (errorNotice) errorNotice.classList.add('hidden');
     }
 
+    // 결제(카드결제/무통장)가 이미 완료된 주문은 임의로 삭제되지 않도록
+    // 주문삭제 버튼을 숨깁니다. ('대기' 상태일 때만 삭제 가능)
+    const deleteBtn = document.getElementById("detail-delete-btn");
+    if (deleteBtn) {
+        if (data.status === '카드결제' || data.status === '무통장') {
+            deleteBtn.classList.add('hidden');
+        } else {
+            deleteBtn.classList.remove('hidden');
+        }
+    }
+
+
     // [수정됨] "장바구니담기" 버튼은 주문상태(대기/카드결제/무통장 등)나 fromCart 여부와 무관하게
     // 항상 4개 버튼(시안보기/장바구니담기/무통장결제/카드결제) 그대로 보이고 자리도 유지합니다.
     // (이전에는 data.fromCart가 true면 이 버튼을 숨겨서 버튼이 4개→3개로 줄어드는 문제가 있었습니다)
@@ -967,6 +979,53 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("modal-password-input").value = "";
 });
 
+// 결제창(payment.html)을 띄우고, 그 팝업으로부터 정확히 이 결제건에 대한
+// PAYMENT_SUCCESS 메시지를 받아야만 결제 결과를 반환합니다.
+// (event.source로 우리가 연 그 팝업이 보낸 메시지인지까지 확인하므로,
+//  다른 창/다른 결제건의 메시지를 잘못 승인하는 일이 없습니다)
+// 반환값: { paid: true, payMethod: 'CARD'|'TRANSFER' } 또는 { paid: false }
+function openPaymentPopupAndWait(priceDigits) {
+    return new Promise((resolve) => {
+        const url = `https://sowonnamoo.github.io/myjs/payment?price=${priceDigits}`;
+        const options = "width=811,height=649,scrollbars=yes,resizable=yes";
+        const paymentWindow = window.open(url, 'paymentWindow', options);
+
+        if (!paymentWindow) {
+            alert("결제창 팝업이 차단되었습니다. 팝업 차단을 해제한 뒤 다시 시도해주세요.");
+            resolve({ paid: false });
+            return;
+        }
+
+        let settled = false;
+
+        function cleanup() {
+            window.removeEventListener('message', onMessage);
+            clearInterval(closeChecker);
+        }
+
+        function onMessage(event) {
+            if (event.origin !== 'https://sowonnamoo.github.io') return;
+            if (event.source !== paymentWindow) return;
+            if (!event.data || event.data.type !== 'PAYMENT_SUCCESS') return;
+            const paidDigits = String(event.data.price ?? '').replace(/[^0-9]/g, '');
+            if (paidDigits !== priceDigits) return; // 다른 금액 결제건은 무시
+
+            settled = true;
+            cleanup();
+            resolve({ paid: true, payMethod: event.data.payMethod });
+        }
+        window.addEventListener('message', onMessage);
+
+        // 결제 없이 팝업을 그냥 닫아버린 경우(취소) 감지
+        const closeChecker = setInterval(() => {
+            if (paymentWindow.closed && !settled) {
+                cleanup();
+                resolve({ paid: false });
+            }
+        }, 500);
+    });
+}
+
 let textInterval, barInterval; 
 document.getElementById("save-btn").addEventListener("click", async () => {
     // [추가] 파일명 중복 확인
@@ -989,6 +1048,19 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     if (file1.files.length === 0) { alert("최소 1개의 파일을 첨부해주세요."); return; }
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
     if (phoneVal.length !== 11) { alert("전화번호 11자리를 정확히 입력해주세요."); return; }
+
+    // 결제금액 확인 + 카드결제/계좌이체 먼저 진행
+    // 결제가 실제로 완료된 경우에만 아래의 파일업로드/DB저장이 실행됩니다.
+    const priceDigits = document.getElementById('price').value.replace(/[^0-9]/g, '');
+    if (!priceDigits || parseInt(priceDigits, 10) <= 0) { alert("결제금액을 입력해주세요."); return; }
+
+    const paymentResult = await openPaymentPopupAndWait(priceDigits);
+    if (!paymentResult || !paymentResult.paid) {
+        alert("결제가 완료되지 않아 접수가 취소되었습니다.");
+        return;
+    }
+    // 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
+    const resolvedPayStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
 
     // 2. 업로드 진행률 UI 준비
     //    - 더 이상 "3초마다 5% 증가"하는 가짜 타이머가 아니라, XHR의 실제 업로드 바이트 수를 그대로 반영합니다.
@@ -1080,7 +1152,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     uid: currentUser.uid, // 익명 로그인으로 발급된 고유 ID (본인 글 판별용)
     createdAt: new Date(),
     isDeleted: false,
-    status: '대기',
+    status: resolvedPayStatus, // 이미 결제가 확인된 뒤에만 이 코드가 실행되므로, 결제수단에 맞춰 바로 저장
     fromCart: isFromCart // true: 장바구니 자동입력 주문 / false: 작성자가 직접 입력한 주문
     });
 
@@ -1106,7 +1178,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     text.textContent = "접수 완료!";
     fileInfoText.textContent = '';
 
-    alert("접수되었습니다.");
+    alert("결제가 완료되어 접수되었습니다.");
 
     // 장바구니를 하나의 주문으로 합쳐 접수한 경우, 장바구니 비우기
     localStorage.removeItem('pendingCartOrders');
@@ -1464,6 +1536,8 @@ window.addEventListener("message", async (event) => {
     // 가격 비교 시 "50,000원" / "50000" / 50000 처럼 표기 형식이 달라도 안전하게 비교되도록
     // 양쪽 모두 숫자만 추출해서 비교합니다.
     const paidPriceDigits = String(event.data.price ?? '').replace(/[^0-9]/g, '');
+    // payment.html에서 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
+    const resolvedStatus = event.data.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
 
     try {
         // 1. 현재 상세 페이지에 떠 있는 주문 정보를 가져옵니다.
@@ -1480,14 +1554,14 @@ window.addEventListener("message", async (event) => {
 
             // DB 상태 변경
             await updateDoc(docRef, {
-                status: '카드결제'
+                status: resolvedStatus
             });
 
             alert("결제가 정상적으로 확인되었습니다.");
 
             // 3. 화면 상태 즉시 갱신 (이미지 변경)
-            // 상세 정보를 다시 불러와서 status 필드가 '카드결제'로 바뀐 것을 반영합니다.
-            window.syncStatusOverlay('카드결제');
+            // 상세 정보를 다시 불러와서 status 필드가 바뀐 것을 반영합니다.
+            window.syncStatusOverlay(resolvedStatus);
 
             // viewDetail을 다시 호출하면 DB에서 바뀐 status를 다시 읽어와 화면을 갱신합니다.
             // (만약 팝업 닫기나 화면 리로드가 필요하면 여기서 처리하세요)
