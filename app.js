@@ -1321,6 +1321,29 @@ window.openDoc = function(filename, type) {
 };
 
 
+// 주문작성(글쓰기) 화면 전용 견적서 출력 함수
+// view-detail(상세보기)의 openDoc()과 달리, 아직 접수 전인 "구입 제품명/수량/사이즈/결제금액" 입력칸의
+// 값을 그대로 읽어서 견적서(print1.html)를 띄웁니다. 직접 타이핑했든, 장바구니 등으로 이미 채워져
+// 있는 상태(readonly)든 상관없이 현재 입력창에 들어있는 값을 그대로 사용합니다.
+window.openEstimateFromForm = function() {
+    const product = document.getElementById('product-name')?.value.trim() || '';
+    const size = document.getElementById('size')?.value.trim() || '';
+    const qty = document.getElementById('quantity')?.value.trim() || '';
+    const priceRaw = document.getElementById('price')?.value.trim() || '';
+    const price = priceRaw.replace(/[^0-9]/g, '');
+
+    if (!product || !qty || !size || !price) {
+        alert('구입 제품명, 수량, 사이즈, 결제금액을 먼저 입력해주세요.');
+        return;
+    }
+
+    const url = `print1.html?product=${encodeURIComponent(product)}&size=${encodeURIComponent(size)}&qty=${encodeURIComponent(qty)}&price=${encodeURIComponent(price)}`;
+
+    // view-detail의 견적서 버튼(openDoc)과 동일한 크기로 인쇄용 팝업을 띄웁니다.
+    window.open(url, '_blank', 'width=850,height=950');
+};
+
+
 /**
  * 간이영수증 팝업 호출 함수
  * 이 함수를 app.js 하단에 추가하세요.
