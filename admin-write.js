@@ -32,6 +32,8 @@ function showLoginView() {
     document.getElementById("view-login").classList.remove("hidden");
     document.getElementById("view-write-wrap").classList.add("hidden");
     document.getElementById("login-status").classList.add("hidden");
+    clearListCache(RECENT_CACHE_KEY);
+    clearListCache(SCHEDULE_CACHE_KEY);
     stopPolling();
 }
 function showWriteView(user) {
@@ -40,7 +42,7 @@ function showWriteView(user) {
     document.getElementById("login-status").classList.remove("hidden");
     document.getElementById("login-email-text").textContent = user.email || "";
     refreshScheduleList();
-    refreshRecentBoards();
+    initRecentBoardsView();
     startPolling();
 }
 
@@ -129,6 +131,33 @@ function escapeHtml(str) {
 function showLoading(show, text) {
     if (text) document.getElementById("loading-text").textContent = text;
     document.getElementById("loading-spinner").classList.toggle("hidden", !show);
+}
+
+// ============= 목록 캐시 (세션 스토리지) =============
+// 뒤로가기/앞으로가기/새로고침으로 페이지가 다시 열릴 때마다 Firestore를 매번 다시 읽으면
+// 읽기 비용이 낭비되므로, 최근에 불러온 목록은 세션 스토리지에 잠깐 저장해두고
+// 유효시간 안에는 그 캐시를 그대로 재사용합니다(탭을 닫으면 사라짐).
+// 실제로 목록이 바뀌는 등록/삭제/취소 조작을 하면 그 즉시 캐시를 지우고 새로 조회합니다.
+function saveListCache(key, payload) {
+    try {
+        sessionStorage.setItem(key, JSON.stringify({ ...payload, savedAt: Date.now() }));
+    } catch (e) {
+        // 세션 스토리지를 쓸 수 없어도(시크릿 모드 등) 기능에는 지장이 없으므로 무시합니다.
+    }
+}
+function loadListCache(key, maxAgeMs) {
+    try {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed.savedAt || Date.now() - parsed.savedAt > maxAgeMs) return null;
+        return parsed;
+    } catch (e) {
+        return null;
+    }
+}
+function clearListCache(key) {
+    try { sessionStorage.removeItem(key); } catch (e) {}
 }
 
 // ============= 예약 자동발행 상태 배너 =============
@@ -255,6 +284,7 @@ document.getElementById("a-submit-btn").addEventListener("click", async () => {
                 adminUid: currentAdminUser.uid, adminEmail: currentAdminUser.email
             });
             showResult(`✅ 즉시 등록되었습니다. 작성자: <b>${escapeHtml(author)}</b> / 비밀번호: <b>${password}</b>`);
+            clearListCache(RECENT_CACHE_KEY);
         } else {
             const pendingCount = await countPending();
             if (pendingCount >= MAX_SCHEDULED) {
@@ -271,6 +301,7 @@ document.getElementById("a-submit-btn").addEventListener("click", async () => {
                 createdByAdminEmail: currentAdminUser.email || ""
             });
             showResult(`⏰ ${delayHours}시간 뒤(${scheduledDate.getMonth() + 1}월 ${scheduledDate.getDate()}일 ${String(scheduledDate.getHours()).padStart(2, "0")}:${String(scheduledDate.getMinutes()).padStart(2, "0")})에 자동 등록됩니다. 작성자: <b>${escapeHtml(author)}</b> / 비밀번호: <b>${password}</b>`);
+            clearListCache(SCHEDULE_CACHE_KEY);
             refreshScheduleList();
         }
         clearForm();
@@ -348,6 +379,8 @@ async function publishDueScheduledItems() {
         } else {
             showPollBanner(null);
         }
+        clearListCache(SCHEDULE_CACHE_KEY);
+        clearListCache(RECENT_CACHE_KEY);
         refreshScheduleList();
     } catch (e) {
         console.error("예약 확인 중 오류:", e);
@@ -361,68 +394,97 @@ async function publishDueScheduledItems() {
     }
 }
 
-// ============= 예약 대기 목록 표시 (최대 5개) + 취소 =============
-let scheduleShowCount = 5;
+// ============= 예약 대기 목록 표시 (기본 3개) + 취소 =============
+// 5개 → 3개로 기본 조회량을 줄였습니다. 예약 발행과 직결된 목록이라 완전히
+// lazy-load(자동 조회 안 함)로 바꾸지는 않되, 최근 조회 결과를 짧게(1분) 캐시해서
+// 뒤로가기/앞으로가기/새로고침이 잦아도 그 안에서는 재조회하지 않습니다.
+// 예약 등록/취소/자동발행처럼 실제로 상태가 바뀌는 시점에는 캐시를 지우고 새로 조회합니다.
+const SCHEDULE_PAGE_SIZE = 3;
+const SCHEDULE_CACHE_KEY = "adminScheduleCache";
+const SCHEDULE_CACHE_MAX_AGE_MS = 60 * 1000;
+let scheduleShowCount = SCHEDULE_PAGE_SIZE;
 
-async function refreshScheduleList() {
-    scheduleShowCount = 5;
-    await renderScheduleList();
+async function fetchScheduleData(showCount) {
+    // 더 있는지 확인하려고 표시 개수보다 1개 더 가져옵니다.
+    const q = query(
+        scheduledCollection,
+        where("status", "==", "pending"),
+        orderBy("scheduledAt", "asc"),
+        limit(showCount + 1)
+    );
+    const snap = await getDocs(q);
+    const totalPending = await countPending();
+    const hasMore = snap.docs.length > showCount;
+    const docsData = snap.docs.slice(0, showCount).map(docSnap => {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            title: data.title,
+            author: data.author,
+            scheduledAtMillis: data.scheduledAt.toDate().getTime()
+        };
+    });
+    return { docsData, hasMore, totalPending };
 }
 
-async function renderScheduleList() {
+function renderScheduleListData(docsData, hasMore, totalPending) {
     const listEl = document.getElementById("schedule-list");
     const countEl = document.getElementById("schedule-count-text");
     const moreBtn = document.getElementById("schedule-more-btn");
-    try {
-        // 더 있는지 확인하려고 표시 개수보다 1개 더 가져옵니다.
-        const q = query(
-            scheduledCollection,
-            where("status", "==", "pending"),
-            orderBy("scheduledAt", "asc"),
-            limit(scheduleShowCount + 1)
-        );
-        const snap = await getDocs(q);
-        const totalPending = await countPending();
-        const checkedText = lastPollCheckedAt ? ` · 마지막 자동확인 ${formatHHMM(lastPollCheckedAt)}` : "";
-        countEl.textContent = `대기 ${totalPending} / ${MAX_SCHEDULED}건${checkedText}`;
+    const checkedText = lastPollCheckedAt ? ` · 마지막 자동확인 ${formatHHMM(lastPollCheckedAt)}` : "";
+    countEl.textContent = `대기 ${totalPending} / ${MAX_SCHEDULED}건${checkedText}`;
 
-        if (snap.empty) {
-            listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">예약된 글이 없습니다.</p>`;
-            moreBtn.classList.add("hidden");
-            return;
-        }
+    if (docsData.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">예약된 글이 없습니다.</p>`;
+        moreBtn.classList.add("hidden");
+        return;
+    }
 
-        const docs = snap.docs.slice(0, scheduleShowCount);
-        const hasMore = snap.docs.length > scheduleShowCount;
-
-        listEl.innerHTML = "";
-        docs.forEach(docSnap => {
-            const data = docSnap.data();
-            const d = data.scheduledAt.toDate();
-            const dateStr = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-            const row = document.createElement("div");
-            row.className = "flex items-center justify-between p-2.5";
-            row.innerHTML = `
-                <div class="min-w-0">
-                    <p class="font-medium text-gray-800 truncate">${escapeHtml(data.title)} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(data.author)}</span></p>
-                    <p class="text-xs text-gray-400">⏰ ${dateStr} 예약 · <span class="text-amber-600">대기중</span></p>
-                </div>
-                <button class="cancel-schedule-btn text-xs border border-gray-300 text-gray-600 rounded px-2.5 py-1 hover:bg-gray-100 shrink-0 ml-2">예약취소</button>
-            `;
-            row.querySelector(".cancel-schedule-btn").addEventListener("click", async () => {
-                if (!confirm(`"${data.title}" 예약을 취소하시겠습니까?`)) return;
-                try {
-                    await deleteDoc(doc(db, "scheduledBoards", docSnap.id));
-                    refreshScheduleList();
-                } catch (e) {
-                    console.error(e);
-                    alert("취소 중 오류가 발생했습니다: " + e.message);
-                }
-            });
-            listEl.appendChild(row);
+    listEl.innerHTML = "";
+    docsData.forEach(item => {
+        const d = new Date(item.scheduledAtMillis);
+        const dateStr = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between p-2.5";
+        row.innerHTML = `
+            <div class="min-w-0">
+                <p class="font-medium text-gray-800 truncate">${escapeHtml(item.title)} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(item.author)}</span></p>
+                <p class="text-xs text-gray-400">⏰ ${dateStr} 예약 · <span class="text-amber-600">대기중</span></p>
+            </div>
+            <button class="cancel-schedule-btn text-xs border border-gray-300 text-gray-600 rounded px-2.5 py-1 hover:bg-gray-100 shrink-0 ml-2">예약취소</button>
+        `;
+        row.querySelector(".cancel-schedule-btn").addEventListener("click", async () => {
+            if (!confirm(`"${item.title}" 예약을 취소하시겠습니까?`)) return;
+            try {
+                await deleteDoc(doc(db, "scheduledBoards", item.id));
+                clearListCache(SCHEDULE_CACHE_KEY);
+                refreshScheduleList();
+            } catch (e) {
+                console.error(e);
+                alert("취소 중 오류가 발생했습니다: " + e.message);
+            }
         });
+        listEl.appendChild(row);
+    });
 
-        moreBtn.classList.toggle("hidden", !hasMore);
+    moreBtn.textContent = "더보기 (+3)";
+    moreBtn.classList.toggle("hidden", !hasMore);
+}
+
+// keepCount=false: "더보기" 클릭 - 3개씩 추가로 불러옵니다.
+// keepCount=true: 등록/취소/자동발행 직후 강제 최신화 - 현재까지 보던 개수만큼만 다시 불러옵니다.
+async function loadScheduleList(keepCount) {
+    const nextCount = keepCount
+        ? Math.max(scheduleShowCount, SCHEDULE_PAGE_SIZE)
+        : scheduleShowCount + SCHEDULE_PAGE_SIZE;
+    const listEl = document.getElementById("schedule-list");
+    const moreBtn = document.getElementById("schedule-more-btn");
+    moreBtn.disabled = true;
+    try {
+        const { docsData, hasMore, totalPending } = await fetchScheduleData(nextCount);
+        scheduleShowCount = nextCount;
+        saveListCache(SCHEDULE_CACHE_KEY, { showCount: nextCount, docs: docsData, hasMore, totalPending });
+        renderScheduleListData(docsData, hasMore, totalPending);
     } catch (e) {
         console.error("예약 목록 조회 실패:", e);
         let hint = "";
@@ -435,12 +497,26 @@ async function renderScheduleList() {
         }
         listEl.innerHTML = `<p class="text-xs text-red-500 py-4 text-center px-2">목록을 불러오지 못했습니다.<br>${escapeHtml(hint)}</p>`;
         moreBtn.classList.add("hidden");
+    } finally {
+        moreBtn.disabled = false;
     }
 }
 
+// 창을 열 때(또는 상태 변경 직후) 호출: 유효한 캐시(1분 이내)가 있으면 재조회 없이 보여주고,
+// 없거나 오래됐으면 새로 조회합니다.
+function refreshScheduleList() {
+    const cached = loadListCache(SCHEDULE_CACHE_KEY, SCHEDULE_CACHE_MAX_AGE_MS);
+    if (cached) {
+        scheduleShowCount = cached.showCount;
+        renderScheduleListData(cached.docs, cached.hasMore, cached.totalPending);
+        return Promise.resolve();
+    }
+    scheduleShowCount = SCHEDULE_PAGE_SIZE;
+    return loadScheduleList(true);
+}
+
 document.getElementById("schedule-more-btn").addEventListener("click", () => {
-    scheduleShowCount += 5;
-    renderScheduleList();
+    loadScheduleList(false);
 });
 
 // ============= 최근 등록글 개별 삭제 =============
@@ -476,66 +552,119 @@ async function deleteSingleBoard(boardId, title) {
 
 // ============= 최근 등록글 (index와 동일하게 createdAt desc, 최신순) =============
 // boards는 누구나 read 가능한 공개 컬렉션이라 별도 색인 없이 바로 조회됩니다.
-// 처음엔 5개만 보여주고, "더보기" 클릭 시 5개씩 추가로 불러옵니다.
-let recentBoardsShowCount = 5;
+// 읽기(토큰) 절약을 위해 창을 처음 열었을 때는 자동으로 조회하지 않고,
+// 관리자가 "조회하기/더보기" 버튼을 눌렀을 때만 5개씩 불러옵니다.
+// 한 번 불러온 결과는 세션 스토리지에 잠깐 캐시해서, 뒤로가기/앞으로가기/새로고침으로
+// 페이지가 다시 열려도 유효시간(5분) 안에는 재조회 없이 캐시를 그대로 보여줍니다.
+const RECENT_PAGE_SIZE = 5;
+const RECENT_CACHE_KEY = "adminRecentBoardsCache";
+const RECENT_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+let recentBoardsShowCount = 0; // 0 = 아직 한 번도 조회하지 않은 상태
 
-async function refreshRecentBoards() {
-    recentBoardsShowCount = 5;
-    await renderRecentBoards();
+async function fetchRecentBoardsData(showCount) {
+    // 다음 페이지에 더 있는지 확인하기 위해 표시 개수보다 1개 더 가져옵니다.
+    const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(showCount + 1));
+    const snap = await getDocs(q);
+    const hasMore = snap.docs.length > showCount;
+    const docsData = snap.docs.slice(0, showCount).map(docSnap => {
+        const data = docSnap.data();
+        const d = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null;
+        return {
+            id: docSnap.id,
+            title: data.title || data.productName || "",
+            author: data.author || "",
+            createdAtMillis: d ? d.getTime() : null
+        };
+    });
+    return { docsData, hasMore };
 }
 
-async function renderRecentBoards() {
+function renderRecentBoardsList(docsData, hasMore) {
     const listEl = document.getElementById("recent-list");
     const moreBtn = document.getElementById("recent-more-btn");
-    try {
-        // 다음 페이지에 더 있는지 확인하기 위해 표시 개수보다 1개 더 가져옵니다.
-        const q = query(collection(db, "boards"), orderBy("createdAt", "desc"), limit(recentBoardsShowCount + 1));
-        const snap = await getDocs(q);
 
-        if (snap.empty) {
-            listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">등록된 글이 없습니다.</p>`;
-            moreBtn.classList.add("hidden");
-            return;
-        }
-
-        const docs = snap.docs.slice(0, recentBoardsShowCount);
-        const hasMore = snap.docs.length > recentBoardsShowCount;
-
-        listEl.innerHTML = "";
-        docs.forEach(docSnap => {
-            const data = docSnap.data();
-            const d = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null;
-            const dateStr = d
-                ? `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
-                : "-";
-            const titleText = data.title || data.productName || "(제목없음)";
-            const row = document.createElement("div");
-            row.className = "flex items-center justify-between p-2.5";
-            row.innerHTML = `
-                <div class="min-w-0">
-                    <p class="font-medium text-gray-800 truncate">${escapeHtml(titleText)} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(data.author || "")}</span></p>
-                    <p class="text-xs text-gray-400">${dateStr}</p>
-                </div>
-                <button class="delete-recent-btn text-xs border border-red-200 text-red-600 rounded px-2.5 py-1 hover:bg-red-50 shrink-0 ml-2">삭제</button>
-            `;
-            row.querySelector(".delete-recent-btn").addEventListener("click", async () => {
-                const ok = await deleteSingleBoard(docSnap.id, titleText);
-                if (ok) refreshRecentBoards();
-            });
-            listEl.appendChild(row);
-        });
-
-        moreBtn.classList.toggle("hidden", !hasMore);
-    } catch (e) {
-        console.error("최근 등록글 조회 실패:", e);
-        listEl.innerHTML = `<p class="text-xs text-red-500 py-4 text-center px-2">목록을 불러오지 못했습니다.<br>${escapeHtml(e.message || "")}</p>`;
+    if (docsData.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center">등록된 글이 없습니다.</p>`;
         moreBtn.classList.add("hidden");
+        return;
+    }
+
+    listEl.innerHTML = "";
+    docsData.forEach(item => {
+        const d = item.createdAtMillis ? new Date(item.createdAtMillis) : null;
+        const dateStr = d
+            ? `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+            : "-";
+        const titleText = item.title || "(제목없음)";
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between p-2.5";
+        row.innerHTML = `
+            <div class="min-w-0">
+                <p class="font-medium text-gray-800 truncate">${escapeHtml(titleText)} <span class="text-xs text-gray-400 font-normal">· ${escapeHtml(item.author)}</span></p>
+                <p class="text-xs text-gray-400">${dateStr}</p>
+            </div>
+            <button class="delete-recent-btn text-xs border border-red-200 text-red-600 rounded px-2.5 py-1 hover:bg-red-50 shrink-0 ml-2">삭제</button>
+        `;
+        row.querySelector(".delete-recent-btn").addEventListener("click", async () => {
+            const ok = await deleteSingleBoard(item.id, titleText);
+            if (ok) { clearListCache(RECENT_CACHE_KEY); await loadMoreRecentBoards(true); }
+        });
+        listEl.appendChild(row);
+    });
+
+    moreBtn.textContent = "더보기 (+5)";
+    moreBtn.classList.toggle("hidden", !hasMore);
+}
+
+function showRecentNotLoadedState() {
+    const listEl = document.getElementById("recent-list");
+    const moreBtn = document.getElementById("recent-more-btn");
+    listEl.innerHTML = `<p class="text-xs text-gray-400 py-4 text-center px-2">읽기(토큰) 절약을 위해 자동으로 불러오지 않습니다.<br>아래 버튼을 눌러 조회하세요.</p>`;
+    moreBtn.textContent = "최근 등록글 조회하기";
+    moreBtn.classList.remove("hidden");
+}
+
+// 창을 열 때 호출: 유효한 캐시가 있으면 재조회 없이 그대로 보여주고,
+// 캐시가 없으면(진짜 처음 방문) 아무것도 조회하지 않고 "조회하기" 버튼만 보여줍니다.
+function initRecentBoardsView() {
+    const cached = loadListCache(RECENT_CACHE_KEY, RECENT_CACHE_MAX_AGE_MS);
+    if (cached) {
+        recentBoardsShowCount = cached.showCount;
+        renderRecentBoardsList(cached.docs, cached.hasMore);
+    } else {
+        recentBoardsShowCount = 0;
+        showRecentNotLoadedState();
     }
 }
 
+// keepCount=false: "조회하기/더보기" 클릭 - 5개씩 추가로 불러옵니다.
+// keepCount=true: 등록/삭제 직후 강제 최신화 - 현재까지 보던 개수만큼만 다시 불러옵니다.
+async function loadMoreRecentBoards(keepCount) {
+    const moreBtn = document.getElementById("recent-more-btn");
+    const nextCount = keepCount
+        ? Math.max(recentBoardsShowCount, RECENT_PAGE_SIZE)
+        : recentBoardsShowCount + RECENT_PAGE_SIZE;
+    moreBtn.disabled = true;
+    try {
+        const { docsData, hasMore } = await fetchRecentBoardsData(nextCount);
+        recentBoardsShowCount = nextCount;
+        saveListCache(RECENT_CACHE_KEY, { showCount: nextCount, docs: docsData, hasMore });
+        renderRecentBoardsList(docsData, hasMore);
+    } catch (e) {
+        console.error("최근 등록글 조회 실패:", e);
+        document.getElementById("recent-list").innerHTML = `<p class="text-xs text-red-500 py-4 text-center px-2">목록을 불러오지 못했습니다.<br>${escapeHtml(e.message || "")}</p>`;
+    } finally {
+        moreBtn.disabled = false;
+    }
+}
+
+// 등록/삭제 등으로 목록이 바뀐 뒤 강제로 최신화할 때 사용 (캐시도 함께 갱신)
+async function refreshRecentBoards() {
+    await loadMoreRecentBoards(true);
+}
+
 document.getElementById("recent-more-btn").addEventListener("click", () => {
-    recentBoardsShowCount += 5;
-    renderRecentBoards();
+    loadMoreRecentBoards(false);
 });
 
 const POLL_INTERVAL_MS = 30 * 60 * 1000; // 30분 간격 (읽기 절약 - 예약 발행 시각 오차는 최대 30분)
@@ -619,6 +748,7 @@ async function runDeleteOldClassified(classification, days, label) {
         }
     }
     showLoading(false);
+    clearListCache(RECENT_CACHE_KEY);
     alert(`${successCount}건 삭제되었습니다.` + (successCount < snap.size ? ` (${snap.size - successCount}건 실패, 콘솔 로그 확인)` : ""));
 }
 
