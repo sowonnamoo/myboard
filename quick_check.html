@@ -650,6 +650,13 @@ window.saveCardReceiptUrl = async (boardId) => {
   if (!url) return alert("카드전표 URL을 입력해주세요.");
   try {
     await setDoc(doc(db, "cardjun1", boardId), { fileUrl: url }, { merge: true });
+    // [추가] 운송장URL과 동일하게, 고객 본인 확인 문서(private)에도 같이 저장합니다.
+    // 이 문서는 secretId(이름+전화번호)만 알면 기기와 무관하게 조회 가능하므로,
+    // 카드전표 버튼이 다른 기기에서도 정상적으로 URL을 찾아서 열 수 있게 됩니다.
+    const ref = privateRefCache[boardId];
+    if (ref) {
+      await updateDoc(ref, { cardFileUrl: url }).catch(() => {});
+    }
     alert("카드전표 URL이 저장되었습니다.");
     loadRecentOrders();
   } catch (e) {
@@ -666,6 +673,12 @@ window.saveCashUrlDirect = async (boardId) => {
   if (!url) return alert("현금영수증 URL을 입력해주세요.");
   try {
     await setDoc(doc(db, "cashReceipt1", boardId), { fileUrl: url }, { merge: true });
+    // [추가] 카드전표와 동일하게, 고객 본인 확인 문서(private)에도 같이 저장해서
+    // 다른 기기에서도 현금영수증 버튼이 바로 URL을 찾아 열 수 있게 합니다.
+    const ref = privateRefCache[boardId];
+    if (ref) {
+      await updateDoc(ref, { cashFileUrl: url }).catch(() => {});
+    }
     alert("현금영수증 URL이 저장되었습니다. (신청 여부와 상관없이 버튼 클릭 시 바로 열립니다)");
     loadRecentOrders();
   } catch (e) {

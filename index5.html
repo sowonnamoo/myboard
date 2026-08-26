@@ -170,12 +170,18 @@
             openPopup(`https://sowonnamoo.github.io/myboard/segum?name=${n}&phone=${p}`);
         };
 
-        // ---- 현금영수증 버튼: index.html/app.js의 openCashPage와 동일한 로직 ----
-        window.openCashPageFor = async (boardId, name, phone) => {
+        // ---- 현금영수증 버튼 ----
+        // [수정] 예전엔 uid로 본인 소유 cashReceipt1 문서만 읽을 수 있어서,
+        // 주문을 작성한 기기가 아니면 "조회 중 오류"가 나거나 중복 신청 위험이 있었습니다.
+        // 이제는 이름+전화번호로 계산되는 secretId(=boards 또는 jjjj의 private 문서)를
+        // 직접 읽어서 신청/등록 상태를 확인합니다. 이 문서는 secretId를 아는 사람이면
+        // 기기와 무관하게 항상 get할 수 있어서, 어느 기기에서 열든 최신 상태가 보입니다.
+        window.openCashPageFor = async (boardId, secretId, isJajoo, name, phone) => {
             if (!boardId || !name || !phone) {
                 alert('주문 정보를 찾을 수 없습니다.');
                 return;
             }
+            const col = isJajoo ? 'jjjj' : 'boards';
 
             // 1. 세금계산서가 이미 등록된 이름+전화번호면 현금영수증 신청 자체를 막습니다.
             try {
@@ -190,35 +196,43 @@
                 return;
             }
 
-            const cashRef = doc(db, "cashReceipt1", boardId);
-            let snap;
+            // 2. 신청/등록 상태를 private 문서에서 최신으로 다시 확인 (기기 무관)
+            const privateRef = doc(db, col, boardId, "private", secretId);
+            let privateData = {};
             try {
-                snap = await getDoc(cashRef);
+                const privSnap = await getDoc(privateRef);
+                if (privSnap.exists()) privateData = privSnap.data();
             } catch (e) {
-                alert('조회 중 오류가 발생했습니다: ' + e.message);
+                alert('확인 중 오류가 발생했습니다: ' + e.message);
                 return;
             }
 
-            if (snap.exists()) {
-                const data = snap.data();
-                if (data.fileUrl) {
-                    window.open(data.fileUrl, '_blank');
-                } else {
-                    alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
-                }
+            if (privateData.cashFileUrl) {
+                window.open(privateData.cashFileUrl, '_blank');
+                return;
+            }
+            if (privateData.cashApplied) {
+                alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
                 return;
             }
 
-            // 2. 최초 신청: 발행희망번호(사업자번호 또는 전화번호) 입력받기
+            // 3. 최초 신청: 발행희망번호(사업자번호 또는 전화번호) 입력받기
             const cashNumber = prompt('현금영수증 발행희망 번호를 입력해주세요.\n(사업자등록번호 또는 전화번호 중 1개)');
             if (!cashNumber || !cashNumber.trim()) return;
 
             try {
                 const user = await ensureAnonymousLogin();
-                await setDoc(cashRef, {
+                // 관리자 대시보드(quick_check.html)가 그대로 쓰는 컬렉션이라 기존과 동일하게 기록
+                await setDoc(doc(db, "cashReceipt1", boardId), {
                     boardId, author: name, cashNumber: cashNumber.trim(),
                     fileUrl: '', createdAt: serverTimestamp(), uid: user.uid
                 });
+                // [추가] 본인 확인 문서(private)에도 신청 여부를 남겨서, 다른 기기에서도
+                // "이미 신청됨" 상태를 곧바로 확인할 수 있게 함
+                // (규칙상 이 문서에서 cashApplied/cashNumber 두 필드만 본인이 직접 쓸 수 있음)
+                await updateDoc(privateRef, {
+                    cashApplied: true, cashNumber: cashNumber.trim()
+                }).catch(() => {});
                 // 이름+전화번호 기반 식별자로도 기록 -> segum.html에서 "이미 현금영수증 신청됨"을 확인할 수 있게 함
                 const cashSecretId = await computeSegumId(name, phone);
                 await setDoc(doc(db, "cashSecret", cashSecretId), {
@@ -232,17 +246,21 @@
             }
         };
 
-        // ---- 카드전표 버튼: index.html/app.js의 openCardPage와 동일한 로직 ----
-        // 고객이 직접 신청하는 절차는 없고, 관리자가 택배 발송 후 fileUrl을 등록해두면 열람 가능합니다.
-        window.openCardPageFor = async (boardId) => {
+        // ---- 카드전표 버튼 ----
+        // [수정] 예전엔 cardjun1 문서를 uid로만 읽을 수 있어서, 주문을 작성한 기기가
+        // 아니면 항상 "택배물 발송후 등록됩니다"로 표시됐습니다(실제로는 권한 오류였음).
+        // 이제는 관리자가 등록한 카드전표 URL이 private 문서(secretId로 조회, 기기 무관)에
+        // 함께 저장되므로, 그 값을 직접 읽어서 보여줍니다.
+        window.openCardPageFor = async (boardId, secretId, isJajoo) => {
             if (!boardId) {
                 alert('주문 정보를 찾을 수 없습니다.');
                 return;
             }
             try {
-                const snap = await getDoc(doc(db, "cardjun1", boardId));
-                if (snap.exists() && snap.data().fileUrl) {
-                    window.open(snap.data().fileUrl, '_blank');
+                const col = isJajoo ? 'jjjj' : 'boards';
+                const privSnap = await getDoc(doc(db, col, boardId, "private", secretId));
+                if (privSnap.exists() && privSnap.data().cardFileUrl) {
+                    window.open(privSnap.data().cardFileUrl, '_blank');
                 } else {
                     alert('택배물 발송후 등록됩니다.');
                 }
@@ -252,17 +270,16 @@
         };
 
         // ---- 세금계산서 ↔ 현금영수증 상호배타 상태를 화면에 즉시 반영 ----
-        // index.html 상세화면에서 하던 것과 동일하게, 이 주문의 현금영수증(cashReceipt1)이 이미
-        // 등록돼 있으면 세금계산서 버튼을 숨기고, 이 이름+전화번호로 세금계산서(segum1)가 이미
+        // index.html 상세화면에서 하던 것과 동일하게, 이 주문의 현금영수증이 이미
+        // 신청돼 있으면 세금계산서 버튼을 숨기고, 이 이름+전화번호로 세금계산서(segum1)가 이미
         // 등록돼 있으면 현금영수증 버튼을 숨깁니다.
+        // [수정] 현금영수증 신청 여부는 이제 검색 시 이미 함께 불러온 d.cashApplied/d.cashFileUrl
+        // (private 문서 필드)로 바로 판단합니다 - 기기 무관하고, 별도 조회도 필요 없습니다.
         async function syncTaxCashButtons(d) {
             const segumBtn = document.getElementById('segum-btn-' + d.id);
             const cashBtn = document.getElementById('cash-btn-' + d.id);
-            if (segumBtn) {
-                try {
-                    const cashSnap = await getDoc(doc(db, "cashReceipt1", d.id));
-                    if (cashSnap.exists()) segumBtn.style.display = 'none';
-                } catch (e) { /* 조회 실패해도 버튼은 그대로 둠 */ }
+            if (segumBtn && (d.cashApplied || d.cashFileUrl)) {
+                segumBtn.style.display = 'none';
             }
             if (cashBtn) {
                 try {
@@ -477,7 +494,7 @@ ${
 
                 <button type="button" id="cash-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
-                    onclick="${(isPending || isCardPay || (d.isJajoo && !isBankTransfer)) ? '' : "window.openCashPageFor('" + d.id + "', this.dataset.name, this.dataset.phone)"}"
+                    onclick="${(isPending || isCardPay || (d.isJajoo && !isBankTransfer)) ? '' : "window.openCashPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ", this.dataset.name, this.dataset.phone)"}"
                     class="border px-2 py-1 text-xs ${(!isPending && !isCardPay && (!d.isJajoo || isBankTransfer)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
                     ${(d.isJajoo && !isBankTransfer) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : '')}>현금영수증</button>
 
@@ -486,7 +503,7 @@ ${
                    class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
                 
                 <button type="button" id="card-btn-${d.id}"
-                    onclick="${(isPending || isBankTransfer || (d.isJajoo && !isCardPay)) ? '' : "window.openCardPageFor('" + d.id + "')"}"
+                    onclick="${(isPending || isBankTransfer || (d.isJajoo && !isCardPay)) ? '' : "window.openCardPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ")"}"
                     class="border px-2 py-1 text-xs ${(!isPending && !isBankTransfer && (!d.isJajoo || isCardPay)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
                     ${(d.isJajoo && !isCardPay) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isBankTransfer ? 'title="무통장 입금 건은 세금계산서/현금영수증을 이용해주세요."' : '')}>카드전표</button>
          
