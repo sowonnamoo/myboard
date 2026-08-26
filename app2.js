@@ -192,6 +192,10 @@ let currentSianImgCode = "";
 // 비밀번호 확인 성공 시(viewDetail/autoViewDetail) 여기에 저장해둡니다.
 let currentAuthorName = "";
 let currentAuthorPhone = "";
+// [추가] 인쇄승인을 다른 기기에서도 할 수 있게 하기 위해, 비밀번호 확인 성공 시
+// 계산됐던 secretId(이름+전화번호로 만든 본인확인값)를 여기 저장해둡니다.
+// 이 값은 Firestore 규칙에서 "본인이 맞는지"를 uid 대신 확인하는 용도로만 쓰입니다.
+let currentSecretId = "";
 
 async function loadMemo(boardId) {
     const memoDisplay = document.getElementById("memo-display");
@@ -461,7 +465,12 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
             if (confirm("정말로 인쇄승인하시겠습니까?")) {
                 await ensureAnonymousLogin();
                 try {
-                    await updateDoc(doc(db, "boards", boardId), { sian: "done" });
+                    // [수정] sianApprovedBy(본인확인용 secretId)를 함께 보내서,
+                    // 작성한 기기(uid)가 아니어도 이름+전화번호로 본인 확인만 되면
+                    // 인쇄승인이 가능하도록 함. (Firestore 규칙에서 검증)
+                    const updatePayload = { sian: "done" };
+                    if (currentSecretId) updatePayload.sianApprovedBy = currentSecretId;
+                    await updateDoc(doc(db, "boards", boardId), updatePayload);
                     // 상태 변경 후 즉시 상태 갱신
                     await checkMemoAndSetButton(boardId, "done");
                     alert("조판완료 처리되었습니다.");
@@ -522,6 +531,7 @@ window.viewDetail = async function(id) {
     currentViewId = id;
     currentAuthorName = data.author || "";
     currentAuthorPhone = privateData.phone || "";
+    currentSecretId = secretId; // [추가] 인쇄승인 시 본인확인용으로 사용
 
     document.getElementById("view-list").classList.add("hidden");
     document.getElementById("view-detail").classList.remove("hidden");
@@ -886,6 +896,7 @@ async function autoViewDetail(id, secretId) {
     currentViewId = id;
     currentAuthorName = data.author || "";
     currentAuthorPhone = privateData.phone || "";
+    currentSecretId = secretId; // [추가] 인쇄승인 시 본인확인용으로 사용
 
     // 화면 전환
     document.getElementById("view-list").classList.add("hidden");
