@@ -14,6 +14,12 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ordersCollection = collection(db, "boards");
 
+// ---- 첨부파일 확장자 화이트리스트 (전역 기본값) ----
+// uploadToR2(최종 업로드 시점)와 setupFileExtensionGuard(파일 선택 즉시)가 이 배열 하나를 공유합니다.
+// 반드시 전부 소문자로만 적어주세요 (검사할 때 ext를 소문자로 바꿔서 비교하기 때문에,
+// 여기 대문자가 섞여 있으면 그 확장자는 정상 파일이어도 영원히 막힙니다).
+const GLOBAL_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp', 'xlsx', 'ppt', 'pptx'];
+
 // ---- 개인정보 조회키(secretId) 계산 ----
 // boardId + 작성자명 + 전화번호 뒷4자리를 합쳐 SHA-256 해싱한 값을 문서 ID로 씁니다.
 // 이 값을 "정확히" 계산해낼 수 있는 사람(=이름+뒷4자리를 아는 사람)만
@@ -227,18 +233,30 @@ function applyFileTwoAvailability(enabled, isSimpleMode) {
 
 // file-1 / file-2에서 파일을 고를 때, 허용된 확장자가 아니면 선택을 취소합니다.
 // (accept 속성은 파일 선택창에서 필터로만 동작하고 "전체 파일"로 우회 선택이 가능해서, 실제 첨부 단계에서 한 번 더 막습니다)
+//
+// 검사는 2단계로 겹쳐서 합니다:
+//   1) 상품별 제한(allowedExts, 옵션 텍스트의 "(ai, eps)" 같은 것에서 옴)이 있으면 그것부터 검사
+//   2) 상품별 제한이 없거나 통과했더라도, 항상 전역 화이트리스트(GLOBAL_ALLOWED_EXTENSIONS)로 한 번 더 검사
+// 예전엔 상품별 제한이 없는 경우 여기서 아무 검사도 안 하고 그냥 통과시켜서, 접수하기를 눌러
+// uploadToR2가 실행되는 맨 마지막 순간까지 이상한 파일이 걸러지지 않았습니다.
 function setupFileExtensionGuard() {
     ['file-1', 'file-2'].forEach(id => {
         const input = document.getElementById(id);
         if (!input) return;
         input.addEventListener('change', () => {
-            const allowedExts = input.dataset.allowedExts ? input.dataset.allowedExts.split(',') : null;
-            if (!allowedExts || !allowedExts.length) return;
             const file = input.files[0];
             if (!file) return;
             const ext = file.name.split('.').pop().toLowerCase();
-            if (!allowedExts.includes(ext)) {
-                alert(`이 상품은 ${allowedExts.map(e => '.' + e).join(', ')} 파일만 첨부할 수 있습니다.\n선택한 파일(.${ext})은 첨부할 수 없어 선택이 취소됩니다.`);
+
+            const productExts = input.dataset.allowedExts ? input.dataset.allowedExts.split(',') : null;
+            if (productExts && productExts.length && !productExts.includes(ext)) {
+                alert(`이 상품은 ${productExts.map(e => '.' + e).join(', ')} 파일만 첨부할 수 있습니다.\n선택한 파일(.${ext})은 첨부할 수 없어 선택이 취소됩니다.`);
+                input.value = '';
+                return;
+            }
+
+            if (!GLOBAL_ALLOWED_EXTENSIONS.includes(ext)) {
+                alert(`⚠️ 허용되지 않는 파일 형식입니다 (.${ext}).\n첨부 가능한 형식: ${GLOBAL_ALLOWED_EXTENSIONS.join(', ')}`);
                 input.value = '';
             }
         });
@@ -620,11 +638,10 @@ function uploadToR2(fileInputId, authorName, onProgress) {
             return;
         }
 
-        // 2. 보안을 위한 확장자 필터링
-        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx', 'ppt', 'pptx'];
+        // 2. 보안을 위한 확장자 필터링 (전역 화이트리스트 하나만 사용 - setupFileExtensionGuard와 동일한 목록)
         const ext = file.name.split('.').pop().toLowerCase();
 
-        if (!allowedExtensions.includes(ext)) {
+        if (!GLOBAL_ALLOWED_EXTENSIONS.includes(ext)) {
             alert("⚠️ 허용되지 않는 파일 형식입니다.");
             reject(new Error("보안상 차단된 파일 형식: " + ext));
             return;
