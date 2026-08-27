@@ -28,7 +28,7 @@
         <div class="input-group" style="flex: 1;"><label>수량</label><input type="text" id="quantity" readonly></div>
         <div class="input-group" style="flex: 1;"><label>사이즈</label><input type="text" id="size" readonly></div>
     </div>
-    <div class="input-group"><label>결제금액</label><input type="text" id="price" autocomplete="off" placeholder="상품가격+배송비 금액을 정확히 입력 (오류시 제작보류) 해주세요." inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+    <div class="input-group"><label>결제금액</label><input type="text" id="price" autocomplete="off" placeholder="상품가격+배송비를 정확히 입력 해주세요.(오류시 보류) " inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
     <div class="input-group"><label>이미지 번호</label>
         <div style="display:flex; gap:10px;">
             <input type="text" id="imgCode" readonly>
