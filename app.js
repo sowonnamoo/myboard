@@ -1054,11 +1054,11 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     }    // 1. 기존 유효성 검사 (침범 안 함)
     const fields = ['input-author', 'product-name', 'quantity', 'size', 'phone', 'address'];
     if (fields.some(id => !document.getElementById(id).value.trim())) { alert("필수 항목을 모두 입력해주세요."); return; }
-    // [추가] 작성자명 공백 방지 - 입력 시(oninput)에도 막지만, 붙여넣기 등 예외 상황을 대비해
-    // 저장 직전에도 한 번 더 공백을 제거해서 실제 화면 값과 저장되는 값을 일치시킵니다.
+    // [추가] 작성자명 공백/괄호 방지 - 입력 시(oninput)에도 막지만, 붙여넣기 등 예외 상황을 대비해
+    // 저장 직전에도 한 번 더 제거해서 실제 화면 값과 저장되는 값을 일치시킵니다.
     const authorInputEl = document.getElementById('input-author');
-    if (/\s/.test(authorInputEl.value)) {
-        authorInputEl.value = authorInputEl.value.replace(/\s/g, '');
+    if (/[\s()]/.test(authorInputEl.value)) {
+        authorInputEl.value = authorInputEl.value.replace(/[\s()]/g, '');
     }
     if (!authorInputEl.value) { alert("작성자명을 입력해주세요."); return; }
     const file1 = document.getElementById("file-1");
