@@ -1066,6 +1066,18 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     const phoneVal = document.getElementById('phone').value.replace(/-/g, '');
     if (phoneVal.length !== 11) { alert("전화번호 11자리를 정확히 입력해주세요."); return; }
 
+    // [추가] 결제창을 열기 "전"에 파일 용량부터 확인합니다.
+    // 기존에는 이 검사가 uploadToR2()(결제 완료 "후"에 실행) 안에만 있어서,
+    // 결제가 끝난 뒤에야 500MB 초과가 발견되어 업로드가 실패했고,
+    // 사용자가 재시도하면서 중복 결제가 발생했습니다.
+    // 그래서 결제 전에 미리 막아 결제창 자체가 뜨지 않도록 합니다.
+    const MAX_SIZE = 500 * 1024 * 1024; // 500MB
+    const oversizedFile = [f1, f2].find(f => f && f.size > MAX_SIZE);
+    if (oversizedFile) {
+        alert("500MB가 넘는 파일은 접수 불가합니다.\n(선택한 파일: " + oversizedFile.name + ", " + (oversizedFile.size / (1024 * 1024)).toFixed(1) + "MB)");
+        return;
+    }
+
     // 결제금액 확인 + 카드결제/계좌이체 먼저 진행
     // 결제가 실제로 완료된 경우에만 아래의 파일업로드/DB저장이 실행됩니다.
     const priceDigits = document.getElementById('price').value.replace(/[^0-9]/g, '');
