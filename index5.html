@@ -431,7 +431,7 @@ if (d.status !== '대기' && d.status !== '접수에러') {
                     <div><span class="font-semibold">작성자:</span> ${d.author}</div>
 <div><span class="font-semibold">상태:</span> ${d.status || '-'} <span class="text-blue-600 font-bold">${statusLabel}</span></div>
 <div><span class="font-semibold">가격:</span> ${d.price ? String(d.price).replace(/원\s*$/, '') : '-'}원</div>
-                    <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
+                    <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}</div>
                     <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
                     <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
                 </div>
