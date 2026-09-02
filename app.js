@@ -1067,10 +1067,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     if (phoneVal.length !== 11) { alert("전화번호 11자리를 정확히 입력해주세요."); return; }
 
     // [추가] 결제창을 열기 "전"에 파일 용량부터 확인합니다.
-    // 기존에는 이 검사가 uploadToR2()(결제 완료 "후"에 실행) 안에만 있어서,
-    // 결제가 끝난 뒤에야 500MB 초과가 발견되어 업로드가 실패했고,
-    // 사용자가 재시도하면서 중복 결제가 발생했습니다.
-    // 그래서 결제 전에 미리 막아 결제창 자체가 뜨지 않도록 합니다.
     const MAX_SIZE = 500 * 1024 * 1024; // 500MB
     const oversizedFile = [f1, f2].find(f => f && f.size > MAX_SIZE);
     if (oversizedFile) {
@@ -1078,22 +1074,24 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         return;
     }
 
-    // 결제금액 확인 + 카드결제/계좌이체 먼저 진행
-    // 결제가 실제로 완료된 경우에만 아래의 파일업로드/DB저장이 실행됩니다.
+    // 결제금액 확인
     const priceDigits = document.getElementById('price').value.replace(/[^0-9]/g, '');
     if (!priceDigits || parseInt(priceDigits, 10) <= 0) { alert("결제금액을 입력해주세요."); return; }
 
-    const paymentResult = await openPaymentPopupAndWait(priceDigits);
-    if (!paymentResult || !paymentResult.paid) {
-        alert("결제가 완료되지 않아 접수가 취소되었습니다.");
-        return;
-    }
-    // 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
-    const resolvedPayStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
+    // ===== [모바일 결제 버그 수정] =====
+    // 예전 순서: "결제창 열기 → 결제 성공 메시지를 받아야만 → 그제서야 파일업로드 + 주문 저장"
+    // 문제: 모바일에서는 결제창(새 탭)이 떠 있는 동안 원래 페이지(이 창)가 기기/브라우저의
+    // 메모리 정리 때문에 새로고침되거나 정지되는 일이 흔합니다. 그러면 결제가 끝나고
+    // payment.html이 "결제완료" 메시지를 보내도, 그걸 받아서 파일업로드+DB저장을 계속 진행해야 할
+    // 이 페이지의 자바스크립트가 이미 사라진 뒤라 아무 반응이 없습니다.
+    // 그 결과 "카드결제는 되는데(결제정보만 넘어감) 주문은 저장 안 됨" 현상이 발생했습니다.
+    //
+    // 수정한 순서: "파일업로드 + 주문 저장(상태: 대기)을 먼저 끝내고 → 그 다음에 결제창 오픈"
+    // 이렇게 하면 결제 도중 모바일 화면이 새로고침되어도 주문/파일은 이미 안전하게 DB에 저장된
+    // 뒤이므로 통째로 사라지는 일이 없습니다. 만약 결제완료 메시지만 못 받는 경우가 생기더라도,
+    // 해당 주문은 주문 목록에 상태 "대기"로 그대로 남아있으므로, 다시 열어서 결제를 이어서
+    // 진행할 수 있습니다(기존에 있던 "대기" 상태 주문의 카드결제 버튼 로직을 그대로 재사용).
 
-    // 2. 업로드 진행률 UI 준비
-    //    - 더 이상 "3초마다 5% 증가"하는 가짜 타이머가 아니라, XHR의 실제 업로드 바이트 수를 그대로 반영합니다.
-    //    - 몇 번째 파일을 올리고 있는지(1/2, 2/2), 몇 MB 중 몇 MB가 올라갔는지까지 보여줍니다.
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
     const text = document.getElementById("loading-text");
@@ -1129,11 +1127,9 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     // 3. 기존 글쓰기 로직 (침범 안 함)
   try {
     // 글을 저장하기 전에 익명 로그인이 끝나서 uid가 확정됐는지 확인합니다.
-    // (본인 글만 나중에 수정/삭제할 수 있으려면 이 uid가 문서에 같이 저장돼야 합니다.)
     const currentUser = await ensureAnonymousLogin();
 
-    // 장바구니에서 자동으로 채워진 주문인지(제품명/수량/사이즈가 읽기전용이면 장바구니발), 아니면
-    // 작성자가 직접 입력한 주문인지 여기서 판별해서 함께 저장합니다.
+    // 장바구니에서 자동으로 채워진 주문인지 판별해서 함께 저장합니다.
     const isFromCart = document.getElementById('product-name').readOnly === true;
 
     // 1. 파일 업로드 실행 (진행 콜백으로 실제 업로드된 바이트 수를 게이지에 반영)
@@ -1155,7 +1151,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     text.textContent = "주문 정보를 저장하는 중...";
     fileInfoText.textContent = "잠시만 기다려주세요.";
 
-// [수정] IP 정보 가져오기
+    // [수정] IP 정보 가져오기
     const userIp = await getUserIp();
 
     const authorVal = document.getElementById('input-author').value;
@@ -1169,6 +1165,8 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     const secretId = await computeSecretId(boardId, authorVal, phoneVal2);
 
     // 3. 공개 문서: 개인정보(phone/address/message/password) 절대 포함하지 않음
+    // [수정] 결제 확인 "전"에 먼저 저장합니다. status는 일단 항상 '대기'(=결제 대기중, 기존에도
+    // 쓰이던 상태값)로 저장해두고, 결제가 확인되면 바로 아래에서 이 문서의 status만 갱신합니다.
     await setDoc(boardRef, {
     author: authorVal,
     productName: document.getElementById('product-name').value,
@@ -1181,12 +1179,11 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     uid: currentUser.uid, // 익명 로그인으로 발급된 고유 ID (본인 글 판별용)
     createdAt: new Date(),
     isDeleted: false,
-    status: resolvedPayStatus, // 이미 결제가 확인된 뒤에만 이 코드가 실행되므로, 결제수단에 맞춰 바로 저장
+    status: '대기', // 결제 확인 전 임시 상태. 결제 성공 시 아래에서 바로 갱신합니다.
     fromCart: isFromCart // true: 장바구니 자동입력 주문 / false: 작성자가 직접 입력한 주문
     });
 
     // 4. 개인정보는 boards/{boardId}/private/{secretId} 문서에만 저장.
-    //    이 경로는 이름+전화번호 뒷4자리를 정확히 알아야만 다시 계산해서 조회할 수 있습니다.
     await setDoc(doc(db, "boards", boardId, "private", secretId), {
         phone: phoneVal2,
         address: addressVal,
@@ -1195,14 +1192,31 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     });
 
     // 5. 관리자 페이지 전용 조회용으로, 동일한 개인정보를 adminOrders/{boardId}에도 저장.
-    //    문서 ID가 boardId라서 secretId 계산 없이 관리자가 바로 단건 조회할 수 있고,
-    //    Rules상 isAdmin()만 읽을 수 있어 고객/비관리자에게는 노출되지 않습니다.
     await setDoc(doc(db, "adminOrders", boardId), {
         phone: phoneVal2,
         address: addressVal,
         message: messageVal,
         uid: currentUser.uid
     });
+
+    // ↑↑↑ 여기까지 끝나면 주문/파일은 이미 안전하게 저장된 상태입니다(status: '대기'). ↑↑↑
+    // 이제부터 결제창을 엽니다. 이 이후에 모바일 화면이 새로고침되어도 주문 자체는 사라지지 않습니다.
+    spinner.classList.add("hidden");
+
+    const paymentResult = await openPaymentPopupAndWait(priceDigits);
+    if (!paymentResult || !paymentResult.paid) {
+        // 결제만 완료되지 않은 것이며, 주문/파일은 이미 저장되어 있습니다.
+        alert("주문 내용은 저장되었습니다.\n다만 결제가 완료되지 않아 결제 대기(\"대기\") 상태로 남아있습니다.\n주문 목록에서 방금 작성한 주문을 다시 열어 결제를 이어서 진행해주세요.");
+        localStorage.removeItem('pendingCartOrders');
+        switchView('list');
+        return;
+    }
+
+    // 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
+    const resolvedPayStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
+
+    // 이미 저장돼 있던 '대기' 주문의 상태만 결제결과에 맞게 갱신합니다.
+    await updateDoc(boardRef, { status: resolvedPayStatus });
 
     text.textContent = "접수 완료!";
     fileInfoText.textContent = '';
