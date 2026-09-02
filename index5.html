@@ -349,7 +349,8 @@ document.getElementById('search-btn').addEventListener('click', async () => {
             return { ...c.data, ...privateSnap.data(), id: c.id, isJajoo: c.isJajoo, secretId };
         }));
 
-        const filteredData = verified.filter(Boolean);
+        // 상태가 '대기'(접수전/결제확인중)인 건은 조회 결과에 표시하지 않음
+        const filteredData = verified.filter(Boolean).filter(d => d.status !== '대기');
 
         if(filteredData.length === 0) {
             registerFail();
