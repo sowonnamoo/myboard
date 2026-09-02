@@ -354,7 +354,7 @@ document.getElementById('search-btn').addEventListener('click', async () => {
 
         if(filteredData.length === 0) {
             registerFail();
-            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. "; 
+            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. / 미 결제건은 조회되지 않습니다. "; 
             return; 
         }
 
