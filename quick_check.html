@@ -879,7 +879,7 @@ async function buildOrderRows(items) {
       trackingCell = `<button class="done-btn" onclick="showUrlImageModal('${d.id}','track')">✅ 등록완료</button><button class="edit-toggle-btn" onclick="toggleUrlEdit('${d.id}','track')">수정</button>
         <div id="track-edit-${d.id}" class="url-row" style="display:none; margin-top:4px;"><input id="track-${d.id}" value="${existingTracking.replace(/"/g,'&quot;')}"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
     } else {
-      trackingCell = `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL"><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
+      trackingCell = `<div class="url-row"><input id="track-${d.id}" placeholder="운송장 URL" value="https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo="><button onclick="saveTrackingUrl('${d.id}')">저장</button></div>`;
     }
 
     // 카드결제 상태일 때만 카드전표 URL 칸 표시. 이미 등록된 경우엔 "등록완료" 버튼 + 이미지 모달로 확인합니다.
