@@ -1205,8 +1205,8 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     const paymentResult = await openPaymentPopupAndWait(priceDigits);
     if (!paymentResult || !paymentResult.paid) {
-        // 결제만 완료되지 않은 것이며, 주문/파일은 이미 저장되어 있습니다.
-        alert("주문 내용은 저장되었습니다.\n다만 결제가 완료되지 않아 결제 대기(\"대기\") 상태로 남아있습니다.\n주문 목록에서 방금 작성한 주문을 다시 열어 결제를 이어서 진행해주세요.");
+        // 결제취소로 주문내용이 삭제되었습니다.
+        alert("결제취소로 주문 내용은 접수되지 않았습니다.\n처음부터 재작성 바랍니다.");
         localStorage.removeItem('pendingCartOrders');
         switchView('list');
         return;
