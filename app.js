@@ -1191,7 +1191,8 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     if (!paymentResult || !paymentResult.paid) {
         // 결제취소(뒤로가기/시간초과)로 주문내용이 접수되지 않았습니다.
         // runEmbeddedPayment가 이미 작성 화면(view-write)으로 되돌려 놓은 상태입니다.
-        alert("결제취소로 주문 내용은 접수되지 않았습니다.\n처음부터 재작성 바랍니다.");
+        // [변경] 어차피 결제 전에는 아무것도 저장되지 않으므로(=삭제할 것도 없으므로)
+        // "주문 삭제/재접수 안내" 알림은 더 이상 띄우지 않고 조용히 작성 화면으로 돌아갑니다.
         return;
     }
 
