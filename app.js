@@ -1178,19 +1178,25 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     const priceDigits = document.getElementById('price').value.replace(/[^0-9]/g, '');
     if (!priceDigits || parseInt(priceDigits, 10) <= 0) { alert("결제금액을 입력해주세요."); return; }
 
-    // ===== [모바일 결제 버그 수정] =====
-    // 예전 순서: "결제창 열기 → 결제 성공 메시지를 받아야만 → 그제서야 파일업로드 + 주문 저장"
-    // 문제: 모바일에서는 결제창(새 탭)이 떠 있는 동안 원래 페이지(이 창)가 기기/브라우저의
-    // 메모리 정리 때문에 새로고침되거나 정지되는 일이 흔합니다. 그러면 결제가 끝나고
-    // payment.html이 "결제완료" 메시지를 보내도, 그걸 받아서 파일업로드+DB저장을 계속 진행해야 할
-    // 이 페이지의 자바스크립트가 이미 사라진 뒤라 아무 반응이 없습니다.
-    // 그 결과 "카드결제는 되는데(결제정보만 넘어감) 주문은 저장 안 됨" 현상이 발생했습니다.
-    //
-    // 수정한 순서: "파일업로드 + 주문 저장(상태: 대기)을 먼저 끝내고 → 그 다음에 결제창 오픈"
-    // 이렇게 하면 결제 도중 모바일 화면이 새로고침되어도 주문/파일은 이미 안전하게 DB에 저장된
-    // 뒤이므로 통째로 사라지는 일이 없습니다. 만약 결제완료 메시지만 못 받는 경우가 생기더라도,
-    // 해당 주문은 주문 목록에 상태 "대기"로 그대로 남아있으므로, 다시 열어서 결제를 이어서
-    // 진행할 수 있습니다(기존에 있던 "대기" 상태 주문의 카드결제 버튼 로직을 그대로 재사용).
+    // ===== [변경] 결제를 먼저 진행하고, 결제가 최종 완료된 경우에만 주문을 저장합니다 =====
+    // 예전 방식: "파일업로드 + 주문 저장(상태: 대기)을 먼저 끝내고 → 그 다음에 결제창 오픈"
+    //   → 결제를 하지 않고 취소해도 '대기' 상태의 주문이 DB에 미리 남아있는 방식이었습니다.
+    // 변경한 순서: "결제창을 먼저 열고 → 결제(카드/계좌이체)가 실제로 성공한 뒤에만
+    //   → 파일업로드 + 주문 저장을 진행"합니다. 결제를 취소하거나 실패하면 아무것도 저장되지 않습니다.
+    // 주의(트레이드오프): 결제는 성공했는데 그 직후 파일업로드/DB저장 단계에서 네트워크 오류 등이
+    //   나면 "결제는 됐는데 주문은 안 남는" 상황이 생길 수 있습니다. 다만 결제기록(cards1)은
+    //   runEmbeddedPayment 안에서 결제 성공 시점에 이미 별도 저장되므로, 문제가 생겨도 결제 자체의
+    //   증빙은 남습니다.
+    const paymentResult = await runEmbeddedPayment(priceDigits, 'write');
+    if (!paymentResult || !paymentResult.paid) {
+        // 결제취소(뒤로가기/시간초과)로 주문내용이 접수되지 않았습니다.
+        // runEmbeddedPayment가 이미 작성 화면(view-write)으로 되돌려 놓은 상태입니다.
+        alert("결제취소로 주문 내용은 접수되지 않았습니다.\n처음부터 재작성 바랍니다.");
+        return;
+    }
+
+    // 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
+    const resolvedPayStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
 
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
@@ -1224,7 +1230,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     currentFileLabel = fileCount > 1 ? '(1/' + fileCount + ')' : '';
     renderUploadProgress();
 
-    // 3. 기존 글쓰기 로직 (침범 안 함)
+    // 3. 기존 글쓰기 로직 (침범 안 함) - 이제 결제 성공 이후에만 실행됩니다.
   try {
     // 글을 저장하기 전에 익명 로그인이 끝나서 uid가 확정됐는지 확인합니다.
     const currentUser = await ensureAnonymousLogin();
@@ -1265,8 +1271,8 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     const secretId = await computeSecretId(boardId, authorVal, phoneVal2);
 
     // 3. 공개 문서: 개인정보(phone/address/message/password) 절대 포함하지 않음
-    // [수정] 결제 확인 "전"에 먼저 저장합니다. status는 일단 항상 '대기'(=결제 대기중, 기존에도
-    // 쓰이던 상태값)로 저장해두고, 결제가 확인되면 바로 아래에서 이 문서의 status만 갱신합니다.
+    // [변경] 결제가 이미 완료된 뒤에 저장하는 것이므로, status를 처음부터 결제결과에 맞는
+    // 최종 상태('카드결제'/'무통장')로 바로 저장합니다. (더 이상 '대기' → 갱신 2단계를 거치지 않음)
     await setDoc(boardRef, {
     author: authorVal,
     productName: document.getElementById('product-name').value,
@@ -1279,7 +1285,7 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     uid: currentUser.uid, // 익명 로그인으로 발급된 고유 ID (본인 글 판별용)
     createdAt: new Date(),
     isDeleted: false,
-    status: '대기', // 결제 확인 전 임시 상태. 결제 성공 시 아래에서 바로 갱신합니다.
+    status: resolvedPayStatus, // 결제가 이미 완료되었으므로 바로 최종 상태로 저장
     fromCart: isFromCart // true: 장바구니 자동입력 주문 / false: 작성자가 직접 입력한 주문
     });
 
@@ -1299,25 +1305,6 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         uid: currentUser.uid
     });
 
-    // ↑↑↑ 여기까지 끝나면 주문/파일은 이미 안전하게 저장된 상태입니다(status: '대기'). ↑↑↑
-    // 이제부터 결제창을 엽니다. 이 이후에 모바일 화면이 새로고침되어도 주문 자체는 사라지지 않습니다.
-    spinner.classList.add("hidden");
-
-    const paymentResult = await runEmbeddedPayment(priceDigits, 'write');
-    if (!paymentResult || !paymentResult.paid) {
-        // 결제취소(뒤로가기/시간초과)로 주문내용이 접수되지 않았습니다.
-        // runEmbeddedPayment가 이미 작성 화면(view-write)으로 되돌려 놓은 상태입니다.
-        alert("결제취소로 주문 내용은 접수되지 않았습니다.\n처음부터 재작성 바랍니다.");
-        localStorage.removeItem('pendingCartOrders');
-        return;
-    }
-
-    // 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
-    const resolvedPayStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
-
-    // 이미 저장돼 있던 '대기' 주문의 상태만 결제결과에 맞게 갱신합니다.
-    await updateDoc(boardRef, { status: resolvedPayStatus });
-
     text.textContent = "접수 완료!";
     fileInfoText.textContent = '';
 
@@ -1328,7 +1315,8 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     switchView('list');
 } catch (e) {
     console.error(e);
-    alert("오류: " + e.message);
+    // 결제는 이미 성공한 뒤에 발생한 오류이므로 안내 문구를 다르게 표시합니다.
+    alert("결제는 완료되었으나 주문 저장 중 오류가 발생했습니다.\n새로고침 후 다시 확인해주시고, 계속 문제가 있으면 관리자에게 문의해주세요.\n오류: " + e.message);
 } finally {
     // 4. 로딩바 종료
     spinner.classList.add("hidden");
