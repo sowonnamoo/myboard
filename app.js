@@ -14,6 +14,20 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const ordersCollection = collection(db, "boards");
 
+// ---- 결제 기록(cards1) 전용 Firebase 프로젝트 ----
+// 기존에 payment.html 팝업이 쓰던 것과 동일한 프로젝트(ecogr-636c6)입니다.
+// 결제를 이 페이지 안(내장형)에서 직접 처리하게 되면서, 결제기록 저장도 여기서 같이 합니다.
+// 위 보드용 앱(app)과 프로젝트가 다르므로 이름을 지정해 별도 앱으로 초기화합니다.
+const paymentLogApp = initializeApp({
+    apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+    authDomain: "ecogr-636c6.firebaseapp.com",
+    projectId: "ecogr-636c6",
+    storageBucket: "ecogr-636c6.firebasestorage.app",
+    messagingSenderId: "95745358447",
+    appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+}, "paymentLogApp");
+const paymentDb = getFirestore(paymentLogApp);
+
 // ---- 첨부파일 확장자 화이트리스트 (전역 기본값) ----
 // uploadToR2(최종 업로드 시점)와 setupFileExtensionGuard(파일 선택 즉시)가 이 배열 하나를 공유합니다.
 // 반드시 전부 소문자로만 적어주세요 (검사할 때 ext를 소문자로 바꿔서 비교하기 때문에,
@@ -484,9 +498,11 @@ window.switchView = function(viewName) {
     document.getElementById("view-list").classList.add("hidden");
     document.getElementById("view-write").classList.add("hidden");
     document.getElementById("view-detail").classList.add("hidden");
+    document.getElementById("view-payment").classList.add("hidden");
     if (viewName === 'list') { document.getElementById("view-list").classList.remove("hidden"); loadAndRender(); }
     else if (viewName === 'write') { document.getElementById("view-write").classList.remove("hidden"); }
     else if (viewName === 'detail') { document.getElementById("view-detail").classList.remove("hidden"); }
+    else if (viewName === 'payment') { document.getElementById("view-payment").classList.remove("hidden"); }
 }
 
 
@@ -996,50 +1012,134 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("modal-password-input").value = "";
 });
 
-// 결제창(payment.html)을 띄우고, 그 팝업으로부터 정확히 이 결제건에 대한
-// PAYMENT_SUCCESS 메시지를 받아야만 결제 결과를 반환합니다.
-// (event.source로 우리가 연 그 팝업이 보낸 메시지인지까지 확인하므로,
-//  다른 창/다른 결제건의 메시지를 잘못 승인하는 일이 없습니다)
+// 결제를 팝업창이 아니라 이 페이지 안(view-payment 섹션)에서 직접 처리합니다.
+// (기존에는 payment.html을 새 창으로 띄우고 postMessage로 결과를 받았지만,
+//  부모창을 닫아버리면 결제는 되는데 주문상태가 갱신 안 되는 문제가 있어 이 방식으로 변경)
+//
+// backViewName: "뒤로가기"를 누르거나 20분간 결제가 없을 때 되돌아갈 화면 ('write' 또는 'detail')
 // 반환값: { paid: true, payMethod: 'CARD'|'TRANSFER' } 또는 { paid: false }
-function openPaymentPopupAndWait(priceDigits) {
+function runEmbeddedPayment(priceDigits, backViewName) {
     return new Promise((resolve) => {
-        const url = `https://sowonnamoo.github.io/myjs/payment?price=${priceDigits}`;
-        const options = "width=811,height=649,scrollbars=yes,resizable=yes";
-        const paymentWindow = window.open(url, 'paymentWindow', options);
+        const cardBtn = document.getElementById('epay-card-btn');
+        const transferBtn = document.getElementById('epay-transfer-btn');
+        const backBtn = document.getElementById('epay-back-btn');
+        const priceEl = document.getElementById('epay-display-price');
+        const totalAmount = parseInt(priceDigits, 10) || 0;
 
-        if (!paymentWindow) {
-            alert("결제창 팝업이 차단되었습니다. 팝업 차단을 해제한 뒤 다시 시도해주세요.");
-            resolve({ paid: false });
-            return;
-        }
+        priceEl.textContent = totalAmount.toLocaleString() + "원";
+        [cardBtn, transferBtn].forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+        });
 
         let settled = false;
 
+        // 20분간 결제가 없으면 자동으로 취소 처리하고 이전 화면으로 되돌립니다.
+        const timeoutTimer = setTimeout(() => {
+            if (settled) return;
+            alert("장시간 미결제로 종료되었습니다.\n처음부터 다시 진행해주세요.");
+            finish({ paid: false });
+        }, 20 * 60 * 1000);
+
         function cleanup() {
-            window.removeEventListener('message', onMessage);
-            clearInterval(closeChecker);
+            cardBtn.removeEventListener('click', onCard);
+            transferBtn.removeEventListener('click', onTransfer);
+            backBtn.removeEventListener('click', onBack);
+            clearTimeout(timeoutTimer);
         }
 
-        function onMessage(event) {
-            if (event.origin !== 'https://sowonnamoo.github.io') return;
-            if (event.source !== paymentWindow) return;
-            if (!event.data || event.data.type !== 'PAYMENT_SUCCESS') return;
-            const paidDigits = String(event.data.price ?? '').replace(/[^0-9]/g, '');
-            if (paidDigits !== priceDigits) return; // 다른 금액 결제건은 무시
-
+        function finish(result) {
+            if (settled) return;
             settled = true;
             cleanup();
-            resolve({ paid: true, payMethod: event.data.payMethod });
+            switchView(backViewName);
+            resolve(result);
         }
-        window.addEventListener('message', onMessage);
 
-        // 결제 없이 팝업을 그냥 닫아버린 경우(취소) 감지
-        const closeChecker = setInterval(() => {
-            if (paymentWindow.closed && !settled) {
+        // method: 'CARD' 또는 'TRANSFER'(계좌이체)
+        async function pay(method) {
+            if (settled) return;
+            if (totalAmount <= 0) { alert("결제 금액 오류"); return; }
+
+            [cardBtn, transferBtn].forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            });
+
+            try {
+                const res = await fetch("https://proud-math-2d41.ecogr.workers.dev/");
+                const data = await res.json();
+                const paymentId = "PAY_" + Date.now();
+                const phone = localStorage.getItem("userPhone") || "정보없음";
+
+                const channelKey = method === 'TRANSFER'
+                    ? (data.CHANNEL_KEY_TRANSFER || data.CHANNEL_KEY_CARD)
+                    : data.CHANNEL_KEY_CARD;
+
+                const response = await PortOne.requestPayment({
+                    storeId: data.STORE_ID,
+                    channelKey: channelKey,
+                    paymentId: paymentId,
+                    orderName: "주문 상품 결제",
+                    totalAmount: totalAmount,
+                    currency: "KRW",
+                    payMethod: method
+                });
+
+                if (response.code != null) {
+                    alert("결제 실패: " + response.message);
+                    return;
+                }
+
+                // ---- 결제기록(cards1) 저장 ----
+                // 이 기록이 실패해도(권한 오류 등) 결제 자체는 이미 성공한 것이므로
+                // 별도 try/catch로 분리해서, 실패해도 아래 로직은 계속 진행합니다.
+                try {
+                    await addDoc(collection(paymentDb, "cards1"), {
+                        paymentId: paymentId,
+                        tno: response.pgTxId || response.txId,
+                        amount: totalAmount,
+                        phone: phone,
+                        payMethod: method,
+                        status: "결제완료",
+                        createdAt: new Date().toISOString(),
+                        fullData: response
+                    });
+                } catch (logError) {
+                    console.error("cards1 기록 실패(결제 자체는 성공):", logError);
+                }
+
+                settled = true;
                 cleanup();
-                resolve({ paid: false });
+                resolve({ paid: true, payMethod: method });
+                // 화면 전환(성공 후 다음 단계)은 호출한 쪽에서 처리합니다.
+
+            } catch (error) {
+                console.error(error);
+                alert("결제 처리 중 오류가 발생했습니다.");
+            } finally {
+                if (!settled) {
+                    [cardBtn, transferBtn].forEach(btn => {
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50');
+                    });
+                }
             }
-        }, 500);
+        }
+
+        function onCard() { pay('CARD'); }
+        function onTransfer() { pay('TRANSFER'); }
+        function onBack() {
+            if (confirm("결제를 취소하고 이전 화면으로 돌아가시겠습니까?")) {
+                finish({ paid: false });
+            }
+        }
+
+        cardBtn.addEventListener('click', onCard);
+        transferBtn.addEventListener('click', onTransfer);
+        backBtn.addEventListener('click', onBack);
+
+        switchView('payment');
     });
 }
 
@@ -1203,12 +1303,12 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     // 이제부터 결제창을 엽니다. 이 이후에 모바일 화면이 새로고침되어도 주문 자체는 사라지지 않습니다.
     spinner.classList.add("hidden");
 
-    const paymentResult = await openPaymentPopupAndWait(priceDigits);
+    const paymentResult = await runEmbeddedPayment(priceDigits, 'write');
     if (!paymentResult || !paymentResult.paid) {
-        // 결제취소로 주문내용이 삭제되었습니다.
+        // 결제취소(뒤로가기/시간초과)로 주문내용이 접수되지 않았습니다.
+        // runEmbeddedPayment가 이미 작성 화면(view-write)으로 되돌려 놓은 상태입니다.
         alert("결제취소로 주문 내용은 접수되지 않았습니다.\n처음부터 재작성 바랍니다.");
         localStorage.removeItem('pendingCartOrders');
-        switchView('list');
         return;
     }
 
@@ -1300,25 +1400,36 @@ document.getElementById("add-cart-btn").addEventListener("click", () => {
 
 
 // window 객체에 함수를 등록하면 HTML에서 직접 호출 가능합니다. 카드
-window.handleCardPay = function() {
+// (기존에는 팝업을 열었지만, 이제는 내장형 결제 화면을 사용합니다)
+window.handleCardPay = async function() {
     const priceEl = document.getElementById("detail-price");
     if (!priceEl) {
         alert("결제 정보를 찾을 수 없습니다.");
         return;
     }
 
-    const priceValue = priceEl.innerText.replace(/[^0-9]/g, ''); 
+    const priceValue = priceEl.innerText.replace(/[^0-9]/g, '');
 
     if (!priceValue || parseInt(priceValue) === 0) {
         alert("결제할 금액이 없습니다.");
         return;
     }
 
-    // 811x649 크기의 새 창으로 열기 (top, left는 화면 중앙 근처에 띄우는 옵션입니다)
-    const url = `https://sowonnamoo.github.io/myjs/payment?price=${priceValue}`;
-    const options = "width=811,height=649,scrollbars=yes,resizable=yes";
-    
-    window.open(url, 'paymentWindow', options);
+    const paymentResult = await runEmbeddedPayment(priceValue, 'detail');
+    if (!paymentResult || !paymentResult.paid) return; // 뒤로가기/시간초과 → 이미 상세화면으로 복귀함
+
+    const resolvedStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
+
+    try {
+        const docRef = doc(db, "boards", currentViewId);
+        await updateDoc(docRef, { status: resolvedStatus });
+        alert("결제가 정상적으로 확인되었습니다.");
+        window.syncStatusOverlay(resolvedStatus);
+        location.reload();
+    } catch (e) {
+        console.error("결제 상태 반영 실패:", e);
+        alert("결제는 완료되었으나 상태 반영 중 오류가 발생했습니다. 새로고침 후 다시 확인해주시거나, 계속되면 관리자에게 문의해주세요.");
+    }
 };
 
 
@@ -1588,60 +1699,10 @@ window.onfocus = () => {
 
 
 
-// 카드결제 결제 완료 후 부모창 상태 업데이트 로직 (app.js 하단)
-window.addEventListener("message", async (event) => {
-    // 신뢰할 수 있는 출처(payment.html이 떠 있는 도메인)에서 온 메시지만 처리
-    if (event.origin !== 'https://sowonnamoo.github.io') return;
-    if (!event.data || event.data.type !== 'PAYMENT_SUCCESS') return;
-
-    if (!currentViewId) {
-        console.warn('결제 확인 메시지를 받았지만 현재 열려있는 주문이 없습니다.');
-        return;
-    }
-
-    // 가격 비교 시 "50,000원" / "50000" / 50000 처럼 표기 형식이 달라도 안전하게 비교되도록
-    // 양쪽 모두 숫자만 추출해서 비교합니다.
-    const paidPriceDigits = String(event.data.price ?? '').replace(/[^0-9]/g, '');
-    // payment.html에서 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
-    const resolvedStatus = event.data.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
-
-    try {
-        // 1. 현재 상세 페이지에 떠 있는 주문 정보를 가져옵니다.
-        const docRef = doc(db, "boards", currentViewId);
-        const snap = await getDoc(docRef);
-
-        if (!snap.exists()) return;
-
-        const data = snap.data();
-        const dbPriceDigits = String(data.price ?? '').replace(/[^0-9]/g, '');
-
-        // 2. [핵심] 상태가 '대기'이고 금액이 일치할 때만 업데이트!
-        if (data.status === '대기' && dbPriceDigits === paidPriceDigits) {
-
-            // DB 상태 변경
-            await updateDoc(docRef, {
-                status: resolvedStatus
-            });
-
-            alert("결제가 정상적으로 확인되었습니다.");
-
-            // 3. 화면 상태 즉시 갱신 (이미지 변경)
-            // 상세 정보를 다시 불러와서 status 필드가 바뀐 것을 반영합니다.
-            window.syncStatusOverlay(resolvedStatus);
-
-            // viewDetail을 다시 호출하면 DB에서 바뀐 status를 다시 읽어와 화면을 갱신합니다.
-            // (만약 팝업 닫기나 화면 리로드가 필요하면 여기서 처리하세요)
-            location.reload();
-        } else if (data.status !== '대기') {
-            console.log("이미 처리된 주문입니다.");
-        } else {
-            console.log("금액이 일치하지 않습니다.", { dbPriceDigits, paidPriceDigits });
-        }
-    } catch (e) {
-        console.error("결제 상태 반영 실패:", e);
-        alert("결제는 완료되었으나 상태 반영 중 오류가 발생했습니다. 새로고침 후 다시 확인해주시거나, 계속되면 관리자에게 문의해주세요.");
-    }
-});
+// [삭제됨] 예전에는 payment.html을 팝업으로 띄우고 postMessage로 결제 성공을
+// 전달받아 여기서 주문상태를 갱신했습니다. 이제 결제를 이 페이지 안에서 직접
+// 처리(runEmbeddedPayment)하므로, 그 결과 처리는 handleCardPay/접수하기 로직
+// 안에서 바로 이루어집니다. (postMessage를 받을 팝업이 더 이상 없음)
 
 
 

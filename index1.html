@@ -6,6 +6,7 @@
     <meta name="robots" content="noindex, nofollow, noarchive">
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
         .cart-summary-row {
@@ -39,7 +40,7 @@
 </head>
 <body class="bg-white" oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
 
-    <div class="w-[744px] mx-auto min-h-screen">
+    <div class="w-full max-w-[744px] mx-auto min-h-screen">
         
 <header class="w-full flex justify-center pb-4">           <img src="https://sowonnamoo1005.cafe24.com/web/upload/2025/260602.jpg?234234" width="744" height="68" border="0" usemap="#Map" class="object-cover" onerror="this.style.display='none';">
             <map name="Map">
@@ -247,6 +248,21 @@
 </div>
 
 </div>
+
+<section id="view-payment" class="hidden w-full">
+    <button id="epay-back-btn" type="button" class="text-sm text-gray-500 hover:text-gray-700 mb-6 inline-flex items-center gap-1">
+        <span aria-hidden="true">←</span> 뒤로가기
+    </button>
+    <div class="bg-white p-6 sm:p-8 rounded-lg shadow border border-gray-100 w-full max-w-sm mx-auto text-center">
+        <h2 class="text-xl font-bold mb-6 text-gray-800">결제 상세정보</h2>
+        <div class="mb-6">
+            <p class="text-gray-500 text-sm">결제 예정 금액</p>
+            <div id="epay-display-price" class="text-3xl font-bold text-blue-600 mt-2">0원</div>
+        </div>
+        <button id="epay-card-btn" type="button" class="w-full py-3 bg-blue-900 text-white font-bold rounded hover:bg-blue-800 transition">신용카드</button>
+        <button id="epay-transfer-btn" type="button" class="w-full py-3 mt-2 bg-emerald-700 text-white font-bold rounded hover:bg-emerald-600 transition">계좌이체</button>
+    </div>
+</section>
 
     <script src="shipping.js"></script>
     <script type="module" src="app.js"></script>
