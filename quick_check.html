@@ -959,13 +959,14 @@ async function buildOrderRows(items) {
 
     // 인쇄승인(조판완료) 여부 - 목록 조회 시 이미 받아온 data.sian / hanjoolSnaps 값을 그대로 쓰는 것이라
     // 별도의 Firestore 읽기(쿼리) 없이 표시만 하는 뱃지입니다.
-    // 조판완료 상태라도 고객이 댓글(수정요청)을 남겨둔 상태면 초록색 대신 빨간색으로 표시합니다.
+    // 댓글(수정요청)이 있으면 인쇄승인 여부와 상관없이 빨간색으로 표시하고,
+    // 댓글이 없고 조판완료 상태일 때만 초록색으로 표시합니다.
     const hasComment = hanjoolSnaps[idx].docs.length > 0;
-    const sianDoneCell = data.sian === 'done'
-      ? (hasComment
-          ? '<span style="color:#dc2626; font-weight:700;">🔴 완료(댓글있음)</span>'
-          : '<span style="color:#16a34a; font-weight:700;">✅ 완료</span>')
-      : '<span style="color:#cbd5e1;">-</span>';
+    const sianDoneCell = hasComment
+      ? '<span style="color:#dc2626; font-weight:700;">🔴 댓글있음</span>'
+      : (data.sian === 'done'
+          ? '<span style="color:#16a34a; font-weight:700;">✅ 완료</span>'
+          : '<span style="color:#cbd5e1;">-</span>');
 
     rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
       <td>${statusCellHtml}<br>${taxIconCell}</td>
