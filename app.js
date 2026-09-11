@@ -1024,19 +1024,28 @@ function isMobileDevice() {
 // (기존에는 payment.html을 새 창으로 띄우고 postMessage로 결과를 받았지만,
 //  부모창을 닫아버리면 결제는 되는데 주문상태가 갱신 안 되는 문제가 있어 이 방식으로 변경)
 //
+// PC: 신용카드 / 계좌이체(PortOne 실결제) / 무통장입금(결제 없이 바로 접수, 3개 버튼) 모두 표시
+// 모바일: 계좌이체(PortOne)가 정상 동작하지 않아 숨기고, 신용카드 / 무통장입금 2개만 표시
+//
 // backViewName: "뒤로가기"를 누르거나 20분간 결제가 없을 때 되돌아갈 화면 ('write' 또는 'detail')
 // 반환값: { paid: true, payMethod: 'CARD'|'TRANSFER'|'MOBILE' } 또는 { paid: false }
-// (payMethod: 'MOBILE' = 모바일에서 계좌이체를 눌러 결제 없이 바로 접수된 경우)
+// (payMethod: 'MOBILE' = "무통장입금" 버튼을 눌러 결제 없이 바로 접수된 경우)
 function runEmbeddedPayment(priceDigits, backViewName) {
     return new Promise((resolve) => {
         const cardBtn = document.getElementById('epay-card-btn');
         const transferBtn = document.getElementById('epay-transfer-btn');
+        const mobileBankBtn = document.getElementById('epay-mobile-bank-btn');
         const backBtn = document.getElementById('epay-back-btn');
         const priceEl = document.getElementById('epay-display-price');
         const totalAmount = parseInt(priceDigits, 10) || 0;
 
         priceEl.textContent = totalAmount.toLocaleString() + "원";
-        [cardBtn, transferBtn].forEach(btn => {
+
+        // 모바일에서는 계좌이체(PortOne) 버튼을 아예 숨겨서 총 2개(신용카드/무통장입금)만 보이게 합니다.
+        if (transferBtn) transferBtn.classList.toggle('hidden', isMobileDevice());
+
+        [cardBtn, transferBtn, mobileBankBtn].forEach(btn => {
+            if (!btn) return;
             btn.disabled = false;
             btn.classList.remove('opacity-50');
         });
@@ -1052,7 +1061,8 @@ function runEmbeddedPayment(priceDigits, backViewName) {
 
         function cleanup() {
             cardBtn.removeEventListener('click', onCard);
-            transferBtn.removeEventListener('click', onTransfer);
+            if (transferBtn) transferBtn.removeEventListener('click', onTransfer);
+            if (mobileBankBtn) mobileBankBtn.removeEventListener('click', onMobileBank);
             backBtn.removeEventListener('click', onBack);
             clearTimeout(timeoutTimer);
         }
@@ -1065,22 +1075,13 @@ function runEmbeddedPayment(priceDigits, backViewName) {
             resolve(result);
         }
 
-        // method: 'CARD' 또는 'TRANSFER'(계좌이체)
+        // method: 'CARD' 또는 'TRANSFER'(계좌이체) - PortOne 결제창을 실제로 진행합니다.
         async function pay(method) {
             if (settled) return;
             if (totalAmount <= 0) { alert("결제 금액 오류"); return; }
 
-            // 모바일에서 "계좌이체"를 누른 경우: PortOne 결제창이 모바일에서 정상 동작하지 않으므로
-            // 결제를 진행하지 않고, 바로 접수만 처리합니다 (상태는 '모바일'로 저장되며,
-            // 실제 입금 확인 후 관리자가 수동으로 '모바일무통장'으로 전환합니다).
-            if (method === 'TRANSFER' && isMobileDevice()) {
-                settled = true;
-                cleanup();
-                resolve({ paid: true, payMethod: 'MOBILE' });
-                return;
-            }
-
-            [cardBtn, transferBtn].forEach(btn => {
+            [cardBtn, transferBtn, mobileBankBtn].forEach(btn => {
+                if (!btn) return;
                 btn.disabled = true;
                 btn.classList.add('opacity-50');
             });
@@ -1138,7 +1139,8 @@ function runEmbeddedPayment(priceDigits, backViewName) {
                 alert("결제 처리 중 오류가 발생했습니다.");
             } finally {
                 if (!settled) {
-                    [cardBtn, transferBtn].forEach(btn => {
+                    [cardBtn, transferBtn, mobileBankBtn].forEach(btn => {
+                        if (!btn) return;
                         btn.disabled = false;
                         btn.classList.remove('opacity-50');
                     });
@@ -1146,8 +1148,19 @@ function runEmbeddedPayment(priceDigits, backViewName) {
             }
         }
 
+        // 무통장입금: PortOne 결제를 진행하지 않고 바로 접수만 처리합니다.
+        // 상태는 '모바일'로 저장되며, 실제 입금이 확인되면 관리자가 quick_check에서
+        // '모바일무통장'으로 수동 전환합니다. (PC/모바일 어디서 눌러도 동일하게 동작)
+        function payMobileBank() {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve({ paid: true, payMethod: 'MOBILE' });
+        }
+
         function onCard() { pay('CARD'); }
         function onTransfer() { pay('TRANSFER'); }
+        function onMobileBank() { payMobileBank(); }
         function onBack() {
             if (confirm("결제를 취소하고 이전 화면으로 돌아가시겠습니까?")) {
                 finish({ paid: false });
@@ -1155,7 +1168,8 @@ function runEmbeddedPayment(priceDigits, backViewName) {
         }
 
         cardBtn.addEventListener('click', onCard);
-        transferBtn.addEventListener('click', onTransfer);
+        if (transferBtn) transferBtn.addEventListener('click', onTransfer);
+        if (mobileBankBtn) mobileBankBtn.addEventListener('click', onMobileBank);
         backBtn.addEventListener('click', onBack);
 
         switchView('payment');
