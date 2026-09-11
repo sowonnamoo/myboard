@@ -157,13 +157,25 @@
             if (!url) return;
             const btn = document.getElementById('receipt-download-btn');
             const originalText = btn.textContent;
+
+            // [중요] 클릭한 바로 그 시점(동기)에 빈 새 탭을 미리 열어둠.
+            // 이렇게 해야 아래 fetch(비동기)가 실패했을 때 catch문에서 다시 여는 것이 아니라
+            // 이미 열려있던 탭을 재사용하게 되어, 브라우저가 "새 창"이 아닌 "현재 탭 이동"으로
+            // 처리해서 기존 게시판 화면이 사라지는 문제를 막을 수 있음.
+            const preOpenedTab = window.open('', '_blank');
+
             try {
                 btn.textContent = '다운로드 중...';
                 btn.disabled = true;
                 const res = await fetch(url);
+                if (!res.ok) throw new Error('이미지를 불러오지 못했습니다.');
                 const blob = await res.blob();
                 const blobUrl = URL.createObjectURL(blob);
                 const ext = (blob.type && blob.type.split('/')[1]) ? blob.type.split('/')[1].replace('jpeg', 'jpg') : (url.split('.').pop().split('?')[0] || 'jpg');
+
+                // 다운로드가 정상적으로 되므로, 미리 열어둔 빈 탭은 필요 없어 닫음
+                if (preOpenedTab) preOpenedTab.close();
+
                 const a = document.createElement('a');
                 a.href = blobUrl;
                 a.download = `${modal.dataset.title || '전표'}_${Date.now()}.${ext}`;
@@ -172,9 +184,13 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(blobUrl);
             } catch (e) {
-                // CORS 등으로 직접 다운로드가 막히면 새 창으로 열어 우클릭 저장을 안내
-                alert('바로 다운로드할 수 없어 새 창으로 엽니다. 이미지에서 우클릭 후 저장해주세요.');
-                window.open(url, '_blank');
+                // CORS 등으로 직접 다운로드가 막히면, 미리 열어둔 탭에 이미지를 띄워 우클릭 저장을 안내
+                // (기존 게시판 화면이 있는 탭은 그대로 유지됨)
+                if (preOpenedTab) {
+                    preOpenedTab.location.href = url;
+                } else {
+                    alert('팝업이 차단되어 새 창을 열 수 없습니다. 브라우저의 팝업 차단을 해제한 뒤 다시 시도해주세요.');
+                }
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
