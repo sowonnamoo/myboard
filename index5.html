@@ -101,6 +101,10 @@
             <div class="flex items-center justify-between px-4 py-3 border-b shrink-0">
                 <span id="receipt-modal-title" class="font-bold text-gray-800"></span>
                 <div class="flex items-center gap-2">
+                    <button id="receipt-print-btn" onclick="printReceiptImage()"
+                        class="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1">
+                        🖨 인쇄하기
+                    </button>
                     <button id="receipt-download-btn" onclick="downloadReceiptImage()"
                         class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1">
                         ⬇ 이미지 다운로드
@@ -174,6 +178,49 @@
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
+            }
+        };
+
+        window.printReceiptImage = () => {
+            const modal = document.getElementById('receipt-modal');
+            const url = modal.dataset.url;
+            if (!url) return;
+            const title = modal.dataset.title || '전표';
+
+            // 별도 창을 띄워 이미지만 인쇄 (모달/게시판 화면이 함께 인쇄되지 않도록)
+            const printWin = window.open('', '_blank', 'width=800,height=1000');
+            if (!printWin) {
+                alert('팝업이 차단되어 인쇄창을 열 수 없습니다. 팝업 차단을 해제해주세요.');
+                return;
+            }
+            printWin.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${title}</title>
+                    <style>
+                        @media print { @page { margin: 0; } }
+                        html, body { margin: 0; padding: 0; }
+                        img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${url}" alt="${title}">
+                </body>
+                </html>
+            `);
+            printWin.document.close();
+
+            const img = printWin.document.querySelector('img');
+            const triggerPrint = () => { printWin.focus(); printWin.print(); };
+            if (img.complete) {
+                triggerPrint();
+            } else {
+                img.onload = triggerPrint;
+                img.onerror = () => {
+                    alert('이미지를 불러오지 못해 인쇄할 수 없습니다.');
+                    printWin.close();
+                };
             }
         };
 
