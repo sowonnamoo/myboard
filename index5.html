@@ -7,6 +7,16 @@
     <title>주문작성 게시판 (PC 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* 무통장 계좌번호를 계속 깜빡이게 해서 눈에 띄게 함 */
+        @keyframes accountBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .account-blink {
+            animation: accountBlink 1s ease-in-out infinite;
+        }
+    </style>
 </head>
 <body class="bg-white" oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
 
@@ -617,7 +627,8 @@ ${d.status === '접수에러' ? `
 ${
     (d.status === '대기' || d.status === '모바일')
     ? `<div class="mt-1 text-sm font-bold text-red-600 bg-red-50 p-2 rounded">
-        *무통장 계좌 : 국민 782301-01-547234 에코그래픽스 ㅣ  * 농협 352-0130-9995-53 최대환 
+        이 계좌번호로 입금해주세요.<br>
+        <span class="account-blink">*무통장 계좌 : 농협 352-0130-9995-53 최대환</span>
        </div>` 
     : ''
 }
