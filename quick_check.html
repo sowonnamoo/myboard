@@ -56,7 +56,7 @@
 </div>
 
 <div id="listBox">
-  <p class="ok">✅ 로그인됨 — 무통장/카드결제/접수에러 건만 표시 (더보기 클릭 시 5건씩 조회)</p>
+  <p class="ok">✅ 로그인됨 — 무통장/카드결제/모바일/모바일무통장/접수에러 건만 표시 (더보기 클릭 시 5건씩 조회)</p>
   <div id="result">불러오는 중...</div>
 
   <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:10px;">
@@ -64,6 +64,7 @@
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       <button onclick="updateStatus('대기')" style="background:#64748b;">대기</button>
       <button onclick="updateStatus('무통장')" style="background:#059669;">무통장</button>
+      <button onclick="updateStatus('모바일무통장')" style="background:#0d9488;">모바일무통장(입금확인)</button>
       <button onclick="updateStatus('카드결제')" style="background:#2563eb;">카드결제</button>
       <button onclick="updateStatus('접수에러')" style="background:#dc2626;">접수에러</button>
       <button onclick="updateStatus('주문취소')" style="background:#1e293b;">주문취소</button>
@@ -181,6 +182,8 @@ function statusColor(status) {
     case '대기': return '#64748b';
     case '무통장': return '#059669';
     case '카드결제': return '#2563eb';
+    case '모바일': return '#f97316';
+    case '모바일무통장': return '#0d9488';
     case '접수에러': return '#dc2626';
     case '주문취소': return '#1e293b';
     default: return '#334155';
@@ -463,7 +466,7 @@ window.updateStatus = async (value) => {
     const docRef = doc(db, col, currentSelected.id);
     const updateData = { status: value };
     if (value === '접수에러') updateData.sian = '에러';
-    if (value === '무통장' || value === '카드결제') {
+    if (value === '무통장' || value === '카드결제' || value === '모바일무통장') {
       const snap = await getDoc(docRef);
       if (snap.exists() && !snap.data().paidAt) {
         updateData.paidAt = serverTimestamp();
@@ -692,7 +695,7 @@ window.saveCashUrlDirect = async (boardId) => {
 // 무통장/카드결제 필터는 받아온 배치 안에서 자바스크립트로 걸러냅니다.
 // 그래도 페이지를 열자마자 대량으로 가져오지 않도록, "더보기"를 누른 시점에만
 // 소량 배치 단위로 조회하고(부족하면 배치 크기를 키워가며 이어서 조회), 매번 5건씩만 화면에 붙입니다.
-const ORDER_STATUSES = ['무통장', '카드결제', '접수에러'];
+const ORDER_STATUSES = ['무통장', '카드결제', '접수에러', '모바일', '모바일무통장'];
 const ORDERS_PAGE_SIZE = 5;
 const ORDERS_FETCH_MAX = 40; // 상태 필터로 많이 걸러지는 상황에서도 무한정 커지지 않도록 상한
 
@@ -778,7 +781,7 @@ window.loadMoreOrders = async () => {
     } else {
       moreWrap.innerHTML = '';
       if (body.children.length === 0) {
-        body.innerHTML = '<tr><td colspan="13" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제/접수에러)이 없습니다.</td></tr>';
+        body.innerHTML = '<tr><td colspan="13" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제/모바일/모바일무통장/접수에러)이 없습니다.</td></tr>';
       }
     }
   } catch (e) {

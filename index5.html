@@ -533,7 +533,11 @@ filteredData.sort((a, b) => {
 const isPending = d.status === '대기';
 const isBankTransfer = d.status === '무통장';
 const isCardPay = d.status === '카드결제';
-let statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' : 
+// '모바일': 모바일에서 계좌이체를 눌러 결제 없이 접수된, 입금 확인 전 상태 (대기와 거의 동일하되 세금계산서만 열어둠)
+// '모바일무통장': 관리자가 입금 확인 후 전환하는 상태 (무통장과 거의 동일하되 현금영수증만 막음)
+const isMobilePending = d.status === '모바일';
+const isMobileBank = d.status === '모바일무통장';
+let statusLabel = (d.status === '대기' || d.status === '모바일') ? '(접수전/결제확인중)' : 
                   (d.status === '접수에러') ? '(제작보류)' : '(접수완료)';
 
 // [추가된 로직] 시안 완료/출고 상태에 따른 문구 자동 변경
@@ -611,7 +615,7 @@ ${d.status === '접수에러' ? `
 <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
 
 ${
-    d.status === '대기' 
+    (d.status === '대기' || d.status === '모바일')
     ? `<div class="mt-1 text-sm font-bold text-red-600 bg-red-50 p-2 rounded">
         *무통장 계좌 : 국민 782301-01-547234 에코그래픽스 ㅣ  * 농협 352-0130-9995-53 최대환 
        </div>` 
@@ -619,8 +623,8 @@ ${
 }
             <div class="mt-4 flex gap-2 flex-wrap">
                 <a href="javascript:void(0)"
-                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print2.html?" + params + "')"}"
-                   class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">거래명세서</a>
+                   onclick="${(isPending || isMobilePending) ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print2.html?" + params + "')"}"
+                   class="border px-2 py-1 text-xs ${!(isPending || isMobilePending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">거래명세서</a>
 
                 <button type="button" id="segum-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
@@ -630,18 +634,18 @@ ${
 
                 <button type="button" id="cash-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
-                    onclick="${(isPending || isCardPay || (d.isJajoo && !isBankTransfer)) ? '' : "window.openCashPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ", this.dataset.name, this.dataset.phone)"}"
-                    class="border px-2 py-1 text-xs ${(!isPending && !isCardPay && (!d.isJajoo || isBankTransfer)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
-                    ${(d.isJajoo && !isBankTransfer) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : '')}>현금영수증</button>
+                    onclick="${(isPending || isCardPay || isMobilePending || isMobileBank || (d.isJajoo && !isBankTransfer)) ? '' : "window.openCashPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ", this.dataset.name, this.dataset.phone)"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !isCardPay && !isMobilePending && !isMobileBank && (!d.isJajoo || isBankTransfer)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${(isMobilePending || isMobileBank) ? 'title="모바일 계좌이체 건은 현금영수증 신청이 불가합니다. 세금계산서를 이용해주세요."' : (d.isJajoo && !isBankTransfer) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : '')}>현금영수증</button>
 
                 <a href="javascript:void(0)" 
-                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + params + "')"}" 
-                   class="border px-2 py-1 text-xs ${!isPending ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
+                   onclick="${(isPending || isMobilePending) ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + params + "')"}" 
+                   class="border px-2 py-1 text-xs ${!(isPending || isMobilePending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
                 
                 <button type="button" id="card-btn-${d.id}"
-                    onclick="${(isPending || isBankTransfer || (d.isJajoo && !isCardPay)) ? '' : "window.openCardPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ")"}"
-                    class="border px-2 py-1 text-xs ${(!isPending && !isBankTransfer && (!d.isJajoo || isCardPay)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
-                    ${(d.isJajoo && !isCardPay) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isBankTransfer ? 'title="무통장 입금 건은 세금계산서/현금영수증을 이용해주세요."' : '')}>카드전표</button>
+                    onclick="${(isPending || isBankTransfer || isMobilePending || isMobileBank || (d.isJajoo && !isCardPay)) ? '' : "window.openCardPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ")"}"
+                    class="border px-2 py-1 text-xs ${(!isPending && !isBankTransfer && !isMobilePending && !isMobileBank && (!d.isJajoo || isCardPay)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
+                    ${(d.isJajoo && !isCardPay) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isBankTransfer || isMobileBank) ? 'title="무통장 입금 건은 세금계산서/현금영수증을 이용해주세요."' : ''}>카드전표</button>
          
 <a href="javascript:void(0)" 
    onclick="${d.trackingUrl ? "openPopup('" + d.trackingUrl + "')" : ""}"
@@ -654,7 +658,7 @@ ${
 </a>
 
 ${
-    (d.status === '대기') 
+    (d.status === '대기' || d.status === '모바일') 
     ? `<button onclick="deleteOrder('${d.id}', ${d.isJajoo})" 
         class="border px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-700">주문삭제</button>`
     : ''

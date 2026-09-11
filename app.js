@@ -549,7 +549,8 @@ function renderDetailFiles() {
     if (!filesDiv) return;
     filesDiv.innerHTML = "";
 
-    const isWaitingStatus = currentDetailStatus === '대기';
+    // '모바일'(모바일 계좌이체 접수, 입금 확인 전)도 '대기'와 동일하게 아직 파일 교체를 허용합니다.
+    const isWaitingStatus = currentDetailStatus === '대기' || currentDetailStatus === '모바일';
 
     const buildRow = (url, label, slot) => {
         const row = document.createElement('div');
@@ -583,8 +584,8 @@ function renderDetailFiles() {
 // 여기서도 다시 한 번 상태를 확인해 안전하게 막습니다)
 window.triggerFileReplace = function(slot) {
     if (!currentViewId) return;
-    if (currentDetailStatus !== '대기') {
-        alert("접수상태가 '대기'일 때만 파일을 교체할 수 있습니다.");
+    if (currentDetailStatus !== '대기' && currentDetailStatus !== '모바일') {
+        alert("접수상태가 '대기' 또는 '모바일'일 때만 파일을 교체할 수 있습니다.");
         return;
     }
 
@@ -952,11 +953,11 @@ document.getElementById("modal-confirm-btn").addEventListener("click", async () 
         if (errorNotice) errorNotice.classList.add('hidden');
     }
 
-    // 결제(카드결제/무통장)가 이미 완료된 주문은 임의로 삭제되지 않도록
-    // 주문삭제 버튼을 숨깁니다. ('대기' 상태일 때만 삭제 가능)
+    // 결제(카드결제/무통장/모바일무통장)가 이미 완료된 주문은 임의로 삭제되지 않도록
+    // 주문삭제 버튼을 숨깁니다. ('대기'/'모바일' 상태일 때만 삭제 가능 - 아직 입금 확인 전)
     const deleteBtn = document.getElementById("detail-delete-btn");
     if (deleteBtn) {
-        if (data.status === '카드결제' || data.status === '무통장') {
+        if (data.status === '카드결제' || data.status === '무통장' || data.status === '모바일무통장') {
             deleteBtn.classList.add('hidden');
         } else {
             deleteBtn.classList.remove('hidden');
@@ -1012,12 +1013,20 @@ document.getElementById("modal-cancel-btn").addEventListener("click", () => {
     document.getElementById("modal-password-input").value = "";
 });
 
+// ---- 모바일 기기 판별 ----
+// 모바일 브라우저에서는 계좌이체(PortOne TRANSFER) 결제창이 정상 동작하지 않는 문제가 있어서,
+// 모바일에서 "계좌이체" 클릭 시에는 실제 결제(PortOne)를 진행하지 않고 바로 접수만 처리합니다.
+function isMobileDevice() {
+    return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent);
+}
+
 // 결제를 팝업창이 아니라 이 페이지 안(view-payment 섹션)에서 직접 처리합니다.
 // (기존에는 payment.html을 새 창으로 띄우고 postMessage로 결과를 받았지만,
 //  부모창을 닫아버리면 결제는 되는데 주문상태가 갱신 안 되는 문제가 있어 이 방식으로 변경)
 //
 // backViewName: "뒤로가기"를 누르거나 20분간 결제가 없을 때 되돌아갈 화면 ('write' 또는 'detail')
-// 반환값: { paid: true, payMethod: 'CARD'|'TRANSFER' } 또는 { paid: false }
+// 반환값: { paid: true, payMethod: 'CARD'|'TRANSFER'|'MOBILE' } 또는 { paid: false }
+// (payMethod: 'MOBILE' = 모바일에서 계좌이체를 눌러 결제 없이 바로 접수된 경우)
 function runEmbeddedPayment(priceDigits, backViewName) {
     return new Promise((resolve) => {
         const cardBtn = document.getElementById('epay-card-btn');
@@ -1060,6 +1069,16 @@ function runEmbeddedPayment(priceDigits, backViewName) {
         async function pay(method) {
             if (settled) return;
             if (totalAmount <= 0) { alert("결제 금액 오류"); return; }
+
+            // 모바일에서 "계좌이체"를 누른 경우: PortOne 결제창이 모바일에서 정상 동작하지 않으므로
+            // 결제를 진행하지 않고, 바로 접수만 처리합니다 (상태는 '모바일'로 저장되며,
+            // 실제 입금 확인 후 관리자가 수동으로 '모바일무통장'으로 전환합니다).
+            if (method === 'TRANSFER' && isMobileDevice()) {
+                settled = true;
+                cleanup();
+                resolve({ paid: true, payMethod: 'MOBILE' });
+                return;
+            }
 
             [cardBtn, transferBtn].forEach(btn => {
                 btn.disabled = true;
@@ -1196,8 +1215,12 @@ document.getElementById("save-btn").addEventListener("click", async () => {
         return;
     }
 
-    // 계좌이체(TRANSFER)로 결제하면 '무통장'으로, 그 외(카드)는 '카드결제'로 구분해서 저장합니다.
-    const resolvedPayStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
+    // 계좌이체(TRANSFER)로 결제하면 '무통장', 카드는 '카드결제'로 저장합니다.
+    // 모바일에서 계좌이체를 눌러 결제 없이 접수된 경우(MOBILE)는 '모바일' 상태로 저장하고,
+    // 이후 입금이 실제로 확인되면 관리자가 quick_check에서 '모바일무통장'으로 전환합니다.
+    const resolvedPayStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장'
+        : paymentResult.payMethod === 'MOBILE' ? '모바일'
+        : '카드결제';
 
     const spinner = document.getElementById("loading-spinner");
     const bar = document.getElementById("red-progress-bar");
@@ -1407,7 +1430,9 @@ window.handleCardPay = async function() {
     const paymentResult = await runEmbeddedPayment(priceValue, 'detail');
     if (!paymentResult || !paymentResult.paid) return; // 뒤로가기/시간초과 → 이미 상세화면으로 복귀함
 
-    const resolvedStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장' : '카드결제';
+    const resolvedStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장'
+        : paymentResult.payMethod === 'MOBILE' ? '모바일'
+        : '카드결제';
 
     try {
         const docRef = doc(db, "boards", currentViewId);
@@ -1701,9 +1726,13 @@ window.onfocus = () => {
 
 // 앙카 png 주문내용 강제 링크 막음소스
 window.syncStatusOverlay = function(status) {
-    const isBank = (status === '무통장');
+    // '모바일무통장'은 관리자가 입금 확인 후 전환하는 상태로, 카드전표 차단 등은 '무통장'과 동일하게 취급합니다.
+    const isBank = (status === '무통장' || status === '모바일무통장');
     const isCard = (status === '카드결제');
     const isWaiting = (status === '대기');
+    // '모바일'은 모바일에서 계좌이체를 눌러 결제 없이 접수된, 입금 확인 전 상태입니다.
+    const isMobilePending = (status === '모바일');
+    const isMobileBank = (status === '모바일무통장');
 
     const positionImage = (btnId, imgId, dx, dy) => {
         const btn = document.getElementById(btnId);
@@ -1735,10 +1764,29 @@ window.syncStatusOverlay = function(status) {
         if (isWaiting) {
             // 대기일 때는 '세금계산서 버튼(segum-btn-id)' 위에 'img-3'을 띄움
             positionImage('segum-btn-id', 'img-3', -8, -10);
+        } else if (isMobilePending) {
+            // 모바일(입금 확인 전)은 '대기'와 거의 동일하지만, 세금계산서는 열어두고
+            // 카드전표 버튼만 막습니다 (아직 무통장 입금 확인 전이라 카드전표는 해당 없음).
+            positionImage('card-receipt-btn', 'img-3', -8, -10);
         } else if (isCard || isBank) {
             // 결제 완료일 때는 이미지 표시
             positionImage('anchor-text', 'img-1', -25, -25);
             positionImage(isBank ? 'card-receipt-btn' : 'segum-btn-id', 'img-2', -8, -10);
+        }
+
+        // 현금영수증 버튼: 모바일 계좌이체 관련 건(모바일/모바일무통장)은 신청 자체를 막습니다.
+        // (다른 상태의 기존 버튼 동작에는 영향을 주지 않습니다)
+        const cashBtnEl = document.getElementById('cash-receipt-btn');
+        if (cashBtnEl) {
+            if (isMobilePending || isMobileBank) {
+                cashBtnEl.style.pointerEvents = 'none';
+                cashBtnEl.style.opacity = '0.4';
+                cashBtnEl.title = '모바일 계좌이체 건은 현금영수증 신청이 불가합니다. 세금계산서를 이용해주세요.';
+            } else {
+                cashBtnEl.style.pointerEvents = '';
+                cashBtnEl.style.opacity = '';
+                cashBtnEl.title = '';
+            }
         }
     };
 
