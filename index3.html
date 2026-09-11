@@ -115,9 +115,11 @@
 
         try {
             const currentUser = await ensureAnonymousLogin();
-            // payment.html에서 결제수단(payMethod)을 함께 보내줌: 'CARD' 또는 'TRANSFER'
-            // 카드 -> '카드결제', 계좌이체 -> '무통장'으로 주문상태를 구분해서 저장합니다.
-            const newStatus = (event.data.payMethod === 'TRANSFER') ? '무통장' : '카드결제';
+            // payment.html에서 결제수단(payMethod)을 함께 보내줌: 'CARD' | 'TRANSFER' | 'MOBILE'
+            // 카드 -> '카드결제', 계좌이체(실결제) -> '무통장', 무통장입금(결제없이 접수) -> '모바일'
+            const newStatus = event.data.payMethod === 'TRANSFER' ? '무통장'
+                : event.data.payMethod === 'MOBILE' ? '모바일'
+                : '카드결제';
 
             // 문서 ID를 먼저 발급받고, 그 ID로 조회키(secretId)를 계산합니다.
             const orderRef = doc(collection(db, "jjjj"));
