@@ -91,7 +91,7 @@ function esc(v) {
 async function loadTaxRequests() {
   const el = document.getElementById("taxResult");
   try {
-    const q1 = query(collection(db, "segum1"), orderBy("createdAt", "desc"), limit(10));
+    const q1 = query(collection(db, "segum1"), orderBy("updatedAt", "desc"), limit(10));
     const snap = await getDocs(q1);
 
     if (snap.empty) {
