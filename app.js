@@ -1454,25 +1454,41 @@ window.handleCardPay = async function() {
 };
 
 
-window.handleBankPay = function() {
+// (기존에는 494x639 고정폭 팝업으로 외부 mooto 페이지를 열었지만, 모바일에서 고정폭 팝업이
+//  제대로 열리지 않거나 사용성이 나빠서, handleCardPay와 동일하게 내장형 결제 화면을 사용하도록
+//  통일했습니다. runEmbeddedPayment 안에서 모바일이면 계좌이체를 자동으로 "모바일무통장" 접수로
+//  처리해주므로 별도 분기 없이 그대로 재사용할 수 있습니다.)
+window.handleBankPay = async function() {
     const priceEl = document.getElementById("detail-price");
     if (!priceEl) {
         alert("결제 정보를 찾을 수 없습니다.");
         return;
     }
 
-    const priceValue = priceEl.innerText.replace(/[^0-9]/g, ''); 
+    const priceValue = priceEl.innerText.replace(/[^0-9]/g, '');
 
     if (!priceValue || parseInt(priceValue) === 0) {
         alert("결제할 금액이 없습니다.");
         return;
     }
 
-    // 무통장입금 안내 페이지로 이동 (494x639 크기)
-    const url = `https://sowonnamoo.github.io/myboard/mooto?price=${priceValue}`;
-    const options = "width=494,height=639,scrollbars=yes,resizable=yes";
-    
-    window.open(url, 'bankPaymentWindow', options);
+    const paymentResult = await runEmbeddedPayment(priceValue, 'detail');
+    if (!paymentResult || !paymentResult.paid) return; // 뒤로가기/시간초과 → 이미 상세화면으로 복귀함
+
+    const resolvedStatus = paymentResult.payMethod === 'TRANSFER' ? '무통장'
+        : paymentResult.payMethod === 'MOBILE' ? '모바일'
+        : '카드결제';
+
+    try {
+        const docRef = doc(db, "boards", currentViewId);
+        await updateDoc(docRef, { status: resolvedStatus });
+        alert("결제가 정상적으로 확인되었습니다.");
+        window.syncStatusOverlay(resolvedStatus);
+        location.reload();
+    } catch (e) {
+        console.error("결제 상태 반영 실패:", e);
+        alert("결제는 완료되었으나 상태 반영 중 오류가 발생했습니다. 새로고침 후 다시 확인해주시거나, 계속되면 관리자에게 문의해주세요.");
+    }
 };
 
 
