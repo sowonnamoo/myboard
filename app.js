@@ -1352,7 +1352,15 @@ document.getElementById("save-btn").addEventListener("click", async () => {
 
     // 장바구니를 하나의 주문으로 합쳐 접수한 경우, 장바구니 비우기
     localStorage.removeItem('pendingCartOrders');
-    switchView('list');
+
+    // [추가] 모바일에서 "무통장입금" 버튼으로 접수된 경우(payMethod: MOBILE, 상태: '모바일')는
+    // 저장 완료 후 목록화면(내부 view-list)이 아니라 index5(주문조회 페이지)로 바로 이동시킵니다.
+    // 그 외(카드결제/PC 계좌이체)는 기존처럼 내부 목록화면으로 전환합니다.
+    if (resolvedPayStatus === '모바일') {
+        window.location.href = 'https://sowonnamoo.github.io/myboard/index5';
+    } else {
+        switchView('list');
+    }
 } catch (e) {
     console.error(e);
     // 결제는 이미 성공한 뒤에 발생한 오류이므로 안내 문구를 다르게 표시합니다.
