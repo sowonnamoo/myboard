@@ -197,6 +197,27 @@ let currentAuthorPhone = "";
 // 이 값은 Firestore 규칙에서 "본인이 맞는지"를 uid 대신 확인하는 용도로만 쓰입니다.
 let currentSecretId = "";
 
+// [추가] 댓글(수정요청) 옆 복사 버튼을 켜고/끄고, 클릭 시 해당 댓글 전체 텍스트를 복사하게 설정합니다.
+// text가 실제 댓글 내용일 때만(hasMemo=true) 버튼을 보여주고, 안내문구뿐일 때는 숨깁니다.
+function setMemoCopyButton(text, hasMemo) {
+    const copyBtn = document.getElementById("memo-copy-btn");
+    if (!copyBtn) return;
+
+    if (hasMemo && text) {
+        copyBtn.classList.remove("hidden");
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("댓글 내용이 복사되었습니다.");
+            }).catch(() => {
+                alert("복사에 실패했습니다.");
+            });
+        };
+    } else {
+        copyBtn.classList.add("hidden");
+        copyBtn.onclick = null;
+    }
+}
+
 async function loadMemo(boardId) {
     const memoDisplay = document.getElementById("memo-display");
     const memoStatus = document.getElementById("memo-status");
@@ -206,11 +227,14 @@ async function loadMemo(boardId) {
     const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
-        memoDisplay.innerText = snapshot.docs[0].data().text;
+        const memoText = snapshot.docs[0].data().text;
+        memoDisplay.innerText = memoText;
         memoStatus.classList.remove("hidden");
+        setMemoCopyButton(memoText, true);
     } else {
         memoDisplay.innerText = "작성된 수정요청 없습니다.(인쇄승인 가능)";
         memoStatus.classList.add("hidden");
+        setMemoCopyButton("", false);
     }
 }
 
@@ -402,7 +426,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     const hasMemo = !snapshot.empty;
 
     if (hasMemo) {
-        memoDisplay.className = "text-sm text-gray-700 mb-3 italic";
+        memoDisplay.className = "text-sm text-gray-700 italic flex-grow";
         const latest = snapshot.docs[0].data();
         memoDisplay.innerText = latest.text;
         const requestedAt = latest.createdAt && latest.createdAt.toDate
@@ -411,6 +435,7 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
         memoStatus.innerHTML = ' - 🔊 수정요청이 등록되셨습니다. [교정 제작중/잠시 기다려주세요]' +
             (requestedAt ? `<span class="font-normal text-xs ml-1">(요청: ${requestedAt})</span>` : '');
         memoStatus.classList.remove("hidden");
+        setMemoCopyButton(latest.text, true);
         if (fileDownloadArea) {
             if (latest.fileUrl) {
                 const uploadedAt = latest.createdAt && latest.createdAt.toDate
@@ -426,16 +451,18 @@ async function checkMemoAndSetButton(boardId, sianStatus) {
     } else if (!isDone && sianRefreshedAt) {
         // 관리자가 새 시안을 등록하고 초기화한 직후 - 굵은 글씨로 등록 안내 + 갱신 시각
         const timeStr = sianRefreshedAt.toDate ? sianRefreshedAt.toDate().toLocaleString('ko-KR') : '';
-        memoDisplay.className = "text-sm mb-3 font-bold text-blue-700";
+        memoDisplay.className = "text-sm font-bold text-blue-700 flex-grow";
         memoDisplay.innerHTML = `시안이 등록되셨습니다. (인쇄승인 가능상태)` +
             (timeStr ? `<span class="text-gray-400 font-normal text-xs ml-1">(등록: ${timeStr})</span>` : '');
         memoStatus.classList.add("hidden");
         if (fileDownloadArea) fileDownloadArea.innerHTML = "";
+        setMemoCopyButton("", false);
     } else {
-        memoDisplay.className = "text-sm text-gray-700 mb-3 italic";
+        memoDisplay.className = "text-sm text-gray-700 italic flex-grow";
         memoDisplay.innerText = isDone ? "조판 완료로 인해 수정 요청이 불가능합니다." : "작성된 수정요청 없습니다.(인쇄승인 가능상태)";
         memoStatus.classList.add("hidden");
         if (fileDownloadArea) fileDownloadArea.innerHTML = "";
+        setMemoCopyButton("", false);
     }
 
     if (isDone) {
