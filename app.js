@@ -1109,7 +1109,16 @@ function runEmbeddedPayment(priceDigits, backViewName) {
                     orderName: "주문 상품 결제",
                     totalAmount: totalAmount,
                     currency: "KRW",
-                    payMethod: method
+                    payMethod: method,
+                    // [추가] KCP는 토스/카카오페이와 달리 "모바일=REDIRECTION 강제" 같은 제약이 없어서,
+                    // windowType을 안 정해주면 모바일에서도 PC용 방식(IFRAME 등)을 그대로 물려받을 수
+                    // 있습니다. iframe 안에서는 앱카드 인증을 위한 카드사 앱 전환이 막히는 경우가 많아서
+                    // "PC창처럼 뜨고 앱카드가 잘 안 되는" 증상의 원인일 가능성이 높습니다.
+                    // REDIRECTION은 페이지 자체가 이동해버려서 지금처럼 결과를 Promise로 바로 받는 구조와
+                    // 안 맞기 때문에(응답을 못 받고 끊김), 대신 POPUP으로 지정합니다. POPUP은 별도의
+                    // top-level 창이라 앱 전환이 가능하면서도, 기존처럼 Promise로 결과를 그대로 받을 수
+                    // 있어 이후 로직(cards1 기록, 주문저장)이 안전하게 유지됩니다.
+                    windowType: { pc: 'IFRAME', mobile: 'POPUP' }
                 });
 
                 if (response.code != null) {
