@@ -755,10 +755,17 @@ async function fetchValidOrders(targetCount) {
     return collected;
 }
 
+// [과거 글 더보기 제한] 더보기 버튼을 연속으로 LOAD_MORE_LIMIT번 누르면
+// 더 이상 글을 불러오지 않고 LOAD_MORE_REDIRECT_URL 페이지로 자동 이동시킵니다.
+const LOAD_MORE_LIMIT = 20;
+const LOAD_MORE_REDIRECT_URL = "https://sowonnamoo.github.io/myboard/index5";
+let loadMoreClickCount = 0;
+
 async function loadAndRender() {
     try {
         allOrders = [];
         lastVisible = null;
+        loadMoreClickCount = 0; // 목록을 새로 불러오면 클릭 횟수도 초기화
         allOrders = await fetchValidOrders(PAGE_SIZE);
         renderTable();
     } catch (err) { console.error(err); }
@@ -766,6 +773,12 @@ async function loadAndRender() {
 
 // 2. 더보기 클릭 시 유효한 글 8개를 추가로 채우기
 window.loadMore = async function() {
+    loadMoreClickCount++;
+    if (loadMoreClickCount >= LOAD_MORE_LIMIT) {
+        // 20번째 클릭: 과거 글을 더 보여주지 않고 index5 페이지로 이동
+        window.location.href = LOAD_MORE_REDIRECT_URL;
+        return;
+    }
     if (!hasMoreOrders) { alert("더 이상 게시글이 없습니다."); return; }
     try {
         const newOnes = await fetchValidOrders(PAGE_SIZE);
