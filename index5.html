@@ -594,8 +594,8 @@ if (d.status !== '대기' && d.status !== '접수에러') {
             
        <div class="mt-2 flex items-center gap-2 flex-wrap">
     <span class="font-semibold">첨부파일:</span>
-    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" id="file1-link-${d.id}" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
-    ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
+    ${d.file1Url ? `<a href="#" data-url="${d.file1Url}" onclick="downloadAttached(this.dataset.url); return false;" id="file1-link-${d.id}" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
+    ${d.file2Url ? `<a href="#" data-url="${d.file2Url}" onclick="downloadAttached(this.dataset.url); return false;" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
 </div>
 
 ${d.status === '접수에러' ? `
@@ -745,7 +745,7 @@ window.triggerFileReupload = function(btn) {
 
             // 파일 1 다운로드 링크도 새 파일 주소로 즉시 갱신
             const fileLink = document.getElementById('file1-link-' + docId);
-            if (fileLink) fileLink.href = newUrl;
+            if (fileLink) fileLink.dataset.url = newUrl;
 
         } catch (e) {
             if (e.code === 'permission-denied') {
@@ -764,11 +764,36 @@ window.triggerFileReupload = function(btn) {
     tempInput.click();
 };
 
+// R2 첨부파일 다운로드: 주소(?name=작성자_타임스탬프_원본파일명)에서 원본 파일명을 뽑아
+// 그 이름 그대로 저장합니다. (링크로 바로 열면 브라우저가 Content-Type만 보고 .ai/.eps를 .ps로 저장함)
+window.downloadAttached = async (url) => {
+    let filename = 'download';
+    try {
+        const name = new URL(url).searchParams.get('name') || 'download';
+        filename = (name.match(/^.*?_\d{13}_(.+)$/) || [])[1] || name;
+    } catch (e) {}
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch (e) {
+        console.error('다운로드 실패, 새 창으로 대체:', e);
+        window.open(url, '_blank');
+    }
+};
+
 // [R2 업로드 함수] app.js의 uploadToR2와 동일한 방식(용량/확장자 검사 포함)이되,
 // 파일 input을 미리 화면에 둘 필요 없이 File 객체를 바로 넘겨 업로드합니다.
 function uploadFileToR2(file, authorName) {
     return new Promise((resolve, reject) => {
-        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'HEIC', 'WEBP', 'xlsx'];
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp', 'xlsx', 'ppt', 'pptx']; // 반드시 소문자 (ext를 소문자로 바꿔 비교함)
         const ext = file.name.split('.').pop().toLowerCase();
         if (!allowedExtensions.includes(ext)) {
             reject(new Error("허용되지 않는 파일 형식입니다."));
