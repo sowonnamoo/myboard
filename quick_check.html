@@ -201,6 +201,31 @@ function formatOrderSheetDate(d) {
   return `${y} ${m}/${day} ${hh}:${mi}`;
 }
 
+// R2 첨부파일 다운로드: 주소(?name=작성자_타임스탬프_원본파일명)에서 원본 파일명을 뽑아
+// 그 이름 그대로 저장합니다. (링크로 바로 열면 브라우저가 Content-Type만 보고 .ai/.eps를 .ps로 저장함)
+window.downloadAttached = async (url) => {
+  let filename = 'download';
+  try {
+    const name = new URL(url).searchParams.get('name') || 'download';
+    filename = (name.match(/^.*?_\d{13}_(.+)$/) || [])[1] || name;
+  } catch (e) {}
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch (e) {
+    console.error('다운로드 실패, 새 창으로 대체:', e);
+    window.open(url, '_blank');
+  }
+};
+
 // 주문서(메모장) 다운로드
 window.downloadOrderSheet = (boardId) => {
   const o = orderSheetDataMap[boardId];
@@ -940,14 +965,14 @@ async function buildOrderRows(items) {
       attachHtml += `<div class="file-row">🖼️ <a href="${jajooImgUrl}" target="_blank" download="재주문_${data.imgCode}.jpg" class="small-btn" style="background:#2563eb; color:#fff; text-decoration:none; display:inline-block;">재주문 이미지 다운로드</a></div>`;
     }
     if (data.file1Url) {
-      attachHtml += `<div class="file-row">📎 <a href="${data.file1Url}" target="_blank">첨부파일1 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',1)">삭제</button></div>`;
+      attachHtml += `<div class="file-row">📎 <a href="#" data-url="${data.file1Url}" onclick="downloadAttached(this.dataset.url); return false;">첨부파일1 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',1)">삭제</button></div>`;
     }
     if (data.file2Url) {
-      attachHtml += `<div class="file-row">📎 <a href="${data.file2Url}" target="_blank">첨부파일2 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',2)">삭제</button></div>`;
+      attachHtml += `<div class="file-row">📎 <a href="#" data-url="${data.file2Url}" onclick="downloadAttached(this.dataset.url); return false;">첨부파일2 다운로드</a> <button class="small-btn" onclick="deleteAttachedFile('${d.id}',2)">삭제</button></div>`;
     }
     hanjoolItems.forEach((item, i) => {
       const label = hanjoolItems.length > 1 ? `재첨부${i + 1}` : '재첨부';
-      attachHtml += `<div class="file-row">🔁 <a href="${item.fileUrl}" target="_blank">${label} 다운로드</a> <button class="small-btn" onclick="deleteHanjoolFile('${d.id}','${item.id}')">삭제</button></div>`;
+      attachHtml += `<div class="file-row">🔁 <a href="#" data-url="${item.fileUrl}" onclick="downloadAttached(this.dataset.url); return false;">${label} 다운로드</a> <button class="small-btn" onclick="deleteHanjoolFile('${d.id}','${item.id}')">삭제</button></div>`;
     });
     // app2.js의 자동 재업로드 감지(checkImageRefreshAndCleanup)는 cafe24가
     // Last-Modified/ETag 헤더를 CORS로 내려줄 때만 동작하고, 대부분의 정적 서버는

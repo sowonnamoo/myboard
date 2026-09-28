@@ -541,6 +541,18 @@ window.viewDetail = function(id) {
 
 
 
+// R2 주소(?name=작성자_타임스탬프_원본파일명)에서 원본 파일명만 뽑아냅니다.
+// (예전엔 다운로드 파일명을 무조건 .png로 고정해서 확장자가 바뀌었습니다)
+function getOriginalFileNameFromUrl(url, fallback) {
+    try {
+        const name = new URL(url).searchParams.get('name') || '';
+        const m = name.match(/^.*?_\d{13}_(.+)$/);
+        return (m && m[1]) || name || fallback;
+    } catch (e) {
+        return fallback;
+    }
+}
+
 // 상세보기의 첨부파일 목록을 그려줍니다.
 // 접수상태가 '대기'일 때만 각 파일 옆에 '파일교체' 버튼을 함께 보여주고,
 // 다른 상태(카드결제/무통장/접수에러 등)로 바뀌면 교체버튼은 자동으로 사라집니다.
@@ -560,7 +572,7 @@ function renderDetailFiles() {
         // 이모지를 회색으로 만들기 위해 grayscale 필터 클래스 추가
         a.innerHTML = `<span class="grayscale inline-block mr-1">📁</span>${label} (다운로드)`;
         a.className = "text-xs text-blue-600 hover:underline cursor-pointer";
-        a.onclick = () => window.downloadFile(url, `${slot === 1 ? 'file1' : 'file2'}_download.png`);
+        a.onclick = () => window.downloadFile(url, getOriginalFileNameFromUrl(url, `${slot === 1 ? 'file1' : 'file2'}_download`));
         row.appendChild(a);
 
         if (isWaitingStatus) {
