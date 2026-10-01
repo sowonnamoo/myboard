@@ -72,6 +72,7 @@
       <button onclick="window.open('https://sowonnamoo.github.io/myboard/index1', '_blank', 'width=800,height=900')" style="background:#4f46e5;">✏️ 글쓰기</button>
       <button onclick="window.open('seghyn1.html', 'seghyn1', 'width=900,height=800')" style="background:#ca8a04;">🧾 세금/현금 신청내역</button>
       <button onclick="bulkFixErrorOrders()" style="background:#0891b2;">🔁 접수에러→대기 일괄전환</button>
+      <button onclick="downloadSettlementExcel()" style="background:#16a34a;">📊 정산내역</button>
     </div>
   </div>
 </div>
@@ -96,6 +97,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, query, where, orderBy, limit, startAfter, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -557,6 +559,94 @@ window.bulkFixErrorOrders = async () => {
     loadRecentOrders();
   } catch (e) {
     alert("일괄 전환 실패: " + e.message);
+  }
+};
+
+// ============= 정산내역 엑셀 다운로드 =============
+// 입금(결제) 확인된 주문(무통장 / 모바일무통장 / 카드결제)을 boards + jjjj 에서 모두 조회해서
+// 접수일자(createdAt) 기준으로 월별 시트에 [접수일자, 주문자, 금액]을 적고, 월 합계 + 전체 총액을 넣어줍니다.
+// where(status in [...]) 단일 조건만 사용하므로 별도 복합색인이 필요 없습니다.
+const SETTLE_STATUSES = ['무통장', '모바일무통장', '카드결제'];
+
+function fmtYMD(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+window.downloadSettlementExcel = async () => {
+  if (typeof XLSX === 'undefined') return alert("엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.");
+  try {
+    const snaps = await Promise.all(['boards', 'jjjj'].map(col =>
+      getDocs(query(collection(db, col), where('status', 'in', SETTLE_STATUSES)))
+    ));
+    const items = [];
+    snaps.forEach((snap, i) => snap.docs.forEach(d => {
+      const x = d.data();
+      const created = x.createdAt?.toDate ? x.createdAt.toDate() : null;
+      const paid = x.paidAt?.toDate ? x.paidAt.toDate() : null;
+      items.push({
+        created,
+        paid,
+        author: x.author || '-',
+        amount: parseInt(String(x.price || '').replace(/[^0-9]/g, ''), 10) || 0,
+        status: x.status,
+        kind: i === 1 ? '재주문' : '일반'
+      });
+    }));
+
+    if (items.length === 0) return alert("정산할 입금 완료 주문이 없습니다.");
+
+    // 접수일자 오름차순 (접수일자 없는 건은 맨 뒤 '일자없음')
+    items.sort((a, b) => (a.created?.getTime() ?? Infinity) - (b.created?.getTime() ?? Infinity));
+
+    const byMonth = {};
+    items.forEach(it => {
+      const key = it.created ? fmtYMD(it.created).slice(0, 7) : '일자없음';
+      (byMonth[key] = byMonth[key] || []).push(it);
+    });
+    const months = Object.keys(byMonth).sort();
+
+    const wb = XLSX.utils.book_new();
+    const summary = [['월', '건수', '월 합계(원)']];
+    let grandCount = 0, grandTotal = 0;
+
+    months.forEach(m => {
+      const list = byMonth[m];
+      const rows = [['접수일자', '주문자', '금액(원)', '결제구분', '입금확인일']];
+      let total = 0;
+      list.forEach(it => {
+        total += it.amount;
+        rows.push([
+          it.created ? fmtYMD(it.created) : '-',
+          it.author,
+          it.amount,
+          it.status + (it.kind === '재주문' ? '(재주문)' : ''),
+          it.paid ? fmtYMD(it.paid) : '-'
+        ]);
+      });
+      const last = rows.length; // 데이터 마지막 행 번호(헤더 포함 1-based)
+      rows.push(['', '합계', total, `${list.length}건`, '']);
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws[`C${last + 1}`] = { t: 'n', v: total, f: `SUM(C2:C${last})` };
+      ws['!cols'] = [{ wch: 13 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 13 }];
+      XLSX.utils.book_append_sheet(wb, ws, m);
+
+      summary.push([m, list.length, total]);
+      grandCount += list.length;
+      grandTotal += total;
+    });
+
+    summary.push(['전체 총액', grandCount, grandTotal]);
+    const sws = XLSX.utils.aoa_to_sheet(summary);
+    sws[`C${summary.length}`] = { t: 'n', v: grandTotal, f: `SUM(C2:C${summary.length - 1})` };
+    sws['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, sws, '월별요약', true);
+    // 요약 시트를 맨 앞으로
+    wb.SheetNames.unshift(wb.SheetNames.pop());
+
+    XLSX.writeFile(wb, `정산내역_${fmtYMD(new Date())}.xlsx`);
+  } catch (e) {
+    alert("정산내역 생성 실패: " + e.message);
   }
 };
 
