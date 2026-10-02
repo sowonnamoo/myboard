@@ -9,16 +9,16 @@
 <body class="bg-gray-100 p-5">
 
     <div class="max-w-xl mx-auto bg-white p-6 rounded shadow-sm text-center">
-        <h2 id="design-no-text" class="text-xl font-bold mb-6 text-gray-800">시안을 불러오는 중...</h2>
+        <div class="flex items-center justify-between mb-4">
+            <h2 id="design-no-text" class="text-xl font-bold text-gray-800 text-left">시안을 불러오는 중...</h2>
+            <button id="zoom-btn" type="button" class="bg-blue-600 text-white px-4 py-1 rounded font-bold hover:bg-blue-500">확대</button>
+        </div>
         
-        <div class="border rounded overflow-hidden">
+        <div id="image-box" class="border rounded overflow-auto">
             <img id="design-image" src="" alt="시안 이미지" class="w-full h-auto" onerror="this.src='https://via.placeholder.com/500x700?text=이미지를+찾을+수+없습니다';">
         </div>
         
-        <button onclick="window.close()" class="mt-6 bg-gray-800 text-white px-6 py-2 rounded font-bold hover:bg-gray-700">
-            닫기
-        </button>
-    </div>
+</div>
 
     <script>
         // 1. URL 파라미터에서 designNo 가져오기
@@ -91,5 +91,20 @@ titleElement.innerText = `시안 이미지 번호: ${designNo}`;
 
     
     
+<script>
+    // 2배 확대 / 원래 크기 토글
+    (function() {
+        var img = document.getElementById('design-image');
+        var btn = document.getElementById('zoom-btn');
+        var zoomed = false;
+
+        btn.addEventListener('click', function() {
+            zoomed = !zoomed;
+            img.style.width = zoomed ? '200%' : '100%';
+            img.style.maxWidth = 'none';
+        });
+    })();
+</script>
+
 </body>
 </html>
