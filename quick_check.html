@@ -98,6 +98,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, query, where, orderBy, limit, startAfter, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -266,6 +267,80 @@ window.downloadOrderSheet = (boardId) => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+// 첨부파일1, 첨부파일2, 주문서(메모장)를 "주문자이름/" 폴더 하나로 묶은 ZIP 한 개로 받습니다.
+// (원본 파일명을 그대로 사용하므로 확장자가 바뀌지 않습니다)
+window.downloadAllAsZip = async (boardId) => {
+  const o = orderSheetDataMap[boardId];
+  const files = attachedFileMap[boardId] || {};
+  const hanjoolItems = hanjoolMap[boardId] || [];
+  if (!o) { alert('주문 정보를 찾을 수 없습니다.'); return; }
+
+  const btn = event && event.target;
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '압축 중...'; }
+
+  try {
+    const zip = new JSZip();
+    const folderName = (o.author || '주문자').replace(/[\\/:*?"<>|]/g, '_');
+    const folder = zip.folder(folderName);
+
+    // 1) 주문서(메모장) 텍스트 추가
+    const priceDigits = String(o.price || '').replace(/[^0-9]/g, '') || '0';
+    const messageLine = (o.message && o.message.trim()) ? o.message.trim() : '-';
+    const sheetContent = [
+      `${o.author}${o.phone}`,
+      o.address || '-',
+      `상품: ${o.productName} / 사이즈: ${o.size} / 수량: ${o.quantity}`,
+      `금액: ${priceDigits}원`,
+      `접수일: ${formatOrderSheetDate(o.createdAtDate)}`,
+      `[메시지]`,
+      messageLine
+    ].join('\r\n');
+    folder.file('주문서.txt', "\ufeff" + sheetContent);
+
+    // 2) 첨부파일1, 2, 재첨부 파일들을 원본 이름 그대로 내려받아 추가
+    const toAdd = [];
+    if (files.file1Url) toAdd.push({ url: files.file1Url, fallback: '첨부파일1' });
+    if (files.file2Url) toAdd.push({ url: files.file2Url, fallback: '첨부파일2' });
+    hanjoolItems.forEach((item, i) => {
+      toAdd.push({ url: item.fileUrl, fallback: `재첨부${hanjoolItems.length > 1 ? i + 1 : ''}` });
+    });
+
+    const usedNames = new Set(['주문서.txt']);
+    for (const { url, fallback } of toAdd) {
+      let name = fallback;
+      try {
+        const q = new URL(url).searchParams.get('name') || '';
+        const m = q.match(/^.*?_\d{13}_(.+)$/);
+        name = (m && m[1]) || q || fallback;
+      } catch (e) {}
+      while (usedNames.has(name)) {
+        name = `(1)${name}`;
+      }
+      usedNames.add(name);
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${fallback} 다운로드 실패 (HTTP ${res.status})`);
+      folder.file(name, await res.blob());
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const zipUrl = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = zipUrl;
+    a.download = `${folderName}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(zipUrl), 1000);
+  } catch (e) {
+    alert('ZIP 생성 중 오류가 발생했습니다: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
+};
+
 // 관리자용: 해당 주문자의 시안 확인 페이지(index2)를 이름/전화번호 입력 없이 새창으로 바로 엽니다.
 // index2/app2.js가 이미 지원하는 autoId+key(secretId) 방식을 그대로 재사용합니다.
 window.viewSianDirect = async (boardId, author, phone) => {
@@ -1089,7 +1164,10 @@ async function buildOrderRows(items) {
     rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
       <td>${statusCellHtml}<br>${taxIconCell}</td>
       <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
-      <td><button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button></td>
+      <td>
+      <button onclick="downloadOrderSheet('${d.id}')" style="padding:3px 8px; font-size:11px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">📄 주문서</button><br>
+      <button onclick="downloadAllAsZip('${d.id}')" style="margin-top:3px; padding:3px 8px; font-size:11px; background:#7c3aed; color:white; border:none; border-radius:4px; cursor:pointer;">📦 전체(ZIP)</button>
+    </td>
       <td>${attachHtml}</td>
       <td>${date}</td>
       <td>${authorCell}</td>
