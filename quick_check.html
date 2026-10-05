@@ -297,7 +297,14 @@ window.downloadAllAsZip = async (boardId) => {
       `[메시지]`,
       messageLine
     ].join('\r\n');
-    folder.file('주문서.txt', "\ufeff" + sheetContent);
+    // 개별 "📄 주문서" 버튼과 같은 규칙으로 파일명을 만듭니다: 전화번호 앞 7자리 + 접수일시(YYMMDDHHmm)
+    const sheetPhoneDigits = String(o.phone || '').replace(/[^0-9]/g, '').slice(0, 7);
+    const sheetDate = o.createdAtDate;
+    const sheetDateCode = sheetDate
+      ? `${String(sheetDate.getFullYear()).slice(-2)}${String(sheetDate.getMonth() + 1).padStart(2, '0')}${String(sheetDate.getDate()).padStart(2, '0')}${String(sheetDate.getHours()).padStart(2, '0')}${String(sheetDate.getMinutes()).padStart(2, '0')}`
+      : '0000000000';
+    const sheetFileName = `${sheetPhoneDigits || '0000000'}${sheetDateCode}.txt`;
+    folder.file(sheetFileName, "\ufeff" + sheetContent);
 
     // 2) 첨부파일1, 2, 재첨부 파일들을 원본 이름 그대로 내려받아 추가
     const toAdd = [];
@@ -307,7 +314,7 @@ window.downloadAllAsZip = async (boardId) => {
       toAdd.push({ url: item.fileUrl, fallback: `재첨부${hanjoolItems.length > 1 ? i + 1 : ''}` });
     });
 
-    const usedNames = new Set(['주문서.txt']);
+    const usedNames = new Set([sheetFileName]);
     for (const { url, fallback } of toAdd) {
       let name = fallback;
       try {
