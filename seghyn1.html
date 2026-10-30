@@ -16,6 +16,9 @@
   .fail { color:#991b1b; }
   .del-btn { padding:6px 12px; background:#dc2626; font-size:12px; white-space:nowrap; }
   .ok { color:#166534; font-weight:bold; }
+  .issue-btn { padding:6px 12px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:12px; white-space:nowrap; }
+  .issue-btn:hover { background:#fecaca; }
+  .issue-btn:disabled { opacity:.5; cursor:default; }
   .url-row { display:flex; gap:4px; }
   .url-row input { flex:1; font-size:12px; padding:6px; }
   .url-row button { padding:6px 10px; font-size:12px; white-space:nowrap; }
@@ -47,7 +50,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, doc, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const config = {
@@ -90,6 +93,21 @@ window.deleteRequest = async function(btn) {
   }
 };
 
+// 미발행 버튼 클릭 → Firestore에 issued: true 저장 (새로고침해도 발행완료 유지)
+window.markIssued = async function(btn) {
+  const id = btn.dataset.id;
+  const name = btn.dataset.name || '이 건';
+  if (!confirm(`[${name}] 건을 발행완료로 변경할까요?`)) return;
+  btn.disabled = true;
+  try {
+    await updateDoc(doc(db, "segum1", id), { issued: true, issuedAt: serverTimestamp() });
+    btn.outerHTML = `<span class="ok">✅ 발행완료</span>`;
+  } catch (e) {
+    btn.disabled = false;
+    alert("상태 변경 실패: " + (e.code || '') + " " + e.message);
+  }
+};
+
 function esc(v) {
   return String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
@@ -113,7 +131,7 @@ async function loadTaxRequests() {
       const data = d.data();
       const issuedCell = data.issued
         ? `<span class="ok">✅ 발행완료</span>`
-        : `<span class="fail">🔴 미발행</span>`;
+        : `<button class="issue-btn" data-id="${esc(d.id)}" data-name="${esc(data.name || '')}" onclick="markIssued(this)">🔴 미발행</button>`;
       rows.push(`<tr>
         <td>${esc(data.name || '-')}</td>
         <td>${esc(data.phone || '-')}</td>
