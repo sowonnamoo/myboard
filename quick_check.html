@@ -902,10 +902,48 @@ let orderDone = { boards: false, jjjj: false };
 let orderBatchSize = { boards: ORDERS_PAGE_SIZE, jjjj: ORDERS_PAGE_SIZE };
 // 두 컬렉션에서 미리 읽어와 상태 필터까지 통과했지만 아직 화면에 표시하지 않은 항목(날짜 내림차순 보관)
 let orderBuffer = [];
+// 각 컬렉션에서 "지금까지 읽은 가장 오래된 문서"의 시각(ms). 아직 안 읽은 문서는 전부 이 시각보다 오래됐으므로,
+// 두 컬렉션을 날짜순으로 합칠 때 어디까지 확정(안전)인지 판단하는 기준이 됩니다.
+let orderFrontier = { boards: null, jjjj: null };
+
+// createdAt이 Timestamp / Date / 숫자 / 문자열 / {seconds} 어느 형태여도 Date로 변환합니다.
+function toDateAny(t) {
+  if (!t) return null;
+  if (t.toDate) return t.toDate();
+  if (t instanceof Date) return t;
+  if (typeof t.seconds === 'number') return new Date(t.seconds * 1000);
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 function orderItemDate(item) {
-  const t = item.doc.data().createdAt;
-  return t?.toDate ? t.toDate() : new Date(0);
+  return toDateAny(item.doc.data().createdAt) || new Date(0);
+}
+
+// 아직 완전히 읽지 않은 컬렉션들 중 "가장 최신까지만 읽은" 시각 = 확정 기준선.
+// 버퍼의 항목이 이 시각 이상이어야, 아직 안 읽은 문서 중에 더 최신인 것이 없다고 보장됩니다.
+function orderSafeThreshold() {
+  const active = ['boards', 'jjjj'].filter(c => !orderDone[c]);
+  if (active.length === 0) return -Infinity;
+  return Math.max(...active.map(c => orderFrontier[c] ?? Infinity));
+}
+
+// 버퍼 맨 앞 항목이 확정될 때까지(또는 모두 소진될 때까지) 필요한 컬렉션에서 배치를 더 읽어옵니다.
+async function fillOrderBufferUntilSafe() {
+  while (true) {
+    const active = ['boards', 'jjjj'].filter(c => !orderDone[c]);
+    if (active.length === 0) return;
+    if (orderBuffer.length > 0 && orderItemDate(orderBuffer[0]).getTime() >= orderSafeThreshold()) return;
+
+    // 아직 한 번도 안 읽은 컬렉션이 있으면 먼저 동시에 읽고, 아니면 가장 최신 쪽에 머물러 있는 컬렉션을 더 읽습니다.
+    const unread = active.filter(c => orderFrontier[c] === null);
+    const targets = unread.length > 0
+      ? unread
+      : [active.reduce((a, b) => (orderFrontier[a] >= orderFrontier[b] ? a : b))];
+    const batches = await Promise.all(targets.map(fetchNextOrderBatch));
+    batches.forEach(b => orderBuffer.push(...b));
+    orderBuffer.sort((a, b) => orderItemDate(b) - orderItemDate(a));
+  }
 }
 
 // 특정 컬렉션에서 다음 배치를 커서 이후로 조회한 뒤, 무통장/카드결제 상태인 것만 걸러서 반환합니다.
@@ -919,7 +957,14 @@ async function fetchNextOrderBatch(col) {
     : query(...base, limit(size));
   const snap = await getDocs(qRef);
   if (snap.docs.length < size) orderDone[col] = true;
-  if (!snap.empty) orderCursors[col] = snap.docs[snap.docs.length - 1];
+  if (!snap.empty) {
+    orderCursors[col] = snap.docs[snap.docs.length - 1];
+    // 상태 필터 전의 마지막 원본 문서 기준으로 기준선을 갱신합니다.
+    const lastDate = toDateAny(orderCursors[col].data().createdAt);
+    orderFrontier[col] = lastDate ? lastDate.getTime() : 0;
+  } else if (orderFrontier[col] === null) {
+    orderFrontier[col] = 0;
+  }
   // 다음 번에도 부족하면 배치를 점점 키워서 왕복 횟수를 줄입니다 (5→10→20→40, 상한 유지).
   orderBatchSize[col] = Math.min(size * 2, ORDERS_FETCH_MAX);
   return snap.docs
@@ -933,6 +978,7 @@ async function loadRecentOrders() {
   orderDone = { boards: false, jjjj: false };
   orderBatchSize = { boards: ORDERS_PAGE_SIZE, jjjj: ORDERS_PAGE_SIZE };
   orderBuffer = [];
+  orderFrontier = { boards: null, jjjj: null };
 
   resultEl.innerHTML = `<div class="table-wrap"><table><thead>
     <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>현금영수증URL</th><th>IP</th><th>시안</th></tr>
@@ -952,18 +998,15 @@ window.loadMoreOrders = async () => {
   try {
     let collectedRows = [];
     while (collectedRows.length < ORDERS_PAGE_SIZE) {
-      // 버퍼가 비어있고 아직 더 읽을 데이터가 남아있으면 boards/jjjj에서 배치를 더 채워옵니다.
-      while (orderBuffer.length === 0 && !(orderDone.boards && orderDone.jjjj)) {
-        const [boardsBatch, jjjjBatch] = await Promise.all([
-          fetchNextOrderBatch('boards'),
-          fetchNextOrderBatch('jjjj')
-        ]);
-        orderBuffer.push(...boardsBatch, ...jjjjBatch);
-        orderBuffer.sort((a, b) => orderItemDate(b) - orderItemDate(a));
-      }
+      // 일반주문(boards)과 재주문(jjjj)을 날짜순으로 정확히 섞기 위해, 순서가 확정될 때까지만 표시합니다.
+      await fillOrderBufferUntilSafe();
       if (orderBuffer.length === 0) break; // 더 이상 조회할 데이터가 없음
 
-      const take = orderBuffer.splice(0, ORDERS_PAGE_SIZE - collectedRows.length);
+      const threshold = orderSafeThreshold();
+      const need = ORDERS_PAGE_SIZE - collectedRows.length;
+      let n = 0;
+      while (n < need && n < orderBuffer.length && orderItemDate(orderBuffer[n]).getTime() >= threshold) n++;
+      const take = orderBuffer.splice(0, Math.max(n, 1));
       // 배송지가 없는 건은 buildOrderRows에서 화면 표시가 제외될 수 있으므로, 표시 건수가
       // 5건이 될 때까지(또는 더 이상 남은 데이터가 없을 때까지) 반복합니다.
       const newRows = await buildOrderRows(take);
