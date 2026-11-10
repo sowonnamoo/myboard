@@ -19,6 +19,11 @@
   .issue-btn { padding:6px 12px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:12px; white-space:nowrap; }
   .issue-btn:hover { background:#fecaca; }
   .issue-btn:disabled { opacity:.5; cursor:default; }
+  .memo-cell { min-width:200px; }
+  .memo-cell textarea { width:100%; box-sizing:border-box; min-height:48px; padding:6px; border:1px solid #ccc; border-radius:6px; font-size:12px; font-family:inherit; resize:vertical; }
+  .memo-cell button { padding:5px 10px; font-size:12px; margin-top:4px; background:#2563eb; }
+  .memo-cell button:disabled { opacity:.5; cursor:default; }
+  .memo-state { font-size:11px; margin-left:6px; color:#166534; }
   .url-row { display:flex; gap:4px; }
   .url-row input { flex:1; font-size:12px; padding:6px; }
   .url-row button { padding:6px 10px; font-size:12px; white-space:nowrap; }
@@ -108,6 +113,24 @@ window.markIssued = async function(btn) {
   }
 };
 
+// 메모 저장 → segum1 문서의 memo 필드에 기록 (신청자가 segum.html을 열면 이 메모가 보입니다)
+window.saveMemo = async function(btn) {
+  const id = btn.dataset.id;
+  const ta = document.getElementById('memo-' + id);
+  const state = document.getElementById('memo-state-' + id);
+  if (!ta) return;
+  btn.disabled = true;
+  if (state) state.textContent = '';
+  try {
+    await updateDoc(doc(db, "segum1", id), { memo: ta.value.trim() });
+    if (state) { state.style.color = '#166534'; state.textContent = '✅ 저장됨'; }
+  } catch (e) {
+    if (state) { state.style.color = '#991b1b'; state.textContent = '저장 실패'; }
+    alert("메모 저장 실패: " + (e.code || '') + " " + e.message);
+  }
+  btn.disabled = false;
+};
+
 function esc(v) {
   return String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
@@ -145,12 +168,16 @@ async function loadTaxRequests() {
         <td>${esc(data.manager || '-')}</td>
         <td>${esc(data.managerPhone || '-')}</td>
         <td>${issuedCell}</td>
+        <td class="memo-cell">
+          <textarea id="memo-${esc(d.id)}" placeholder="예) 1월 1일 발행완료">${esc(data.memo || '')}</textarea>
+          <button data-id="${esc(d.id)}" onclick="saveMemo(this)">메모저장</button><span class="memo-state" id="memo-state-${esc(d.id)}"></span>
+        </td>
         <td style="text-align:right;"><button class="del-btn" data-id="${esc(d.id)}" data-name="${esc(data.name || '')}" onclick="deleteRequest(this)">삭제</button></td>
       </tr>`);
     });
 
     el.innerHTML = `<div class="table-wrap"><table><thead>
-      <tr><th>작성자 성함</th><th>전화번호</th><th>상호명</th><th>사업자번호</th><th>회사주소</th><th>대표자 성명</th><th>업태</th><th>종목</th><th>이메일</th><th>담당자 성함</th><th>담당자 연락처</th><th>발행여부</th><th>삭제</th></tr>
+      <tr><th>작성자 성함</th><th>전화번호</th><th>상호명</th><th>사업자번호</th><th>회사주소</th><th>대표자 성명</th><th>업태</th><th>종목</th><th>이메일</th><th>담당자 성함</th><th>담당자 연락처</th><th>발행여부</th><th>메모</th><th>삭제</th></tr>
       </thead><tbody>${rows.join('')}</tbody></table></div>`;
   } catch (e) {
     el.innerHTML = `<span class="fail">⚠️ 신청 목록 조회 오류: ${e.code || ''} ${e.message}</span>`;
