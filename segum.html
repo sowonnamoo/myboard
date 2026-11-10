@@ -68,7 +68,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
@@ -82,6 +82,8 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const COLLECTION_NAME = "segum1";
+    // 주문 목록(index5)에서 열린 경우 어느 주문에서 신청했는지 URL로 넘어옴 (직접 접속이면 빈 값)
+    const ORDER_ID = new URLSearchParams(window.location.search).get('boardId') || '';
 
     // 다른 페이지(app.js)의 secretId 계산 방식과 동일한 원리:
     // 이름+전화번호로 문서 ID를 계산해서, 같은 이름+전화번호로 다시 신청하면
@@ -153,16 +155,22 @@
         // 이 이름+전화번호로 이미 현금영수증을 신청한 적이 있으면 세금계산서 신청을 막음
         // (cashSecret 문서 ID는 app.js의 computeSegumId와 완전히 동일한 방식으로 계산되므로
         //  같은 사람이면 항상 같은 ID가 나와 서로 조회가 가능함)
-        try {
-            const cashSecretId = await computeDocId(name, phone);
-            const cashSnap = await getDoc(doc(db, "cashSecret", cashSecretId));
-            if (cashSnap.exists()) {
-                alert('이미 현금영수증 신청이 등록되셔서 세금계산서 신청은 되지 않습니다.');
+        // [수정] cashSecret은 이름+전화번호 단위라서, 이전 무통장 주문에서 현금영수증을 신청했다는 이유로
+        // 다른 주문(모바일무통장 등)의 세금계산서까지 막히던 문제가 있었습니다.
+        // 주문 목록에서 열린 경우(ORDER_ID 있음)에는 그 주문의 현금영수증 신청 여부를 index5가 이미
+        // 판단해서 세금계산서 버튼을 숨기므로 여기서는 검사하지 않고, 직접 접속한 경우에만 기존처럼 검사합니다.
+        if (!ORDER_ID) {
+            try {
+                const cashSecretId = await computeDocId(name, phone);
+                const cashSnap = await getDoc(doc(db, "cashSecret", cashSecretId));
+                if (cashSnap.exists()) {
+                    alert('이미 현금영수증 신청이 등록되셔서 세금계산서 신청은 되지 않습니다.');
+                    return;
+                }
+            } catch (e) {
+                alert('확인 중 오류가 발생했습니다: ' + e.message);
                 return;
             }
-        } catch (e) {
-            alert('확인 중 오류가 발생했습니다: ' + e.message);
-            return;
         }
 
         const data = {
@@ -188,11 +196,13 @@
         try {
             const docId = await computeDocId(name, phone);
             // setDoc + merge: 처음 신청이면 새로 생성, 같은 이름+전화번호로 다시 신청하면 자동 수정(덮어쓰기)
-            await setDoc(doc(db, COLLECTION_NAME, docId), data, { merge: true });
-            // 이 페이지를 연 주문 상세 화면(부모 창)의 현금영수증 버튼을 즉시 숨김 (같은 사이트라 접근 가능)
-            if (window.opener) {
+            // 어느 주문에서 신청했는지 boardIds에 누적 기록 (이 주문들의 현금영수증만 막기 위함)
+            const saveObj = ORDER_ID ? { ...data, boardIds: arrayUnion(ORDER_ID) } : data;
+            await setDoc(doc(db, COLLECTION_NAME, docId), saveObj, { merge: true });
+            // 이 페이지를 연 주문(부모 창)의 '해당 주문' 현금영수증 버튼만 즉시 숨김 (같은 사이트라 접근 가능)
+            if (window.opener && ORDER_ID) {
                 try {
-                    const btn = window.opener.document.getElementById('cash-receipt-btn');
+                    const btn = window.opener.document.getElementById('cash-btn-' + ORDER_ID);
                     if (btn) btn.style.display = 'none';
                 } catch (e) { /* 부모 창 접근 실패해도 신청 자체는 정상 처리됨 */ }
             }

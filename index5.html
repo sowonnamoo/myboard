@@ -282,6 +282,19 @@
             return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
         }
 
+        // 세금계산서(segum1) 등록이 '이 주문'의 현금영수증을 막아야 하는지 판단
+        //  - 문서에 boardIds(신청한 주문번호 목록)가 있으면: 그 주문에 포함될 때만 막음 (주문 단위로 정확히 판단)
+        //  - boardIds 기록이 없는 예전 문서(이름+전화번호 단위)이면: '무통장' 주문은 막지 않음
+        //    (모바일무통장으로 낸 세금계산서가 이전 무통장 주문의 현금영수증 버튼을 없애지 않도록)
+        function segumBlocksCash(segumSnap, boardId, isBankTransfer) {
+            if (!segumSnap || !segumSnap.exists()) return false;
+            const sd = segumSnap.data() || {};
+            // segum.html이 세금계산서 신청 시 주문번호를 boardIds(배열)에 누적 기록함
+            if (Array.isArray(sd.boardIds) && sd.boardIds.length > 0) return sd.boardIds.includes(boardId);
+            // 예전에 신청된 기록(주문번호 없음): '무통장' 주문은 막지 않음
+            return !isBankTransfer;
+        }
+
         // ---- 방문자 익명 로그인 (현금영수증 신청 시 uid가 필요해서 index.html/app.js와 동일하게 부여) ----
         const auth = getAuth(app);
         let resolveAuthReady;
@@ -299,10 +312,11 @@
 
         // ---- 세금계산서 버튼: index.html의 openSegumPage와 동일하게, 이름/전화번호를 넘겨서
         //      segum.html이 열리자마자 "이미 신청돼 있는지"를 바로 확인해 보여줄 수 있게 함 ----
-        window.openSegumPageFor = (name, phone) => {
+        window.openSegumPageFor = (name, phone, boardId) => {
             const n = encodeURIComponent(name || '');
             const p = encodeURIComponent(phone || '');
-            openPopup(`https://sowonnamoo.github.io/myboard/segum?name=${n}&phone=${p}`);
+            const b = encodeURIComponent(boardId || '');
+            openPopup(`https://sowonnamoo.github.io/myboard/segum?name=${n}&phone=${p}&boardId=${b}`);
         };
 
         // ---- 현금영수증 버튼 ----
@@ -311,7 +325,7 @@
         // 이제는 이름+전화번호로 계산되는 secretId(=boards 또는 jjjj의 private 문서)를
         // 직접 읽어서 신청/등록 상태를 확인합니다. 이 문서는 secretId를 아는 사람이면
         // 기기와 무관하게 항상 get할 수 있어서, 어느 기기에서 열든 최신 상태가 보입니다.
-        window.openCashPageFor = async (boardId, secretId, isJajoo, name, phone) => {
+        window.openCashPageFor = async (boardId, secretId, isJajoo, name, phone, isBankTransfer) => {
             if (!boardId || !name || !phone) {
                 alert('주문 정보를 찾을 수 없습니다.');
                 return;
@@ -322,7 +336,9 @@
             try {
                 const segumId = await computeSegumId(name, phone);
                 const segumSnap = await getDoc(doc(db, "segum1", segumId));
-                if (segumSnap.exists()) {
+                // [수정] segum1 문서는 이름+전화번호 단위(주문 단위가 아님)라서, 다른 주문(예: 모바일무통장)에서
+                // 세금계산서를 신청했다는 이유로 이전 '무통장' 주문의 현금영수증까지 막히던 문제를 방지합니다.
+                if (segumBlocksCash(segumSnap, boardId, isBankTransfer)) {
                     alert('이미 세금계산서 신청이 등록되셔서 현금영수증 신청은 되지 않습니다.');
                     return;
                 }
@@ -420,7 +436,7 @@
                 try {
                     const segumId = await computeSegumId(d.author, d.phone);
                     const segumSnap = await getDoc(doc(db, "segum1", segumId));
-                    if (segumSnap.exists()) cashBtn.style.display = 'none';
+                    if (segumBlocksCash(segumSnap, d.id, d.status === '무통장')) cashBtn.style.display = 'none';
                 } catch (e) { /* 조회 실패해도 버튼은 그대로 둠 */ }
             }
         }
@@ -632,14 +648,14 @@ ${
                    class="border px-2 py-1 text-xs ${!(isPending || isMobilePending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">거래명세서</a>
 
                 <button type="button" id="segum-btn-${d.id}"
-                    data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
-                    onclick="${(isPending || isCardPay) ? '' : "window.openSegumPageFor(this.dataset.name, this.dataset.phone)"}"
+                    data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}" data-id="${escapeAttr(d.id)}"
+                    onclick="${(isPending || isCardPay) ? '' : "window.openSegumPageFor(this.dataset.name, this.dataset.phone, this.dataset.id)"}"
                     class="border px-2 py-1 text-xs ${(!isPending && !isCardPay) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
                     ${isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : ''}>세금계산서</button>
 
                 <button type="button" id="cash-btn-${d.id}"
                     data-name="${escapeAttr(d.author)}" data-phone="${escapeAttr(d.phone)}"
-                    onclick="${(isPending || isCardPay || isMobilePending || isMobileBank || (d.isJajoo && !isBankTransfer)) ? '' : "window.openCashPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ", this.dataset.name, this.dataset.phone)"}"
+                    onclick="${(isPending || isCardPay || isMobilePending || isMobileBank || (d.isJajoo && !isBankTransfer)) ? '' : "window.openCashPageFor('" + d.id + "', '" + d.secretId + "', " + (d.isJajoo ? 'true' : 'false') + ", this.dataset.name, this.dataset.phone, " + (isBankTransfer ? 'true' : 'false') + ")"}"
                     class="border px-2 py-1 text-xs ${(!isPending && !isCardPay && !isMobilePending && !isMobileBank && (!d.isJajoo || isBankTransfer)) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}"
                     ${(isMobilePending || isMobileBank) ? 'title="모바일 계좌이체 건은 현금영수증 신청이 불가합니다. 세금계산서를 이용해주세요."' : (d.isJajoo && !isBankTransfer) ? 'title="재주문 건은 고객센터로 문의해주세요."' : (isCardPay ? 'title="카드결제 건은 카드전표를 이용해주세요."' : '')}>현금영수증</button>
 
