@@ -5,15 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <!-- 이름·전화번호·주소 등 개인 주문정보가 노출되는 페이지라 검색엔진에 안 걸리게 막음 -->
     <meta name="robots" content="noindex, nofollow, noarchive">
-    <title>주문 조회 검색기</title>
+    <title>주문 조회</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-        /* 우클릭(및 우클릭으로 여는 메뉴)으로 이미지/텍스트를 쉽게 저장 못 하게 최소한의 방어 */
         body{ -webkit-touch-callout: none; }
 
-        /* ---------- 시안보기 모달 (새 창 대신 같은 페이지 안에서 열림 —
-           브라우저 주소창/탭 높이 때문에 생기던 여백 문제를 원천적으로 없앰) ---------- */
+        /* ---------- 시안보기 모달 (같은 페이지 안에서 열림) ---------- */
         .sian-modal{
             display:none;
             position:fixed;
@@ -48,1512 +45,983 @@
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-blue-50 p-4 sm:p-6" oncontextmenu="return false;">
+
+    <!-- 시안보기 모달 -->
     <div class="sian-modal" id="sian-modal" onclick="closeSianImage()">
         <button type="button" class="sian-modal-close" onclick="event.stopPropagation(); closeSianImage()">닫기 ✕</button>
         <img id="sian-modal-img" src="" alt="시안 이미지" onclick="event.stopPropagation()">
     </div>
 
-    <!-- 캐쉬백 포인트 확인 모달 -->
-    <div id="pointModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
-      <div style="background:#fff; width:380px; max-width:92vw; border-radius:12px; padding:24px; text-align:center;">
-        <div style="display:flex; justify-content:flex-end;">
-          <span id="closePointModalBtn" style="cursor:pointer; font-size:20px; color:#999;">✕</span>
-        </div>
-        <div style="font-size:15px; color:#666; margin-bottom:6px;">보유 캐쉬백 포인트</div>
-        <div id="pointBalanceDisplay" style="font-size:32px; font-weight:800; color:#d97706; margin-bottom:10px;">0P</div>
-        <div id="pointNameDisplay" style="font-size:13px; color:#999; margin-bottom:18px;"></div>
-
-        <button id="pointWithdrawBtn" type="button" disabled
-            style="width:100%; padding:12px; border:none; border-radius:8px; font-weight:bold; font-size:14px; background:#e5e7eb; color:#9ca3af; cursor:not-allowed;">
-            출금 신청
-        </button>
-
-        <div style="background:#fafafa; border:1px solid #eee; border-radius:10px; padding:14px 16px; margin-top:14px; text-align:left;">
-            <div style="font-size:12px; font-weight:700; color:#888; margin-bottom:8px; letter-spacing:.02em;">유의사항</div>
-            <ul style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px;">
-                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
-                    <span style="color:#d97706; flex-shrink:0;">·</span>
-                    <span>10,000포인트가 넘으면 버튼이 활성화되며 출금 신청 할 수 있습니다.</span>
-                </li>
-                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
-                    <span style="color:#d97706; flex-shrink:0;">·</span>
-                    <span>포인트 적립은 상품평작성, 물품수령, 거래 완료 기준 <b style="color:#333;">7일 뒤</b> 적립됩니다.</span>
-                </li>
-                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
-                    <span style="color:#d97706; flex-shrink:0;">·</span>
-                    <span>출금 신청은 상품평작성, 물품수령, 거래 완료 기준 <b style="color:#333;">7일 뒤</b> 출금됩니다.</span>
-                </li>
-                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
-                    <span style="color:#d97706; flex-shrink:0;">·</span>
-                    <span>포인트는 2년간 구입이 없는 경우 삭제됩니다.</span>
-                </li>
-                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
-                    <span style="color:#d97706; flex-shrink:0;">·</span>
-                    <span>접수자나 연락처가 다른 접수건 주문은 포인트가 합산되지 않습니다.</span>
-                </li>
-                <li style="display:flex; gap:7px; font-size:12px; color:#666; line-height:1.5;">
-                    <span style="color:#d97706; flex-shrink:0;">·</span>
-                    <span>구글로그인으로 전환해야 출금 신청이 가능합니다.</span>
-                </li>
-                <li style="display:flex; gap:7px; font-size:12px; color:#c0392b; line-height:1.5;">
-                    <span style="color:#c0392b; flex-shrink:0;">·</span>
-                    <span><b>주문자와 출금자의 성함이 다른 경우 출금되지 않습니다.</b></span>
-                </li>
-            </ul>
-        </div>
-
-        <!-- 출금 계좌 입력 폼 (출금 신청 버튼 누르면 여기가 펼쳐짐) -->
-        <div id="pointWithdrawForm" style="display:none; text-align:left; margin-top:16px; padding-top:16px; border-top:1px solid #eee;">
-            <div style="margin-bottom:10px;">
-                <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">은행명</label>
-                <input id="withdrawBankInput" type="text" placeholder="예: 국민은행" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
+    <!-- 카드전표 / 현금영수증 전표 이미지 모달 -->
+    <div id="receipt-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4" onclick="closeReceiptModal()">
+        <div class="bg-white rounded-2xl shadow-lg max-w-[92vw] max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 shrink-0">
+                <span id="receipt-modal-title" class="font-bold text-slate-800 text-sm sm:text-base"></span>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="receipt-print-btn" onclick="printReceiptImage()"
+                        class="bg-slate-600 hover:bg-slate-700 active:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold">인쇄하기</button>
+                    <button type="button" id="receipt-download-btn" onclick="downloadReceiptImage()"
+                        class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold">이미지 다운로드</button>
+                    <button type="button" onclick="closeReceiptModal()" class="text-slate-500 hover:text-slate-800 text-2xl leading-none px-2" aria-label="닫기">&times;</button>
+                </div>
             </div>
-            <div style="margin-bottom:10px;">
-                <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">계좌번호</label>
-                <input id="withdrawAccountInput" type="text" placeholder="'-' 없이 숫자만 입력" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-            </div>
-            <div style="margin-bottom:16px;">
-                <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">예금주(출금자 성함)</label>
-                <input id="withdrawHolderInput" type="text" placeholder="예금주 성함" style="width:100%; padding:9px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-            </div>
-            <div style="display:flex; gap:8px;">
-                <button id="cancelWithdrawFormBtn" type="button" style="flex:1; padding:10px; border:1px solid #ccc; background:#fff; border-radius:6px; font-size:13px; cursor:pointer;">취소</button>
-                <button id="submitWithdrawFormBtn" type="button" style="flex:2; padding:10px; border:none; background:#d97706; color:#fff; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">신청하기</button>
+            <div class="p-4 overflow-auto flex justify-center items-start">
+                <img id="receipt-modal-img" src="" alt="전표 이미지" class="max-w-full h-auto">
             </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 후기 작성 모달 -->
-    <div id="reviewModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
-      <div style="background:#fff; width:520px; max-width:92vw; max-height:88vh; overflow-y:auto; border-radius:12px; padding:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-          <h3 style="margin:0; font-size:18px;">이용후기 작성</h3>
-          <span id="closeReviewModalBtn" style="cursor:pointer; font-size:20px; color:#999;">✕</span>
-        </div>
-
-        <div style="background:#f7f8f9; border:1px solid #eee; border-radius:8px; padding:14px; font-size:12px; color:#666; line-height:1.8; margin-bottom:18px; white-space:pre-line;">· 이용후기는 구매한 상품이 출고완료 된 후 30일 이내에만 리뷰를 작성할 수 있습니다.
-· 이용후기 포인트는 등록 즉시 지급되지 않고 선별 지급됩니다.
-· 전액 포인트로 결제한 주문 건은 포인트 지급 대상에서 제외됩니다.
-· 포토 이용후기는 최종 인쇄물을 촬영한 사진을 업로드 해주시기 바랍니다. (jpg, gif, png 이미지만 등록 가능)
-· 이미지 업로드시 식별불가 및 디자인 작업파일 이미지는 포인트 지급에서 제외됩니다.
-· 아래의 경우는 포인트 지급 대상에서 제외되며 통보없이 삭제될 수 있으니 작성 시 유의하시기 바랍니다.
-  ① 상품과 관련없는 내용이나 사진을 올리는 경우
-  ② 특정 또는 동일 문자를 반복하여 작성하는 경우
-  ③ 동일한 내용의 이용후기를 중복으로 올리는 경우
-  ④ 사진/이미지에 개인정보가 포함된 경우, 모자이크 처리 후 업로드해 주세요.
-  ⑤ 개인정보가 포함된 후기는 블라인드 처리 또는 삭제될 수 있습니다.
-  ⑥ 이용후기는 등록 후 내용 수정이 불가능합니다.</div>
-
-        <div id="reviewTargetLabel" style="font-size:13px; color:#2b7bc3; font-weight:700; margin-bottom:14px;"></div>
-
-        <div style="margin-bottom:14px;">
-          <div style="font-size:13px; color:#666; margin-bottom:6px;">별점</div>
-          <div id="reviewStarPicker" style="display:inline-flex; user-select:none;">
-            <span class="review-star" data-value="1" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="2" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="3" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="4" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span><span class="review-star" data-value="5" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; font-size:26px; line-height:1; color:#ddd; cursor:pointer;">★</span>
-          </div>
-        </div>
-
-        <!-- 품질/배송/가격 만족도 — 내부 참고용, 01my 등 상품페이지 후기에는 노출 안 됨 -->
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px;">
-          <div>
-            <div style="font-size:12px; color:#666; margin-bottom:4px;">품질</div>
-            <select id="reviewQualitySelect" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-              <option value="좋음" selected>좋음</option>
-              <option value="보통">보통</option>
-              <option value="나쁨">나쁨</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:12px; color:#666; margin-bottom:4px;">배송</div>
-            <select id="reviewDeliverySelect" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-              <option value="빠름" selected>빠름</option>
-              <option value="보통">보통</option>
-              <option value="느림">느림</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:12px; color:#666; margin-bottom:4px;">가격</div>
-            <select id="reviewPriceSelect" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; box-sizing:border-box;">
-              <option value="저렴" selected>저렴</option>
-              <option value="보통">보통</option>
-              <option value="비쌈">비쌈</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="margin-bottom:14px;">
-          <textarea id="reviewContentInput" placeholder="상품에 대한 솔직한 후기를 남겨주세요. 포토후기 작성시 캐쉬백 포인트를 드립니다." style="width:100%; min-height:110px; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
-        </div>
-
-        <div style="margin-bottom:18px;">
-          <label for="reviewPhotoInput" style="display:inline-block; padding:8px 16px; border:1px dashed #999; border-radius:6px; cursor:pointer; font-size:13px; color:#555;">📷 사진 첨부 (최대 1장)</label>
-          <input type="file" id="reviewPhotoInput" accept="image/jpeg,image/png,image/gif" style="display:none;">
-          <div id="reviewPhotoPreview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
-        </div>
-
-        <div style="display:flex; gap:10px;">
-          <button id="cancelReviewBtn" type="button" style="flex:1; padding:12px; border:1px solid #ccc; background:#fff; border-radius:6px; cursor:pointer; font-size:14px;">취소</button>
-          <button id="submitReviewBtn" type="button" style="flex:2; padding:12px; border:none; background:#2b7bc3; color:#fff; border-radius:6px; cursor:pointer; font-weight:bold; font-size:14px;">확인</button>
-        </div>
-      </div>
     </div>
 
     <div class="max-w-2xl mx-auto">
-     <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
-        <div class="flex items-center gap-3 mb-1">
-            <div class="w-10 h-10 shrink-0 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shadow-blue-200">ECO</div>
-            <h2 class="text-lg sm:text-xl font-bold text-slate-900">주문 내역 조회</h2>
-        </div>
-
-        <div class="mb-5 text-xs sm:text-sm text-slate-400">
-            * 구입완료건 조회 / 제작상황
-        </div>
-
-        <div class="flex items-center flex-wrap gap-2.5 mb-4 p-3 bg-blue-50/70 border border-blue-100 rounded-xl">
-            <div id="g_id_button_container"></div>
-            <div class="flex items-start gap-1.5 text-xs text-slate-500 leading-snug">
-                <span class="text-blue-400 shrink-0 mt-0.5">ℹ️</span>
-                <span>
-                    한 번 <b class="text-slate-700">"구글 로그인으로 변경"</b>하면<br>
-                    이후 접수 건도 <b class="text-slate-700">구글 로그인으로만 조회</b>돼요
-                </span>
+        <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
+            <div class="flex items-center gap-3 mb-1">
+                <div class="w-10 h-10 shrink-0 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shadow-blue-200">ECO</div>
+                <h2 class="text-lg sm:text-xl font-bold text-slate-900">주문 내역 조회</h2>
             </div>
-            <div id="google-status" class="text-sm w-full"></div>
+
+            <div class="mb-5 text-xs sm:text-sm text-slate-400">
+                * 구입완료건 조회 / 제작상황
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2.5">
+                <input type="text" id="search-name" autocomplete="off"
+                    class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:flex-grow-[2]"
+                    placeholder="이름 입력">
+
+                <input type="text" id="search-phone" maxlength="4" inputmode="numeric" autocomplete="off"
+                    class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44"
+                    placeholder="전화번호 뒤 4자리">
+
+                <button type="button" id="search-btn"
+                    class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
+            </div>
         </div>
 
-      <div class="flex flex-col sm:flex-row gap-2.5">
-        <input type="text" id="search-name" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:flex-grow-[2]" placeholder="이름 입력">
-
-        <input type="text" id="search-phone" class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44" placeholder="전화번호 뒤 4자리" maxlength="4">
-
-        <button id="search-btn" class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
-    </div>
-</div>
         <div id="results" class="space-y-4"></div>
     </div>
 
 <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, deleteDoc, doc, updateDoc, addDoc, serverTimestamp, arrayUnion, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // 우클릭(및 모바일 길게 눌러서 뜨는 메뉴) 방지 — 개인 주문정보라 이미지/텍스트를
-        // 쉽게 저장/복사하지 못하도록 최소한의 방어 차원. (개발자도구 등 완전 차단은 불가능하지만
-        // 일반적인 우클릭 메뉴는 막아둠)
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
+    const $ = (id) => document.getElementById(id);
+    const SITE = 'https://sowonnamoo.github.io';
+    const BOARD_BASE = SITE + '/myboard/';
 
-        // 팝업 열기 함수 추가
-        window.openPopup = (url) => {
-            window.open(url, '_blank', 'width=590,height=830,scrollbars=yes');
-        };
+    // ---------------- 공통 유틸 ----------------
+    // 주문 데이터(이름/상품명/주소 등)는 고객이 직접 입력한 값이라, 화면에 넣기 전에 반드시 이스케이프합니다.
+    function esc(v) {
+        return String(v ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    // http(s) 주소만 허용 (javascript: 등 차단)
+    function safeUrl(u) {
+        return /^https?:\/\//i.test(String(u || '')) ? String(u) : '';
+    }
+    function stripWon(v) { return String(v ?? '').replace(/원\s*$/, ''); }
 
-        // cart.html은 2단 레이아웃이라 좀 더 넉넉한 창 크기로 열어줌
-        window.openCartPopup = (url) => {
-            window.open(url, '_blank', 'width=1040,height=860,scrollbars=yes');
-        };
+    // 우클릭(및 모바일 길게 누르기 메뉴) 방지 — 개인 주문정보라 최소한의 방어
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        // 상품 설정 페이지(01my.html 등)는 더 넓은 레이아웃이라 그에 맞는 창 크기로 열어줌
-        window.openProductPopup = (url) => {
-            window.open(url, '_blank', 'width=1240,height=900,scrollbars=yes');
-        };
+    window.openPopup = (url) => {
+        const u = safeUrl(url);
+        if (!u) return;
+        window.open(u, '_blank', 'width=590,height=830,scrollbars=yes');
+    };
 
-        // ---------------- 재구입 → 정확한 상품 페이지 찾기 ----------------
-        // 장바구니 아이템에 productId가 저장되어 있으면(=이 검색기의 재구입 기능으로 담겼던 건)
-        // 그걸로 100% 정확하게 연결하고, 없으면(예전 방식으로 담긴 주문) 헤더의 메뉴 데이터에서
-        // 상품명이 겹치는 항목을 찾아 연결한다. 그마저 못 찾으면 기본 상품(01my)으로 보낸다.
-        const HEADER_URL = 'https://sowonnamoo.github.io/myjs/includes/header';
-        const DEFAULT_PRODUCT_URL = 'https://sowonnamoo.github.io/myjs/products/01my';
-        let cachedMenuData = null;
-
-        // "const menuData = [ ... ];" 부분을 괄호 짝을 세어가며 정확히 잘라낸 뒤 JSON으로 파싱
-        function extractMenuData(headerText) {
-            const startMarker = 'const menuData = [';
-            const startIdx = headerText.indexOf(startMarker);
-            if (startIdx === -1) return [];
-            let i = startIdx + startMarker.length - 1; // '[' 위치
-            let depth = 0;
-            for (; i < headerText.length; i++) {
-                if (headerText[i] === '[') depth++;
-                else if (headerText[i] === ']') { depth--; if (depth === 0) { i++; break; } }
-            }
-            const arrayText = headerText.slice(startIdx + startMarker.length - 1, i);
-            try { return JSON.parse(arrayText); } catch (e) { console.error('menuData 파싱 실패:', e); return []; }
-        }
-
-        async function loadMenuData() {
-            if (cachedMenuData) return cachedMenuData;
-            try {
-                const res = await fetch(HEADER_URL);
-                const text = await res.text();
-                cachedMenuData = extractMenuData(text);
-            } catch (e) {
-                console.error('헤더 메뉴 데이터를 불러오지 못했습니다:', e);
-                cachedMenuData = [];
-            }
-            return cachedMenuData;
-        }
-
-        // 트리 구조(menuData)를 "이름 있는 링크(leaf)"만 평평하게 펼침
-        function flattenMenu(items) {
-            let out = [];
-            (items || []).forEach(it => {
-                if (it.children && it.children.length) {
-                    out = out.concat(flattenMenu(it.children));
-                } else if (it.url && it.url !== '#') {
-                    out.push({ leaf: it.name, url: it.url });
-                }
-            });
-            return out;
-        }
-
-        // 저장된 상품명(itemName) 안에 메뉴의 leaf 이름이 포함되어 있으면 그 URL을 후보로 삼고,
-        // 여러 개 걸리면(예: "명함"이 여러 하위 상품에 다 포함) 가장 구체적인(이름이 긴) 것을 고름
-        function guessProductUrl(itemName, flatList) {
-            if (!itemName) return null;
-            const candidates = flatList.filter(f => f.leaf && itemName.includes(f.leaf));
-            if (candidates.length === 0) return null;
-            candidates.sort((a, b) => b.leaf.length - a.leaf.length);
-            return candidates[0].url;
-        }
-
-        function toAbsoluteUrl(url) {
-            if (!url) return null;
-            return url.startsWith('http') ? url : `https://sowonnamoo.github.io${url}`;
-        }
-
-        // 장바구니 아이템 하나에 대한 재구입 상품 페이지 URL을 알아냄
-        async function resolveReorderProductUrl(item) {
-            if (item.productId) {
-                return `https://sowonnamoo.github.io/myjs/products/${item.productId}`;
-            }
-            const flat = flattenMenu(await loadMenuData());
-            const guessed = guessProductUrl(item.itemName, flat);
-            return toAbsoluteUrl(guessed) || DEFAULT_PRODUCT_URL;
-        }
-
-        // 아이템별 재구입 정보 임시 보관소 (클릭 시점에 조회) — HTML onclick 속성에
-        // 객체를 그대로 실을 수 없어서, 키만 넘기고 실제 데이터는 여기서 찾아 씀
-        const reorderItemRegistry = {};
-        let reorderItemSeq = 0;
-
-        window.reorderClick = async (key) => {
-            const data = reorderItemRegistry[key];
-            if (!data) return;
-            const productUrl = await resolveReorderProductUrl(data);
-            const query = new URLSearchParams({
-                // R2 원본이 있으면 그걸 1순위로, 없으면 카페24 경로를 1순위로 사용
-                reorderImage: data.r2Image || data.cafe24Image || '',
-                reorderImageFallback: data.cafe24Image || '',
-                reorderWidth: data.width || '',
-                reorderHeight: data.height || '',
-                reorderSide: data.side || '',
-                reorderItemName: data.itemName || '' // 양면/단면 등 "글자" 비교용 원본 상품명
-            }).toString();
-            openProductPopup(`${productUrl}?${query}`);
-        };
-        // ---------------- 재구입 URL 찾기 끝 ----------------
-
-        // ---------------- 후기 작성 (search.html 안에서 직접 처리) ----------------
-        const REVIEW_WORKER_URL = 'https://r22.sowonnamoo.workers.dev/';
-        const MAX_REVIEW_PHOTOS = 1;
-
-        const reviewItemRegistry = {};
-        let reviewItemSeq = 0;
-        let reviewRating = 5;
-        let reviewPhotoFiles = [];
-        let currentReviewData = null;
-
-        // 가로 최대 500px, 세로는 비율 그대로 자동으로 늘어나게(꽉 안 채우고 원본 비율 유지) 리사이즈
-        function resizeImageForUpload(file, maxWidth = 500, quality = 0.85) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => {
-                    let { width, height } = img;
-                    if (width > maxWidth) {
-                        height = Math.round(height * (maxWidth / width));
-                        width = maxWidth;
-                    }
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width;
-                    canvas.height = height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => {
-                        URL.revokeObjectURL(img.src);
-                        blob ? resolve(blob) : reject(new Error('이미지 변환 실패'));
-                    }, 'image/jpeg', quality);
-                };
-                img.onerror = () => reject(new Error('이미지를 불러오지 못했습니다'));
-                img.src = URL.createObjectURL(file);
-            });
-        }
-
-        // r22 Worker(R2)로 업로드. key 앞에 'reviews/'를 붙여서 시안 이미지와 폴더를 분리함
-        async function uploadReviewImage(blob, key) {
-            const url = `${REVIEW_WORKER_URL}?name=${encodeURIComponent(key)}`;
-            const res = await fetch(url, { method: 'PUT', body: blob });
-            if (!res.ok) throw new Error('이미지 업로드 실패: ' + res.statusText);
-            const result = await res.json();
-            return result.url;
-        }
-
-        // 재구입과 같은 productId/헤더 매칭 방식으로 이 주문이 어느 상품 페이지 것인지 알아냄
-        async function resolveReviewProductId(item) {
-            if (item.productId) return item.productId;
-            const flat = flattenMenu(await loadMenuData());
-            const guessed = guessProductUrl(item.itemName, flat);
-            if (guessed) {
-                const m = guessed.match(/\/products\/([^\/?#]+)/);
-                if (m) return m[1];
-            }
-            return '01my'; // 못 찾으면 기본 상품으로
-        }
-
-        function setupReviewModal() {
-            const overlay = document.getElementById('reviewModalOverlay');
-            const closeBtn = document.getElementById('closeReviewModalBtn');
-            const cancelBtn = document.getElementById('cancelReviewBtn');
-            const submitBtn = document.getElementById('submitReviewBtn');
-            const photoInput = document.getElementById('reviewPhotoInput');
-            const photoPreview = document.getElementById('reviewPhotoPreview');
-            const starPicker = document.getElementById('reviewStarPicker');
-            const stars = starPicker.querySelectorAll('.review-star');
-            const targetLabel = document.getElementById('reviewTargetLabel');
-
-            function renderStars(value) {
-                stars.forEach(s => { s.style.color = Number(s.dataset.value) <= value ? '#f5a623' : '#ddd'; });
-            }
-            stars.forEach(s => {
-                s.addEventListener('mouseenter', () => renderStars(Number(s.dataset.value)));
-                s.addEventListener('click', () => { reviewRating = Number(s.dataset.value); renderStars(reviewRating); });
-            });
-            starPicker.addEventListener('mouseleave', () => renderStars(reviewRating));
-
-            function renderPhotoPreview() {
-                photoPreview.innerHTML = '';
-                reviewPhotoFiles.forEach((file, idx) => {
-                    const url = URL.createObjectURL(file);
-                    const wrap = document.createElement('div');
-                    wrap.style.cssText = 'position:relative; width:64px; height:64px;';
-                    wrap.innerHTML = `
-                        <img src="${url}" style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid #ddd;">
-                        <span data-idx="${idx}" class="review-photo-remove" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; background:#333; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;">✕</span>
-                    `;
-                    photoPreview.appendChild(wrap);
-                });
-                photoPreview.querySelectorAll('.review-photo-remove').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        reviewPhotoFiles.splice(Number(btn.dataset.idx), 1);
-                        renderPhotoPreview();
-                    });
-                });
-            }
-
-            photoInput.addEventListener('change', () => {
-                const files = Array.from(photoInput.files || []);
-                if (!files.length) return;
-                if (MAX_REVIEW_PHOTOS === 1) {
-                    reviewPhotoFiles = files.slice(0, 1); // 1장 제한이면 새로 고른 사진으로 그냥 교체
-                } else {
-                    const room = MAX_REVIEW_PHOTOS - reviewPhotoFiles.length;
-                    if (files.length > room) {
-                        alert(`사진은 최대 ${MAX_REVIEW_PHOTOS}장까지 첨부할 수 있습니다.`);
-                    }
-                    reviewPhotoFiles = reviewPhotoFiles.concat(files.slice(0, room));
-                }
-                photoInput.value = '';
-                renderPhotoPreview();
-            });
-
-            function resetForm() {
-                reviewRating = 5; // 기본값 5개 채워진 상태로 시작 — 낮추고 싶으면 원하는 별을 클릭
-                reviewPhotoFiles = [];
-                currentReviewData = null;
-                renderStars(5);
-                document.getElementById('reviewContentInput').value = '';
-                document.getElementById('reviewQualitySelect').value = '좋음';
-                document.getElementById('reviewDeliverySelect').value = '빠름';
-                document.getElementById('reviewPriceSelect').value = '저렴';
-                photoInput.value = '';
-                photoPreview.innerHTML = '';
-            }
-
-            function closeModal() { overlay.style.display = 'none'; resetForm(); }
-            closeBtn.addEventListener('click', closeModal);
-            cancelBtn.addEventListener('click', closeModal);
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-
-            window.openReviewModal = (key, triggerEl) => {
-                const data = reviewItemRegistry[key];
-                if (!data) return;
-                currentReviewData = { ...data, triggerEl: triggerEl || null };
-                targetLabel.textContent = `"${data.itemName || '상품'}" 에 대한 후기예요`;
-                renderStars(reviewRating);
-                overlay.style.display = 'flex';
-            };
-
-            submitBtn.addEventListener('click', async () => {
-                if (!currentReviewData) return;
-                const content = document.getElementById('reviewContentInput').value.trim();
-                if (!reviewRating) { alert('별점을 선택해주세요.'); return; }
-                if (!content) { alert('후기 내용을 입력해주세요.'); return; }
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = '등록 중...';
-
-                try {
-                    const productId = await resolveReviewProductId(currentReviewData);
-
-                    const images = [];
-                    for (let i = 0; i < reviewPhotoFiles.length; i++) {
-                        const resized = await resizeImageForUpload(reviewPhotoFiles[i], 500, 0.85);
-                        const key = `reviews/${productId}_${Date.now()}_${i}.jpg`;
-                        const url = await uploadReviewImage(resized, key);
-                        images.push(url);
-                    }
-
-                    await addDoc(collection(cartDb, 'reviews'), {
-                        productId,
-                        name: currentReviewData.name || '',
-                        phone: currentReviewData.phone || '',
-                        rating: reviewRating,
-                        quality: document.getElementById('reviewQualitySelect').value,
-                        delivery: document.getElementById('reviewDeliverySelect').value,
-                        price: document.getElementById('reviewPriceSelect').value,
-                        content,
-                        images,
-                        orderId: currentReviewData.orderId || '',
-                        itemIndex: (typeof currentReviewData.itemIndex === 'number') ? currentReviewData.itemIndex : null,
-                        createdAt: serverTimestamp()
-                    });
-
-                    // [추가] 상품 문서에 별점 통계(개수/합계/평균)를 같이 누적해둠 — 이러면
-                    // 상품페이지에서 별점 배지를 보여줄 때 리뷰를 따로 조회할 필요가 없어짐
-                    // (이미 하고 있던 상품정보 조회 1번에 값이 같이 딸려옴)
-                    try {
-                        const productRef = doc(cartDb, 'products', productId);
-                        const productSnap = await getDoc(productRef);
-                        const prevStats = (productSnap.exists() && productSnap.data().reviewStats) || { count: 0, sum: 0 };
-                        const newCount = (prevStats.count || 0) + 1;
-                        const newSum = (prevStats.sum || 0) + reviewRating;
-                        await updateDoc(productRef, {
-                            reviewStats: { count: newCount, sum: newSum, avg: newSum / newCount }
-                        });
-                    } catch (statErr) {
-                        // 통계 갱신이 실패해도 리뷰 자체는 이미 등록됐으니 조용히 무시
-                        console.error('리뷰 통계 갱신 실패:', statErr);
-                    }
-
-                    // [추가] 주문 문서에 "이 아이템은 이미 후기 작성됨" 표시를 남겨둠 — 다음에
-                    // 이 주문을 다시 조회할 때 추가 조회 없이 바로 후기작성 버튼을 숨길 수 있음
-                    if (currentReviewData.orderId && typeof currentReviewData.itemIndex === 'number') {
-                        try {
-                            await updateDoc(doc(cartDb, 'orders', currentReviewData.orderId), {
-                                reviewedItemIndexes: arrayUnion(currentReviewData.itemIndex)
-                            });
-                        } catch (markErr) {
-                            console.error('후기 작성완료 표시 실패:', markErr);
-                        }
-                    }
-
-                    alert('이용후기가 등록되었습니다. 소중한 후기 감사합니다!');
-                    if (currentReviewData.triggerEl && currentReviewData.triggerEl.parentNode) {
-                        const done = document.createElement('span');
-                        done.className = 'text-xs text-gray-400 font-semibold px-1';
-                        done.textContent = '후기 작성완료';
-                        currentReviewData.triggerEl.replaceWith(done);
-                    }
-                    closeModal();
-                } catch (err) {
-                    console.error('후기 등록 실패:', err);
-                    alert('후기 등록 중 오류가 발생했습니다. 다시 시도해주세요.');
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '확인';
-                }
-            });
-        }
-        setupReviewModal();
-
-        // ---------------- 캐쉬백 포인트 확인 ----------------
-        const POINT_WITHDRAW_MIN = 10000;
-
-        // 조회 결과 카드의 "캐쉬백 포인트" 버튼에서 이름/전화번호를 넘겨 호출함
-        window.showMyPoints = async (encodedName, phone) => {
-            const name = decodeURIComponent(encodedName || '');
-            if (!name || !/^\d{4}$/.test(phone || '')) {
-                alert('이름/전화번호 정보를 확인할 수 없습니다.');
-                return;
-            }
-            const withdrawBtn = document.getElementById('pointWithdrawBtn');
-            try {
-                const snap = await getDoc(doc(cartDb, 'pointsBalance', linkKey(name, phone)));
-                const balance = (snap.exists() ? snap.data().balance : 0) || 0;
-                document.getElementById('pointBalanceDisplay').textContent = `${balance.toLocaleString()}P`;
-                document.getElementById('pointNameDisplay').textContent = `${name} (${phone}) 님`;
-
-                if (balance >= POINT_WITHDRAW_MIN) {
-                    withdrawBtn.disabled = false;
-                    withdrawBtn.style.background = '#d97706';
-                    withdrawBtn.style.color = '#fff';
-                    withdrawBtn.style.cursor = 'pointer';
-                } else {
-                    withdrawBtn.disabled = true;
-                    withdrawBtn.style.background = '#e5e7eb';
-                    withdrawBtn.style.color = '#9ca3af';
-                    withdrawBtn.style.cursor = 'not-allowed';
-                }
-                withdrawBtn.onclick = async () => {
-                    // 구글 로그인으로 전환된 회원만 출금 신청 가능하게 함 (search.html의
-                    // googleLinks 컬렉션 — 구글 로그인으로 변경했을 때 저장되는 것과 동일)
-                    withdrawBtn.disabled = true;
-                    const originalText = withdrawBtn.textContent;
-                    withdrawBtn.textContent = '확인 중...';
-                    try {
-                        const linked = await isIdentityLinked(name, phone);
-                        if (!linked) {
-                            alert('구글 로그인으로 전환된 회원만 출금 신청이 가능합니다.\n주문 조회 결과에서 "구글 로그인으로 변경" 먼저 진행해주세요.');
-                            return;
-                        }
-                        // 예금주 기본값은 주문자 성함으로 채워둠(주의사항과 맞춤) — 다르면 출금 안 되니 그대로 두는 게 안전
-                        document.getElementById('withdrawHolderInput').value = name;
-                        document.getElementById('withdrawBankInput').value = '';
-                        document.getElementById('withdrawAccountInput').value = '';
-                        document.getElementById('pointWithdrawForm').style.display = 'block';
-                        document.getElementById('pointWithdrawForm').dataset.name = name;
-                        document.getElementById('pointWithdrawForm').dataset.phone = phone;
-                        document.getElementById('pointWithdrawForm').dataset.balance = balance;
-                    } finally {
-                        withdrawBtn.disabled = false;
-                        withdrawBtn.textContent = originalText;
-                    }
-                };
-
-                document.getElementById('pointModalOverlay').style.display = 'flex';
-            } catch (err) {
-                console.error('포인트 조회 실패:', err);
-                alert('포인트 조회 중 오류가 발생했습니다.');
-            }
-        };
-
-        document.getElementById('cancelWithdrawFormBtn').addEventListener('click', () => {
-            document.getElementById('pointWithdrawForm').style.display = 'none';
-        });
-
-        // 출금 신청 — 계좌정보와 함께 신청 기록을 남겨두고(관리자가 나중에 확인해서 처리),
-        // 안내 문구대로 물품수령/거래완료 기준 7일 뒤 출금됨을 다시 한번 알려줌
-        document.getElementById('submitWithdrawFormBtn').addEventListener('click', async () => {
-            const form = document.getElementById('pointWithdrawForm');
-            const name = form.dataset.name;
-            const phone = form.dataset.phone;
-            const balance = Number(form.dataset.balance) || 0;
-            const bank = document.getElementById('withdrawBankInput').value.trim();
-            const account = document.getElementById('withdrawAccountInput').value.trim();
-            const holder = document.getElementById('withdrawHolderInput').value.trim();
-
-            if (!bank) { alert('은행명을 입력해주세요.'); return; }
-            if (!account) { alert('계좌번호를 입력해주세요.'); return; }
-            if (!holder) { alert('예금주 성함을 입력해주세요.'); return; }
-            if (holder !== name) {
-                if (!confirm(`예금주(${holder})와 주문자(${name}) 성함이 다릅니다.\n주의사항대로 이 경우 출금되지 않을 수 있는데, 그래도 신청하시겠습니까?`)) return;
-            }
-            if (!confirm(`${balance.toLocaleString()}P 전액 출금을 신청하시겠습니까?\n출금신청은 물품수령, 거래 완료 기준 7일 뒤 출금됩니다.`)) return;
-
-            const submitBtn = document.getElementById('submitWithdrawFormBtn');
-            submitBtn.disabled = true;
-            try {
-                await addDoc(collection(cartDb, 'pointsWithdrawRequests'), {
-                    name, phone, amount: balance,
-                    bank, account, holder,
-                    status: '신청됨', createdAt: serverTimestamp()
-                });
-                alert('출금 신청이 접수되었습니다.\n물품수령, 거래 완료 기준 7일 뒤 출금됩니다.');
-                form.style.display = 'none';
-                document.getElementById('pointWithdrawBtn').disabled = true;
-                document.getElementById('pointWithdrawBtn').style.background = '#e5e7eb';
-                document.getElementById('pointWithdrawBtn').style.color = '#9ca3af';
-                document.getElementById('pointWithdrawBtn').style.cursor = 'not-allowed';
-            } catch (err) {
-                console.error('출금 신청 실패:', err);
-                alert('출금 신청 중 오류가 발생했습니다.');
-            } finally {
-                submitBtn.disabled = false;
-            }
-        });
-
-        document.getElementById('closePointModalBtn').addEventListener('click', () => {
-            document.getElementById('pointModalOverlay').style.display = 'none';
-            document.getElementById('pointWithdrawForm').style.display = 'none';
-        });
-        document.getElementById('pointModalOverlay').addEventListener('click', (e) => {
-            if (e.target.id === 'pointModalOverlay') {
-                e.target.style.display = 'none';
-                document.getElementById('pointWithdrawForm').style.display = 'none';
-            }
-        });
-        // ---------------- 캐쉬백 포인트 확인 끝 ----------------
-
-
-        window.reviewClick = (key, triggerEl) => {
-            window.openReviewModal(key, triggerEl);
-        };
-        // ---------------- 후기 작성 끝 ----------------
-
-        // 시안보기 — 새 창 대신 같은 페이지 안 모달로 열어서, 브라우저 주소창/탭
-        // 높이 때문에 생기던 회색 여백 문제를 원천적으로 없앰.
-        // fallbackUrl을 같이 넘기면, 1차 이미지(R2 등)가 삭제되어 로드 실패했을 때
-        // 자동으로 카페24 경로(fallbackUrl)의 이미지로 대체해서 보여줌.
-        window.viewSianImage = (url, fallbackUrl) => {
-            const primary = url || fallbackUrl;
-            if(!primary) return;
-            const img = document.getElementById('sian-modal-img');
-            img.onerror = () => {
-                if (fallbackUrl && img.src !== fallbackUrl) {
-                    img.onerror = null;
-                    img.src = fallbackUrl;
-                } else {
-                    img.onerror = null;
-                }
-            };
-            img.src = primary;
-            document.getElementById('sian-modal').classList.add('active');
-        };
-        window.closeSianImage = () => {
-            document.getElementById('sian-modal').classList.remove('active');
-            document.getElementById('sian-modal-img').src = '';
-            document.getElementById('sian-modal-img').onerror = null;
-        };
-        document.addEventListener('keydown', (e) => {
-            if(e.key === 'Escape') window.closeSianImage();
-        });
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDU8d6Sh-TDNnRd2aA",
-            authDomain: "board-291e3.firebaseapp.com",
-            projectId: "board-291e3",
-            storageBucket: "board-291e3.firebasestorage.app",
-            messagingSenderId: "25881766316",
-            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // cart.html이 저장하는 Firebase 프로젝트(orders 컬렉션) — 원래 검색기가 보던
-        // "boards"/"jjjj"와는 완전히 다른 프로젝트라 앱 이름을 따로 줘서 같이 초기화함.
-        const cartFirebaseConfig = {
-            apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
-            authDomain: "ecogr-636c6.firebaseapp.com",
-            projectId: "ecogr-636c6",
-            storageBucket: "ecogr-636c6.firebasestorage.app",
-            messagingSenderId: "95745358447",
-            appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-        };
-
-        const cartApp = initializeApp(cartFirebaseConfig, "cartApp");
-        const cartDb = getFirestore(cartApp);
-
-        // 이름으로 boards/jjjj/cart(orders) 3개 컬렉션을 모두 조회해서 공통 형태로 합쳐줌
-        // (전화번호 조회, 네이버 자동 연결 양쪽에서 재사용)
-        async function fetchDocsByName(name) {
-            const qBoards = query(collection(db, "boards"), where("author", "==", name));
-            const qJjjj = query(collection(db, "jjjj"), where("author", "==", name));
-            const qCart = query(collection(cartDb, "orders"), where("name", "==", name));
-
-            const [snapBoards, snapJjjj, snapCart] = await Promise.all([getDocs(qBoards), getDocs(qJjjj), getDocs(qCart)]);
-
-            return [
-                ...snapBoards.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: false, source: 'board' })),
-                ...snapJjjj.docs.map(doc => ({ ...doc.data(), id: doc.id, isJajoo: true, source: 'board' })),
-                // cart.html의 orders 컬렉션은 필드 구조가 완전히 달라서(author 대신 name,
-                // 단일 상품 대신 items 배열) 렌더링에서 쓸 공통 필드만 맞춰서 정규화함.
-                ...snapCart.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        ...data,
-                        id: doc.id,
-                        isJajoo: false,
-                        source: 'cart',
-                        author: data.name,
-                        phone: data.phone
-                    };
-                })
-            ];
-        }
-
-        // 주문 문서 하나를 실제로 업데이트할 때 필요한 db/컬렉션명을 판별
-        function targetOf(d) {
-            const targetDb = d.source === 'cart' ? cartDb : db;
-            const targetCollectionName = d.source === 'cart' ? 'orders' : (d.isJajoo ? 'jjjj' : 'boards');
-            return { targetDb, targetCollectionName };
-        }
-
-        // ---------------- 구글 로그인 ----------------
-        // Google Cloud Console(https://console.cloud.google.com/apis/credentials)에서
-        // "OAuth 클라이언트 ID" (유형: 웹 애플리케이션)를 만들고 아래 CLIENT_ID를 발급받은 값으로 바꿔주세요.
-        // "승인된 자바스크립트 원본"에는 이 페이지가 실제로 서비스되는 도메인만 정확히 등록하면 됩니다.
-        // (네이버처럼 경로까지 정확히 일치하는 Callback URL이 아니라, 도메인 단위라 훨씬 간단합니다.
-        //  예: https://sowonnamoo.github.io — 별도 검수(심사) 절차도 없습니다.)
-        const GOOGLE_CLIENT_ID = "657396405667-nrsfvjrc6e0munkbibsp9sd8glln9qi3.apps.googleusercontent.com";
-
-        let currentGoogleUser = null; // { id, name, email }
-        let isGoogleResultView = false; // 지금 화면에 뿌려진 결과가 "구글 계정으로 조회한 결과"인지 여부
-
-        // ---- 이름+전화번호 "신원"을 구글 계정에 연결하는 방식 ----
-        // 카드 하나하나를 연결하는 게 아니라, "이 이름 + 이 전화번호 뒷4자리는 이 구글 계정 것"이라는
-        // 연결 정보를 googleLinks 컬렉션에 저장해둡니다. 이렇게 하면 지금 있는 주문뿐 아니라
-        // 앞으로 같은 이름+전화번호로 새로 접수되는 주문도 자동으로 구글 로그인에 잡히게 됩니다.
-        function linkKey(name, phone4) {
-            return `${name}__${phone4}`.replace(/[\/\s'"]+/g, '_').slice(0, 190);
-        }
-
-        async function upsertGoogleLink(name, phone4) {
-            await setDoc(doc(db, "googleLinks", linkKey(name, phone4)), {
-                googleId: currentGoogleUser.id,
-                name: name,
-                phone4: phone4,
-                linkedAt: new Date().toISOString()
-            });
-        }
-
-        // 이 이름+전화번호가 이미 누군가의 구글 계정에 연결되어 있는지 확인 (전화번호 조회 차단용)
-        async function isIdentityLinked(name, phone4) {
-            try {
-                const snap = await getDoc(doc(db, "googleLinks", linkKey(name, phone4)));
-                return snap.exists();
-            } catch (error) {
-                console.error('연결 여부 확인 실패:', error);
-                return false;
-            }
-        }
-
-        // 이 구글 계정에 연결된 이름+전화번호 목록(신원) 전부 가져오기
-        async function fetchLinkedProfiles(googleId) {
-            const q = query(collection(db, "googleLinks"), where("googleId", "==", googleId));
-            const snap = await getDocs(q);
-            return snap.docs.map(d => d.data());
-        }
-
-        // 구글이 내려주는 JWT(credential)를 디코딩해서 payload(사용자 정보)만 꺼냄
-        function parseJwt(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-                atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-            );
-            return JSON.parse(jsonPayload);
-        }
-
-        function updateGoogleStatusUI() {
-            const statusEl = document.getElementById('google-status');
-            if (!statusEl) return;
-            if (currentGoogleUser) {
-                statusEl.innerHTML = `
-                    <span class="text-slate-700">구글 계정 <b>${currentGoogleUser.name || currentGoogleUser.email || '회원'}</b> 님으로 로그인됨</span>
-                    <button id="google-order-search-btn" class="ml-2 text-blue-600 underline font-semibold">내 주문 조회</button>
-                    <button id="google-logout-btn" class="ml-2 text-slate-400 underline">로그아웃</button>
-                `;
-                document.getElementById('google-order-search-btn').addEventListener('click', searchByGoogle);
-                document.getElementById('google-logout-btn').addEventListener('click', () => {
-                    if (typeof google !== 'undefined' && google.accounts) {
-                        google.accounts.id.disableAutoSelect();
-                    }
-                    currentGoogleUser = null;
-                    updateGoogleStatusUI();
-                    document.getElementById('results').innerHTML = "";
-                });
+    // ---------------- 시안보기 모달 ----------------
+    // 1차 이미지(R2 등)가 삭제되어 로드 실패하면 fallbackUrl(카페24)로 자동 대체
+    window.viewSianImage = (url, fallbackUrl) => {
+        const primary = safeUrl(url) || safeUrl(fallbackUrl);
+        if (!primary) return;
+        const fb = safeUrl(fallbackUrl);
+        const img = $('sian-modal-img');
+        img.onerror = () => {
+            if (fb && img.src !== fb) {
+                img.onerror = null;
+                img.src = fb;
             } else {
-                statusEl.innerHTML = '<span class="text-slate-400">구글 로그인 시 연동된 주문을 바로 조회할 수 있어요</span>';
+                img.onerror = null;
             }
-        }
-
-        // 카드의 "구글 로그인으로 변경" 버튼 — 이 카드의 작성자 이름+전화번호를 구글 계정에 연결
-        window.linkOrderToGoogle = (encodedName, phone4) => {
-            const name = decodeURIComponent(encodedName);
-            if (!currentGoogleUser) {
-                // 아직 구글 로그인이 안 된 상태 → 로그인 진행 후 돌아와서 이어서 연결하도록
-                // 필요한 정보를 저장해두고 구글 로그인 창을 띄움
-                localStorage.setItem('pendingLinkName', name);
-                localStorage.setItem('pendingLinkPhone4', phone4);
-                localStorage.setItem('pendingSearchName', document.getElementById('search-name').value.trim());
-                localStorage.setItem('pendingSearchPhone', document.getElementById('search-phone').value.trim());
-                if (typeof google !== 'undefined' && google.accounts) {
-                    google.accounts.id.prompt((notification) => {
-                        if (notification.isNotDisplayed && (notification.isNotDisplayed() || notification.isSkippedMoment())) {
-                            alert('상단의 "Google로 로그인" 버튼을 눌러 먼저 로그인해주세요.');
-                        }
-                    });
-                } else {
-                    alert('구글 로그인 버튼을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-                }
-                return;
-            }
-            doLinkIdentity(name, phone4, true);
         };
+        img.src = primary;
+        $('sian-modal').classList.add('active');
+    };
+    window.closeSianImage = () => {
+        $('sian-modal').classList.remove('active');
+        $('sian-modal-img').src = '';
+        $('sian-modal-img').onerror = null;
+    };
 
-        async function doLinkIdentity(name, phone4, askConfirm) {
-            if (askConfirm && !confirm(`"${name}"(전화번호 뒷 ${phone4}자리) 주문 전체를 구글 계정에 연결하시겠습니까?\n연결 후에는 이 이름+전화번호로 조회되지 않고, 지금 주문뿐 아니라 앞으로 같은 이름·전화번호로 접수되는 주문도 구글 로그인으로만 조회됩니다.`)) {
-                return;
-            }
-            try {
-                await upsertGoogleLink(name, phone4);
-                alert('구글 계정으로 연결되었습니다. 앞으로는 구글 로그인으로 조회해주세요.');
-                location.reload();
-            } catch (error) {
-                console.error('구글 연결 실패:', error);
-                alert('연결 중 오류가 발생했습니다.');
-            }
-        }
+    // ---------------- 카드전표 / 현금영수증 전표 이미지 모달 ----------------
+    window.openReceiptModal = (url, title) => {
+        const safe = safeUrl(url);
+        if (!safe) return;
+        const modal = $('receipt-modal');
+        $('receipt-modal-img').src = safe;
+        $('receipt-modal-title').textContent = title || '전표';
+        modal.dataset.url = safe;
+        modal.dataset.title = title || '전표';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    };
 
-        // 구글 로그인에서 돌아온 직후, 연결 대기 중이던 신원이 있으면 자동으로 연결 처리
-        async function handlePendingLink() {
-            const name = localStorage.getItem('pendingLinkName');
-            const phone4 = localStorage.getItem('pendingLinkPhone4');
-            if (name && phone4 && currentGoogleUser) {
-                localStorage.removeItem('pendingLinkName');
-                localStorage.removeItem('pendingLinkPhone4');
-                try {
-                    await upsertGoogleLink(name, phone4);
-                    alert('구글 계정으로 연결되었습니다. 앞으로는 구글 로그인으로 조회해주세요.');
-                } catch (error) {
-                    console.error('구글 연결 실패:', error);
-                    alert('연결 중 오류가 발생했습니다.');
-                }
-                return true; // 연결 처리를 했음
-            }
-            return false;
-        }
+    window.closeReceiptModal = () => {
+        const modal = $('receipt-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        $('receipt-modal-img').src = '';
+        document.body.style.overflow = '';
+    };
 
-        // 원래 이름/전화번호로 조회하던 중이었다면 복원해서 재조회
-        // (방금 구글로 연결한 신원은 이제 결과에서 자동으로 빠지게 됨)
-        function restorePendingSearch() {
-            const name = localStorage.getItem('pendingSearchName');
-            const phone = localStorage.getItem('pendingSearchPhone');
-            localStorage.removeItem('pendingSearchName');
-            localStorage.removeItem('pendingSearchPhone');
-            if (name && phone) {
-                document.getElementById('search-name').value = name;
-                document.getElementById('search-phone').value = phone;
-                document.getElementById('search-btn').click();
-            }
-        }
+    window.downloadReceiptImage = async () => {
+        const modal = $('receipt-modal');
+        const url = modal.dataset.url;
+        if (!url) return;
+        const btn = $('receipt-download-btn');
+        const originalText = btn.textContent;
 
-        // 구글 계정에 연결된 모든 신원(이름+전화번호)의 주문을 전부 조회
-        // — 지금 있는 주문은 물론, 나중에 같은 이름·전화번호로 새로 접수되는 주문도 여기서 다 잡힘
-        async function searchByGoogle() {
-            if (!currentGoogleUser) {
-                alert('먼저 구글 로그인을 해주세요.');
-                return;
-            }
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = "조회 중...";
-            try {
-                const profiles = await fetchLinkedProfiles(currentGoogleUser.id);
+        // 클릭 시점(동기)에 빈 새 탭을 미리 열어둠 — fetch 실패 시 현재 화면이 사라지지 않고
+        // 이 탭에 이미지를 띄울 수 있게 하기 위함
+        const preOpenedTab = window.open('', '_blank');
 
-                if (profiles.length === 0) {
-                    resultsDiv.innerHTML = "구글 계정에 연결된 주문 정보가 없습니다.";
-                    return;
-                }
+        try {
+            btn.textContent = '다운로드 중...';
+            btn.disabled = true;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('이미지를 불러오지 못했습니다.');
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const ext = (blob.type && blob.type.split('/')[1]) ? blob.type.split('/')[1].replace('jpeg', 'jpg') : (url.split('.').pop().split('?')[0] || 'jpg');
 
-                const resultsPerProfile = await Promise.all(profiles.map(async (p) => {
-                    const allDocs = await fetchDocsByName(p.name);
-                    return allDocs.filter(d => d.phone && d.phone.slice(-4) === p.phone4);
-                }));
+            if (preOpenedTab) preOpenedTab.close();
 
-                const seen = new Set();
-                const merged = [];
-                for (const list of resultsPerProfile) {
-                    for (const d of list) {
-                        if (!seen.has(d.id)) {
-                            seen.add(d.id);
-                            merged.push(d);
-                        }
-                    }
-                }
-
-                if (merged.length === 0) {
-                    resultsDiv.innerHTML = "구글 계정에 연결된 주문 정보가 없습니다.";
-                    return;
-                }
-                isGoogleResultView = true;
-                renderResults(merged);
-            } catch (error) {
-                console.error(error);
-                resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
-            }
-        }
-
-        // 구글은 네이버와 달리 전화번호를 기본 제공하지 않기 때문에(별도의 민감 권한 심사가 필요),
-        // 이미 조회창에 입력해둔 이름/전화번호가 있으면 그 신원을 그대로 구글 계정에 연결합니다.
-        // (조회 → 결과 확인 → 로그인 순서로 쓰면 자연스럽게 자동 연결되고,
-        //  입력값이 없으면 카드별 "구글 로그인으로 변경" 버튼으로 개별 연결하면 됩니다.)
-        async function autoLinkMatchingOrders() {
-            if (!currentGoogleUser) return;
-
-            const typedName = (document.getElementById('search-name')?.value || '').trim();
-            const typedPhone = (document.getElementById('search-phone')?.value || '').trim();
-
-            if (typedName && typedPhone.length === 4) {
-                try {
-                    const allDocs = await fetchDocsByName(typedName);
-                    const hasMatch = allDocs.some(d => d.phone && d.phone.slice(-4) === typedPhone);
-                    if (hasMatch) {
-                        await upsertGoogleLink(typedName, typedPhone);
-                    }
-                } catch (error) {
-                    console.error('자동 연결 실패:', error);
-                }
-            }
-
-            // 자동 연결된 게 있든 없든(예전에 이미 연결해둔 경우 포함), 구글 계정에
-            // 연결된 주문을 바로 조회해서 보여줌
-            searchByGoogle();
-        }
-
-        // 구글 로그인 성공 콜백 (google.accounts.id.initialize의 callback으로 등록됨)
-        async function handleGoogleCredentialResponse(response) {
-            try {
-                const payload = parseJwt(response.credential);
-                currentGoogleUser = {
-                    id: payload.sub,
-                    name: payload.name,
-                    email: payload.email
-                };
-                updateGoogleStatusUI();
-
-                const linked = await handlePendingLink();
-                if (linked) {
-                    restorePendingSearch();
-                } else {
-                    await autoLinkMatchingOrders();
-                }
-            } catch (error) {
-                console.error('구글 로그인 처리 실패:', error);
-            }
-        }
-
-        function initGoogleLogin() {
-            if (typeof google === 'undefined' || !google.accounts) {
-                console.warn('구글 로그인 SDK를 불러오지 못했습니다.');
-                return;
-            }
-            google.accounts.id.initialize({
-                client_id: GOOGLE_CLIENT_ID,
-                callback: handleGoogleCredentialResponse,
-                auto_select: false
-            });
-            google.accounts.id.renderButton(
-                document.getElementById('g_id_button_container'),
-                { theme: 'outline', size: 'large', text: 'signin_with' }
-            );
-        }
-
-        // 구글 SDK가 비동기(async defer)로 늦게 로드될 수 있어서, 로드 완료까지 짧게 재시도함
-        (function waitForGoogleSdk(retries) {
-            if (typeof google !== 'undefined' && google.accounts) {
-                initGoogleLogin();
-            } else if (retries > 0) {
-                setTimeout(() => waitForGoogleSdk(retries - 1), 200);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `${modal.dataset.title || '전표'}_${Date.now()}.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch (e) {
+            if (preOpenedTab) {
+                preOpenedTab.location.href = url;
             } else {
-                console.warn('구글 로그인 SDK 로드 대기 시간 초과');
+                alert('팝업이 차단되어 새 창을 열 수 없습니다. 브라우저의 팝업 차단을 해제한 뒤 다시 시도해주세요.');
             }
-        })(25);
-        // ---------------- 구글 로그인 끝 ----------------
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    };
 
-document.getElementById('search-btn').addEventListener('click', async () => {
-    // [추가] 봇 방지 로직: 10회 실패 시 입력값 변조
-    let failCount = parseInt(localStorage.getItem('searchFailCount') || '0');
-    const phoneInput = document.getElementById('search-phone');
-    if (failCount >= 15) {
-        const randomDigit = Math.floor(Math.random() * 3) + 1;
-        phoneInput.value = phoneInput.value.slice(0, -1) + randomDigit;
+    window.printReceiptImage = () => {
+        const modal = $('receipt-modal');
+        const url = modal.dataset.url;
+        if (!url) return;
+        const title = modal.dataset.title || '전표';
+
+        const printWin = window.open('', '_blank', 'width=800,height=1000');
+        if (!printWin) {
+            alert('팝업이 차단되어 인쇄창을 열 수 없습니다. 팝업 차단을 해제해주세요.');
+            return;
+        }
+        // 문자열을 HTML로 써넣지 않고 DOM으로 구성 (주소/제목이 마크업으로 해석되지 않도록)
+        const pd = printWin.document;
+        pd.title = title;
+        const style = pd.createElement('style');
+        style.textContent = '@media print { @page { margin: 0; } } html, body { margin: 0; padding: 0; } img { display: block; max-width: 100%; height: auto; margin: 0 auto; }';
+        pd.head.appendChild(style);
+        const img = pd.createElement('img');
+        img.alt = title;
+        img.onload = () => { printWin.focus(); printWin.print(); };
+        img.onerror = () => {
+            alert('이미지를 불러오지 못해 인쇄할 수 없습니다.');
+            printWin.close();
+        };
+        img.src = url;
+        pd.body.appendChild(img);
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.closeSianImage();
+            window.closeReceiptModal();
+        }
+    });
+
+    // ---------------- Firebase (index1 / index5 와 동일한 board-291e3 프로젝트) ----------------
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ---- 개인정보 조회키(secretId) 계산 — app.js / index5 와 반드시 동일한 방식 ----
+    // boards/{id}, jjjj/{id} 공개 문서에는 phone/address/message가 없고 private/{secretId} 문서에만 있어서,
+    // 이름+뒷4자리로 secretId를 정확히 계산해낸 사람만 그 문서를 읽을 수 있습니다.
+    async function sha256Hex(text) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    function normalizeName(name) { return String(name || "").trim(); }
+    function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
+    async function computeSecretId(boardId, author, phone) {
+        return sha256Hex(`${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`);
     }
 
-    const name = document.getElementById('search-name').value.trim();
-    const phone = phoneInput.value.trim(); // 수정된 phoneInput 값 사용
-    const resultsDiv = document.getElementById('results');
-    
-    if (!name || phone.length !== 4) {
-        // [추가] 입력 오류 시 카운트 증가
-        localStorage.setItem('searchFailCount', parseInt(localStorage.getItem('searchFailCount') || '0') + 1);
-        alert("이름과 전화번호 뒷 4자리를 정확히 입력해주세요.");
-        return;
+    // ---- 세금계산서/현금영수증 상호배타 판별용 ID (segum.html / app.js 와 동일) ----
+    function normalizePhoneFull(phone) { return String(phone || "").replace(/[^0-9]/g, ""); }
+    async function computeSegumId(name, phone) {
+        return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
+    }
+    function segumBlocksCash(segumSnap, boardId, isBankTransfer) {
+        if (!segumSnap || !segumSnap.exists()) return false;
+        const sd = segumSnap.data() || {};
+        if (Array.isArray(sd.boardIds) && sd.boardIds.length > 0) return sd.boardIds.includes(boardId);
+        // boardIds 기록이 없는 예전 문서: '무통장' 주문은 막지 않음
+        return !isBankTransfer;
     }
 
-    resultsDiv.innerHTML = "조회 중...";
+    // ---- 방문자 익명 로그인 (현금영수증 신청/파일재업로드 등에서 uid 필요) ----
+    const auth = getAuth(app);
+    let resolveAuthReady;
+    const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            resolveAuthReady(user);
+        } else {
+            signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+        }
+    });
+    // 익명 로그인이 실패해도 영원히 멈추지 않도록 10초 후 오류 처리
+    function ensureAnonymousLogin() {
+        return Promise.race([
+            authReadyPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('익명 로그인 시간 초과')), 10000))
+        ]);
+    }
 
-    try {
-        // 이 이름+전화번호가 이미 구글 계정에 연결된 신원이면, 전화번호 조회로는
-        // 더 이상 보여주지 않고 구글 로그인으로만 조회되도록 함
-        const alreadyLinked = await isIdentityLinked(name, phone);
-        if (alreadyLinked) {
-            localStorage.setItem('searchFailCount', parseInt(localStorage.getItem('searchFailCount') || '0') + 1);
-            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. 접수내역을 구글로그인으로 변동하셨다면 조회가 안되는 경우 구글로그인 해주세요.";
+    // ---------------- 세금계산서 / 현금영수증 / 카드전표 버튼 ----------------
+    window.openSegumPageFor = (name, phone, boardId) => {
+        const url = `${BOARD_BASE}segum?name=${encodeURIComponent(name || '')}&phone=${encodeURIComponent(phone || '')}&boardId=${encodeURIComponent(boardId || '')}`;
+        window.open(url, '_blank', 'width=501,height=765,scrollbars=yes');
+    };
+
+    // 이름+전화번호로 계산되는 secretId(private 문서)를 직접 읽어 신청/등록 상태를 확인하므로
+    // 어느 기기에서 열어도 최신 상태가 보입니다.
+    window.openCashPageFor = async (boardId, secretId, isJajoo, name, phone, isBankTransfer) => {
+        if (!boardId || !name || !phone) {
+            alert('주문 정보를 찾을 수 없습니다.');
+            return;
+        }
+        const col = isJajoo ? 'jjjj' : 'boards';
+
+        // 1. 세금계산서가 이미 등록된 이름+전화번호면 현금영수증 신청 자체를 막습니다.
+        try {
+            const segumId = await computeSegumId(name, phone);
+            const segumSnap = await getDoc(doc(db, "segum1", segumId));
+            if (segumBlocksCash(segumSnap, boardId, isBankTransfer)) {
+                alert('이미 세금계산서 신청이 등록되셔서 현금영수증 신청은 되지 않습니다.');
+                return;
+            }
+        } catch (e) {
+            alert('확인 중 오류가 발생했습니다: ' + e.message);
             return;
         }
 
-        const allDocs = await fetchDocsByName(name);
-
-        const filteredData = allDocs.filter(d => d.phone && d.phone.slice(-4) === phone);
-
-        if(filteredData.length === 0) {
-            // [추가] 조회 결과 없을 시 카운트 증가
-            localStorage.setItem('searchFailCount', parseInt(localStorage.getItem('searchFailCount') || '0') + 1);
-            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. 접수내역을 구글로그인으로 변동하셨다면 조회가 안되는 경우 구글로그인 해주세요."; 
-            return; 
+        // 2. 신청/등록 상태를 private 문서에서 최신으로 확인
+        const privateRef = doc(db, col, boardId, "private", secretId);
+        let privateData = {};
+        try {
+            const privSnap = await getDoc(privateRef);
+            if (privSnap.exists()) privateData = privSnap.data();
+        } catch (e) {
+            alert('확인 중 오류가 발생했습니다: ' + e.message);
+            return;
         }
 
-        // [추가] 성공 시 카운트 초기화
-        localStorage.setItem('searchFailCount', '0');
+        if (privateData.cashFileUrl) {
+            window.openReceiptModal(privateData.cashFileUrl, '현금영수증');
+            return;
+        }
+        if (privateData.cashApplied) {
+            alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
+            return;
+        }
 
-        isGoogleResultView = false;
-        renderResults(filteredData);
-    } catch (error) {
-        console.error(error);
-        resultsDiv.innerHTML = "조회 중 오류가 발생했습니다. 다시 시도해주세요.";
+        // 3. 최초 신청: 발행희망번호(사업자번호 또는 전화번호) 입력받기
+        const cashNumber = prompt('현금영수증 발행희망 번호를 입력해주세요.\n(사업자등록번호 또는 전화번호 중 1개)');
+        if (!cashNumber || !cashNumber.trim()) return;
+
+        try {
+            const user = await ensureAnonymousLogin();
+            // 관리자 대시보드(quick_check.html)가 그대로 쓰는 컬렉션
+            await setDoc(doc(db, "cashReceipt1", boardId), {
+                boardId, author: name, cashNumber: cashNumber.trim(),
+                fileUrl: '', createdAt: serverTimestamp(), uid: user.uid
+            });
+            // 다른 기기에서도 "이미 신청됨"을 확인할 수 있게 private 문서에도 기록
+            await updateDoc(privateRef, {
+                cashApplied: true, cashNumber: cashNumber.trim()
+            }).catch(() => {});
+            // segum.html 이 "이미 현금영수증 신청됨"을 확인할 수 있게 이름+전화번호 기반으로도 기록
+            const cashSecretId = await computeSegumId(name, phone);
+            await setDoc(doc(db, "cashSecret", cashSecretId), {
+                boardId, createdAt: serverTimestamp()
+            }, { merge: true });
+            const segumBtnNow = $('segum-btn-' + boardId);
+            if (segumBtnNow) segumBtnNow.style.display = 'none';
+            alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
+        } catch (e) {
+            alert('신청 중 오류가 발생했습니다: ' + e.message);
+        }
+    };
+
+    // 관리자가 등록한 카드전표 URL이 private 문서에 저장되므로 기기와 무관하게 읽을 수 있습니다.
+    window.openCardPageFor = async (boardId, secretId, isJajoo) => {
+        if (!boardId) {
+            alert('주문 정보를 찾을 수 없습니다.');
+            return;
+        }
+        try {
+            const col = isJajoo ? 'jjjj' : 'boards';
+            const privSnap = await getDoc(doc(db, col, boardId, "private", secretId));
+            if (privSnap.exists() && privSnap.data().cardFileUrl) {
+                window.openReceiptModal(privSnap.data().cardFileUrl, '카드전표');
+            } else {
+                alert('택배물 발송후 등록됩니다.');
+            }
+        } catch (e) {
+            alert('택배물 발송후 등록됩니다.');
+        }
+    };
+
+    // 이 주문의 현금영수증이 이미 신청돼 있으면 세금계산서 버튼을, 이 이름+전화번호로 세금계산서가
+    // 이미 등록돼 있으면 현금영수증 버튼을 숨깁니다. (신청 여부는 조회 때 함께 불러온 private 필드로 판단)
+    async function syncTaxCashButtons(d) {
+        const segumBtn = $('segum-btn-' + d.id);
+        const cashBtn = $('cash-btn-' + d.id);
+        if (segumBtn && (d.cashApplied || d.cashFileUrl)) {
+            segumBtn.style.display = 'none';
+        }
+        if (cashBtn) {
+            try {
+                const segumId = await computeSegumId(d.author, d.phone);
+                const segumSnap = await getDoc(doc(db, "segum1", segumId));
+                if (segumBlocksCash(segumSnap, d.id, d.status === '무통장')) cashBtn.style.display = 'none';
+            } catch (e) { /* 조회 실패해도 버튼은 그대로 둠 */ }
+        }
     }
+
+    // ---------------- 재구입 (장바구니로 접수된 상품) → 정확한 상품 페이지 찾기 ----------------
+    // 아이템에 productId가 있으면 그 상품 페이지로, 없으면 헤더 메뉴 데이터에서 상품명이 겹치는 항목을 찾아 연결합니다.
+    const HEADER_URL = SITE + '/myjs/includes/header';
+    const DEFAULT_PRODUCT_URL = SITE + '/myjs/products/01my';
+    let cachedMenuData = null;
+
+    function extractMenuData(headerText) {
+        const startMarker = 'const menuData = [';
+        const startIdx = headerText.indexOf(startMarker);
+        if (startIdx === -1) return [];
+        let i = startIdx + startMarker.length - 1;
+        let depth = 0;
+        for (; i < headerText.length; i++) {
+            if (headerText[i] === '[') depth++;
+            else if (headerText[i] === ']') { depth--; if (depth === 0) { i++; break; } }
+        }
+        const arrayText = headerText.slice(startIdx + startMarker.length - 1, i);
+        try { return JSON.parse(arrayText); } catch (e) { console.error('menuData 파싱 실패:', e); return []; }
+    }
+    async function loadMenuData() {
+        if (cachedMenuData) return cachedMenuData;
+        try {
+            const res = await fetch(HEADER_URL);
+            cachedMenuData = extractMenuData(await res.text());
+        } catch (e) {
+            console.error('헤더 메뉴 데이터를 불러오지 못했습니다:', e);
+            cachedMenuData = [];
+        }
+        return cachedMenuData;
+    }
+    function flattenMenu(items) {
+        let out = [];
+        (items || []).forEach(it => {
+            if (it.children && it.children.length) out = out.concat(flattenMenu(it.children));
+            else if (it.url && it.url !== '#') out.push({ leaf: it.name, url: it.url });
         });
+        return out;
+    }
+    function guessProductUrl(itemName, flatList) {
+        if (!itemName) return null;
+        const candidates = flatList.filter(f => f.leaf && itemName.includes(f.leaf));
+        if (candidates.length === 0) return null;
+        candidates.sort((a, b) => b.leaf.length - a.leaf.length); // 가장 구체적인(이름이 긴) 것
+        return candidates[0].url;
+    }
+    function toAbsoluteUrl(url) {
+        if (!url) return null;
+        return url.startsWith('http') ? url : SITE + url;
+    }
+    async function resolveReorderProductUrl(item) {
+        if (item.productId) return `${SITE}/myjs/products/${encodeURIComponent(item.productId)}`;
+        const flat = flattenMenu(await loadMenuData());
+        return toAbsoluteUrl(guessProductUrl(item.itemName, flat)) || DEFAULT_PRODUCT_URL;
+    }
 
-// 주문 목록을 화면에 렌더링 (이름/전화번호 조회, 네이버 로그인 조회 둘 다 여기서 처리)
-// [추가] 접수 7일이 지난 주문은 기본적으로 접어두고, 최근(7일 이내) 주문만 펼쳐서 보여줌
-const ORDER_COLLAPSE_DAYS = 7;
-function wrapCollapsible(fullHtml, isRecent, cardId, summaryLabel) {
-    if (isRecent) return fullHtml; // 최근 주문은 그대로 펼쳐진 채로 둠
-    return `
-    <div class="mb-4">
-        <button type="button" onclick="toggleOrderCard('${cardId}')"
-            class="w-full text-left bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-600 flex justify-between items-center gap-2">
-            <span class="truncate">${summaryLabel}</span>
-            <span id="${cardId}_arrow" class="shrink-0 text-blue-600 font-semibold">▾ 펼쳐보기</span>
-        </button>
-        <div id="${cardId}" style="display:none;">${fullHtml}</div>
-    </div>`;
-}
-window.toggleOrderCard = (id) => {
-    const el = document.getElementById(id);
-    const arrow = document.getElementById(id + '_arrow');
-    if (!el) return;
-    const opening = el.style.display === 'none';
-    el.style.display = opening ? 'block' : 'none';
-    if (arrow) arrow.textContent = opening ? '▴ 접기' : '▾ 펼쳐보기';
-};
+    const reorderItemRegistry = {};
+    let reorderItemSeq = 0;
+    window.reorderClick = async (key) => {
+        const data = reorderItemRegistry[key];
+        if (!data) return;
+        const productUrl = await resolveReorderProductUrl(data);
+        const q = new URLSearchParams({
+            reorderImage: data.r2Image || data.cafe24Image || '',
+            reorderImageFallback: data.cafe24Image || '',
+            reorderWidth: data.width || '',
+            reorderHeight: data.height || '',
+            reorderSide: data.side || '',
+            reorderItemName: data.itemName || ''
+        }).toString();
+        window.open(`${productUrl}?${q}`, '_blank', 'width=1240,height=900,scrollbars=yes');
+    };
 
-function renderResults(filteredData) {
-    const resultsDiv = document.getElementById('results');
+    // ---------------- 조회 ----------------
+    $('search-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('search-btn').click(); });
+    $('search-phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('search-btn').click(); });
+    $('search-phone').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); });
 
-filteredData.sort((a, b) => {
-    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-    return dateB - dateA;
-});
-
-        
-        resultsDiv.innerHTML = "";
-        if(filteredData.length === 0) { 
-            resultsDiv.innerHTML = "해당하는 주문 정보를 찾을 수 없습니다. 접수내역을 구글로그인으로 변동하셨다면 조회가 안되는 경우 구글로그인 해주세요."; 
-            return; 
+    $('search-btn').addEventListener('click', async () => {
+        // 봇 방지: 이름/뒷4자리를 10회 이상 틀리면 3시간 동안 조회를 막습니다. (index5 와 동일)
+        const blockUntil = localStorage.getItem('searchBlockUntil');
+        const nowTime = new Date().getTime();
+        if (blockUntil && nowTime < parseInt(blockUntil)) {
+            const remainingSec = Math.ceil((parseInt(blockUntil) - nowTime) / 1000);
+            const min = Math.floor(remainingSec / 60);
+            const sec = remainingSec % 60;
+            alert(`너무 많이 틀려 ${min}분 ${sec}초 동안 조회가 제한됩니다.`);
+            return;
         }
 
-        filteredData.forEach(d => {
-            // cart.html(장바구니/결제) 쪽에서 넘어온 주문은 필드 구조가 완전히 달라서
-            // (단일 상품이 아니라 items 배열) 따로 간소화된 카드로 렌더링함.
-            if (d.source === 'cart') {
-                const dateObjCart = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
-                const dateStrCart = `${dateObjCart.getFullYear()}년 ${dateObjCart.getMonth() + 1}월 ${dateObjCart.getDate()}일`;
-                const items = Array.isArray(d.items) ? d.items : [];
-                const totalNumber = Number(String(d.total).replace(/[^0-9.-]/g, '')) || 0;
+        const name = $('search-name').value.trim();
+        const phone = $('search-phone').value.trim();
+        const resultsDiv = $('results');
 
-                // [추가] board와 동일한 규칙으로 시안이미지번호(designNo) 생성
-                // = 전화번호(뒤 2자리 제외) + 접수일시(YYMMDDHHmm)
-                const phoneFullCart = (d.phone || "").replace(/[^0-9]/g, "");
-                const phonePrefixCart = phoneFullCart.slice(0, -2);
-                const yearCart = dateObjCart.getFullYear().toString().slice(-2);
-                const monthCart = (dateObjCart.getMonth() + 1).toString().padStart(2, '0');
-                const dayCart = dateObjCart.getDate().toString().padStart(2, '0');
-                const hoursCart = dateObjCart.getHours().toString().padStart(2, '0');
-                const minutesCart = dateObjCart.getMinutes().toString().padStart(2, '0');
-                const designNoCart = `${phonePrefixCart}${yearCart}${monthCart}${dayCart}${hoursCart}${minutesCart}`;
+        function registerFail() {
+            const failCount = parseInt(localStorage.getItem('searchFailCount') || '0') + 1;
+            if (failCount >= 10) {
+                localStorage.setItem('searchBlockUntil', (nowTime + (3 * 60 * 60 * 1000)).toString());
+                localStorage.setItem('searchFailCount', '0');
+                alert("이름/전화번호를 10회 틀려 3시간 동안 조회가 제한됩니다.");
+            } else {
+                localStorage.setItem('searchFailCount', failCount.toString());
+            }
+        }
 
-                // 상품이 여러 개면 뒤에 _2, _3 ... 붙여서 구분 (1개면 designNo 그대로)
-                // — 시안보기 대체 URL과 재구입 담기용 URL 양쪽에서 동일하게 사용
-                const itemDesignNos = items.map((it, idx) => items.length > 1 ? `${designNoCart}_${idx + 1}` : designNoCart);
-                const cafe24UrlsCart = itemDesignNos.map(no => `https://sowonnamoo1005.cafe24.com/1/${no}.jpg`);
+        if (!name || !/^\d{4}$/.test(phone)) {
+            registerFail();
+            alert("이름과 전화번호 뒷 4자리를 정확히 입력해주세요.");
+            return;
+        }
 
-                // [추가] 후기 작성 가능 여부 — 주문 접수일로부터 30일 이내인 주문에서만 버튼 노출
-                // (이미 이 주문 카드가 조회됐다는 것 자체가 이름/전화번호 확인이 끝난 상태라,
-                //  01my.html에서 다시 구매 확인 절차를 안 밟고 바로 후기 작성창으로 들어감)
-                const orderDateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
-                const daysSinceOrder = (Date.now() - orderDateObj.getTime()) / (1000 * 60 * 60 * 24);
-                const canWriteReview = !isNaN(daysSinceOrder) && daysSinceOrder <= 30;
+        resultsDiv.innerHTML = '<div class="text-sm text-slate-500 px-1">조회 중...</div>';
 
-                // cart.html의 saveOrderToFirestore가 저장하는 상태값: "입금대기"(무통장, 확인 전)
-                // 또는 "결제완료"(카드결제는 결제 성공 시 바로 이 상태로 저장됨)
-                // [추가] 재구입/후기작성/캐쉬백 포인트 버튼은 실제로 결제(입금)가 확인된
-                // 주문에서만 활성화한다 — "무통장입금"이라도 아직 입금 확인 전(입금대기)이면
-                // 비활성화하고, "카드결제"는 결제 성공 시 바로 결제완료 상태가 되므로 항상 포함된다.
-                const isPendingCart = d.status === '입금대기';
-                const isBankTransferCart = d.payment === '무통장입금';
-                const isCardCart = d.payment === '카드결제';
+        try {
+            try { await ensureAnonymousLogin(); } catch (e) { /* 로그인 실패해도 조회는 시도 */ }
 
-                const itemRows = items.map((it, idx) => {
-                    const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
-                    const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
-                    // R2(compositeImage)를 1차로 시도하고, 나중에 관리자가 R2 원본을 지우고
-                    // 카페24로 옮겨두면 자동으로 그쪽 이미지를 대신 보여줌
-                    const sianLink = `<button type="button" onclick="viewSianImage('${it.compositeImage || ''}', '${cafe24UrlsCart[idx]}')" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">시안보기</button>`;
+            // 접수 때 이름의 공백/괄호는 제거되어 저장되므로, 입력값 그대로와 제거한 값 둘 다 시도합니다.
+            const nameVariants = [...new Set([name, name.replace(/[\s()]/g, '')].filter(Boolean))];
 
-                    // [추가] 재구입 — 후가공이 붙은 주문은 재구입 버튼을 아예 숨김
-                    // (후가공까지 예전과 똑같이 맞춰 재현하기 어려워서, 새로 주문받는 게 안전함)
-                    // [추가] 입금(결제)이 아직 확인되지 않은 주문(입금대기)에서도 숨김 — 결제가
-                    // 확인된 주문(무통장 입금확인 완료 또는 카드결제)에서만 재구입을 허용한다.
-                    let reorderLink = '';
-                    if (!it.finishings && !isPendingCart) {
-                        // productId가 있으면 정확한 상품 페이지로, 없으면(예전 주문) 헤더 메뉴
-                        // 데이터에서 상품명이 겹치는 페이지로 추정해서 이동. 클릭 시점에
-                        // resolveReorderProductUrl()에서 최종 URL을 계산함.
-                        const reorderKey = `ro_${reorderItemSeq++}`;
-                        reorderItemRegistry[reorderKey] = {
-                            productId: it.productId || '',
-                            itemName: it.item || '',
-                            r2Image: it.compositeImage || '',      // R2 원본(아직 살아있을 수도 있음)
-                            cafe24Image: cafe24UrlsCart[idx],       // 관리자가 옮겨둘 카페24 경로
-                            width: it.width || '',
-                            height: it.height || '',
-                            side: it.ink || '' // 단면/양면 등 인쇄면 (있으면 01my.html에서 함께 비교)
-                        };
-                        reorderLink = `<button type="button" onclick="reorderClick('${reorderKey}')" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">재구입</button>`;
-                    }
+            // 1. 이름으로 공개 문서만 먼저 조회 (공개 문서에는 개인정보가 없습니다)
+            const candidates = [];
+            for (const v of nameVariants) {
+                const [snapBoards, snapJjjj] = await Promise.all([
+                    getDocs(query(collection(db, "boards"), where("author", "==", v))),
+                    getDocs(query(collection(db, "jjjj"), where("author", "==", v)))
+                ]);
+                snapBoards.docs.forEach(d => candidates.push({ data: d.data(), id: d.id, isJajoo: false, col: "boards", nameUsed: v }));
+                snapJjjj.docs.forEach(d => candidates.push({ data: d.data(), id: d.id, isJajoo: true, col: "jjjj", nameUsed: v }));
+            }
 
-                    // [추가] 후기 작성 — 상품 페이지(01my.html 등)로 이름/전화번호를 실어서 보내면,
-                    // 거기서 다시 구매 확인 절차 없이 바로 작성창이 뜸. 이미 이 아이템으로 후기를
-                    // 작성했으면(d.reviewedItemIndexes) 버튼을 숨김 — 추가 조회 없이 이미 불러온
-                    // 주문 데이터로 바로 판단함.
-                    // [추가] 입금(결제) 확인 전(입금대기)에는 아직 후기 작성 대상이 아니므로 숨김.
-                    // 결제는 확인됐지만 아직 "운송장"(출고)이 등록되지 않았으면(d.woonso1 없음),
-                    // 버튼은 보여주되 눌렀을 때 "운송장 발송 전에는 작성할 수 없다"는 경고만 띄우고
-                    // 실제 작성창은 열지 않는다. 운송장이 등록된 뒤에만 진짜로 작성 가능해진다.
-                    const alreadyReviewed = Array.isArray(d.reviewedItemIndexes) && d.reviewedItemIndexes.includes(idx);
-                    const isShippedCart = !!d.woonso1;
-                    let reviewLink = '';
-                    if (canWriteReview && !alreadyReviewed && !isPendingCart) {
-                        if (isShippedCart) {
-                            const reviewKey = `rv_${reviewItemSeq++}`;
-                            reviewItemRegistry[reviewKey] = {
-                                productId: it.productId || '',
-                                itemName: it.item || '',
-                                name: d.author || '',
-                                phone: (d.phone || '').slice(-4),
-                                orderId: d.id,
-                                itemIndex: idx
-                            };
-                            reviewLink = `<button type="button" onclick="reviewClick('${reviewKey}', this)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center">포토 후기작성<br><span class="font-normal text-[10px]">작성시 (2%) 캐쉬백 적립</span></button>`;
-                        } else {
-                            reviewLink = `<button type="button" onclick="alert('발송 이후 작성 가능합니다. 수령하신 물품의 사진후기를 남겨주세요.')" class="bg-gray-300 text-gray-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm leading-tight text-center cursor-not-allowed">포토 후기작성<br><span class="font-normal text-[10px]">(포인트2%적립)</span></button>`;
-                        }
-                    }
-                    // 이미 작성했거나(alreadyReviewed) 기간이 지났으면(!canWriteReview) 아무것도
-                    // 표시하지 않음 — 완료 텍스트도 남기지 않고 버튼이 활성화될 때만 보이게 함
+            // 2. 각 후보에 대해 이름+뒷4자리로 secretId를 계산하고, 그 private 문서가 실제로 존재하는지로 본인 여부를 검증
+            const verified = await Promise.all(candidates.map(async (c) => {
+                const secretId = await computeSecretId(c.id, c.nameUsed, phone);
+                const privateSnap = await getDoc(doc(db, c.col, c.id, "private", secretId));
+                if (!privateSnap.exists()) return null;
+                return { ...c.data, ...privateSnap.data(), id: c.id, isJajoo: c.isJajoo, secretId };
+            }));
 
-                    // [추가] 사이즈/용지/인쇄면/후가공 등 상세 정보 (지금까지 화면에 아예 안 그려지고 있었음)
-                    const detailBits = [
-                        (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
-                        it.paper ? `용지: ${it.paper}` : '',
-                        it.ink ? `인쇄면: ${it.ink}` : '',
-                        it.finishings ? `후가공: ${it.finishings}` : '',
-                        it.weight ? `무게: ${it.weight}` : ''
-                    ].filter(Boolean).join(' · ');
+            // 상태가 '대기'(접수전/결제확인중)인 건은 표시하지 않음
+            const seen = new Set();
+            const filteredData = verified.filter(Boolean).filter(d => d.status !== '대기').filter(d => {
+                if (seen.has(d.id)) return false;
+                seen.add(d.id);
+                return true;
+            });
 
-                    // [추가] 캐쉬백 포인트 — 재구입과 같은 조건(후가공 없는 상품 + 입금/결제
-                    // 확인된 주문)일 때만 노출
-                    const pointBtn = (!it.finishings && !isPendingCart)
-                        ? `<button type="button" onclick="showMyPoints('${encodeURIComponent(d.author || '')}', '${(d.phone || '').slice(-4)}')" class="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">💰 캐쉬백 포인트</button>`
-                        : '';
-
-                    return `
-                        <div class="text-xs bg-white border rounded-lg px-3 py-2.5 mt-1.5">
-                            <div class="flex items-center justify-between flex-wrap gap-1.5">
-                                <span class="font-medium">${it.item || '상품'} · ${qtyLabel} · ${priceNumber.toLocaleString()}원</span>
-                            </div>
-                            ${detailBits ? `<div class="text-gray-500 mt-1">${detailBits}</div>` : ''}
-                            <div class="flex items-center gap-2 mt-2 flex-wrap">${sianLink}${reorderLink}${reviewLink}${pointBtn}</div>
-                        </div>`;
-                }).join('');
-
-                // 여러 상품이 한 주문에 담기므로, 영수증/카드전표용 상품명·사이즈·수량은
-                // 상품들을 합쳐서 하나의 문자열로 구성함
-                const productNamesCart = items.map(it => it.item).filter(Boolean).join(', ') || '상품명 없음';
-                const sizeLabelCart = items.map(it => (it.width && it.height) ? `${it.width}×${it.height}mm` : '').filter(Boolean).join(', ') || '-';
-                const totalQtyCart = items.reduce((sum, it) => sum + ((Number(it.qty) || 1) * (Number(it.count) || 1)), 0);
-
-                const paramsCart = new URLSearchParams({
-                    product: productNamesCart, size: sizeLabelCart, qty: String(totalQtyCart || 0),
-                    price: String(totalNumber), date: `작성일: ${dateStrCart}`, bizType: '기술서비스', bizItem: '광고, 대행'
-                }).toString();
-
-                const cardParamsCart = new URLSearchParams({
-                    date: `${dateObjCart.getFullYear()}-${(dateObjCart.getMonth() + 1).toString().padStart(2, '0')}-${dateObjCart.getDate().toString().padStart(2, '0')}`,
-                    name: productNamesCart, size: sizeLabelCart, qty: String(totalQtyCart || 0), price: String(totalNumber)
-                }).toString();
-
-                // [추가] 구글 계정으로 전환 버튼 (장바구니 주문) — 이름+전화번호 단위로 연결
-                const googleLinkBtnCart = isGoogleResultView ? `
-                    <span class="text-xs text-blue-600 font-semibold px-2 py-1">구글 연결됨</span>
-                ` : `
-                    <button onclick="linkOrderToGoogle('${encodeURIComponent(d.author || '')}', '${(d.phone || '').slice(-4)}')"
-                    class="bg-blue-500 text-white px-4 py-2 rounded font-bold text-xs shrink-0">구글 로그인으로 변경</button>
-                `;
-
-                const cardHtmlCart = `
-                <div class="bg-blue-50 border border-blue-100 p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
-                    <div class="text-sm font-bold text-blue-700 mb-2">📅 작성일 : ${dateStrCart}</div>
-                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                        <div>
-                            <h2 class="font-bold text-lg mb-2">🛒 주문내역</h2>
-                            <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-700">
-                                <div><span class="font-semibold">작성자:</span> ${d.author || '-'}</div>
-                                <div><span class="font-semibold">상태:</span> ${d.status || d.payment || '-'}</div>
-                                <div><span class="font-semibold">결제방법:</span> ${d.payment || '-'}</div>
-                                <div><span class="font-semibold">총 금액:</span> ${totalNumber.toLocaleString()}원</div>
-                                <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
-                            </div>
-                        </div>
-                        <div class="flex sm:flex-col gap-2 shrink-0">${googleLinkBtnCart}</div>
-                    </div>
-                    <div class="mt-3 text-sm text-gray-600 border-t pt-3">
-                        <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
-                        <div class="mt-2"><span class="font-semibold">주문 상품:</span>${itemRows}</div>
-                        <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNoCart}</div>
-
-                        ${isPendingCart ? `
-                        <div class="mt-3 text-sm font-bold text-red-600 bg-red-50 p-2 rounded">
-                            *무통장 계좌 : 국민 782301-01-547234 에코그래픽스 ㅣ  * 농협 352-0130-9995-53 최대환
-                        </div>` : ''}
-
-                        <div class="mt-4 flex gap-2 flex-wrap">
-                            <a href="javascript:void(0)"
-                               onclick="${isPendingCart ? '' : "openPopup('https://sowonnamoo.github.io/myboard/segum')"}"
-                               class="border px-2 py-1 text-xs ${(isBankTransferCart && !isPendingCart) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
-
-                            <a href="javascript:void(0)"
-                               onclick="${isPendingCart ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + paramsCart + "')"}"
-                               class="border px-2 py-1 text-xs ${(isBankTransferCart && !isPendingCart) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
-
-                            <a href="javascript:void(0)"
-                               onclick="${isPendingCart ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParamsCart + "')"}"
-                               class="border px-2 py-1 text-xs ${(isCardCart && !isPendingCart) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
-
-                            <a href="javascript:void(0)"
-                               onclick="${d.woonso1 ? "openPopup('" + d.woonso1 + "')" : ""}"
-                               class="border px-2 py-1 text-xs transition-colors duration-300
-                               ${d.woonso1
-                                   ? 'bg-red-500 text-white border-red-500 hover:bg-red-600 font-bold'
-                                   : 'bg-gray-100 text-gray-400 pointer-events-none'
-                               }">
-                               ${d.woonso1 ? '출고완료/운송장보기' : '운송장'}
-                            </a>
-
-                            ${isPendingCart ? `
-                            <button onclick="deleteCartOrder('${d.id}')"
-                                class="border px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-700">주문삭제</button>` : ''}
-                        </div>
-                    </div>
-                </div>`;
-
-                const isRecentCart = daysSinceOrder <= ORDER_COLLAPSE_DAYS;
-                const summaryCart = `${d.author || '-'} · ${dateStrCart} · 장바구니 주문(${items.length}건) · ${totalNumber.toLocaleString()}원`;
-                resultsDiv.innerHTML += wrapCollapsible(cardHtmlCart, isRecentCart, `card_${d.id}`, summaryCart);
+            if (filteredData.length === 0) {
+                registerFail();
+                resultsDiv.innerHTML = '<div class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-5">해당하는 주문 정보를 찾을 수 없습니다. / 미 결제건은 조회되지 않습니다.</div>';
                 return;
             }
 
-            // [4] 날짜 및 이미지 번호 로직
-            const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
-            const phoneFull = (d.phone || "").replace(/[^0-9]/g, "");
-            const phonePrefix = phoneFull.slice(0, -2);    
-            const year = dateObj.getFullYear().toString().slice(-2);
-            const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-            const day = dateObj.getDate().toString().padStart(2, '0');
-            const hours = dateObj.getHours().toString().padStart(2, '0');
-            const minutes = dateObj.getMinutes().toString().padStart(2, '0');
-            
-            const designNo = d.imgCode || `${phonePrefix}${year}${month}${day}${hours}${minutes}`;
-            const dateStr = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`;
+            localStorage.setItem('searchFailCount', '0');
 
-            // [5] 재구입 버튼 — board(API) 주문건은 재구입 버튼 자체를 노출하지 않음
-            const reOrderBtn = "";
+            filteredData.sort((a, b) => {
+                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                return dateB - dateA;
+            });
 
-            // [추가] 구글 계정으로 전환 버튼 — 전환하면 이 이름+전화번호로는 이후
-            // 조회되지 않고, 구글 로그인으로만(앞으로 새로 접수되는 주문 포함) 조회 가능해짐
-            const googleLinkBtn = isGoogleResultView ? `
-                <span class="text-xs text-blue-600 font-semibold px-2 py-1">구글 연결됨</span>
-            ` : `
-                <button onclick="linkOrderToGoogle('${encodeURIComponent(d.author || '')}', '${(d.phone || '').slice(-4)}')"
-                class="bg-blue-500 text-white px-6 py-2 rounded font-bold text-sm">구글 로그인으로 변경</button>
-            `;
+            resultsDiv.innerHTML = filteredData.map(renderOrderCard).join('');
 
-            const isBankTransfer = d.status === '무통장';
-            const isCard = d.status === '카드결제';
-const isPending = d.status === '대기';
-let statusLabel = (d.status === '대기') ? '(접수전/결제확인중)' : 
-                  (d.status === '접수에러') ? '(제작보류)' : '(접수완료)';
+            // 세금계산서 ↔ 현금영수증 상호배타 상태를 화면에 반영
+            filteredData.forEach(d => { syncTaxCashButtons(d); });
+        } catch (error) {
+            console.error(error);
+            resultsDiv.innerHTML = '<div class="text-sm text-red-600 bg-white border border-red-100 rounded-2xl p-5">조회 중 오류가 발생했습니다. 다시 시도해주세요.</div>';
+        }
+    });
 
-// [추가된 로직] 시안 완료/출고 상태에 따른 문구 자동 변경
-if (d.status !== '대기' && d.status !== '접수에러') {
-    if (d.woonso1) {
-        statusLabel += ' <span class="text-red-600 font-bold">_출고완료</span>';
-    } else if (d.sian === 'done') {
-        statusLabel += ' <span class="text-yellow-600 font-bold">_인쇄중</span>';
+    // ---------------- 주문 카드 렌더링 ----------------
+    // 접수 7일이 지난 주문은 기본적으로 접어두고, 최근(7일 이내) 주문만 펼쳐서 보여줍니다.
+    const ORDER_COLLAPSE_DAYS = 7;
+
+    function wrapCollapsible(fullHtml, isRecent, cardId, summaryLabel) {
+        if (isRecent) return fullHtml;
+        return `
+        <div class="mb-4">
+            <button type="button" data-act="toggle" data-target="${esc(cardId)}"
+                class="w-full text-left bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600 flex justify-between items-center gap-2">
+                <span class="truncate">${esc(summaryLabel)}</span>
+                <span id="${esc(cardId)}_arrow" class="shrink-0 text-blue-600 font-semibold">▾ 펼쳐보기</span>
+            </button>
+            <div id="${esc(cardId)}" style="display:none;">${fullHtml}</div>
+        </div>`;
     }
-}
-            
-            // [6] 영수증 파라미터 구성
-            const params = new URLSearchParams({
-                product: d.productName || '상품명 없음', size: d.size || '0', qty: d.quantity || '0',
-                price: d.price || '0', date: `작성일: ${dateStr}`, bizType: '기술서비스', bizItem: '광고, 대행'
-            }).toString();
 
-            const cardParams = new URLSearchParams({
-                date: `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`,
-                name: d.productName || '상품명 없음', size: d.size || '0', qty: d.quantity || '0', price: d.price || '0'
-            }).toString();
+    // 하단 버튼(거래명세서/세금계산서/...) 한 개를 그립니다. 비활성이면 눌리지 않는 회색 버튼으로 그립니다.
+    function chip({ id = '', label, enabled, act = '', data = {}, title = '', tone = '' }) {
+        const attrs = Object.entries(data).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
+        const base = 'border px-2.5 py-1.5 text-xs rounded-lg font-semibold transition';
+        const idAttr = id ? `id="${esc(id)}"` : '';
+        const titleAttr = title ? `title="${esc(title)}"` : '';
+        if (!enabled) {
+            return `<button type="button" ${idAttr} disabled ${titleAttr} class="${base} bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed">${label}</button>`;
+        }
+        const color = tone === 'red'
+            ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+            : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50';
+        return `<button type="button" ${idAttr} data-act="${act}" ${attrs} ${titleAttr} class="${base} ${color}">${label}</button>`;
+    }
 
-            // [7] HTML 렌더링 (누락된 항목 복구 완료)
-          const cardHtmlBoard = `
-    <div class="${d.isJajoo ? 'bg-orange-50' : 'bg-white'} border border-slate-200 p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
-        <div class="text-sm font-bold text-blue-700 mb-2">📅 작성일 : ${dateStr}</div>
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-            <div>
-                <h2 class="font-bold text-lg mb-2">${d.isJajoo ? '📦 재주문_결제즉시 제작시작건_ ' : ''}${d.productName || '상품명 없음'}</h2>
-                <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-700">
-                    <div><span class="font-semibold">작성자:</span> ${d.author}</div>
-<div><span class="font-semibold">상태:</span> ${d.status || '-'} <span class="text-blue-600 font-bold">${statusLabel}</span></div>
-<div><span class="font-semibold">가격:</span> ${d.price || '-'}원</div>
-                    <div><span class="font-semibold">수량:</span> ${d.quantity || '-'}개</div>
-                    <div><span class="font-semibold">사이즈:</span> ${d.size || '-'}</div>
-                    <div><span class="font-semibold">전화번호:</span> ${d.phone || '-'}</div>
-                </div>
-            </div>
-            <div class="flex flex-row sm:flex-col gap-2 flex-wrap">
-            ${
-    (!d.isJajoo && d.sian !== 'done') 
-    ? `<button onclick="window.open('https://sowonnamoo.github.io/myboard/index2?autoId=${d.id}', '_blank', 'width=864,height=1000,scrollbars=yes')" 
-               class="bg-yellow-500 text-white px-6 py-2 rounded font-bold">인쇄승인대기중</button>`
-    : `<button onclick="openPopup('photo1.html?designNo=${designNo}')"
-               class="bg-green-600 text-white px-6 py-2 rounded font-bold">확정시안</button>`
-}
-            ${reOrderBtn}
-            ${googleLinkBtn}
-        </div>
-        </div>
+    function renderItemRows(d, designNo, unpaid) {
+        return d.items.map((it, idx) => {
+            const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
+            const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
+            // R2 시안(compositeImage)을 1차로, 로드 실패하면 compositeImageFallback 또는 카페24 경로로 대체
+            const cafe24Url = `https://sowonnamoo1005.cafe24.com/1/${designNo}${d.items.length > 1 ? `_${idx + 1}` : ''}.jpg`;
+            const primary = safeUrl(it.compositeImage);
+            const fallback = safeUrl(it.compositeImageFallback) || cafe24Url;
 
-        <div class="mt-3 text-sm text-gray-600 border-t pt-3">
-            <div><span class="font-semibold">배송지:</span> ${d.address || '-'}</div>
-            <div><span class="font-semibold">메시지:</span> ${d.message || '-'}</div>
-            
-       <div class="mt-2 flex items-center gap-2">
-    <span class="font-semibold">첨부파일:</span>
-    ${d.file1Url ? `<a href="${d.file1Url}" target="_blank" class="text-blue-500 underline text-xs">파일 1</a>` : '<span class="text-gray-400 text-xs">없음</span>'}
-    ${d.file2Url ? `<a href="${d.file2Url}" target="_blank" class="text-blue-500 underline text-xs">파일 2</a>` : ''}
-    
-    ${d.status === '접수에러' ? `
-        <button onclick="openPopup('upload.html?docId=${d.id}&col=${d.isJajoo ? 'jjjj' : 'boards'}')" 
-        class="bg-red-500 text-white px-2 py-1 text-xs rounded hover:bg-red-600">파일재업로드</button>
-    ` : ''}
-</div>
+            const sianBtn = `<button type="button" data-act="sian" data-url="${esc(primary)}" data-fb="${esc(fallback)}" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">시안보기</button>`;
 
-<div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${designNo}</div>
+            // 후가공이 붙은 주문은 재구입을 숨김(똑같이 재현하기 어려움). 결제(입금) 확인 전에도 숨김.
+            let reorderBtn = '';
+            if (!it.finishings && !unpaid) {
+                const key = `ro_${reorderItemSeq++}`;
+                reorderItemRegistry[key] = {
+                    productId: it.productId || '',
+                    itemName: it.item || '',
+                    r2Image: primary,
+                    cafe24Image: cafe24Url,
+                    width: it.width || '',
+                    height: it.height || '',
+                    side: it.ink || ''
+                };
+                reorderBtn = `<button type="button" data-act="reorder-item" data-key="${key}" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">재구입</button>`;
+            }
 
-${
-    d.status === '대기' 
-    ? `<div class="mt-1 text-sm font-bold text-red-600 bg-red-50 p-2 rounded">
-        *무통장 계좌 : 국민 782301-01-547234 에코그래픽스 ㅣ  * 농협 352-0130-9995-53 최대환 
-       </div>` 
-    : ''
-}
-            <div class="mt-4 flex gap-2 flex-wrap">
-                <a href="javascript:void(0)" 
-                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/segum')"}" 
-                   class="border px-2 py-1 text-xs ${(isBankTransfer && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">계산서/현금영수증</a>
-                
-                <a href="javascript:void(0)" 
-                   onclick="${isPending ? '' : "openPopup('https://sowonnamoo.github.io/myboard/print3.html?" + params + "')"}" 
-                   class="border px-2 py-1 text-xs ${(isBankTransfer && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">간이영수증</a>
-                
-                <a href="javascript:void(0)" 
-                   onclick="${isPending ? '' : "openPopup('https://myboard-delta.vercel.app/cardf.html?" + cardParams + "')"}" 
-                   class="border px-2 py-1 text-xs ${(isCard && !isPending) ? 'hover:bg-gray-100' : 'bg-gray-100 text-gray-400 pointer-events-none'}">카드전표</a>
-         
-<a href="javascript:void(0)" 
-   onclick="${d.woonso1 ? "openPopup('" + d.woonso1 + "')" : ""}"
-   class="border px-2 py-1 text-xs transition-colors duration-300 
-   ${d.woonso1 
-       ? 'bg-red-500 text-white border-red-500 hover:bg-red-600 font-bold' 
-       : 'bg-gray-100 text-gray-400 pointer-events-none'
-   }">
-   ${d.woonso1 ? '출고완료/운송장보기' : '운송장'}
-</a>
+            const detailBits = [
+                (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
+                it.paper ? `용지: ${it.paper}` : '',
+                it.ink ? `인쇄면: ${it.ink}` : '',
+                it.finishings ? `후가공: ${it.finishings}` : '',
+                it.weight ? `무게: ${it.weight}` : ''
+            ].filter(Boolean).join(' · ');
 
-${
-    (d.status === '대기') 
-    ? `<button onclick="deleteOrder('${d.id}', ${d.isJajoo})" 
-        class="border px-2 py-1 text-xs bg-gray-500 text-white hover:bg-gray-700">주문삭제</button>`
-    : ''
-}      
-                        
-                        
-                        
-                        </div>
+            return `
+            <div class="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2.5 mt-1.5">
+                <div class="font-medium text-slate-800">${esc(it.item || '상품')} · ${esc(qtyLabel)} · ${priceNumber.toLocaleString()}원</div>
+                ${detailBits ? `<div class="text-slate-500 mt-1">${esc(detailBits)}</div>` : ''}
+                <div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${reorderBtn}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderOrderCard(d) {
+        const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+        const phoneFull = (d.phone || '').replace(/[^0-9]/g, '');
+        const phonePrefix = phoneFull.slice(0, -4); // 뒷4자리(=조회 비밀번호)가 이미지번호로 노출되지 않도록 제외
+        const yy = dateObj.getFullYear().toString().slice(-2);
+        const mm = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const dd = dateObj.getDate().toString().padStart(2, '0');
+        const hh = dateObj.getHours().toString().padStart(2, '0');
+        const mi = dateObj.getMinutes().toString().padStart(2, '0');
+        const designNo = d.imgCode || `${phonePrefix}${yy}${mm}${dd}${hh}${mi}`;
+        const dateStr = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`;
+
+        const st = d.status;
+        const isPending = st === '대기';
+        const isBankTransfer = st === '무통장';
+        const isCardPay = st === '카드결제';
+        // '모바일': 결제 없이 접수된 입금 확인 전 상태 / '모바일무통장': 관리자가 입금 확인 후 전환한 상태
+        const isMobilePending = st === '모바일';
+        const isMobileBank = st === '모바일무통장';
+        const unpaid = isPending || isMobilePending;
+        const isCartItems = Array.isArray(d.items) && d.items.length > 0; // 장바구니(cart)로 접수된 주문
+        const trackingUrl = safeUrl(d.trackingUrl || d.woonso1);
+
+        let statusLabel = (isPending || isMobilePending) ? '(접수전/결제확인중)'
+            : (st === '접수에러') ? '(제작보류)' : '(접수완료)';
+        let statusExtra = '';
+        if (!isPending && st !== '접수에러') {
+            if (trackingUrl) statusExtra = '<span class="text-red-600 font-bold"> _출고완료</span>';
+            else if (d.sian === 'done') statusExtra = '<span class="text-yellow-600 font-bold"> _인쇄중</span>';
+        }
+        const statusText = (isMobilePending || isMobileBank) ? '무통장' : (st || '-');
+
+        // 영수증/전표 파라미터 (장바구니 주문도 productName/quantity/size/price 가 합쳐져 저장되어 있어 동일하게 사용)
+        const receiptParams = new URLSearchParams({
+            product: d.productName || '상품명 없음', size: d.size || '0', qty: d.quantity || '0',
+            price: d.price || '0', date: `작성일: ${dateStr}`, bizType: '기술서비스', bizItem: '광고, 대행'
+        }).toString();
+
+        // ---- 상단 우측 버튼 (일반 접수 주문만) ----
+        let topButtons = '';
+        if (!isCartItems) {
+            topButtons = (!d.isJajoo && d.sian !== 'done')
+                ? `<button type="button" data-act="approve" data-url="${esc(`${BOARD_BASE}index2?autoId=${d.id}&key=${d.secretId}`)}" class="bg-yellow-500 text-white px-5 py-2 rounded-lg font-bold text-sm">인쇄승인대기중</button>`
+                : `<button type="button" data-act="popup" data-url="${esc(`${BOARD_BASE}photo1.html?designNo=${designNo}`)}" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold text-sm">확정시안</button>`;
+            if (!d.isJajoo) {
+                const reorderName = `${d.author}님 (${d.productName || '상품명'}/${d.quantity || '0'}/${d.size || '0'}) ${stripWon(d.price || '0')}원`;
+                const reorderUrl = `${BOARD_BASE}index3.html?productName=${encodeURIComponent(reorderName)}&imgCode=${encodeURIComponent(designNo)}`;
+                topButtons += `<button type="button" data-act="popup" data-url="${esc(reorderUrl)}" class="bg-black text-white px-5 py-2 rounded-lg font-bold text-sm">재구입</button>`;
+            }
+        }
+
+        // ---- 첨부파일 ----
+        const fileList = (Array.isArray(d.originalFiles) && d.originalFiles.length)
+            ? d.originalFiles.map(f => ({ url: f.url, label: f.filename }))
+            : [d.file1Url, d.file2Url].filter(Boolean).map((u, i) => ({ url: u, label: `파일 ${i + 1}` }));
+        const fileLinks = fileList.filter(f => safeUrl(f.url)).map((f, i) =>
+            `<a href="#" data-act="download" data-url="${esc(f.url)}" ${i === 0 ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.label || `파일 ${i + 1}`)}</a>`
+        ).join('');
+
+        const reuploadBlock = st === '접수에러' ? `
+            <div class="mt-2 flex items-center gap-2 flex-wrap">
+                <button type="button" id="reupload-btn-${esc(d.id)}" data-act="reupload"
+                    data-doc-id="${esc(d.id)}" data-col="${d.isJajoo ? 'jjjj' : 'boards'}" data-author="${esc(d.author)}"
+                    class="bg-red-600 text-white font-bold px-3 py-1.5 text-xs rounded-lg hover:bg-red-700 border border-red-700">파일재업로드</button>
+                <span id="reupload-msg-${esc(d.id)}" class="text-red-600 text-xs font-semibold">
+                    파일오류 사유로 접수에러 됬습니다. 내 시안&gt;에러내용 확인후 재업로드 바랍니다.
+                </span>
+            </div>` : '';
+
+        // ---- 무통장 입금 안내 (입금 확인 전) ----
+        const bankNotice = (isPending || isMobilePending) ? `
+            <div class="mt-3 text-sm font-bold text-red-600 bg-red-50 p-3 rounded-lg">
+                이 계좌번호로 입금해주세요.<br>
+                무통장입금 결제지연시 주문은 삭제됩니다.<br>
+                <span class="inline-flex items-center gap-2 mt-1">
+                    *무통장 계좌 : 농협 352-0130-9995-53 최대환
+                    <button type="button" data-act="copy" data-text="352-0130-9995-53" class="border border-red-300 bg-white text-red-600 text-xs px-2 py-0.5 rounded hover:bg-red-100">복사</button>
+                </span>
+            </div>` : '';
+
+        // ---- 하단 버튼들 ----
+        const chips = [
+            chip({ label: '거래명세서', enabled: !unpaid, act: 'popup', data: { url: `${BOARD_BASE}print2.html?${receiptParams}` } }),
+            chip({
+                id: `segum-btn-${d.id}`, label: '세금계산서', enabled: !isPending && !isCardPay, act: 'segum',
+                data: { name: d.author, phone: d.phone, id: d.id },
+                title: isCardPay ? '카드결제 건은 카드전표를 이용해주세요.' : ''
+            }),
+            chip({
+                id: `cash-btn-${d.id}`, label: '현금영수증',
+                enabled: !(isPending || isCardPay || isMobilePending || isMobileBank || (d.isJajoo && !isBankTransfer)),
+                act: 'cash',
+                data: { id: d.id, secret: d.secretId, jajoo: d.isJajoo ? '1' : '0', name: d.author, phone: d.phone, bank: isBankTransfer ? '1' : '0' },
+                title: (isMobilePending || isMobileBank) ? '모바일 계좌이체 건은 현금영수증 신청이 불가합니다. 세금계산서를 이용해주세요.'
+                    : (d.isJajoo && !isBankTransfer) ? '재주문 건은 고객센터로 문의해주세요.'
+                    : (isCardPay ? '카드결제 건은 카드전표를 이용해주세요.' : '')
+            }),
+            chip({ label: '간이영수증', enabled: !unpaid, act: 'popup', data: { url: `${BOARD_BASE}print3.html?${receiptParams}` } }),
+            chip({
+                id: `card-btn-${d.id}`, label: '카드전표',
+                enabled: !(isPending || isBankTransfer || isMobilePending || isMobileBank || (d.isJajoo && !isCardPay)),
+                act: 'card', data: { id: d.id, secret: d.secretId, jajoo: d.isJajoo ? '1' : '0' },
+                title: (d.isJajoo && !isCardPay) ? '재주문 건은 고객센터로 문의해주세요.'
+                    : (isBankTransfer || isMobileBank) ? '무통장 입금 건은 세금계산서/현금영수증을 이용해주세요.' : ''
+            }),
+            chip({
+                label: trackingUrl ? '출고완료/운송장보기' : '운송장', enabled: !!trackingUrl,
+                act: 'popup', data: { url: trackingUrl }, tone: 'red'
+            }),
+            (isPending || isMobilePending)
+                ? `<button type="button" data-act="delete" data-id="${esc(d.id)}" data-jajoo="${d.isJajoo ? '1' : '0'}" class="border px-2.5 py-1.5 text-xs rounded-lg font-semibold bg-slate-500 border-slate-500 text-white hover:bg-slate-700">주문삭제</button>`
+                : ''
+        ].join('');
+
+        // ---- 본문 ----
+        const bg = isCartItems ? 'bg-blue-50 border-blue-100' : (d.isJajoo ? 'bg-orange-50 border-slate-200' : 'bg-white border-slate-200');
+        const title = isCartItems
+            ? '🛒 주문내역'
+            : `${d.isJajoo ? '📦 재주문_결제즉시 제작시작건_ ' : ''}${esc(d.productName || '상품명 없음')}`;
+
+        const gridExtra = isCartItems ? '' : `
+            <div><span class="font-semibold">수량:</span> ${esc(d.quantity || '-')}</div>
+            <div><span class="font-semibold">사이즈:</span> ${esc(d.size || '-')}</div>`;
+
+        const itemsBlock = isCartItems
+            ? `<div class="mt-2"><span class="font-semibold">주문 상품:</span>${renderItemRows(d, designNo, unpaid)}</div>`
+            : '';
+
+        const cardHtml = `
+        <div class="${bg} border p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
+            <div class="text-sm font-bold text-blue-700 mb-2">📅 작성일 : ${esc(dateStr)}</div>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                <div class="min-w-0">
+                    <h2 class="font-bold text-lg mb-2 break-words">${title}</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-slate-700">
+                        <div><span class="font-semibold">작성자:</span> ${esc(d.author)}</div>
+                        <div><span class="font-semibold">상태:</span> ${esc(statusText)} <span class="text-blue-600 font-bold">${statusLabel}${statusExtra}</span></div>
+                        <div><span class="font-semibold">${isCartItems ? '총 금액' : '가격'}:</span> ${d.price ? esc(stripWon(d.price)) : '-'}원</div>
+                        ${gridExtra}
+                        <div><span class="font-semibold">전화번호:</span> ${esc(d.phone || '-')}</div>
                     </div>
                 </div>
-            `;
+                ${topButtons ? `<div class="flex flex-row sm:flex-col gap-2 flex-wrap shrink-0">${topButtons}</div>` : ''}
+            </div>
 
-            const daysSinceOrderBoard = (Date.now() - dateObj.getTime()) / (1000 * 60 * 60 * 24);
-            const isRecentBoard = !isNaN(daysSinceOrderBoard) && daysSinceOrderBoard <= ORDER_COLLAPSE_DAYS;
-            const summaryBoard = `${d.author || '-'} · ${dateStr} · ${d.productName || '상품명 없음'} · ${d.price || 0}원`;
-            resultsDiv.innerHTML += wrapCollapsible(cardHtmlBoard, isRecentBoard, `card_${d.id}`, summaryBoard);
+            <div class="mt-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
+                <div><span class="font-semibold">배송지:</span> ${esc(d.address || '-')}</div>
+                <div><span class="font-semibold">메시지:</span> ${esc(d.message || '-')}</div>
+                ${itemsBlock}
+
+                <div class="mt-2 flex items-center gap-2 flex-wrap">
+                    <span class="font-semibold">첨부파일:</span>
+                    ${fileLinks || '<span class="text-slate-400 text-xs">없음</span>'}
+                </div>
+                ${reuploadBlock}
+
+                <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${esc(designNo)}</div>
+                ${bankNotice}
+
+                <div class="mt-4 flex gap-2 flex-wrap">${chips}</div>
+            </div>
+        </div>`;
+
+        const daysSince = (Date.now() - dateObj.getTime()) / (1000 * 60 * 60 * 24);
+        const isRecent = !isNaN(daysSince) && daysSince <= ORDER_COLLAPSE_DAYS;
+        const summary = `${d.author || '-'} · ${dateStr} · ${isCartItems ? `장바구니 주문(${d.items.length}건)` : (d.productName || '상품명 없음')} · ${stripWon(d.price || 0)}원`;
+        return wrapCollapsible(cardHtml, isRecent, `card_${d.id}`, summary);
+    }
+
+    // ---------------- 결과 영역 클릭 처리 (버튼마다 onclick 문자열을 쓰지 않고 data 속성으로 처리) ----------------
+    window.toggleOrderCard = (id) => {
+        const el = $(id);
+        const arrow = $(id + '_arrow');
+        if (!el) return;
+        const opening = el.style.display === 'none';
+        el.style.display = opening ? 'block' : 'none';
+        if (arrow) arrow.textContent = opening ? '▴ 접기' : '▾ 펼쳐보기';
+    };
+
+    $('results').addEventListener('click', (e) => {
+        const el = e.target.closest('[data-act]');
+        if (!el || el.disabled) return;
+        const ds = el.dataset;
+        if (el.tagName === 'A') e.preventDefault();
+
+        switch (ds.act) {
+            case 'popup': window.openPopup(ds.url); break;
+            case 'approve': {
+                const u = safeUrl(ds.url);
+                if (u) window.open(u, '_blank', 'width=864,height=1000,scrollbars=yes');
+                break;
+            }
+            case 'sian': window.viewSianImage(ds.url, ds.fb); break;
+            case 'reorder-item': window.reorderClick(ds.key); break;
+            case 'download': window.downloadAttached(ds.url); break;
+            case 'segum': window.openSegumPageFor(ds.name, ds.phone, ds.id); break;
+            case 'cash': window.openCashPageFor(ds.id, ds.secret, ds.jajoo === '1', ds.name, ds.phone, ds.bank === '1'); break;
+            case 'card': window.openCardPageFor(ds.id, ds.secret, ds.jajoo === '1'); break;
+            case 'reupload': window.triggerFileReupload(el); break;
+            case 'delete': window.deleteOrder(ds.id, ds.jajoo === '1'); break;
+            case 'toggle': window.toggleOrderCard(ds.target); break;
+            case 'copy':
+                navigator.clipboard.writeText(ds.text || '').then(() => alert('계좌번호가 복사되었습니다.'));
+                break;
+        }
+    });
+
+    // ---------------- 파일 다운로드 / 재업로드 ----------------
+    // R2 주소(?name=작성자_타임스탬프_원본파일명)에서 원본 파일명을 뽑아 그 이름 그대로 저장합니다.
+    window.downloadAttached = async (url) => {
+        const safe = safeUrl(url);
+        if (!safe) return;
+        let filename = 'download';
+        try {
+            const name = new URL(safe).searchParams.get('name') || 'download';
+            filename = (name.match(/^.*?_\d{13}_(.+)$/) || [])[1] || name;
+        } catch (e) {}
+        try {
+            const res = await fetch(safe);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        } catch (e) {
+            console.error('다운로드 실패, 새 창으로 대체:', e);
+            window.open(safe, '_blank');
+        }
+    };
+
+    // app.js 의 uploadToR2 와 같은 방식(확장자 검사, 고유 파일명)이되 File 객체를 바로 받습니다.
+    function uploadFileToR2(file, authorName) {
+        return new Promise((resolve, reject) => {
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp', 'xlsx', 'ppt', 'pptx']; // 반드시 소문자
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!allowedExtensions.includes(ext)) {
+                reject(new Error("허용되지 않는 파일 형식입니다."));
+                return;
+            }
+            const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+            const WORKER_URL = "https://r2.ecogr.workers.dev/";
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", `${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, true);
+            xhr.setRequestHeader("Content-Type", file.type);
+            xhr.setRequestHeader("X-File-Size", file.size);
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        resolve(JSON.parse(xhr.responseText).url);
+                    } catch (e) {
+                        reject(new Error("업로드 응답을 처리하지 못했습니다."));
+                    }
+                } else {
+                    reject(new Error("업로드 실패: " + xhr.statusText));
+                }
+            };
+            xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다."));
+            xhr.send(file);
         });
-}
+    }
 
-window.deleteOrder = async (docId, isJajoo) => {
-    // 경고 메시지 내용 변경
-    if (confirm("정말로 이 주문을 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) {
-        try {
-            // isJajoo 값에 따라 컬렉션 경로를 다르게 설정
-            const collectionName = isJajoo ? "jjjj" : "boards";
-            await deleteDoc(doc(db, collectionName, docId));
-            
-            alert("삭제되었습니다.");
-            // 구글 로그인으로 조회한 화면이었으면 구글 조회를, 아니면 이름/전화번호 조회를 다시 실행
-            if (isGoogleResultView) {
-                searchByGoogle();
-            } else {
-                document.getElementById('search-btn').click();
+    // 접수에러 상태에서 '파일재업로드' 클릭 시: 바로 파일선택창을 띄우고, 고른 파일을 R2에 올린 뒤
+    // 해당 주문의 file1Url을 새 파일로 교체합니다.
+    window.triggerFileReupload = function (btn) {
+        if (!btn || btn.disabled) return;
+
+        const docId = btn.dataset.docId;
+        const col = btn.dataset.col;
+        const authorName = btn.dataset.author || '재업로드';
+
+        const tempInput = document.createElement('input');
+        tempInput.type = 'file';
+        tempInput.style.display = 'none';
+        document.body.appendChild(tempInput);
+
+        tempInput.addEventListener('change', async () => {
+            const file = tempInput.files && tempInput.files[0];
+            if (!file) { document.body.removeChild(tempInput); return; }
+
+            const MAX_SIZE = 500 * 1024 * 1024;
+            if (file.size > MAX_SIZE) {
+                alert("⚠️ 파일 용량이 500MB를 넘습니다. 500MB 미만의 파일로 다시 접수해주세요.");
+                document.body.removeChild(tempInput);
+                return;
             }
+            if (!confirm('선택한 파일로 다시 접수하시겠습니까?')) {
+                document.body.removeChild(tempInput);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.textContent = '업로드 중...';
+
+            try {
+                await ensureAnonymousLogin();
+                const newUrl = await uploadFileToR2(file, authorName);
+
+                await updateDoc(doc(db, col, docId), {
+                    file1Url: newUrl,
+                    reuploadedAt: new Date()
+                });
+
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} `
+                    + `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                btn.textContent = `수정파일 접수완료(${timeStr})`;
+                btn.classList.remove('bg-red-600', 'hover:bg-red-700', 'border-red-700', 'opacity-50');
+                btn.classList.add('bg-slate-400', 'border-slate-400');
+                btn.disabled = true;
+
+                const msgEl = $('reupload-msg-' + docId);
+                if (msgEl) msgEl.classList.add('hidden');
+
+                const fileLink = $('file1-link-' + docId);
+                if (fileLink) fileLink.dataset.url = newUrl;
+            } catch (e) {
+                if (e.code === 'permission-denied') {
+                    alert('본인이 작성한 글만 파일을 재업로드할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)');
+                } else {
+                    alert('재업로드 중 오류가 발생했습니다: ' + e.message);
+                }
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.textContent = '파일재업로드';
+            } finally {
+                document.body.removeChild(tempInput);
+            }
+        });
+
+        tempInput.click();
+    };
+
+    // ---------------- 주문삭제 (입금 확인 전 '대기'/'모바일' 건만 버튼이 보입니다) ----------------
+    window.deleteOrder = async (docId, isJajoo) => {
+        if (!confirm("정말로 이 주문을 삭제하시겠습니까?")) return;
+        try {
+            await ensureAnonymousLogin();
+            await deleteDoc(doc(db, isJajoo ? "jjjj" : "boards", docId));
+            alert("삭제되었습니다.");
+            $('search-btn').click();
         } catch (error) {
             console.error("삭제 실패:", error);
-            alert("삭제 중 오류가 발생했습니다.");
-        }
-    }
-};
-
-// 장바구니(cart.html) 쪽 주문은 별도 Firebase 프로젝트(cartDb)의 "orders" 컬렉션에
-// 저장돼 있어서, 위 deleteOrder와는 별개로 따로 삭제함
-window.deleteCartOrder = async (docId) => {
-    if (confirm("정말로 이 주문을 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.")) {
-        try {
-            await deleteDoc(doc(cartDb, "orders", docId));
-
-            alert("삭제되었습니다.");
-            if (isGoogleResultView) {
-                searchByGoogle();
+            if (error.code === 'permission-denied') {
+                alert("본인이 작성한 글만 삭제할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)");
             } else {
-                document.getElementById('search-btn').click();
+                alert("삭제 중 오류가 발생했습니다.");
             }
-        } catch (error) {
-            console.error("삭제 실패:", error);
-            alert("삭제 중 오류가 발생했습니다.");
         }
-    }
-};
-    
-    </script>
+    };
+</script>
 </body>
 </html>
