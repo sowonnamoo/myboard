@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>주문작성</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root{
+            --paper:#F1F4F6;
+            --surface:#FFFFFF;
+            --ink:#142230;
+            --ink-soft:#5B6B78;
+            --ink-faint:#94A3AD;
+            --line:#E1E6EA;
+            --teal:#2F8F86;
+            --teal-dark:#256F68;
+            --blue:#2657A6;
+            --blue-dark:#1D4685;
+            --red:#D64545;
+            --red-soft:#FBEAE9;
+            --radius-lg:20px;
+            --radius-md:14px;
+            --radius-sm:10px;
+            --shadow-card:0 1px 2px rgba(20,34,48,.04), 0 10px 28px rgba(20,34,48,.07);
+        }
+
+        *{ box-sizing:border-box; }
+
+        /* ---------- 시안보기 모달 (새 창 대신 같은 페이지 안에서 열림 —
+           브라우저 주소창/탭 높이 때문에 생기던 여백 문제를 원천적으로 없앰) ---------- */
+        .composite-modal{
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(10,14,18,0.92);
+            z-index:1000;
+            align-items:center;
+            justify-content:center;
+            padding:24px;
+            cursor:zoom-out;
+        }
+        .composite-modal.active{ display:flex; }
+        .composite-modal img{
+            max-width:100%;
+            max-height:100%;
+            display:block;
+            cursor:default;
+        }
+        .composite-modal-close{
+            position:fixed;
+            top:18px; right:20px;
+            background:rgba(255,255,255,0.12);
+            color:#fff;
+            border:1px solid rgba(255,255,255,0.25);
+            border-radius:8px;
+            padding:8px 14px;
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+        }
+        .composite-modal-close:hover{ background:rgba(255,255,255,0.2); }
+
+        body{
+            margin:0;
+            background:var(--paper);
+            color:var(--ink);
+            font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif;
+            -webkit-font-smoothing:antialiased;
+            -webkit-tap-highlight-color:transparent;
+        }
+
+        button, input{ font-family:inherit; }
+
+        button:focus-visible,
+        input:focus-visible{
+            outline:2px solid var(--blue);
+            outline-offset:2px;
+        }
+
+        .page{
+            max-width:1080px;
+            margin:0 auto;
+            padding:36px 20px 80px;
+        }
+
+        /* ---------- Header ---------- */
+        .page-header{ margin-bottom:26px; }
+        .eyebrow{
+            display:inline-block;
+            font-family:'JetBrains Mono',ui-monospace,monospace;
+            font-size:11px;
+            font-weight:600;
+            letter-spacing:.16em;
+            color:var(--teal-dark);
+            text-transform:uppercase;
+            margin:0 0 10px;
+        }
+        .page-header h1{
+            margin:0 0 8px;
+            font-size:28px;
+            font-weight:800;
+            letter-spacing:-.02em;
+        }
+        .page-header .subtitle{
+            margin:0;
+            color:var(--ink-soft);
+            font-size:13.5px;
+            line-height:1.5;
+        }
+
+        /* ---------- Layout ---------- */
+        .layout{
+            display:flex;
+            flex-direction:column;
+            gap:18px;
+        }
+        .main-col{ display:flex; flex-direction:column; gap:18px; }
+
+        @media (min-width:960px){
+            .layout{
+                display:grid;
+                grid-template-columns:1fr 360px;
+                align-items:start;
+                gap:26px;
+            }
+            .summary-col{ position:sticky; top:26px; }
+        }
+
+        .panel{
+            background:var(--surface);
+            border:1px solid var(--line);
+            border-radius:var(--radius-lg);
+            padding:22px;
+            box-shadow:var(--shadow-card);
+        }
+        .panel-title{
+            font-size:15px;
+            font-weight:700;
+            margin:0 0 14px;
+        }
+
+        /* ---------- Cart items ---------- */
+        .empty-state{
+            text-align:center;
+            padding:38px 10px;
+        }
+        .empty-title{ font-weight:700; font-size:15px; margin:0 0 6px; }
+        .empty-sub{ font-size:13px; color:var(--ink-soft); margin:0; }
+
+        .cart-item{
+            display:flex;
+            gap:14px;
+            padding:16px 0;
+            border-bottom:1px solid var(--line);
+        }
+        .cart-item:first-child{ padding-top:2px; }
+        .cart-item:last-child{ border-bottom:none; padding-bottom:2px; }
+
+        .item-no{
+            flex-shrink:0;
+            width:32px;
+            padding-top:2px;
+            font-family:'JetBrains Mono',monospace;
+            font-size:11px;
+            font-weight:600;
+            color:var(--ink-faint);
+        }
+        .item-body{ flex:1; min-width:0; }
+        .item-top{
+            display:flex;
+            justify-content:space-between;
+            align-items:baseline;
+            gap:10px;
+        }
+        .item-name{
+            font-weight:700;
+            font-size:15px;
+            overflow-wrap:anywhere;
+        }
+        .item-qty{
+            font-size:12px;
+            color:var(--ink-soft);
+            white-space:nowrap;
+            flex-shrink:0;
+        }
+        .item-detail{
+            margin-top:6px;
+            font-size:12.5px;
+            color:var(--ink-soft);
+            line-height:1.65;
+        }
+        .item-price{
+            margin-top:10px;
+            font-family:'JetBrains Mono',monospace;
+            font-weight:700;
+            font-size:15px;
+        }
+
+        .item-actions{
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+            flex-shrink:0;
+        }
+        .item-btn{
+            border:none;
+            border-radius:8px;
+            padding:8px 13px;
+            font-size:12px;
+            font-weight:700;
+            cursor:pointer;
+            white-space:nowrap;
+            transition:opacity .15s, background .15s;
+        }
+        .view-btn{ background:var(--ink); color:#fff; }
+        .view-btn:hover{ background:#26333F; }
+        .view-btn.disabled{ background:#D7DCE1; color:#fff; cursor:not-allowed; }
+        .delete-btn{ background:var(--red-soft); color:var(--red); }
+        .delete-btn:hover{ background:#F6D6D5; }
+
+        /* ---------- Form ---------- */
+        .field{ margin-bottom:14px; }
+        .field:last-child{ margin-bottom:0; }
+        .field label{
+            display:block;
+            font-size:12.5px;
+            font-weight:600;
+            color:var(--ink-soft);
+            margin-bottom:6px;
+        }
+        .field input{
+            width:100%;
+            padding:12px 14px;
+            border:1px solid var(--line);
+            border-radius:var(--radius-sm);
+            font-size:14.5px;
+            color:var(--ink);
+            background:var(--paper);
+            transition:border-color .15s, box-shadow .15s, background .15s;
+        }
+        .field input::placeholder{ color:var(--ink-faint); }
+        .field input:focus{
+            outline:none;
+            border-color:var(--blue);
+            background:#fff;
+            box-shadow:0 0 0 3px rgba(38,87,166,.12);
+        }
+        .field-hint{
+            margin:6px 0 0;
+            font-size:11.5px;
+            color:var(--ink-soft);
+            line-height:1.5;
+        }
+
+        .address-row{
+            display:flex;
+            gap:8px;
+        }
+        .address-row input{
+            flex:1;
+            min-width:0;
+            cursor:pointer;
+            background:var(--surface);
+        }
+        .address-row input::placeholder{ color:var(--ink-faint); }
+        .address-search-btn{
+            flex-shrink:0;
+            padding:0 16px;
+            border:1.5px solid var(--line);
+            border-radius:var(--radius-sm);
+            background:var(--surface);
+            color:var(--ink);
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+            white-space:nowrap;
+            transition:border-color .15s, background .15s;
+        }
+        .address-search-btn:hover{
+            border-color:var(--blue);
+            background:var(--paper);
+        }
+
+        /* ---------- Receipt / summary ---------- */
+        .receipt{
+            position:relative;
+            overflow:hidden;
+            padding-top:22px;
+        }
+        .receipt-head h2{
+            margin:2px 0 0;
+            font-size:18px;
+            font-weight:800;
+        }
+        .receipt-divider{
+            position:relative;
+            height:0;
+            margin:18px 0;
+            border:none;
+            border-top:1px dashed var(--line);
+        }
+        .receipt-divider::before,
+        .receipt-divider::after{
+            content:"";
+            position:absolute;
+            top:50%;
+            width:20px;
+            height:20px;
+            border-radius:50%;
+            background:var(--paper);
+            transform:translateY(-50%);
+        }
+        .receipt-divider::before{ left:-32px; }
+        .receipt-divider::after{ right:-32px; }
+
+        .total-price{
+            font-family:'JetBrains Mono',monospace;
+            font-size:18px;
+            font-weight:700;
+            letter-spacing:-.01em;
+            margin:0 0 18px;
+            padding:14px 16px;
+            background:var(--paper);
+            border-radius:var(--radius-sm);
+            text-align:right;
+        }
+
+        .pay-actions{
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+        }
+        .pay-btn{
+            width:100%;
+            padding:15px;
+            background:var(--blue);
+            color:#fff;
+            border:none;
+            border-radius:var(--radius-sm);
+            font-size:15.5px;
+            font-weight:700;
+            cursor:pointer;
+            transition:background .15s, transform .05s;
+        }
+        .pay-btn:hover{ background:var(--blue-dark); }
+        .pay-btn:active{ transform:scale(.99); }
+        .pay-btn:disabled{ background:#B7C3D6; cursor:not-allowed; }
+
+        .bank-btn{
+            width:100%;
+            padding:15px;
+            background:var(--surface);
+            color:var(--ink);
+            border:1.5px solid var(--line);
+            border-radius:var(--radius-sm);
+            font-size:15.5px;
+            font-weight:700;
+            cursor:pointer;
+            transition:border-color .15s, background .15s;
+        }
+        .bank-btn:hover{ border-color:var(--ink); background:var(--paper); }
+        .bank-btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+        .broken-image-warning{
+            margin-top:12px;
+            padding:12px 14px;
+            background:var(--red-soft);
+            color:var(--red);
+            border-radius:var(--radius-sm);
+            font-size:12.5px;
+            font-weight:700;
+            line-height:1.6;
+            text-align:center;
+        }
+        .item-broken-badge{
+            display:inline-block;
+            margin-top:4px;
+            padding:2px 8px;
+            background:var(--red-soft);
+            color:var(--red);
+            border-radius:20px;
+            font-size:11px;
+            font-weight:700;
+        }
+
+        .receipt-footnote{
+            margin:16px 0 0;
+            font-size:11px;
+            color:var(--ink-soft);
+            line-height:1.5;
+            text-align:center;
+        }
+
+        @media (prefers-reduced-motion:reduce){
+            *{ transition:none !important; animation:none !important; }
+        }
+
+        @media (max-width:480px){
+            .page{ padding:26px 14px 60px; }
+            .panel{ padding:18px; }
+            .page-header h1{ font-size:24px; }
+        }
+    </style>
+
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+
+        // ---- 주문(boards) 저장용 Firebase 프로젝트: index1.html / app.js 와 동일한 board-291e3 ----
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+            authDomain: "board-291e3.firebaseapp.com",
+            projectId: "board-291e3",
+            storageBucket: "board-291e3.firebasestorage.app",
+            messagingSenderId: "25881766316",
+            appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.db = db;
+
+        // ---- 결제 기록(cards1) 전용 프로젝트: app.js 의 paymentLogApp 과 동일 (ecogr-636c6) ----
+        const paymentLogApp = initializeApp({
+            apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+            authDomain: "ecogr-636c6.firebaseapp.com",
+            projectId: "ecogr-636c6",
+            storageBucket: "ecogr-636c6.firebasestorage.app",
+            messagingSenderId: "95745358447",
+            appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+        }, "paymentLogApp");
+        const paymentDb = getFirestore(paymentLogApp);
+
+        // 결제 성공 기록. 실패해도 결제 자체는 성공한 것이므로 예외를 던지지 않습니다.
+        window.logCardPayment = async function(record) {
+            try {
+                await addDoc(collection(paymentDb, "cards1"), JSON.parse(JSON.stringify(record)));
+            } catch (e) {
+                console.error("cards1 기록 실패(결제 자체는 성공):", e);
+            }
+        };
+
+        // ================= 보안 저장 (index1.html / app.js 와 동일한 방식) =================
+        // 1) 방문자마다 익명 로그인으로 uid 발급 -> 문서에 uid 저장 (본인/관리자만 수정·삭제하도록 규칙에서 검사)
+        // 2) 공개 문서 boards/{id} 에는 전화번호/주소를 절대 넣지 않음
+        // 3) 전화번호/주소는 boards/{id}/private/{secretId} 에만 저장
+        //    secretId = SHA-256(주문ID::이름::전화번호 뒷4자리)  -> 이름+뒷4자리를 아는 사람만 조회 가능
+        // 4) 관리자 조회용으로 adminOrders/{id} 에도 동일한 개인정보 저장
+        const auth = getAuth(app);
+        let resolveAuthReady;
+        const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveAuthReady(user);
+            } else {
+                signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+            }
+        });
+        // 익명 로그인이 실패해도 영원히 멈춰있지 않도록 10초 후 오류 처리
+        window.ensureAnonymousLogin = () => Promise.race([
+            authReadyPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("익명 로그인 시간 초과")), 10000))
+        ]);
+
+        async function sha256Hex(text) {
+            const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+        }
+        // app.js 의 computeSecretId 와 반드시 같은 정규화/조합이어야 주문조회(index1/index5)에서 열립니다.
+        function normalizeName(name) { return String(name || "").trim(); }
+        function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
+        async function computeSecretId(boardId, author, phone) {
+            return sha256Hex(`${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`);
+        }
+
+        // cart 항목 -> index1 의 boards 문서 필드(productName/quantity/size) 형태로 변환
+        function buildBoardFields(items) {
+            const names = items.map(it => it.item || it.productName || it.name || '상품');
+            const qtys = items.map(it => `${it.qty || ''}개` + ((it.count && it.count != 1) ? ` × ${it.count}건` : ''));
+            const sizes = items.map(it => (it.width && it.height) ? `${it.width} x ${it.height}mm` : (it.size || ''));
+            const extras = items.map(it => [
+                it.paper ? `용지: ${it.paper}` : '',
+                it.ink ? `편집: ${it.ink}` : '',
+                it.finishings ? `후가공: ${it.finishings}` : ''
+            ].filter(Boolean).join(', '));
+            return {
+                productName: names.join(' / '),
+                quantity: qtys.join(' / '),
+                size: extras.some(Boolean)
+                    ? `${sizes.join(' / ')} (${extras.map(x => x || '-').join(' / ')})`
+                    : sizes.join(' / ')
+            };
+        }
+
+        // <<SAVE_BEGIN>>
+        window.saveSecureOrder = async function(o) {
+            const user = await window.ensureAnonymousLogin();
+            // undefined 값이 하나라도 있으면 Firestore가 저장을 거부하므로 미리 정리
+            const items = JSON.parse(JSON.stringify(Array.isArray(o.items) ? o.items : []));
+            const fields = buildBoardFields(items);
+            const originalFiles = items.flatMap(it => Array.isArray(it.originalImageUrls) ? it.originalImageUrls : []);
+
+            const boardRef = doc(collection(db, "boards"));
+            const boardId = boardRef.id;
+            const secretId = await computeSecretId(boardId, o.name, o.phone);
+
+            // 1. 공개 문서 (개인정보 없음). index1 의 boards 문서와 같은 필드 + 장바구니 전용 필드
+            await setDoc(boardRef, {
+                author: o.name,
+                productName: fields.productName,
+                quantity: fields.quantity,
+                size: fields.size,
+                price: `${o.total}원`,
+                file1Url: originalFiles[0] ? originalFiles[0].url : null,
+                file2Url: originalFiles[1] ? originalFiles[1].url : null,
+                ip: o.ip || '',
+                uid: user.uid,
+                createdAt: new Date(),      // index1 목록이 createdAt.toDate() 를 쓰므로 반드시 Date(=Timestamp)
+                isDeleted: false,
+                status: o.status,
+                fromCart: true,
+                // ---- cart 전용 추가 필드 ----
+                paymentId: o.orderId || '',
+                items: items,
+                originalFiles: originalFiles
+            });
+
+            // 2. 개인정보 (index1 과 동일한 순서로 순차 저장 - 기존 Firestore 규칙과 호환)
+            await setDoc(doc(db, "boards", boardId, "private", secretId), {
+                phone: o.phone,
+                address: o.address,
+                message: '',
+                uid: user.uid
+            });
+
+            // 3. 관리자 페이지 조회용
+            await setDoc(doc(db, "adminOrders", boardId), {
+                phone: o.phone,
+                address: o.address,
+                message: '',
+                uid: user.uid
+            });
+            return boardId;
+        };
+        // <<SAVE_END>>
+
+        // ---- IP 차단 확인: index1/app.js 와 같은 프로젝트(blocked_ips)를 그대로 사용 ----
+        function showBlockedOverlay() {
+            document.documentElement.innerHTML = `
+                <body style="margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f8f9fa; font-family:'Pretendard','Malgun Gothic',sans-serif;">
+                    <div style="text-align:center; padding:40px;">
+                        <div style="font-size:44px; margin-bottom:12px;">🚫</div>
+                        <h1 style="font-size:20px; font-weight:800; color:#1f2937; margin:0 0 8px;">접근이 제한되었습니다</h1>
+                        <p style="font-size:13px; color:#6b7280; line-height:1.6;">비정상적인 이용이 감지되어 접속이 제한된 상태입니다.<br>문의사항은 고객센터로 연락해주세요.</p>
+                    </div>
+                </body>
+            `;
+        }
+
+        (async function checkIpBlocked() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const { ip } = await res.json();
+                if (!ip) return;
+                try { await window.ensureAnonymousLogin(); } catch (e) { /* 로그인 실패해도 조회는 시도 */ }
+                const snap = await getDoc(doc(db, "blocked_ips", ip));
+                if (snap.exists()) {
+                    showBlockedOverlay();
+                }
+            } catch (e) {
+                // IP 확인 자체가 실패하면(네트워크 문제 등) 정상 이용자를 막지 않도록 그냥 통과시킴
+                console.error('IP 차단 확인 실패:', e);
+            }
+        })();
+    </script>
+</head>
+<body>
+
+<div class="composite-modal" id="composite-modal" onclick="closeCompositeModal()">
+    <button type="button" class="composite-modal-close" onclick="event.stopPropagation(); closeCompositeModal()">닫기 ✕</button>
+    <img id="composite-modal-img" src="" alt="시안 이미지" onclick="event.stopPropagation()">
+</div>
+
+<div class="page">
+    <header class="page-header">
+        <p class="eyebrow">ECOGR ORDER</p>
+        <h1>주문서</h1>
+        <p class="subtitle">장바구니에 담긴 상품과 주문자 정보를 확인한 뒤 결제를 진행해주세요.</p>
+    </header>
+
+    <div class="layout">
+        <div class="main-col">
+            <section class="panel">
+                <h2 class="panel-title">담긴 상품</h2>
+                <div id="cart-list"></div>
+            </section>
+
+            <section class="panel form-box">
+                <h2 class="panel-title">주문자 정보</h2>
+
+                <div class="field">
+                    <label for="name">성함</label>
+                    <input id="name" type="text" placeholder="홍길동" />
+                    <p class="field-hint">공백·괄호 없이 입력해주세요. 주문조회 시 성함과 전화번호 뒷 4자리로 확인합니다.</p>
+                </div>
+
+                <div class="field">
+                    <label for="phone">전화번호</label>
+                    <input id="phone" type="tel" placeholder="010-0000-0000" />
+                    <p class="field-hint">작업자 핸드폰 번호를 입력해주세요. (숫자 11자리, 잘못 입력하면 결제창이 열리지 않아요.)</p>
+                </div>
+
+                <div class="field">
+                    <label for="address">주소</label>
+                    <div class="address-row">
+                        <input id="address" type="text" placeholder="주소 검색을 눌러주세요" readonly />
+                        <button type="button" id="addressSearchBtn" class="address-search-btn">주소 검색</button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="detailAddress">상세주소</label>
+                    <input id="detailAddress" type="text" placeholder="동/호수 등 상세 주소" />
+                </div>
+            </section>
+        </div>
+
+        <aside class="summary-col">
+            <div class="panel receipt">
+                <div class="receipt-head">
+                    <p class="eyebrow">ORDER SUMMARY</p>
+                    <h2>결제 정보</h2>
+                </div>
+
+                <div class="receipt-divider"></div>
+
+                <div id="total-price" class="total-price">총 결제금액 : 0원</div>
+
+                <div class="pay-actions">
+                    <button id="payCardBtn" class="pay-btn" onclick="goCard()">카드결제</button>
+                    <button id="payBankBtn" class="bank-btn" onclick="goBankTransfer()">무통장 입금</button>
+                </div>
+
+                <div id="broken-image-warning" class="broken-image-warning" style="display:none;">
+                    ⚠ 만료된 시안 이미지가 있어 결제를 진행할 수 없습니다.<br>해당 상품을 삭제 후 다시 담아주세요.
+                </div>
+
+                <p class="receipt-footnote">결제를 진행하면 이용약관 및 개인정보 처리방침에 동의한 것으로 간주됩니다.</p>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script src="shipping.js"></script>
+<script>
+// 장바구니(cart) 저장소 — 원래 localStorage를 썼는데, 도메인당 5~10MB 한도라
+// 아직 R2에 안 올라간 원본 이미지(SVG/고해상도 JPEG data URL)를 여러 개 담으면
+// 금방 한도를 넘겨버려서 "용량이 너무 커서 저장 실패" 오류가 났음. 한도가 훨씬
+// 넉넉한 IndexedDB로 교체함 (sian.html이 장바구니에 담을 때 쓰는 것과 동일한
+// DB/스토어 이름을 써야 서로 읽고 쓸 수 있음).
+const HANDOFF_DB_NAME = 'ecogrHandoff';
+const HANDOFF_STORE_NAME = 'kv';
+const CART_KEY = 'ecogr_cart';
+// 카트 보관시간 — 카트에 상품이 담긴 그날 자정(00:00)이 지나면 전체 삭제.
+// (sian.html에서 담는 시점 자체는 이 파일이 알 수 없어서, cart.html이 그 상태를 처음 확인한
+// 시점을 기준으로 "다음에 돌아오는 자정" 을 삭제 시각으로 잡음)
+const CART_EXPIRY_KEY = 'ecogr_cart_expires_at';
+function getNextMidnightMs(){
+    const d = new Date();
+    d.setHours(24, 0, 0, 0); // 오늘 24:00 = 다음날 00:00
+    return d.getTime();
+}
+function openHandoffDB(){
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(HANDOFF_DB_NAME, 1);
+        req.onupgradeneeded = () => { req.result.createObjectStore(HANDOFF_STORE_NAME); };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbSet(key, value){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+        tx.objectStore(HANDOFF_STORE_NAME).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+async function idbGet(key){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDOFF_STORE_NAME, 'readonly');
+        const req = tx.objectStore(HANDOFF_STORE_NAME).get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbDelete(key){
+    const db = await openHandoffDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(HANDOFF_STORE_NAME, 'readwrite');
+        tx.objectStore(HANDOFF_STORE_NAME).delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+// 각 결제 수단별 독립적인 Worker 주소
+const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/"; 
+const WORKER_PAYPAL = "";
+
+// ---- Cloudflare Worker를 통한 실제 R2 업로드 (시안에서 넘어온 원본 이미지들을 여기서 업로드) ----
+const R2_WORKER_URL = "https://r2.ecogr.workers.dev/";
+const R2_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const R2_ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+
+function getExtFromFilename(filename, fallback){
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    return ext || fallback;
+}
+
+// data URL(또는 일반 URL) 문자열을 Blob으로 변환
+async function urlToBlob(url){
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`이미지를 불러오지 못했습니다 (status ${res.status})`);
+    return await res.blob();
+}
+
+// filename의 파일을 PUT으로 Worker(R2)에 올리고, 업로드된 파일의 URL을 돌려받는다.
+// Worker 응답이 JSON({url:"..."}) 이든, URL 문자열 그대로든 둘 다 처리한다.
+async function uploadFileToR2(blob, filename){
+    const ext = getExtFromFilename(filename, 'jpg');
+    if(!R2_ALLOWED_EXTENSIONS.includes(ext)){
+        throw new Error(`허용되지 않는 파일 형식입니다: .${ext}`);
+    }
+    if(blob.size > R2_MAX_FILE_SIZE){
+        throw new Error(`파일 크기가 너무 큽니다. (최대 500MB, 현재 ${(blob.size / 1024 / 1024).toFixed(1)}MB)`);
+    }
+
+    // 예시 페이지(정상 동작 중)와 동일하게 파일명을 쿼리스트링(?name=)으로 전달합니다.
+    const res = await fetch(`${R2_WORKER_URL}?name=${encodeURIComponent(filename)}`, {
+        method: 'PUT',
+        body: blob
+    });
+
+    if(!res.ok){
+        throw new Error(`R2 업로드 실패 (status ${res.status})`);
+    }
+
+    let fileUrl = '';
+    try {
+        const data = await res.clone().json();
+        fileUrl = data.url || data.fileUrl || '';
+    } catch(e){ /* JSON이 아니면 아래에서 텍스트로 재시도 */ }
+
+    if(!fileUrl){
+        fileUrl = (await res.text()).trim();
+    }
+
+    if(!fileUrl){
+        throw new Error('R2 응답에서 파일 URL을 찾을 수 없습니다.');
+    }
+    return fileUrl;
+}
+
+// 장바구니에 담긴 항목 중 아직 R2에 업로드되지 않은 원본 이미지들(item.originalImages)을
+// 모두 업로드하고, 결과 URL을 item.originalImageUrls 에 채워 넣은 뒤 localStorage에 반영한다.
+// 카드결제 시작 직전에 호출한다.
+async function uploadRemainingOriginals(onProgress){
+    let total = 0, done = 0;
+    cart.forEach(item => { if(Array.isArray(item.originalImages)) total += item.originalImages.length; });
+
+    for(const item of cart){
+        if(!Array.isArray(item.originalImages) || item.originalImages.length === 0) continue;
+
+        const uploadedUrls = [];
+        for(const orig of item.originalImages){
+            const blob = await urlToBlob(orig.sourceUrl);
+            const url = await uploadFileToR2(blob, orig.filename);
+            uploadedUrls.push({ filename: orig.filename, url });
+            done++;
+            if(onProgress) onProgress(done, total);
+        }
+
+        item.originalImageUrls = uploadedUrls;
+        delete item.originalImages; // 업로드가 끝난 원본 데이터(용량이 큰 data URL)는 더 이상 들고 있지 않는다.
+    }
+
+    await idbSet(CART_KEY, cart);
+}
+
+let cart = [];
+let total = 0;
+
+// ---- 만료된(깨진) 시안 이미지 감지 -> 결제 차단 ----
+let brokenImageIndexes = new Set(); // 로드 실패(만료)한 시안 이미지가 있는 cart index들
+
+function testImageLoads(url){
+    return new Promise((resolve) => {
+        if(!url){ resolve(false); return; }
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+    });
+}
+
+// 상품 하나의 시안 이미지가 정상인지 확인. compositeImage가 실패하면 fallback도 시도.
+// 애초에 시안 이미지 URL 자체가 없는 상품(기존 방식)은 "만료"가 아니라 "없음"이므로 통과시킴.
+async function checkItemImage(item){
+    const primary = (item.compositeImage && /^https?:\/\//.test(item.compositeImage)) ? item.compositeImage : '';
+    const fallback = (item.compositeImageFallback && /^https?:\/\//.test(item.compositeImageFallback)) ? item.compositeImageFallback : '';
+
+    if(!primary && !fallback) return true; // 표시할 시안 이미지 자체가 없음 -> 만료 판정 대상 아님
+
+    if(primary && await testImageLoads(primary)) return true;
+    if(fallback && await testImageLoads(fallback)) return true;
+    return false; // 있는 이미지가 전부 로드 실패 -> 만료(깨진 링크)
+}
+
+async function validateCartImages(){
+    const newBroken = new Set();
+    await Promise.all(cart.map(async (item, index) => {
+        const ok = await checkItemImage(item);
+        if(!ok) newBroken.add(index);
+    }));
+    brokenImageIndexes = newBroken;
+    render();
+    updateCheckoutAvailability();
+}
+
+function updateCheckoutAvailability(){
+    const hasBroken = brokenImageIndexes.size > 0;
+    const cardBtn = document.getElementById('payCardBtn');
+    const bankBtn = document.getElementById('payBankBtn');
+    if(cardBtn) cardBtn.disabled = hasBroken;
+    if(bankBtn) bankBtn.disabled = hasBroken;
+    const warningEl = document.getElementById('broken-image-warning');
+    if(warningEl) warningEl.style.display = hasBroken ? 'block' : 'none';
+}
+
+// ---- 다음(카카오) 우편번호 서비스로 주소 검색 ----
+document.getElementById('addressSearchBtn').addEventListener('click', function () {
+    new daum.Postcode({
+        oncomplete: function (data) {
+            let fullAddress = data.address;
+            let extraAddress = '';
+
+            if (data.addressType === 'R') {
+                if (data.bname !== '') extraAddress += data.bname;
+                if (data.buildingName !== '') {
+                    extraAddress += (extraAddress !== '' ? ', ' + data.buildingName : data.buildingName);
+                }
+                if (extraAddress !== '') fullAddress += ' (' + extraAddress + ')';
+            }
+
+            document.getElementById('address').value = fullAddress;
+            document.getElementById('detailAddress').focus();
+
+            // 주소가 바뀌면(특히 제주/울릉 등 착불 대상 여부가 바뀔 수 있으므로)
+            // 총 결제금액·배송비 표시를 다시 계산합니다.
+            render();
+        }
+    }).open();
+});
+
+// ---- 주문자 정보 공통 유효성 검사 (이름 / 핸드폰 11자리 / 주소 / 상세주소) ----
+function validateOrderForm(){
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const detailAddress = document.getElementById("detailAddress").value.trim();
+
+    if(!name){
+        alert("성함을 입력해주세요.");
+        return false;
+    }
+
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    if(!phone || phoneDigits.length !== 11){
+        alert("작업자 핸드폰 번호를 11자리 숫자로 정확히 입력해주세요.\n(예: 01012345678)\n번호가 잘못되면 결제창이 호출되지 않습니다.");
+        return false;
+    }
+
+    if(!address){
+        alert("주소 검색 버튼을 눌러 주소를 입력해주세요.");
+        return false;
+    }
+
+    if(!detailAddress){
+        alert("상세주소를 입력해주세요.");
+        return false;
+    }
+
+    return true;
+}
+
+function render(){
+    const list = document.getElementById("cart-list");
+    let subtotal = 0;
+
+    if(cart.length === 0){
+        list.innerHTML = `<div class="empty-state">
+            <p class="empty-title">담긴 상품이 없어요</p>
+            <p class="empty-sub">시안 페이지에서 주문할 상품을 먼저 담아주세요.</p>
+        </div>`;
+    } else {
+        list.innerHTML = "";
+        cart.forEach((item,index)=>{
+            // price가 "12,345원" 같은 문자열로 들어와도 안전하게 숫자로 변환
+            const priceNumber = Number(String(item.price).replace(/[^0-9.-]/g, '')) || 0;
+            subtotal += priceNumber;
+
+            // 01my.html → 에코프로1 → 시안보기를 거쳐 넘어온 상세 주문정보(용지/편집/후가공/무게)가
+            // 있으면 함께 표시하고, 없으면(기존 방식으로 담긴 항목) 기본 정보만 표시한다.
+            const detailLines = [
+                (item.width && item.height) ? `${item.width} × ${item.height}mm` : '',
+                item.paper ? `용지: ${item.paper}` : '',
+                item.ink ? `편집: ${item.ink}` : '',
+                item.finishings ? `후가공: ${item.finishings}` : '',
+                item.weight ? `무게: 약 ${item.weight}kg` : ''
+            ].filter(Boolean).join('<br/>');
+
+            list.innerHTML += `
+            <div class="cart-item">
+                <div class="item-no">No.${String(index + 1).padStart(2, '0')}</div>
+                <div class="item-body">
+                    <div class="item-top">
+                        <div class="item-name">${item.item}</div>
+                        <div class="item-qty">${item.qty}개${item.count && item.count != 1 ? ` × ${item.count}건` : ''}</div>
+                    </div>
+                    ${detailLines ? `<div class="item-detail">${detailLines}</div>` : ''}
+                    <div class="item-price">${priceNumber.toLocaleString()}원</div>
+                    ${brokenImageIndexes.has(index) ? `<div class="item-broken-badge">⚠ 시안 이미지 만료됨</div>` : ''}
+                </div>
+                <div class="item-actions">
+                    ${ brokenImageIndexes.has(index)
+                        ? `<button disabled class="item-btn view-btn disabled">만료됨</button>`
+                        : (item.compositeImage && /^https?:\/\//.test(item.compositeImage)) || (item.compositeImageFallback && /^https?:\/\//.test(item.compositeImageFallback))
+                            ? `<button onclick="viewComposite(${index})" class="item-btn view-btn">시안보기</button>`
+                            : `<button disabled class="item-btn view-btn disabled">시안보기</button>` }
+                    <button onclick="deleteItem(${index})" class="item-btn delete-btn">삭제</button>
+                </div>
+            </div>`;
+        });
+    }
+
+    // shipping.js의 calculateShippingFee()로 묶음배송 여부 + 무게 구간 + 착불(제주/울릉) 여부를 반영해 배송비 계산.
+    // 이 파일의 cart 항목은 상품명이 item.item에 들어있어서, shipping.js가 기대하는
+    // productName 필드로 맞춰서 전달한다.
+    const addressForShipping = (document.getElementById('address')?.value || '')
+        + ' ' + (document.getElementById('detailAddress')?.value || '');
+    const mappedForShipping = cart.map(it => ({
+        productId: it.productId || '',
+        productName: it.item || it.productName || it.name || '',
+        weight: it.weight,
+        options: it.options
+    }));
+    const shippingResult = (typeof calculateShippingFee === 'function')
+        ? calculateShippingFee(mappedForShipping, addressForShipping)
+        : { totalFee: 0, breakdown: [], cashOnDelivery: false };
+    const shippingFee = shippingResult.totalFee;
+    total = subtotal + shippingFee;
+
+    const totalPriceEl = document.getElementById("total-price");
+    const totalLabel = `<span style="color:var(--blue);">총 결제금액</span>`;
+    if(cart.length === 0){
+        totalPriceEl.innerHTML = `<div>${totalLabel} : 0원</div>`;
+    } else if(shippingResult.cashOnDelivery){
+        totalPriceEl.innerHTML = `
+            <div>${totalLabel} : ${total.toLocaleString()}원</div>
+            <div style="font-size:11px;font-weight:500;color:var(--ink-soft);margin-top:4px;">배송비 착불·도서산간 — 상품 도착 시 별도 결제</div>`;
+    } else if(shippingFee > 0){
+        totalPriceEl.innerHTML = `
+            <div>${totalLabel} : ${total.toLocaleString()}원</div>
+            <div style="font-size:11px;font-weight:500;color:var(--ink-soft);margin-top:4px;">상품 ${subtotal.toLocaleString()}원 + 배송비 ${shippingFee.toLocaleString()}원</div>`;
+    } else {
+        totalPriceEl.innerHTML = `<div>${totalLabel} : ${total.toLocaleString()}원</div>`;
+    }
+}
+
+window.deleteItem = async function(index){
+    cart.splice(index,1);
+    await idbSet(CART_KEY, cart);
+    if(cart.length === 0){
+        await idbDelete(CART_EXPIRY_KEY); // 카트가 비면 보관시간 카운트도 초기화
+    }
+    render();
+    validateCartImages();
+};
+
+// R2 원본(compositeImage)을 1차로 보여주고, 나중에 관리자가 R2에서 지우고
+// 카페24로 옮겨두면(compositeImageFallback) 로드 실패 시 자동으로 그쪽을 대신 보여줌
+window.viewComposite = function(index){
+    const item = cart[index];
+    if(!item) return;
+    const primary = item.compositeImage || item.compositeImageFallback;
+    const fallback = item.compositeImageFallback;
+    if(!primary) return;
+    const modalImg = document.getElementById('composite-modal-img');
+    const overlay = document.getElementById('composite-modal');
+    modalImg.onerror = () => {
+        if (fallback && modalImg.src !== fallback) {
+            modalImg.onerror = null;
+            modalImg.src = fallback;
+        } else {
+            modalImg.onerror = null;
+        }
+    };
+    modalImg.src = primary;
+    overlay.classList.add('active');
+};
+window.closeCompositeModal = function(){
+    const overlay = document.getElementById('composite-modal');
+    overlay.classList.remove('active');
+    document.getElementById('composite-modal-img').src = '';
+    document.getElementById('composite-modal-img').onerror = null;
+};
+
+// [추가] 주문자의 공개 IP를 가져옴 (무료 공개 서비스, 키 필요 없음) — 실패해도 주문 저장 자체는 진행됨
+async function fetchClientIp() {
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        return data.ip || '';
+    } catch (e) {
+        console.error('IP 조회 실패:', e);
+        return '';
+    }
+}
+
+// 반환값: 저장 성공 true / 실패 false (조용히 넘기면 결제만 되고 주문이 사라질 수 있어 호출하는 쪽에서 확인)
+// 상태값은 index1 과 동일: 카드결제 -> '카드결제', 무통장입금 -> '모바일'(입금 확인 전, 관리자가 확인 후 '모바일무통장'으로 전환)
+async function saveOrderToFirestore(orderData) {
+    try {
+        const ip = await fetchClientIp();
+        await window.saveSecureOrder({
+            ...orderData,
+            ip,
+            status: (orderData.payment === "무통장입금") ? "모바일" : "카드결제"
+        });
+        return true;
+    } catch (e) {
+        console.error("Firestore 저장 실패:", e);
+        return false;
+    }
+}
+
+function saveOrder(type, paymentId){
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
+    const orderData = { orderId: paymentId, name, phone, address, total, items: cart, payment: type, createdAt: new Date().toISOString() };
+    localStorage.setItem("latestOrder", JSON.stringify(orderData));
+    return orderData;
+}
+
+// [1] 카드 결제 전용 (KCP)
+window.goCard = async function() {
+    if(!validateOrderForm()) return;
+    if(brokenImageIndexes.size > 0){
+        alert("만료된 시안 이미지가 있어 결제를 진행할 수 없습니다.\n해당 상품을 삭제 후 다시 담아주세요.");
+        return;
+    }
+
+    const btn = document.querySelector('.pay-btn');
+    const originalText = btn ? btn.textContent : '';
+    if(btn) btn.disabled = true;
+
+    try {
+        // 1. 아직 R2에 올라가지 않은 원본 이미지들을 먼저 업로드한다.
+        const totalToUpload = cart.reduce((sum, item) => sum + (Array.isArray(item.originalImages) ? item.originalImages.length : 0), 0);
+        if(totalToUpload > 0){
+            if(btn) btn.textContent = `원본 이미지 업로드 중... (0/${totalToUpload})`;
+            await uploadRemainingOriginals((done, total) => {
+                if(btn) btn.textContent = `원본 이미지 업로드 중... (${done}/${total})`;
+            });
+        }
+
+        // 2. 카드결제 채널 정보를 받아와 결제창을 띄운다.
+        if(btn) btn.textContent = '결제창 준비 중...';
+        const res = await fetch(WORKER_CARD);
+        const data = await res.json();
+        await processPayment("카드결제", "CARD", "KRW", data.CHANNEL_KEY_CARD, data.STORE_ID);
+    } catch (e) {
+        console.error(e);
+        alert("카드결제 준비 중 오류가 발생했습니다.\n" + (e.message || "서버 연결을 확인하세요."));
+    } finally {
+        if(btn){ btn.disabled = false; btn.textContent = originalText; }
+    }
+};
+
+
+
+// [3] 핵심 결제 처리 엔진 (공통)
+async function processPayment(paymentType, payMethod, currency, channelKey, storeId) {
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
+
+    if(!validateOrderForm()){ return; }
+
+    try {
+        const paymentId = "PAY_" + Date.now();
+        const orderData = saveOrder(paymentType, paymentId);
+
+        const response = await PortOne.requestPayment({
+            storeId: storeId,
+            channelKey: channelKey,
+            paymentId: paymentId,
+            orderName: "주문상품",
+            totalAmount: Number(total),
+            currency: currency,
+            payMethod: payMethod,
+            customer: { name: name, phoneNumber: String(phone) },
+            // index1 과 동일: 모바일에서 앱카드 인증(카드사 앱 전환)이 되도록 모바일은 POPUP
+            windowType: { pc: 'IFRAME', mobile: 'POPUP' }
+        });
+
+        if(response.code != null){ alert("결제 실패: " + response.message); return; }
+
+        // 결제기록(cards1) - index1 과 동일한 필드
+        await window.logCardPayment({
+            paymentId: paymentId,
+            tno: response.pgTxId || response.txId,
+            amount: Number(total),
+            phone: localStorage.getItem("userPhone") || "정보없음",
+            payMethod: payMethod,
+            status: "결제완료",
+            createdAt: new Date().toISOString(),
+            fullData: response
+        });
+
+        const saved = await saveOrderToFirestore(orderData);
+        if(!saved){
+            // 결제는 이미 끝난 상태 -> 장바구니는 지우지 않고 결제번호를 안내
+            alert("결제는 완료되었으나 주문 저장 중 오류가 발생했습니다.\n결제번호: " + paymentId + "\n이 번호를 관리자에게 알려주세요. (다시 결제하지 마세요)");
+            return;
+        }
+        await idbDelete(CART_KEY);
+        await idbDelete(CART_EXPIRY_KEY);
+        // cart 가 /myboard/ 로 옮겨졌으므로 상대경로 대신 기존 위치(/myjs/includes/)의 절대경로 사용
+        location.href = "/myjs/includes/success.html";
+    } catch(error) {
+        console.error(error);
+        alert("결제창 호출 실패. 서버 연결을 확인하세요.");
+    }
+}
+
+window.goBankTransfer = async function(){
+    if(!validateOrderForm()) return;
+    if(brokenImageIndexes.size > 0){
+        alert("만료된 시안 이미지가 있어 결제를 진행할 수 없습니다.\n해당 상품을 삭제 후 다시 담아주세요.");
+        return;
+    }
+
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim() + " " + document.getElementById("detailAddress").value.trim();
+
+    const btn = document.querySelector('.bank-btn');
+    const originalText = btn ? btn.textContent : '';
+    if(btn) btn.disabled = true;
+
+    try {
+        // 1. 카드결제와 동일하게, 아직 R2에 올라가지 않은 원본 이미지들을 먼저 업로드한다.
+        const totalToUpload = cart.reduce((sum, item) => sum + (Array.isArray(item.originalImages) ? item.originalImages.length : 0), 0);
+        if(totalToUpload > 0){
+            if(btn) btn.textContent = `원본 이미지 업로드 중... (0/${totalToUpload})`;
+            await uploadRemainingOriginals((done, total) => {
+                if(btn) btn.textContent = `원본 이미지 업로드 중... (${done}/${total})`;
+            });
+        }
+
+        // 2. 업로드가 끝난 뒤에만 주문 저장 + success2.html 이동
+        if(btn) btn.textContent = '주문 저장 중...';
+        const orderId = "BANK_" + Date.now();
+        const orderData = saveOrder("무통장입금", orderId);
+        const saved = await saveOrderToFirestore(orderData);
+        if(!saved){
+            alert("주문 저장 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요. (무통장입금은 아직 접수되지 않았습니다)");
+            return;
+        }
+        await idbDelete(CART_KEY);
+        await idbDelete(CART_EXPIRY_KEY);
+        location.href = "/myjs/success2";
+    } catch(e) {
+        console.error(e);
+        alert("무통장입금 주문 처리 중 오류가 발생했습니다.\n" + (e.message || "서버 연결을 확인하세요."));
+    } finally {
+        if(btn){ btn.disabled = false; btn.textContent = originalText; }
+    }
+};
+
+document.getElementById('name').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[\s()]/g, '');
+});
+
+document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') window.closeCompositeModal();
+});
+
+(async function(){
+    try {
+        cart = (await idbGet(CART_KEY)) || [];
+    } catch (e) {
+        console.error('장바구니를 불러오지 못했습니다:', e);
+        cart = [];
+    }
+
+    // ---- 카트 보관시간(그날 자정까지) 체크 ----
+    try {
+        let expiresAt = await idbGet(CART_EXPIRY_KEY);
+        const now = Date.now();
+
+        if(cart.length > 0){
+            if(!expiresAt){
+                // 이 카트에 상품이 담긴 걸 처음 확인한 시점 기준, 다음에 돌아오는 자정을 삭제 시각으로 저장
+                expiresAt = getNextMidnightMs();
+                await idbSet(CART_EXPIRY_KEY, expiresAt);
+            } else if(now >= expiresAt){
+                // 자정이 지남 -> 카트 전체 삭제 (메시지 없음)
+                cart = [];
+                await idbDelete(CART_KEY);
+                await idbDelete(CART_EXPIRY_KEY);
+                expiresAt = null;
+            }
+        } else if(expiresAt){
+            // 카트가 비어있는데 만료 타이머만 남아있으면 같이 정리
+            await idbDelete(CART_EXPIRY_KEY);
+            expiresAt = null;
+        }
+
+        // 페이지를 계속 열어둔 상태로 자정을 넘기면, 새로고침 없이도 자동으로 비움 (메시지 없음)
+        if(expiresAt && expiresAt > now){
+            setTimeout(async () => {
+                cart = [];
+                await idbDelete(CART_KEY);
+                await idbDelete(CART_EXPIRY_KEY);
+                render();
+                validateCartImages();
+            }, expiresAt - now);
+        }
+    } catch (e) {
+        console.error('장바구니 보관시간 처리 실패:', e);
+    }
+
+    render();
+    validateCartImages();
+})();
+</script>
+
+</body>
+</html>
