@@ -367,6 +367,22 @@
         .bank-btn:hover{ border-color:var(--ink); background:var(--paper); }
         .bank-btn:disabled{ opacity:.6; cursor:not-allowed; }
 
+        /* 계좌이체(PC 전용, index1 의 epay-transfer-btn 이식) */
+        .transfer-btn{
+            width:100%;
+            padding:15px;
+            background:var(--surface);
+            color:var(--ink);
+            border:1.5px solid var(--line);
+            border-radius:var(--radius-sm);
+            font-size:15.5px;
+            font-weight:700;
+            cursor:pointer;
+            transition:border-color .15s, background .15s;
+        }
+        .transfer-btn:hover{ border-color:var(--ink); background:var(--paper); }
+        .transfer-btn:disabled{ opacity:.6; cursor:not-allowed; }
+
         /* 무통장 입금 선택 시에만 열리는 환불계좌 입력란 */
         .bank-refund-box{
             display:none;
@@ -683,6 +699,8 @@
                         </div>
                         <p class="field-hint">입력하신 뒤 아래 <b>무통장 입금 신청</b> 버튼을 눌러주세요.</p>
                     </div>
+
+                    <button id="payTransferBtn" class="transfer-btn" onclick="goTransfer()">계좌이체</button>
                 </div>
 
                 <div id="broken-image-warning" class="broken-image-warning" style="display:none;">
@@ -1075,14 +1093,17 @@ async function fetchClientIp() {
 }
 
 // 반환값: 저장 성공 true / 실패 false (조용히 넘기면 결제만 되고 주문이 사라질 수 있어 호출하는 쪽에서 확인)
-// 상태값은 index1 과 동일: 카드결제 -> '카드결제', 무통장입금 -> '모바일'(입금 확인 전, 관리자가 확인 후 '모바일무통장'으로 전환)
+// 상태값은 index1 과 동일: 카드결제 -> '카드결제', 계좌이체 -> '무통장', 무통장입금 -> '모바일'(입금 확인 전, 관리자가 확인 후 '모바일무통장'으로 전환)
 async function saveOrderToFirestore(orderData) {
     try {
         const ip = await fetchClientIp();
         await window.saveSecureOrder({
             ...orderData,
             ip,
-            status: (orderData.payment === "무통장입금") ? "모바일" : "카드결제"
+            // index1 과 동일: 계좌이체(PortOne TRANSFER) 결제 완료 -> '무통장'
+            status: (orderData.payment === "무통장입금") ? "모바일"
+                  : (orderData.payment === "계좌이체") ? "무통장"
+                  : "카드결제"
         });
         return true;
     } catch (e) {
@@ -1137,6 +1158,54 @@ window.goCard = async function() {
 };
 
 
+
+// ---- 모바일 기기 판별 (index1/app.js 와 동일) ----
+function isMobileDevice(){
+    return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent);
+}
+// 모바일에서는 PortOne 계좌이체 결제창이 정상 동작하지 않아서, index1 에서는 모바일의 '계좌이체'를
+// 결제 없이 '무통장입금' 접수로 처리합니다. cart 에는 이미 환불계좌를 받는 '무통장 입금' 버튼이 있으므로
+// 모바일에서는 계좌이체 버튼을 숨기고 그 버튼을 그대로 사용합니다.
+if(isMobileDevice()){
+    const tb = document.getElementById('payTransferBtn');
+    if(tb) tb.style.display = 'none';
+}
+
+// [2] 계좌이체 전용 (PC, PortOne TRANSFER) — index1 의 epay-transfer-btn 과 동일한 결제 방식
+window.goTransfer = async function() {
+    window.closeBankRefund();
+    if(!validateOrderForm()) return;
+    if(brokenImageIndexes.size > 0){
+        alert("만료된 시안 이미지가 있어 결제를 진행할 수 없습니다.\n해당 상품을 삭제 후 다시 담아주세요.");
+        return;
+    }
+
+    const btn = document.getElementById('payTransferBtn');
+    const originalText = btn ? btn.textContent : '';
+    if(btn) btn.disabled = true;
+
+    try {
+        // 1. 아직 R2에 올라가지 않은 원본 이미지들을 먼저 업로드한다. (카드결제와 동일)
+        const totalToUpload = cart.reduce((sum, item) => sum + (Array.isArray(item.originalImages) ? item.originalImages.length : 0), 0);
+        if(totalToUpload > 0){
+            if(btn) btn.textContent = `원본 이미지 업로드 중... (0/${totalToUpload})`;
+            await uploadRemainingOriginals((done, total) => {
+                if(btn) btn.textContent = `원본 이미지 업로드 중... (${done}/${total})`;
+            });
+        }
+
+        // 2. 계좌이체 채널 정보를 받아와 결제창을 띄운다. (index1: CHANNEL_KEY_TRANSFER 없으면 CARD 키 사용)
+        if(btn) btn.textContent = '결제창 준비 중...';
+        const res = await fetch(WORKER_CARD);
+        const data = await res.json();
+        await processPayment("계좌이체", "TRANSFER", "KRW", data.CHANNEL_KEY_TRANSFER || data.CHANNEL_KEY_CARD, data.STORE_ID);
+    } catch (e) {
+        console.error(e);
+        alert("계좌이체 준비 중 오류가 발생했습니다.\n" + (e.message || "서버 연결을 확인하세요."));
+    } finally {
+        if(btn){ btn.disabled = false; btn.textContent = originalText; }
+    }
+};
 
 // [3] 핵심 결제 처리 엔진 (공통)
 async function processPayment(paymentType, payMethod, currency, channelKey, storeId) {
