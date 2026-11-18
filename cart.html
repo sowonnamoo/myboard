@@ -923,7 +923,7 @@ function render(){
             // 01my.html → 에코프로1 → 시안보기를 거쳐 넘어온 상세 주문정보(용지/편집/후가공/무게)가
             // 있으면 함께 표시하고, 없으면(기존 방식으로 담긴 항목) 기본 정보만 표시한다.
             const detailLines = [
-                (item.width && item.height) ? `${item.width} × ${item.height}mm` : '',
+                (Number(item.width) > 0 && Number(item.height) > 0) ? `${item.width} × ${item.height}mm` : '', // 0 × 0mm(사이즈 없는 부자재 등)은 숨김
                 item.paper ? `용지: ${item.paper}` : '',
                 item.ink ? `편집: ${item.ink}` : '',
                 item.finishings ? `후가공: ${item.finishings}` : '',
