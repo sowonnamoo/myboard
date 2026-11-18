@@ -74,7 +74,6 @@
     <div class="max-w-2xl mx-auto">
         <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
             <div class="flex items-center gap-3 mb-1">
-                <div class="w-10 h-10 shrink-0 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shadow-blue-200">ECO</div>
                 <h2 class="text-lg sm:text-xl font-bold text-slate-900">주문 내역 조회</h2>
             </div>
 
@@ -794,6 +793,13 @@
             ? `<div class="mt-2"><span class="font-semibold">주문 상품:</span>${renderItemRows(d, designNo, unpaid)}</div>`
             : '';
 
+        // 장바구니 무통장 입금 주문은 환불계좌가 메시지 칸에 "[환불계좌] 은행명 계좌번호" 형태로 저장되므로,
+        // 별도 "환불계좌" 줄로 분리해서 보여주고 메시지 줄에는 나머지 내용만 보여준다.
+        const rawMessage = String(d.message || '');
+        const refundMatch = rawMessage.match(/\[환불계좌\]\s*([^\n]*)/);
+        const refundText = refundMatch ? refundMatch[1].trim() : '';
+        const messageText = refundMatch ? rawMessage.replace(refundMatch[0], '').trim() : rawMessage;
+
         const cardHtml = `
         <div class="${bg} border p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
             <div class="text-sm font-bold text-blue-700 mb-2">📅 작성일 : ${esc(dateStr)}</div>
@@ -813,7 +819,8 @@
 
             <div class="mt-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
                 <div><span class="font-semibold">배송지:</span> ${esc(d.address || '-')}</div>
-                <div><span class="font-semibold">메시지:</span> ${esc(d.message || '-')}</div>
+                ${refundText ? `<div><span class="font-semibold">환불계좌:</span> ${esc(refundText)}</div>` : ''}
+                <div><span class="font-semibold">메시지:</span> ${esc(messageText || '-')}</div>
                 ${itemsBlock}
 
                 <div class="mt-2 flex items-center gap-2 flex-wrap">
