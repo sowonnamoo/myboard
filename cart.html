@@ -947,7 +947,7 @@ function render(){
                         ? `<button disabled class="item-btn view-btn disabled">만료됨</button>`
                         : (item.compositeImage && /^https?:\/\//.test(item.compositeImage)) || (item.compositeImageFallback && /^https?:\/\//.test(item.compositeImageFallback))
                             ? `<button onclick="viewComposite(${index})" class="item-btn view-btn">시안보기</button>`
-                            : `<button disabled class="item-btn view-btn disabled">시안보기</button>` }
+                            : '' /* 시안 이미지가 아예 없는 상품(예: 부자재 바로구입)은 시안보기 버튼을 숨김 */ }
                     <button onclick="deleteItem(${index})" class="item-btn delete-btn">삭제</button>
                 </div>
             </div>`;
