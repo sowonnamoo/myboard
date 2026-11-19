@@ -24,6 +24,10 @@
   .file-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; font-size:12px; white-space:nowrap; }
   .file-row a { color:#2563eb; text-decoration:underline; }
   .small-btn { padding:3px 8px; font-size:11px; background:#dc2626; border-radius:6px; }
+  .memo-box { display:flex; flex-direction:column; gap:4px; min-width:130px; }
+  .memo-box textarea { width:130px; height:44px; resize:vertical; box-sizing:border-box; font-family:inherit; font-size:12px; padding:5px 6px; border:1px solid #ccc; border-radius:6px; }
+  .memo-box button { padding:4px 10px; font-size:11px; }
+  .memo-saved { font-size:11px; color:#166534; white-space:nowrap; }
   #loginBox { display:block; }
   #listBox { display:none; }
   #ip-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:999; }
@@ -771,6 +775,35 @@ window.saveTrackingUrl = async (boardId) => {
   }
 };
 
+// ---- 제작상황 메모 ----
+// 고객 조회화면(search.html)의 "제작상황"으로 보여주는 메모입니다.
+// 운송장URL과 같은 이유로 이 주문의 private 문서(boards/{id}/private)에 저장하므로,
+// 이름+전화번호 뒷4자리로 본인 확인을 통과한 고객에게만 보입니다.
+// 비워서 저장하면 필드를 삭제하므로 고객 화면에는 "제작상황" 표시 자체가 나오지 않습니다.
+const PRODUCTION_MEMO_MAX = 200;
+function escapeHtml(v) {
+  return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+window.saveProductionMemo = async (boardId) => {
+  const input = document.getElementById('memo-' + boardId);
+  const msg = document.getElementById('memo-msg-' + boardId);
+  const text = input.value.trim().slice(0, PRODUCTION_MEMO_MAX);
+  const ref = privateRefCache[boardId];
+  if (!ref) return alert("이 주문의 개인정보(private) 문서를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.");
+  try {
+    await updateDoc(ref, { productionMemo: text ? text : deleteField() });
+    input.value = text;
+    if (rawPrivDataMap[boardId]) {
+      if (text) rawPrivDataMap[boardId].productionMemo = text;
+      else delete rawPrivDataMap[boardId].productionMemo;
+    }
+    msg.textContent = text ? ' ✔ 저장됨' : ' ✔ 삭제됨(고객화면에 표시 안 됨)';
+    setTimeout(() => { msg.textContent = ''; }, 2500);
+  } catch (e) {
+    alert("메모 저장 실패: " + e.message);
+  }
+};
+
 // R2 워커는 업로드 후 `.../?name=파일명` 형태(쿼리스트링)의 URL을 돌려줌.
 // 삭제도 같은 워커에 DELETE + ?name=파일명으로 요청함 (워커 코드로 확인 완료).
 async function deleteFromR2(fileUrl) {
@@ -981,7 +1014,7 @@ async function loadRecentOrders() {
   orderFrontier = { boards: null, jjjj: null };
 
   resultEl.innerHTML = `<div class="table-wrap"><table><thead>
-    <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>현금영수증URL</th><th>IP</th><th>시안</th></tr>
+    <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>현금영수증URL</th><th>IP</th><th>시안</th><th>제작상황</th></tr>
     </thead><tbody id="orders-body"></tbody></table></div>
     <div id="orders-more-wrap"><button id="orders-more-btn" onclick="loadMoreOrders()" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">최근 5건 불러오기</button></div>`;
 }
@@ -1021,7 +1054,7 @@ window.loadMoreOrders = async () => {
     } else {
       moreWrap.innerHTML = '';
       if (body.children.length === 0) {
-        body.innerHTML = '<tr><td colspan="13" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제/모바일/모바일무통장/접수에러)이 없습니다.</td></tr>';
+        body.innerHTML = '<tr><td colspan="14" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제/모바일/모바일무통장/접수에러)이 없습니다.</td></tr>';
       }
     }
   } catch (e) {
@@ -1211,6 +1244,10 @@ async function buildOrderRows(items) {
           ? '<span style="color:#16a34a; font-weight:700;">✅ 완료</span>'
           : '<span style="color:#cbd5e1;">-</span>');
 
+    // 제작상황 메모 칸 (작은 입력칸 + 저장 버튼). 이미 저장된 메모가 있으면 미리 채워서 보여줍니다.
+    const existingMemo = (typeof rawPriv.productionMemo === 'string') ? rawPriv.productionMemo : '';
+    const memoCell = `<div class="memo-box"><textarea id="memo-${d.id}" maxlength="${PRODUCTION_MEMO_MAX}" placeholder="제작상황 (고객 조회화면에 표시)">${escapeHtml(existingMemo)}</textarea><div><button onclick="saveProductionMemo('${d.id}')">저장</button><span id="memo-msg-${d.id}" class="memo-saved"></span></div></div>`;
+
     rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
       <td>${statusCellHtml}<br>${taxIconCell}</td>
       <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
@@ -1228,6 +1265,7 @@ async function buildOrderRows(items) {
       <td>${cashCell}</td>
       <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
       <td>${sianDoneCell}</td>
+      <td>${memoCell}</td>
     </tr>`);
   });
 
