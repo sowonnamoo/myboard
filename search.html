@@ -792,16 +792,6 @@
             `<a href="#" data-act="download" data-url="${esc(f.url)}" ${f.url === d.file1Url ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.named && f.label ? f.label : `파일 ${i + 1}`)}</a>`
         ).join('');
 
-        const reuploadBlock = st === '접수에러' ? `
-            <div class="mt-2 flex items-center gap-2 flex-wrap">
-                <button type="button" id="reupload-btn-${esc(d.id)}" data-act="reupload"
-                    data-doc-id="${esc(d.id)}" data-col="${d.isJajoo ? 'jjjj' : 'boards'}" data-author="${esc(d.author)}"
-                    class="bg-red-600 text-white font-bold px-3 py-1.5 text-xs rounded-lg hover:bg-red-700 border border-red-700">파일재업로드</button>
-                <span id="reupload-msg-${esc(d.id)}" class="text-red-600 text-xs font-semibold">
-                    파일오류 사유로 접수에러 됬습니다. 내 시안&gt;에러내용 확인후 재업로드 바랍니다.
-                </span>
-            </div>` : '';
-
         // ---- 무통장 입금 안내 (입금 확인 전) ----
         const bankNotice = (isPending || isMobilePending) ? `
             <div class="mt-3 text-sm font-bold text-red-600 bg-red-50 p-3 rounded-lg">
@@ -908,7 +898,6 @@
                     <span class="font-semibold">첨부파일:</span>
                     ${fileLinks}
                 </div>` : ''}
-                ${reuploadBlock}
 
                 ${bankNotice}
 
