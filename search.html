@@ -4,7 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <!-- 이름·전화번호·주소 등 개인 주문정보가 노출되는 페이지라 검색엔진에 안 걸리게 막음 -->
-    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet">
+    <script>
+        // 검색/수집 봇이 접속하면 이 아래의 페이지 로딩(조회 화면, 스크립트)을 중단합니다.
+        // robots 메타태그를 무시하거나 JS를 실행하는 봇까지 최대한 막기 위한 보조 장치입니다.
+        // (일반 사용자 기기 이름에 우연히 걸리지 않도록 정확한 봇 이름만 검사합니다.)
+        (function () {
+            var botUA = /\b(googlebot|google-inspectiontool|adsbot-google|bingbot|bingpreview|msnbot|yeti|naverbot|daumoa|slurp|duckduckbot|baiduspider|yandexbot|applebot|sogou|facebookexternalhit|twitterbot|ia_archiver|semrushbot|ahrefsbot|mj12bot|dotbot|petalbot|crawler|spider)\b/i;
+            if (botUA.test(navigator.userAgent || '')) { window.stop(); }
+        })();
+    </script>
     <title>주문 조회</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -72,6 +83,13 @@
     </div>
 
     <div class="max-w-2xl mx-auto">
+        <!-- 이전 페이지로 돌아가기 -->
+        <button type="button" id="back-btn" onclick="goBack()"
+            class="inline-flex items-center gap-3 mb-4 min-h-[56px] bg-white hover:bg-slate-50 active:scale-[0.98] transition border border-slate-300 text-slate-900 font-bold text-lg sm:text-xl px-6 py-3.5 rounded-2xl shadow-md shadow-slate-200/80 focus:outline-none focus:ring-4 focus:ring-blue-100">
+            <svg class="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            이전 페이지로
+        </button>
+
         <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
             <div class="flex items-center gap-3 mb-1">
                 <h2 class="text-lg sm:text-xl font-bold text-slate-900">주문 내역 조회</h2>
@@ -98,6 +116,19 @@
         <div id="results" class="space-y-4"></div>
     </div>
 
+<script>
+    // 이전 페이지로 돌아가기: 방문 기록이 있으면 뒤로, 팝업/새 창으로 열렸으면 창 닫기,
+    // 둘 다 아니면(주소창으로 바로 접속 등) 주문 게시판 첫 화면으로 이동
+    function goBack() {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else if (window.opener) {
+            window.close();
+        } else {
+            window.location.href = 'https://sowonnamoo.github.io/myboard/';
+        }
+    }
+</script>
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -106,6 +137,37 @@
     const $ = (id) => document.getElementById(id);
     const SITE = 'https://sowonnamoo.github.io';
     const BOARD_BASE = SITE + '/myboard/';
+
+    // ---------------- 조회 대상 제한 ----------------
+    // 이 페이지는 cart.html(장바구니)로 접수·저장된 주문만 조회합니다.
+    // 다른 경로(index1 직접 접수, 재주문 등)로 접수된 주문은 이름·전화번호가 맞아도 보이지 않고,
+    // 주문이 없는 경우와 똑같이 "찾을 수 없음"으로 처리됩니다(블라인드).
+    // 다시 모든 주문을 보이게 하려면 false 로 바꾸세요.
+    const ONLY_CART_ORDERS = true;
+    // cart.html 이 저장한 주문만 가진 특징: fromCart 표시 + 상품 목록(items)
+    function isCartOrder(data) {
+        return !!data && data.fromCart === true && Array.isArray(data.items) && data.items.length > 0;
+    }
+
+    // 첨부파일 목록에서 링크를 숨길 확장자
+    const HIDDEN_FILE_EXT = ['jpg', 'jpeg', 'svg'];
+    function fileExtOf(url, label) {
+        const pick = (str) => {
+            const m = String(str || '').split(/[?#]/)[0].match(/\.([a-z0-9]+)$/i);
+            return m ? m[1].toLowerCase() : '';
+        };
+        let ext = pick(label);
+        if (!ext) {
+            try {
+                const u = new URL(url);
+                ext = pick(u.searchParams.get('name')) || pick(u.pathname);
+            } catch (e) { ext = pick(url); }
+        }
+        return ext;
+    }
+    function isHiddenFile(url, label) {
+        return HIDDEN_FILE_EXT.includes(fileExtOf(url, label));
+    }
 
     // ---------------- 공통 유틸 ----------------
     // 주문 데이터(이름/상품명/주소 등)는 고객이 직접 입력한 값이라, 화면에 넣기 전에 반드시 이스케이프합니다.
@@ -543,9 +605,14 @@
             for (const v of nameVariants) {
                 const [snapBoards, snapJjjj] = await Promise.all([
                     getDocs(query(collection(db, "boards"), where("author", "==", v))),
-                    getDocs(query(collection(db, "jjjj"), where("author", "==", v)))
+                    // 재주문(jjjj)은 장바구니 경로가 아니므로 ONLY_CART_ORDERS 일 때는 조회 자체를 하지 않음
+                    ONLY_CART_ORDERS ? Promise.resolve({ docs: [] }) : getDocs(query(collection(db, "jjjj"), where("author", "==", v)))
                 ]);
-                snapBoards.docs.forEach(d => candidates.push({ data: d.data(), id: d.id, isJajoo: false, col: "boards", nameUsed: v }));
+                snapBoards.docs.forEach(d => {
+                    // 장바구니 이외 경로 주문은 개인정보 문서(private)를 읽어보기 전에 여기서 걸러냄
+                    if (ONLY_CART_ORDERS && !isCartOrder(d.data())) return;
+                    candidates.push({ data: d.data(), id: d.id, isJajoo: false, col: "boards", nameUsed: v });
+                });
                 snapJjjj.docs.forEach(d => candidates.push({ data: d.data(), id: d.id, isJajoo: true, col: "jjjj", nameUsed: v }));
             }
 
@@ -567,7 +634,9 @@
 
             if (filteredData.length === 0) {
                 registerFail();
-                resultsDiv.innerHTML = '<div class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-5">해당하는 주문 정보를 찾을 수 없습니다. / 미 결제건은 조회되지 않습니다.</div>';
+                resultsDiv.innerHTML = '<div class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-5">해당하는 주문 정보를 찾을 수 없습니다. / 미 결제건은 조회되지 않습니다.'
+                    + (ONLY_CART_ORDERS ? '<br>※ 이 페이지는 장바구니(cart)로 접수한 주문만 조회됩니다.' : '')
+                    + '</div>';
                 return;
             }
 
@@ -717,11 +786,13 @@
         }
 
         // ---- 첨부파일 ----
+        // jpg / jpeg / svg 파일은 링크를 보여주지 않습니다. (파일명이 없는 항목은 보이는 것끼리 파일 1, 파일 2 순으로 번호를 매김)
         const fileList = (Array.isArray(d.originalFiles) && d.originalFiles.length)
-            ? d.originalFiles.map(f => ({ url: f.url, label: f.filename }))
-            : [d.file1Url, d.file2Url].filter(Boolean).map((u, i) => ({ url: u, label: `파일 ${i + 1}` }));
-        const fileLinks = fileList.filter(f => safeUrl(f.url)).map((f, i) =>
-            `<a href="#" data-act="download" data-url="${esc(f.url)}" ${i === 0 ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.label || `파일 ${i + 1}`)}</a>`
+            ? d.originalFiles.map(f => ({ url: f.url, label: f.filename, named: true }))
+            : [d.file1Url, d.file2Url].filter(Boolean).map(u => ({ url: u, label: '', named: false }));
+        const visibleFiles = fileList.filter(f => safeUrl(f.url) && !isHiddenFile(f.url, f.label));
+        const fileLinks = visibleFiles.map((f, i) =>
+            `<a href="#" data-act="download" data-url="${esc(f.url)}" ${f.url === d.file1Url ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.named && f.label ? f.label : `파일 ${i + 1}`)}</a>`
         ).join('');
 
         const reuploadBlock = st === '접수에러' ? `
@@ -798,7 +869,6 @@
         const rawMessage = String(d.message || '');
         const refundMatch = rawMessage.match(/\[환불계좌\]\s*([^\n]*)/);
         const refundText = refundMatch ? refundMatch[1].trim() : '';
-        const messageText = refundMatch ? rawMessage.replace(refundMatch[0], '').trim() : rawMessage;
 
         const cardHtml = `
         <div class="${bg} border p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
@@ -820,16 +890,15 @@
             <div class="mt-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
                 <div><span class="font-semibold">배송지:</span> ${esc(d.address || '-')}</div>
                 ${refundText ? `<div><span class="font-semibold">환불계좌:</span> ${esc(refundText)}</div>` : ''}
-                <div><span class="font-semibold">메시지:</span> ${esc(messageText || '-')}</div>
                 ${itemsBlock}
 
+                ${fileLinks ? `
                 <div class="mt-2 flex items-center gap-2 flex-wrap">
                     <span class="font-semibold">첨부파일:</span>
-                    ${fileLinks || '<span class="text-slate-400 text-xs">없음</span>'}
-                </div>
+                    ${fileLinks}
+                </div>` : ''}
                 ${reuploadBlock}
 
-                <div class="mt-2 text-sm font-semibold">시안 이미지번호 : ${esc(designNo)}</div>
                 ${bankNotice}
 
                 <div class="mt-4 flex gap-2 flex-wrap">${chips}</div>
@@ -994,7 +1063,10 @@
                 if (msgEl) msgEl.classList.add('hidden');
 
                 const fileLink = $('file1-link-' + docId);
-                if (fileLink) fileLink.dataset.url = newUrl;
+                if (fileLink) {
+                    fileLink.dataset.url = newUrl;
+                    if (isHiddenFile(newUrl, file.name)) fileLink.style.display = 'none';
+                }
             } catch (e) {
                 if (e.code === 'permission-denied') {
                     alert('본인이 작성한 글만 파일을 재업로드할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)');
