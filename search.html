@@ -482,7 +482,7 @@
         }
     }
 
-    // ---------------- 재구입 (장바구니로 접수된 상품) → 정확한 상품 페이지 찾기 ----------------
+    // ---------------- 제품바로가기 (장바구니로 접수된 상품) → 구매했던 상품 페이지 찾기 ----------------
     // 아이템에 productId가 있으면 그 상품 페이지로, 없으면 헤더 메뉴 데이터에서 상품명이 겹치는 항목을 찾아 연결합니다.
     const HEADER_URL = SITE + '/myjs/includes/header';
     const DEFAULT_PRODUCT_URL = SITE + '/myjs/products/01my';
@@ -531,27 +531,19 @@
         if (!url) return null;
         return url.startsWith('http') ? url : SITE + url;
     }
-    async function resolveReorderProductUrl(item) {
+    async function resolveProductUrl(item) {
         if (item.productId) return `${SITE}/myjs/products/${encodeURIComponent(item.productId)}`;
         const flat = flattenMenu(await loadMenuData());
         return toAbsoluteUrl(guessProductUrl(item.itemName, flat)) || DEFAULT_PRODUCT_URL;
     }
 
-    const reorderItemRegistry = {};
-    let reorderItemSeq = 0;
-    window.reorderClick = async (key) => {
-        const data = reorderItemRegistry[key];
+    const productGoRegistry = {};
+    let productGoSeq = 0;
+    window.productGoClick = async (key) => {
+        const data = productGoRegistry[key];
         if (!data) return;
-        const productUrl = await resolveReorderProductUrl(data);
-        const q = new URLSearchParams({
-            reorderImage: data.r2Image || data.cafe24Image || '',
-            reorderImageFallback: data.cafe24Image || '',
-            reorderWidth: data.width || '',
-            reorderHeight: data.height || '',
-            reorderSide: data.side || '',
-            reorderItemName: data.itemName || ''
-        }).toString();
-        window.open(`${productUrl}?${q}`, '_blank', 'width=1240,height=900,scrollbars=yes');
+        const productUrl = await resolveProductUrl(data);
+        window.open(productUrl, '_blank');
     };
 
     // ---------------- 조회 ----------------
@@ -717,21 +709,10 @@
 
             const sianBtn = hasBujajae(it) ? '' : `<button type="button" data-act="sian" data-url="${esc(primary)}" data-fb="${esc(fallback)}" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">시안보기</button>`;
 
-            // 후가공이 붙은 주문은 재구입을 숨김(똑같이 재현하기 어려움). 결제(입금) 확인 전에도 숨김.
-            let reorderBtn = '';
-            if (!it.finishings && !unpaid) {
-                const key = `ro_${reorderItemSeq++}`;
-                reorderItemRegistry[key] = {
-                    productId: it.productId || '',
-                    itemName: it.item || '',
-                    r2Image: primary,
-                    cafe24Image: cafe24Url,
-                    width: it.width || '',
-                    height: it.height || '',
-                    side: it.ink || ''
-                };
-                reorderBtn = `<button type="button" data-act="reorder-item" data-key="${key}" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">재구입</button>`;
-            }
+            // 구매했던 상품 페이지로 바로가기 (productId가 없는 예전 주문은 상품명으로 상품 페이지를 추정)
+            const goKey = `pg_${productGoSeq++}`;
+            productGoRegistry[goKey] = { productId: it.productId || '', itemName: it.item || '' };
+            const productGoBtn = `<button type="button" data-act="product-go" data-key="${goKey}" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">제품바로가기</button>`;
 
             const detailBits = [
                 (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
@@ -745,7 +726,7 @@
             <div class="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2.5 mt-1.5">
                 <div class="font-medium text-slate-800">${esc(it.item || '상품')} · ${esc(qtyLabel)} · ${priceNumber.toLocaleString()}원</div>
                 ${detailBits ? `<div class="text-slate-500 mt-1">${esc(detailBits)}</div>` : ''}
-                ${(sianBtn || reorderBtn) ? `<div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${reorderBtn}</div>` : ''}
+                <div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${productGoBtn}</div>
             </div>`;
         }).join('');
     }
@@ -966,7 +947,7 @@
                 break;
             }
             case 'sian': window.viewSianImage(ds.url, ds.fb); break;
-            case 'reorder-item': window.reorderClick(ds.key); break;
+            case 'product-go': window.productGoClick(ds.key); break;
             case 'download': window.downloadAttached(ds.url); break;
             case 'segum': window.openSegumPageFor(ds.name, ds.phone, ds.id); break;
             case 'cash': window.openCashPageFor(ds.id, ds.secret, ds.jajoo === '1', ds.name, ds.phone, ds.bank === '1'); break;
