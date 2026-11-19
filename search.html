@@ -884,7 +884,11 @@
         // 별도 "환불계좌" 줄로 분리해서 보여주고 메시지 줄에는 나머지 내용만 보여준다.
         const rawMessage = String(d.message || '');
         const refundMatch = rawMessage.match(/\[환불계좌\]\s*([^\n]*)/);
-        const refundText = refundMatch ? refundMatch[1].trim() : '';
+        let refundText = refundMatch ? refundMatch[1].trim() : '';
+        // 예금주는 "(예금주: 홍길동)" 형태로 같이 저장되므로 따로 떼어 별도 줄로 보여준다. (예전 주문은 예금주 없음)
+        const holderMatch = refundText.match(/\(예금주:\s*([^)]*)\)\s*$/);
+        const refundHolder = holderMatch ? holderMatch[1].trim() : '';
+        if (holderMatch) refundText = refundText.replace(holderMatch[0], '').trim();
 
         // 제작상황: 관리자가 남긴 메모(private 문서의 productionMemo)가 있을 때만 표시합니다.
         // 메모가 없거나 공백뿐이면 "제작상황" 글자를 포함해 아무것도 나오지 않습니다.
@@ -916,6 +920,7 @@
                 ${memoBlock}
                 <div><span class="font-semibold">배송지:</span> ${esc(d.address || '-')}</div>
                 ${refundText ? `<div><span class="font-semibold">환불계좌:</span> ${esc(refundText)}</div>` : ''}
+                ${refundHolder ? `<div><span class="font-semibold">예금주:</span> ${esc(refundHolder)}</div>` : ''}
                 ${itemsBlock}
 
                 ${fileLinks ? `

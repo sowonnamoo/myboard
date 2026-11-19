@@ -401,6 +401,9 @@
         }
         .bank-refund-title .req{ color:var(--red); font-weight:700; }
         .bank-refund-box .field input{ background:#fff; }
+        .field label .req{ color:var(--red); font-weight:700; margin-left:2px; }
+        .bank-row{ display:flex; gap:10px; margin-bottom:14px; }
+        .bank-row .field{ flex:1; min-width:0; margin-bottom:0; }
 
         .broken-image-warning{
             margin-top:12px;
@@ -444,7 +447,7 @@
     </style>
 
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
-    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <script src="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getFirestore, collection, addDoc, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
@@ -570,7 +573,7 @@
 
             // 환불계좌(무통장 입금만): 금융 개인정보라 공개 문서에는 넣지 않고, 비공개/관리자 문서의
             // 기존 message 칸에 담는다 (새 필드를 만들지 않아 기존 Firestore 보안규칙과 호환).
-            const refundMessage = o.refundAccount ? `[환불계좌] ${o.refundBank} ${o.refundAccount}` : '';
+            const refundMessage = o.refundAccount ? `[환불계좌] ${o.refundBank} ${o.refundAccount} (예금주: ${o.refundHolder || ''})` : '';
 
             // 2. 개인정보 (index1 과 동일한 순서로 순차 저장 - 기존 Firestore 규칙과 호환)
             await setDoc(doc(db, "boards", boardId, "private", secretId), {
@@ -646,19 +649,19 @@
                 <h2 class="panel-title">주문자 정보</h2>
 
                 <div class="field">
-                    <label for="name">성함</label>
+                    <label for="name">성함 <span class="req">*</span></label>
                     <input id="name" type="text" placeholder="홍길동" />
-                    <p class="field-hint">공백·괄호 없이 입력해주세요. 주문조회 시 성함과 전화번호 뒷 4자리로 확인합니다.</p>
+                    <p class="field-hint">공백·괄호 없이 입력해주세요. 주문조회 시 성함과 핸드폰번호 뒷 4자리로 확인합니다.</p>
                 </div>
 
                 <div class="field">
-                    <label for="phone">전화번호</label>
-                    <input id="phone" type="tel" placeholder="010-0000-0000" />
+                    <label for="phone">핸드폰번호 <span class="req">*</span></label>
+                    <input id="phone" type="tel" inputmode="numeric" placeholder="01012345678" maxlength="11" autocomplete="tel" />
                     <p class="field-hint">작업자 핸드폰 번호를 입력해주세요. (숫자 11자리, 잘못 입력하면 결제창이 열리지 않아요.)</p>
                 </div>
 
                 <div class="field">
-                    <label for="address">주소</label>
+                    <label for="address">주소 <span class="req">*</span></label>
                     <div class="address-row">
                         <input id="address" type="text" placeholder="주소 검색을 눌러주세요" readonly />
                         <button type="button" id="addressSearchBtn" class="address-search-btn">주소 검색</button>
@@ -666,7 +669,7 @@
                 </div>
 
                 <div class="field">
-                    <label for="detailAddress">상세주소</label>
+                    <label for="detailAddress">상세주소 <span class="req">*</span></label>
                     <input id="detailAddress" type="text" placeholder="동/호수 등 상세 주소" />
                 </div>
             </section>
@@ -689,18 +692,24 @@
 
                     <div id="bankRefundBox" class="bank-refund-box">
                         <p class="bank-refund-title">접수 오류 시 환불계좌번호 입력 <span class="req">(필수)</span></p>
-                        <div class="field">
-                            <label for="refundBank">은행명 입력</label>
-                            <input id="refundBank" type="text" placeholder="예: 국민은행" maxlength="20" autocomplete="off" />
+                        <div class="bank-row">
+                            <div class="field">
+                                <label for="refundBank">은행명 입력 <span class="req">*</span></label>
+                                <input id="refundBank" type="text" placeholder="예: 국민은행" maxlength="20" autocomplete="off" />
+                            </div>
+                            <div class="field">
+                                <label for="refundHolder">예금주 입력 <span class="req">*</span></label>
+                                <input id="refundHolder" type="text" placeholder="예: 홍길동" maxlength="20" autocomplete="off" />
+                            </div>
                         </div>
                         <div class="field">
-                            <label for="refundAccount">계좌번호 입력</label>
+                            <label for="refundAccount">계좌번호 입력 <span class="req">*</span></label>
                             <input id="refundAccount" type="text" inputmode="numeric" placeholder="예: 123-456-789012" maxlength="30" autocomplete="off" />
                         </div>
                         <p class="field-hint">입력하신 뒤 아래 <b>무통장 입금 신청</b> 버튼을 눌러주세요.</p>
                     </div>
 
-                    <button id="payTransferBtn" class="transfer-btn" onclick="goTransfer()">계좌이체</button>
+                    <button id="payTransferBtn" class="transfer-btn" onclick="goTransfer()">계좌이체(pc)</button>
                 </div>
 
                 <div id="broken-image-warning" class="broken-image-warning" style="display:none;">
@@ -936,12 +945,14 @@ function validateOrderForm(){
 
     if(!name){
         alert("성함을 입력해주세요.");
+        document.getElementById("name").focus();
         return false;
     }
 
     const phoneDigits = phone.replace(/[^0-9]/g, '');
     if(!phone || phoneDigits.length !== 11){
-        alert("작업자 핸드폰 번호를 11자리 숫자로 정확히 입력해주세요.\n(예: 01012345678)\n번호가 잘못되면 결제창이 호출되지 않습니다.");
+        alert("핸드폰번호를 11자리 숫자로 정확히 입력해주세요.\n(예: 01012345678)\n번호가 잘못되면 결제창이 호출되지 않습니다.");
+        document.getElementById("phone").focus();
         return false;
     }
 
@@ -952,6 +963,7 @@ function validateOrderForm(){
 
     if(!detailAddress){
         alert("상세주소를 입력해주세요.");
+        document.getElementById("detailAddress").focus();
         return false;
     }
 
@@ -1288,10 +1300,16 @@ window.goBankTransfer = async function(){
     if(!bankRefundOpen){ openBankRefund(); return; }
     if(!validateOrderForm()) return;
     const refundBank = document.getElementById('refundBank').value.trim();
+    const refundHolder = document.getElementById('refundHolder').value.trim();
     const refundAccount = document.getElementById('refundAccount').value.trim();
     if(refundBank.length < 2){
         alert("환불받으실 은행명을 입력해주세요.");
         document.getElementById('refundBank').focus();
+        return;
+    }
+    if(refundHolder.length < 2){
+        alert("예금주명을 입력해주세요.");
+        document.getElementById('refundHolder').focus();
         return;
     }
     if(refundAccount.replace(/-/g, '').length < 8){
@@ -1327,6 +1345,7 @@ window.goBankTransfer = async function(){
         const orderId = "BANK_" + Date.now();
         const orderData = saveOrder("무통장입금", orderId);
         orderData.refundBank = refundBank;       // 비공개/관리자 문서에만 저장 (공개 문서에는 넣지 않음)
+        orderData.refundHolder = refundHolder;
         orderData.refundAccount = refundAccount;
         const saved = await saveOrderToFirestore(orderData);
         if(!saved){
@@ -1343,6 +1362,10 @@ window.goBankTransfer = async function(){
         if(btn){ btn.disabled = false; btn.textContent = originalText; }
     }
 };
+
+document.getElementById('phone').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+});
 
 document.getElementById('name').addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/[\s()]/g, '');
