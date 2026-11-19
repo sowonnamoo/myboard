@@ -690,6 +690,22 @@
         return `<button type="button" ${idAttr} data-act="${act}" ${attrs} ${titleAttr} class="${base} ${color}">${label}</button>`;
     }
 
+    // 상품 옵션 어디에든 "부자재"가 들어 있으면 시안이 없는 상품이라 시안보기 버튼을 숨깁니다.
+    // 상품명/용지/편집/후가공/옵션 등 어느 항목에 담겨 있어도 잡도록 글자 항목을 모두 검사하되,
+    // 시안 이미지 주소와 원본 파일 목록은 파일명에 우연히 들어간 글자로 오판하지 않도록 제외합니다.
+    const BUJAJAE_SKIP_KEYS = ['compositeImage', 'compositeImageFallback', 'originalImageUrls', 'originalImages'];
+    function hasBujajae(it) {
+        return Object.entries(it || {}).some(([k, v]) => {
+            if (BUJAJAE_SKIP_KEYS.includes(k)) return false;
+            let text = '';
+            if (typeof v === 'string') text = v;
+            else if (v && typeof v === 'object') { try { text = JSON.stringify(v); } catch (e) { text = ''; } }
+            else return false;
+            if (/^https?:\/\//i.test(text)) return false;
+            return text.replace(/\s/g, '').includes('부자재');
+        });
+    }
+
     function renderItemRows(d, designNo, unpaid) {
         return d.items.map((it, idx) => {
             const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
@@ -699,7 +715,7 @@
             const primary = safeUrl(it.compositeImage);
             const fallback = safeUrl(it.compositeImageFallback) || cafe24Url;
 
-            const sianBtn = `<button type="button" data-act="sian" data-url="${esc(primary)}" data-fb="${esc(fallback)}" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">시안보기</button>`;
+            const sianBtn = hasBujajae(it) ? '' : `<button type="button" data-act="sian" data-url="${esc(primary)}" data-fb="${esc(fallback)}" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">시안보기</button>`;
 
             // 후가공이 붙은 주문은 재구입을 숨김(똑같이 재현하기 어려움). 결제(입금) 확인 전에도 숨김.
             let reorderBtn = '';
@@ -729,7 +745,7 @@
             <div class="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2.5 mt-1.5">
                 <div class="font-medium text-slate-800">${esc(it.item || '상품')} · ${esc(qtyLabel)} · ${priceNumber.toLocaleString()}원</div>
                 ${detailBits ? `<div class="text-slate-500 mt-1">${esc(detailBits)}</div>` : ''}
-                <div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${reorderBtn}</div>
+                ${(sianBtn || reorderBtn) ? `<div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${reorderBtn}</div>` : ''}
             </div>`;
         }).join('');
     }
