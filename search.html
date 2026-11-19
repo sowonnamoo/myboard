@@ -900,8 +900,7 @@
             <div class="mt-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
                 ${memoBlock}
                 <div><span class="font-semibold">배송지:</span> ${esc(d.address || '-')}</div>
-                ${refundText ? `<div><span class="font-semibold">환불계좌:</span> ${esc(refundText)}</div>` : ''}
-                ${refundHolder ? `<div><span class="font-semibold">예금주:</span> ${esc(refundHolder)}</div>` : ''}
+                ${refundText ? `<div><span class="font-semibold">환불계좌:</span> ${esc(refundText)}${refundHolder ? ` <span class="font-semibold ml-2">예금주:</span> ${esc(refundHolder)}` : ''}</div>` : ''}
                 ${itemsBlock}
 
                 ${fileLinks ? `
