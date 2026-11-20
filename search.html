@@ -53,6 +53,21 @@
             cursor:pointer;
         }
         .sian-modal-close:hover{ background:rgba(255,255,255,0.2); }
+        /* 시안/원본 다운로드 버튼 + 주의사항 말풍선 */
+        .dl-btn { border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; color: #fff; background: #2563eb; border: 0; cursor: pointer; }
+        .dl-btn.orig { background: #7c3aed; }
+        .dl-btn.orig.locked { background: #a78bfa; }
+        .dl-btn[disabled] { background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; }
+        .tip { position: relative; display: inline-block; }
+        .tip .tip-box { display: none; position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 30; width: 230px; padding: 8px 10px; border-radius: 8px;
+            background: #1e293b; color: #fff; font-size: 11px; line-height: 1.45; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,.2); pointer-events: none; }
+        .tip:hover .tip-box, .tip:focus-within .tip-box { display: block; }
+        /* 사진 리뷰 작성창 */
+        #review-modal { position: fixed; inset: 0; z-index: 100; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+        #review-modal.open { display: flex; }
+        #review-modal .rv-card { background: #fff; width: 100%; max-width: 440px; max-height: 92vh; overflow-y: auto; border-radius: 16px; padding: 20px; }
+        #review-modal .rv-star { font-size: 30px; line-height: 1; color: #cbd5e1; background: none; border: 0; cursor: pointer; padding: 0 2px; }
+        #review-modal .rv-star.on { color: #f59e0b; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-blue-50 p-4 sm:p-6" oncontextmenu="return false;">
@@ -149,8 +164,7 @@
         return !!data && data.fromCart === true && Array.isArray(data.items) && data.items.length > 0;
     }
 
-    // 첨부파일 목록에서 링크를 숨길 확장자
-    const HIDDEN_FILE_EXT = ['jpg', 'jpeg', 'svg'];
+    // 시안(jpg)·원본(svg)은 링크 대신 "다운로드 버튼"으로 보여줍니다.
     function fileExtOf(url, label) {
         const pick = (str) => {
             const m = String(str || '').split(/[?#]/)[0].match(/\.([a-z0-9]+)$/i);
@@ -165,8 +179,18 @@
         }
         return ext;
     }
-    function isHiddenFile(url, label) {
-        return HIDDEN_FILE_EXT.includes(fileExtOf(url, label));
+    // 파일 목록을 시안(jpg) / 원본(svg) / 그 외로 나눕니다. (같은 종류가 여러 개면 첫 번째만 버튼으로 사용)
+    function splitDesignFiles(list) {
+        let sian = null, svg = null;
+        const others = [];
+        (list || []).forEach(f => {
+            if (!f || !safeUrl(f.url)) return;
+            const ext = fileExtOf(f.url, f.label);
+            if (ext === 'jpg' || ext === 'jpeg') { if (!sian) sian = f; }
+            else if (ext === 'svg') { if (!svg) svg = f; }
+            else others.push(f);
+        });
+        return { sian, svg, others };
     }
 
     // ---------------- 공통 유틸 ----------------
@@ -546,6 +570,163 @@
         window.open(productUrl, '_blank');
     };
 
+    // ---------------- 시안/원본 다운로드 버튼 + 사진 리뷰 ----------------
+    const ORIGINAL_NOTICE = '원본파일은 근시일내 삭제되며 사진리뷰 작성후 다운받을수 있습니다. (용량이 적은파일만 다운 가능)';
+    const dlRegistry = {};
+    let dlSeq = 0;
+    const reviewFlagKey = (orderId, idx) => `rv_done_${orderId}_${idx}`;
+
+    async function resolveProductId(item) {
+        if (item.productId) return String(item.productId);
+        const flat = flattenMenu(await loadMenuData());
+        const url = toAbsoluteUrl(guessProductUrl(item.itemName, flat)) || '';
+        const m = url.match(/\/products\/([^/?#]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    // sian / svg: {url, label} 또는 null.  deleted: 관리자가 파일을 삭제 표시한 경우
+    function designDownloadButtons(d, idx, product, sian, svg, deleted) {
+        if (!sian && !svg) return '';
+        const key = `dl_${dlSeq++}`;
+        dlRegistry[key] = {
+            orderId: d.id, idx, author: d.author || '',
+            productId: product.productId || '', itemName: product.itemName || '',
+            sianUrl: sian ? safeUrl(sian.url) : '', svgUrl: svg ? safeUrl(svg.url) : ''
+        };
+        const reviewed = localStorage.getItem(reviewFlagKey(d.id, idx)) === '1';
+        const sianBtn = sian
+            ? `<button type="button" data-act="dl-sian" data-key="${key}" data-check-url="${esc(safeUrl(sian.url))}" ${deleted ? 'disabled' : ''} class="dl-btn">시안 다운로드</button>`
+            : '';
+        const svgBtn = svg
+            ? `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(svg.url))}" ${deleted ? 'disabled' : ''} class="dl-btn orig${reviewed ? '' : ' locked'}">원본(수정가능)파일 다운로드</button><span class="tip-box">${deleted ? '파일이 삭제되어 다운로드할 수 없습니다.' : ORIGINAL_NOTICE}</span></span>`
+            : '';
+        return `<div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${svgBtn}</div>`;
+    }
+
+    // 화면에 그린 뒤, 실제로 파일이 지워졌는지(404/410) 확인해 버튼을 비활성화합니다.
+    // (확인 자체가 막히면(CORS/네트워크) 알 수 없으므로 버튼은 그대로 둡니다.)
+    async function checkDeletedFiles(root) {
+        const btns = [...root.querySelectorAll('button[data-check-url]:not([disabled])')];
+        await Promise.all(btns.map(async (b) => {
+            try {
+                const res = await fetch(b.dataset.checkUrl, { method: 'HEAD' });
+                if (res.status === 404 || res.status === 410) {
+                    b.disabled = true;
+                    const tip = b.parentElement && b.parentElement.querySelector('.tip-box');
+                    if (tip) tip.textContent = '파일이 삭제되어 다운로드할 수 없습니다.';
+                }
+            } catch (e) { /* 확인 불가 → 그대로 */ }
+        }));
+    }
+
+    async function hasReviewFor(data) {
+        if (localStorage.getItem(reviewFlagKey(data.orderId, data.idx)) === '1') return true;
+        const snap = await getDocs(query(collection(db, 'reviews'), where('orderId', '==', data.orderId), where('itemIdx', '==', data.idx)));
+        if (snap.empty) return false;
+        localStorage.setItem(reviewFlagKey(data.orderId, data.idx), '1');
+        return true;
+    }
+
+    function unlockOriginalButtons(key) {
+        document.querySelectorAll(`button[data-act="dl-orig"][data-key="${key}"]`).forEach(b => b.classList.remove('locked'));
+    }
+
+    window.downloadOriginal = async (key, btn) => {
+        const data = dlRegistry[key];
+        if (!data || !data.svgUrl) return;
+        let reviewed = false;
+        try { reviewed = await hasReviewFor(data); }
+        catch (e) { console.error(e); alert('리뷰 작성 여부를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.'); return; }
+        if (!reviewed) { openReviewModal(key); return; }
+        unlockOriginalButtons(key);
+        await window.downloadAttached(data.svgUrl);
+    };
+
+    // ---- 사진 리뷰 작성창 (01my 이용후기에 표시되는 reviews 컬렉션에 저장) ----
+    let rvKey = null, rvRating = 0, rvFile = null, rvBusy = false;
+
+    function paintStars() {
+        document.querySelectorAll('#review-modal .rv-star').forEach(b => b.classList.toggle('on', Number(b.dataset.v) <= rvRating));
+    }
+    function openReviewModal(key) {
+        const data = dlRegistry[key];
+        if (!data) return;
+        rvKey = key; rvRating = 0; rvFile = null;
+        $('rv-product').textContent = data.itemName || '구입하신 제품';
+        $('rv-content').value = '';
+        $('rv-file').value = '';
+        $('rv-preview').style.display = 'none';
+        $('rv-preview').removeAttribute('src');
+        $('rv-submit').disabled = false;
+        $('rv-submit').textContent = '리뷰 등록하고 원본 받기';
+        paintStars();
+        $('review-modal').classList.add('open');
+    }
+    function closeReviewModal() { if (!rvBusy) $('review-modal').classList.remove('open'); }
+
+    document.querySelectorAll('#review-modal .rv-star').forEach(b => b.addEventListener('click', () => { rvRating = Number(b.dataset.v); paintStars(); }));
+    $('rv-cancel').addEventListener('click', closeReviewModal);
+    $('review-modal').addEventListener('click', (e) => { if (e.target.id === 'review-modal') closeReviewModal(); });
+    $('rv-file').addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) { rvFile = null; $('rv-preview').style.display = 'none'; return; }
+        if (!/^image\//.test(f.type) && !/\.(jpe?g|png|webp|gif|heic)$/i.test(f.name)) { alert('사진 파일만 올릴 수 있습니다.'); e.target.value = ''; rvFile = null; return; }
+        if (f.size > 10 * 1024 * 1024) { alert('사진 용량은 10MB 이하로 올려주세요.'); e.target.value = ''; rvFile = null; return; }
+        rvFile = f;
+        if (/^image\/(jpeg|png|webp|gif)$/.test(f.type)) { $('rv-preview').src = URL.createObjectURL(f); $('rv-preview').style.display = 'block'; }
+        else { $('rv-preview').style.display = 'none'; }
+    });
+
+    // 상품 문서에 캐시된 리뷰 통계(reviewStats)를 함께 올려줍니다. (권한이 없으면 조용히 건너뜀 — 01my가 필요하면 다시 계산합니다)
+    async function bumpReviewStats(productId, rating) {
+        try {
+            const ref = doc(db, 'products', productId);
+            const snap = await getDoc(ref);
+            const st = snap.exists() ? snap.data().reviewStats : null;
+            if (!st || !(st.count >= 0)) return;
+            const count = st.count + 1, sum = (st.sum || 0) + rating;
+            await updateDoc(ref, { reviewStats: { count, sum, avg: sum / count } });
+        } catch (e) { console.warn('리뷰 통계 갱신 건너뜀:', e); }
+    }
+
+    $('rv-submit').addEventListener('click', async () => {
+        if (rvBusy) return;
+        const data = dlRegistry[rvKey];
+        if (!data) return;
+        const content = $('rv-content').value.trim();
+        if (!rvRating) { alert('별점을 선택해주세요.'); return; }
+        if (content.length < 10) { alert('리뷰 내용을 10자 이상 작성해주세요.'); $('rv-content').focus(); return; }
+        if (!rvFile) { alert('사진 리뷰를 위해 제품 사진을 1장 올려주세요.'); return; }
+
+        rvBusy = true;
+        $('rv-submit').disabled = true;
+        $('rv-submit').textContent = '등록 중...';
+        try {
+            const user = await ensureAnonymousLogin();
+            const productId = await resolveProductId({ productId: data.productId, itemName: data.itemName });
+            if (!productId) throw new Error('구입하신 제품을 확인하지 못했습니다. 고객센터로 문의해주세요.');
+            const photoUrl = await uploadFileToR2(rvFile, data.author || '리뷰');
+            const ref = doc(collection(db, 'reviews'));
+            await setDoc(ref, {
+                productId, rating: rvRating, content, name: data.author || '',
+                images: [photoUrl], createdAt: serverTimestamp(),
+                orderId: data.orderId, itemIdx: data.idx, uid: user ? user.uid : '', source: 'search'
+            });
+            localStorage.setItem(reviewFlagKey(data.orderId, data.idx), '1');
+            bumpReviewStats(productId, rvRating);
+            unlockOriginalButtons(rvKey);
+            rvBusy = false;
+            closeReviewModal();
+            alert('소중한 리뷰 감사합니다!\n이제 [원본(수정가능)파일 다운로드] 버튼을 눌러 받으실 수 있습니다.');
+        } catch (e) {
+            console.error(e);
+            rvBusy = false;
+            $('rv-submit').disabled = false;
+            $('rv-submit').textContent = '리뷰 등록하고 원본 받기';
+            alert('리뷰 등록 중 오류가 발생했습니다: ' + (e && e.message ? e.message : e));
+        }
+    });
+
     // ---------------- 조회 ----------------
     $('search-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('search-btn').click(); });
     $('search-phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('search-btn').click(); });
@@ -644,6 +825,7 @@
 
             // 세금계산서 ↔ 현금영수증 상호배타 상태를 화면에 반영
             filteredData.forEach(d => { syncTaxCashButtons(d); });
+            checkDeletedFiles(resultsDiv);
         } catch (error) {
             console.error(error);
             resultsDiv.innerHTML = '<div class="text-sm text-red-600 bg-white border border-red-100 rounded-2xl p-5">조회 중 오류가 발생했습니다. 다시 시도해주세요.</div>';
@@ -714,6 +896,12 @@
             productGoRegistry[goKey] = { productId: it.productId || '', itemName: it.item || '' };
             const productGoBtn = `<button type="button" data-act="product-go" data-key="${goKey}" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">제품바로가기</button>`;
 
+            // 시안(jpg)/원본(svg) 다운로드 버튼 — 이 상품에 업로드된 파일 기준
+            const itemFiles = (Array.isArray(it.originalImageUrls) ? it.originalImageUrls : [])
+                .map(f => (typeof f === 'string') ? { url: f, label: '' } : { url: f && f.url, label: (f && f.filename) || '' });
+            const { sian: fSian, svg: fSvg } = splitDesignFiles(itemFiles);
+            const dlButtons = designDownloadButtons(d, idx, { productId: it.productId || '', itemName: it.item || '' }, fSian, fSvg, !!(it.originalDeleted || d.originalDeleted));
+
             const detailBits = [
                 (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
                 it.paper ? `용지: ${it.paper}` : '',
@@ -727,6 +915,7 @@
                 <div class="font-medium text-slate-800">${esc(it.item || '상품')} · ${esc(qtyLabel)} · ${priceNumber.toLocaleString()}원</div>
                 ${detailBits ? `<div class="text-slate-500 mt-1">${esc(detailBits)}</div>` : ''}
                 <div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${productGoBtn}</div>
+                ${dlButtons}
             </div>`;
         }).join('');
     }
@@ -783,14 +972,16 @@
         }
 
         // ---- 첨부파일 ----
-        // jpg / jpeg / svg 파일은 링크를 보여주지 않습니다. (파일명이 없는 항목은 보이는 것끼리 파일 1, 파일 2 순으로 번호를 매김)
+        // jpg(시안)/svg(원본)는 버튼으로, 나머지 파일은 링크로 보여줍니다.
+        // 장바구니 주문은 상품별 카드 안에 버튼이 있으므로 여기서는 나머지 파일 링크만 보여줍니다.
         const fileList = (Array.isArray(d.originalFiles) && d.originalFiles.length)
             ? d.originalFiles.map(f => ({ url: f.url, label: f.filename, named: true }))
             : [d.file1Url, d.file2Url].filter(Boolean).map(u => ({ url: u, label: '', named: false }));
-        const visibleFiles = fileList.filter(f => safeUrl(f.url) && !isHiddenFile(f.url, f.label));
+        const { sian: topSian, svg: topSvg, others: visibleFiles } = splitDesignFiles(fileList);
         const fileLinks = visibleFiles.map((f, i) =>
             `<a href="#" data-act="download" data-url="${esc(f.url)}" ${f.url === d.file1Url ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.named && f.label ? f.label : `파일 ${i + 1}`)}</a>`
         ).join('');
+        const topDlButtons = isCartItems ? '' : designDownloadButtons(d, 0, { productId: d.productId || '', itemName: d.productName || '' }, topSian, topSvg, !!d.originalDeleted);
 
         // ---- 무통장 입금 안내 (입금 확인 전) ----
         const bankNotice = (isPending || isMobilePending) ? `
@@ -893,10 +1084,13 @@
                 ${refundText ? `<div><span class="font-semibold">환불계좌:</span> ${esc(refundText)}${refundHolder ? ` <span class="font-semibold ml-2">예금주:</span> ${esc(refundHolder)}` : ''}</div>` : ''}
                 ${itemsBlock}
 
-                ${fileLinks ? `
-                <div class="mt-2 flex items-center gap-2 flex-wrap">
-                    <span class="font-semibold">첨부파일:</span>
-                    ${fileLinks}
+                ${(fileLinks || topDlButtons) ? `
+                <div class="mt-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-semibold">첨부파일:</span>
+                        ${fileLinks}
+                    </div>
+                    ${topDlButtons}
                 </div>` : ''}
 
                 ${bankNotice}
@@ -937,6 +1131,8 @@
             case 'sian': window.viewSianImage(ds.url, ds.fb); break;
             case 'product-go': window.productGoClick(ds.key); break;
             case 'download': window.downloadAttached(ds.url); break;
+            case 'dl-sian': { const g = dlRegistry[ds.key]; if (g && g.sianUrl) window.downloadAttached(g.sianUrl); break; }
+            case 'dl-orig': window.downloadOriginal(ds.key, el); break;
             case 'segum': window.openSegumPageFor(ds.name, ds.phone, ds.id); break;
             case 'cash': window.openCashPageFor(ds.id, ds.secret, ds.jajoo === '1', ds.name, ds.phone, ds.bank === '1'); break;
             case 'card': window.openCardPageFor(ds.id, ds.secret, ds.jajoo === '1'); break;
@@ -1065,7 +1261,6 @@
                 const fileLink = $('file1-link-' + docId);
                 if (fileLink) {
                     fileLink.dataset.url = newUrl;
-                    if (isHiddenFile(newUrl, file.name)) fileLink.style.display = 'none';
                 }
             } catch (e) {
                 if (e.code === 'permission-denied') {
@@ -1102,5 +1297,30 @@
         }
     };
 </script>
+<div id="review-modal" role="dialog" aria-modal="true" aria-labelledby="rv-title">
+    <div class="rv-card">
+        <h2 id="rv-title" class="text-base font-bold text-slate-800">사진 리뷰 작성</h2>
+        <p class="text-xs text-slate-500 mt-1">구입하신 <b id="rv-product" class="text-slate-700"></b> 에 대한 리뷰입니다. 작성하신 리뷰는 해당 제품 페이지의 이용후기에 등록되며, 등록 후 원본(수정가능)파일을 다운로드할 수 있습니다.</p>
+        <div class="mt-4">
+            <div class="text-xs font-semibold text-slate-600 mb-1">별점</div>
+            <div>
+                <button type="button" class="rv-star" data-v="1" aria-label="1점">★</button><button type="button" class="rv-star" data-v="2" aria-label="2점">★</button><button type="button" class="rv-star" data-v="3" aria-label="3점">★</button><button type="button" class="rv-star" data-v="4" aria-label="4점">★</button><button type="button" class="rv-star" data-v="5" aria-label="5점">★</button>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label for="rv-content" class="text-xs font-semibold text-slate-600">리뷰 내용 (10자 이상)</label>
+            <textarea id="rv-content" rows="4" maxlength="1000" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" placeholder="제품은 어떠셨나요? 품질, 배송, 만족도 등을 자유롭게 남겨주세요."></textarea>
+        </div>
+        <div class="mt-3">
+            <label for="rv-file" class="text-xs font-semibold text-slate-600">제품 사진 (필수, 1장 · 10MB 이하)</label>
+            <input id="rv-file" type="file" accept="image/*" class="mt-1 block w-full text-xs">
+            <img id="rv-preview" alt="리뷰 사진 미리보기" style="display:none; max-width:100%; max-height:200px; margin-top:8px; border-radius:8px; border:1px solid #e2e8f0;">
+        </div>
+        <div class="mt-4 flex gap-2 justify-end">
+            <button type="button" id="rv-cancel" class="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-600 bg-white">취소</button>
+            <button type="button" id="rv-submit" class="px-4 py-2 text-sm rounded-lg bg-violet-600 text-white font-bold">리뷰 등록하고 원본 받기</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
