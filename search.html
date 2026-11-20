@@ -634,13 +634,15 @@
         const sianBtn = sian
             ? `<button type="button" data-act="dl-sian" data-key="${key}" data-check-url="${esc(safeUrl(sian.url))}" ${deleted ? 'disabled' : ''} class="dl-btn">시안 다운로드</button>`
             : '';
-        const svgBtn = svg
+        // 원본(svg)이 삭제된 경우: 무료/유료 원본 다운로드 버튼을 둘 다 아예 그리지 않습니다.
+        const svgBtn = (svg && !deleted)
             ? `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(svg.url))}" ${deleted ? 'disabled' : ''} class="dl-btn orig${reviewed ? '' : ' locked'}">(수정가능)원본파일 다운로드 (무료)</button><span class="tip-box">${deleted ? '파일이 삭제되어 다운로드할 수 없습니다.' : ORIGINAL_NOTICE}</span></span>`
             : '';
         // 원본즉시다운로드(유료): 후기/출고 조건 없이 결제하면 바로 받는 버튼 (원본 파일이 있을 때만)
-        const paidBtn = svg
+        const paidBtn = (svg && !deleted)
             ? `<button type="button" data-act="dl-paid" data-key="${key}" ${deleted ? 'disabled' : ''} class="dl-btn paid">(수정가능)원본파일 다운로드 (유료)</button>`
             : '';
+        if (!sianBtn && !svgBtn && !paidBtn) return '';
         return `<div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${svgBtn}${paidBtn}</div>`;
     }
 
@@ -652,6 +654,14 @@
             try {
                 const res = await fetch(b.dataset.checkUrl, { method: 'HEAD' });
                 if (res.status === 404 || res.status === 410) {
+                    if (b.dataset.act === 'dl-orig') {
+                        // 실제로 원본 파일이 지워진 경우: 무료/유료 원본 버튼을 둘 다 숨김
+                        const wrap = b.closest('.tip') || b;
+                        const row = wrap.parentElement;
+                        wrap.style.display = 'none';
+                        if (row) row.querySelectorAll('[data-act="dl-paid"]').forEach(x => { x.style.display = 'none'; });
+                        return;
+                    }
                     b.disabled = true;
                     const tip = b.parentElement && b.parentElement.querySelector('.tip-box');
                     if (tip) tip.textContent = '파일이 삭제되어 다운로드할 수 없습니다.';
