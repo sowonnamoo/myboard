@@ -634,11 +634,11 @@
             ? `<button type="button" data-act="dl-sian" data-key="${key}" data-check-url="${esc(safeUrl(sian.url))}" ${deleted ? 'disabled' : ''} class="dl-btn">시안 다운로드</button>`
             : '';
         const svgBtn = svg
-            ? `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(svg.url))}" ${deleted ? 'disabled' : ''} class="dl-btn orig${reviewed ? '' : ' locked'}">원본(수정가능)파일 다운로드</button><span class="tip-box">${deleted ? '파일이 삭제되어 다운로드할 수 없습니다.' : ORIGINAL_NOTICE}</span></span>`
+            ? `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(svg.url))}" ${deleted ? 'disabled' : ''} class="dl-btn orig${reviewed ? '' : ' locked'}">(수정가능)원본파일 다운로드 (무료)</button><span class="tip-box">${deleted ? '파일이 삭제되어 다운로드할 수 없습니다.' : ORIGINAL_NOTICE}</span></span>`
             : '';
         // 원본즉시다운로드(유료): 후기/출고 조건 없이 결제하면 바로 받는 버튼 (원본 파일이 있을 때만)
         const paidBtn = svg
-            ? `<button type="button" data-act="dl-paid" data-key="${key}" ${deleted ? 'disabled' : ''} class="dl-btn paid">원본즉시다운로드(유료)</button>`
+            ? `<button type="button" data-act="dl-paid" data-key="${key}" ${deleted ? 'disabled' : ''} class="dl-btn paid">(수정가능)원본파일 다운로드 (유료)</button>`
             : '';
         return `<div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${svgBtn}${paidBtn}</div>`;
     }
@@ -825,7 +825,7 @@
             const secretId = await computeSecretId(boardId, o.name, o.phone);
             const fileObj = { url: o.fileUrl, filename: o.fileLabel || '' };
             const items = [{
-                item: `원본즉시다운로드 - ${o.itemName || '제품'}`,
+                item: `${o.itemName || '제품'} (원본다운로드)`,   // 제품명 먼저, 끝에 (원본다운로드) — 어드민/파이어베이스에서 구분용
                 srcItemName: o.itemName || '',
                 qty: 1, count: 1, price: PAID_PRICE,
                 instantOriginal: true,
@@ -1229,7 +1229,7 @@
         return `
             <div class="mt-2"><span class="font-semibold">대상 제품:</span> ${esc(it.srcItemName || it.item || '-')}</div>
             <div class="flex items-center gap-2 mt-2 flex-wrap">
-                <span class="tip"><button type="button" data-act="dl-instant" data-url="${esc(url)}" data-expire="${expireAt.getTime()}" ${checkAttr} ${disabled ? 'disabled' : ''} class="dl-btn paid">원본즉시다운로드</button><span class="tip-box">${esc(tip)}</span></span>
+                <span class="tip"><button type="button" data-act="dl-instant" data-url="${esc(url)}" data-expire="${expireAt.getTime()}" ${checkAttr} ${disabled ? 'disabled' : ''} class="dl-btn paid">(수정가능)원본파일 다운로드 (유료)</button><span class="tip-box">${esc(tip)}</span></span>
             </div>
             <div class="mt-2 text-xs font-bold text-red-600">※ 주의사항: 파일원본은 10일후 삭제됩니다. (${esc(expireStr)}까지)</div>`;
     }
