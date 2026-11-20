@@ -600,7 +600,9 @@
         dlRegistry[key] = {
             orderId: d.id, idx, author: d.author || '',
             productId: product.productId || '', itemName: product.itemName || '',
-            sianUrl: sian ? safeUrl(sian.url) : '', svgUrl: svg ? safeUrl(svg.url) : ''
+            sianUrl: sian ? safeUrl(sian.url) : '', svgUrl: svg ? safeUrl(svg.url) : '',
+            // 운송장이 등록되어 "출고완료/운송장보기" 버튼이 활성화된 주문만 true (아래 isShipped 참고)
+            shipped: !!safeUrl(d.trackingUrl || d.woonso1)
         };
         const reviewed = localStorage.getItem(reviewFlagKey(d.id, idx)) === '1';
         const sianBtn = sian
@@ -637,9 +639,14 @@
         document.querySelectorAll(`button[data-act="dl-orig"][data-key="${key}"]`).forEach(b => b.classList.remove('locked'));
     }
 
+    // 운송장이 등록되지 않은(출고 전) 주문은 리뷰 작성/원본 다운로드를 막고 안내합니다.
+    const NOT_SHIPPED_NOTICE = '제품 실 수령후 리뷰작성과 원본파일다운로드 가능합니다.';
+    function isShipped(data) { return !!(data && data.shipped); }
+
     window.downloadOriginal = async (key, btn) => {
         const data = dlRegistry[key];
         if (!data || !data.svgUrl) return;
+        if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
         if (!hasReviewFor(data)) { openReviewPrompt(key); return; }
         unlockOriginalButtons(key);
         await window.downloadAttached(data.svgUrl);
@@ -648,6 +655,7 @@
     // ---- 안내창: "사진 리뷰를 작성하시면 다운받으실 수 있습니다." → [리뷰작성하기] 누르면 작성창 ----
     let rpKey = null;
     function openReviewPrompt(key) {
+        if (!isShipped(dlRegistry[key])) { alert(NOT_SHIPPED_NOTICE); return; }
         rpKey = key;
         $('review-prompt').classList.add('open');
     }
@@ -669,6 +677,7 @@
     function openReviewModal(key) {
         const data = dlRegistry[key];
         if (!data) return;
+        if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
         rvKey = key; rvRating = 0; rvFile = null;
         $('rv-product').textContent = data.itemName || '구입하신 제품';
         $('rv-content').value = '';
@@ -699,6 +708,7 @@
         if (rvBusy) return;
         const data = dlRegistry[rvKey];
         if (!data) return;
+        if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
         const content = $('rv-content').value.trim();
         if (!rvRating) { alert('별점을 선택해주세요.'); return; }
         if (content.length < 10) { alert('리뷰 내용을 10자 이상 작성해주세요.'); $('rv-content').focus(); return; }
@@ -1330,6 +1340,7 @@
 </div>
 <div id="review-modal" role="dialog" aria-modal="true" aria-labelledby="rv-title">
     <div class="rv-card">
+        <div class="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800">🎁 리뷰이벤트중 : 베스트리뷰 선정되시면 신세계 상품권 5만원을 발송해 드립니다.</div>
         <h2 id="rv-title" class="text-base font-bold text-slate-800">사진 리뷰 작성</h2>
         <p class="text-xs text-slate-500 mt-1">구입하신 <b id="rv-product" class="text-slate-700"></b> 에 대한 리뷰입니다. 작성하신 리뷰는 해당 제품 페이지의 이용후기에 등록되며, 등록 후 원본(수정가능)파일을 다운로드할 수 있습니다.</p>
         <div class="mt-4">
