@@ -63,6 +63,9 @@
             background: #1e293b; color: #fff; font-size: 11px; line-height: 1.45; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,.2); pointer-events: none; }
         .tip:hover .tip-box, .tip:focus-within .tip-box { display: block; }
         /* 사진 리뷰 작성창 */
+        #review-prompt { position: fixed; inset: 0; z-index: 99; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+        #review-prompt.open { display: flex; }
+        #review-prompt .rp-card { background: #fff; width: 100%; max-width: 360px; border-radius: 16px; padding: 22px 20px 18px; text-align: center; }
         #review-modal { position: fixed; inset: 0; z-index: 100; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
         #review-modal.open { display: flex; }
         #review-modal .rv-card { background: #fff; width: 100%; max-width: 440px; max-height: 92vh; overflow-y: auto; border-radius: 16px; padding: 20px; }
@@ -637,10 +640,25 @@
         let reviewed = false;
         try { reviewed = await hasReviewFor(data); }
         catch (e) { console.error(e); alert('리뷰 작성 여부를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.'); return; }
-        if (!reviewed) { openReviewModal(key); return; }
+        if (!reviewed) { openReviewPrompt(key); return; }
         unlockOriginalButtons(key);
         await window.downloadAttached(data.svgUrl);
     };
+
+    // ---- 안내창: "사진 리뷰를 작성하시면 다운받으실 수 있습니다." → [리뷰작성하기] 누르면 작성창 ----
+    let rpKey = null;
+    function openReviewPrompt(key) {
+        rpKey = key;
+        $('review-prompt').classList.add('open');
+    }
+    function closeReviewPrompt() { $('review-prompt').classList.remove('open'); }
+    $('rp-write').addEventListener('click', () => {
+        const key = rpKey;
+        closeReviewPrompt();
+        if (key) openReviewModal(key);
+    });
+    $('rp-close').addEventListener('click', closeReviewPrompt);
+    $('review-prompt').addEventListener('click', (e) => { if (e.target.id === 'review-prompt') closeReviewPrompt(); });
 
     // ---- 사진 리뷰 작성창 (01my 이용후기에 표시되는 reviews 컬렉션에 저장) ----
     let rvKey = null, rvRating = 0, rvFile = null, rvBusy = false;
@@ -1297,6 +1315,17 @@
         }
     };
 </script>
+<div id="review-prompt" role="dialog" aria-modal="true" aria-labelledby="rp-title">
+    <div class="rp-card">
+        <div class="text-3xl">📷</div>
+        <h2 id="rp-title" class="text-base font-bold text-slate-800 mt-2">사진 리뷰를 작성하시면<br>다운받으실 수 있습니다.</h2>
+        <p class="text-xs text-slate-500 mt-2">원본파일은 근시일내 삭제되며, 용량이 적은 파일만 다운받을 수 있습니다.</p>
+        <div class="mt-5 flex gap-2">
+            <button type="button" id="rp-close" class="flex-1 px-4 py-2.5 text-sm rounded-lg border border-slate-300 text-slate-600 bg-white">닫기</button>
+            <button type="button" id="rp-write" class="flex-1 px-4 py-2.5 text-sm rounded-lg bg-violet-600 text-white font-bold">리뷰작성하기</button>
+        </div>
+    </div>
+</div>
 <div id="review-modal" role="dialog" aria-modal="true" aria-labelledby="rv-title">
     <div class="rv-card">
         <h2 id="rv-title" class="text-base font-bold text-slate-800">사진 리뷰 작성</h2>
