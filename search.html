@@ -378,6 +378,24 @@
         return !isBankTransfer;
     }
 
+    // ---- 리뷰 저장 전용 프로젝트 (01my.html 이용후기가 읽는 ecogr-636c6 와 동일) ----
+    // 주문 데이터(board-291e3)와는 다른 프로젝트라, 리뷰는 별도 앱으로 연결해서 저장합니다.
+    const reviewApp = initializeApp({
+        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+    }, "reviewApp");
+    const reviewDb = getFirestore(reviewApp);
+    const reviewAuth = getAuth(reviewApp);
+    async function ensureReviewLogin() {
+        if (reviewAuth.currentUser) return reviewAuth.currentUser;
+        const cred = await signInAnonymously(reviewAuth);
+        return cred.user;
+    }
+
     // ---- 방문자 익명 로그인 (현금영수증 신청/파일재업로드 등에서 uid 필요) ----
     const auth = getAuth(app);
     let resolveAuthReady;
@@ -692,7 +710,7 @@
     // 상품 문서에 캐시된 리뷰 통계(reviewStats)를 함께 올려줍니다. (권한이 없으면 조용히 건너뜀 — 01my가 필요하면 다시 계산합니다)
     async function bumpReviewStats(productId, rating) {
         try {
-            const ref = doc(db, 'products', productId);
+            const ref = doc(reviewDb, 'products', productId);
             const snap = await getDoc(ref);
             const st = snap.exists() ? snap.data().reviewStats : null;
             if (!st || !(st.count >= 0)) return;
@@ -714,11 +732,16 @@
         $('rv-submit').disabled = true;
         $('rv-submit').textContent = '등록 중...';
         try {
-            const user = await ensureAnonymousLogin();
+            let user;
+            try { user = await ensureReviewLogin(); }
+            catch (authErr) {
+                console.error('리뷰 저장용 로그인 실패:', authErr && authErr.code, authErr);
+                throw new Error('리뷰 저장용 익명 로그인에 실패했습니다. (' + ((authErr && authErr.code) || '알 수 없는 오류') + ')');
+            }
             const productId = await resolveProductId({ productId: data.productId, itemName: data.itemName });
             if (!productId) throw new Error('구입하신 제품을 확인하지 못했습니다. 고객센터로 문의해주세요.');
             const photoUrl = await uploadFileToR2(rvFile, data.author || '리뷰');
-            const ref = doc(collection(db, 'reviews'));
+            const ref = doc(collection(reviewDb, 'reviews'));
             await setDoc(ref, {
                 productId, rating: rvRating, content, name: data.author || '',
                 images: [photoUrl], createdAt: serverTimestamp(),
