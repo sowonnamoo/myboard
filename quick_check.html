@@ -46,6 +46,18 @@
   #url-image-modal-box img { display:block; width:100%; height:auto; border-radius:6px; border:1px solid #e2e8f0; }
   #url-image-modal-box .close-btn { width:100%; background:#fff; color:#334155; border:1px solid #cbd5e1; padding:8px; font-size:13px; margin-top:10px; }
   #url-image-modal-box .open-link { display:block; text-align:center; font-size:12px; margin-top:8px; color:#2563eb; }
+  /* 리뷰 확인/수정/삭제 모달 */
+  .rv-btn { padding:3px 8px; font-size:11px; background:#2563eb; color:#fff; border:none; border-radius:4px; cursor:pointer; white-space:nowrap; }
+  .rv-btn.has { background:#f97316; font-weight:700; }
+  #review-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:1000; }
+  #review-modal-box { background:#fff; border-radius:10px; padding:16px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.25); }
+  .rv-item { border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px; }
+  .rv-item img { display:block; max-width:100%; max-height:320px; border-radius:6px; border:1px solid #e2e8f0; margin:8px 0; cursor:pointer; }
+  .rv-item textarea { width:100%; height:90px; box-sizing:border-box; font-family:inherit; font-size:13px; padding:6px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical; }
+  .rv-item select, .rv-item input[type=text] { font-size:13px; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; }
+  .rv-meta { font-size:12px; color:#64748b; margin-bottom:6px; }
+  .rv-actions { display:flex; gap:6px; margin-top:8px; }
+  .rv-actions button { padding:6px 12px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -98,6 +110,14 @@
     <img id="url-image-modal-img" src="" alt="등록된 이미지">
     <a id="url-image-modal-link" class="open-link" href="#" target="_blank">🔗 새 창에서 원본 열기</a>
     <button class="close-btn" onclick="closeUrlImageModal()">닫기</button>
+  </div>
+</div>
+
+<div id="review-modal-overlay">
+  <div id="review-modal-box">
+    <p id="review-modal-title" style="font-size:14px; font-weight:bold; color:#334155; margin:0 0 10px;"></p>
+    <div id="review-modal-list"></div>
+    <button class="close-btn" onclick="closeReviewModal()" style="width:100%; background:#fff; color:#334155; border:1px solid #cbd5e1; padding:8px; font-size:13px;">닫기</button>
   </div>
 </div>
 
@@ -484,6 +504,94 @@ window.closeIpModal = () => {
 
 // ============= 운송장/카드전표 등록완료 버튼 -> 이미지 모달 =============
 // 등록된 URL이 이미지가 아닐 수도 있으므로(예: PDF), 이미지 로딩 실패 시 링크로만 열도록 안내합니다.
+// ============= 사진 리뷰 확인/수정/삭제 =============
+// 고객이 search.html에서 쓴 리뷰(reviews 컬렉션, 문서ID = 주문ID_상품번호)를 주문 행 맨 오른쪽 버튼으로 확인합니다.
+// 리뷰가 없으면 파란 버튼, 있으면 주황 버튼(개수 표시). 별점 통계(reviewStats)도 수정/삭제에 맞춰 함께 보정합니다.
+const reviewMap = {};
+function reviewBtnHtml(boardId) {
+  const n = (reviewMap[boardId] || []).length;
+  return `<button class="rv-btn${n ? ' has' : ''}" onclick="openReviewModal('${boardId}')">⭐ 리뷰${n ? '(' + n + ')' : ''}</button>`;
+}
+function refreshReviewBtn(boardId) {
+  const cell = document.getElementById('rv-cell-' + boardId);
+  if (cell) cell.innerHTML = reviewBtnHtml(boardId);
+}
+function reviewStarsText(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
+function renderReviewModalList(boardId) {
+  const list = reviewMap[boardId] || [];
+  const box = document.getElementById('review-modal-list');
+  if (list.length === 0) {
+    box.innerHTML = '<p style="font-size:13px; color:#64748b; margin:0 0 12px;">등록된 리뷰가 없습니다.</p>';
+    return;
+  }
+  box.innerHTML = list.map(r => {
+    const dt = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString('ko-KR') : '-';
+    const img = Array.isArray(r.images) && r.images[0] ? r.images[0] : '';
+    const opts = [5,4,3,2,1].map(v => `<option value="${v}"${v === r.rating ? ' selected' : ''}>${reviewStarsText(v)} (${v})</option>`).join('');
+    return `<div class="rv-item" id="rv-item-${escapeHtml(r.id)}">
+      <div class="rv-meta">상품 ${Number(r.itemIdx) + 1}번째 · 상품ID: ${escapeHtml(r.productId)} · ${escapeHtml(dt)}</div>
+      <div style="margin-bottom:6px;">작성자 <input type="text" id="rv-name-${escapeHtml(r.id)}" value="${escapeHtml(r.name)}" maxlength="50" style="width:140px;"> &nbsp; 별점 <select id="rv-rating-${escapeHtml(r.id)}">${opts}</select></div>
+      ${img ? `<a href="${escapeHtml(img)}" target="_blank"><img src="${escapeHtml(img)}" alt="리뷰 사진"></a>` : '<div class="rv-meta">(사진 없음)</div>'}
+      <textarea id="rv-content-${escapeHtml(r.id)}" maxlength="2000">${escapeHtml(r.content)}</textarea>
+      <div class="rv-actions">
+        <button onclick="saveReview('${boardId}','${escapeHtml(r.id)}')" style="background:#2563eb;">수정 저장</button>
+        <button onclick="deleteReview('${boardId}','${escapeHtml(r.id)}')" style="background:#dc2626;">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.openReviewModal = (boardId) => {
+  const label = (reviewMap[boardId] && reviewMap[boardId].orderLabel) || '';
+  document.getElementById('review-modal-title').textContent = `⭐ 리뷰 확인 — ${label}`;
+  renderReviewModalList(boardId);
+  document.getElementById('review-modal-overlay').style.display = 'flex';
+};
+window.closeReviewModal = () => { document.getElementById('review-modal-overlay').style.display = 'none'; };
+document.getElementById('review-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'review-modal-overlay') closeReviewModal(); });
+
+// 별점 통계 보정: 수정은 sum에 차이만큼, 삭제는 count/sum 감소
+function statsAfter(prev, countDelta, sumDelta) {
+  const count = Math.max(0, (prev.count || 0) + countDelta);
+  const sum = Math.max(0, (prev.sum || 0) + sumDelta);
+  return { count, sum, avg: count ? sum / count : 0, lastReviewId: prev.lastReviewId || '' };
+}
+window.saveReview = async (boardId, reviewId) => {
+  const r = (reviewMap[boardId] || []).find(x => x.id === reviewId);
+  if (!r) return;
+  const content = document.getElementById('rv-content-' + reviewId).value.trim();
+  const name = document.getElementById('rv-name-' + reviewId).value.trim();
+  const rating = Number(document.getElementById('rv-rating-' + reviewId).value);
+  if (content.length < 10) return alert('리뷰 내용은 10자 이상이어야 합니다.');
+  try {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'reviews', reviewId), { content, name, rating });
+    if (rating !== r.rating) {
+      const statsRef = doc(db, 'reviewStats', r.productId);
+      const st = await getDoc(statsRef);
+      if (st.exists()) batch.set(statsRef, statsAfter(st.data(), 0, rating - r.rating));
+    }
+    await batch.commit();
+    Object.assign(r, { content, name, rating });
+    alert('리뷰를 수정했습니다.');
+  } catch (e) { alert('수정 실패: ' + e.message); }
+};
+window.deleteReview = async (boardId, reviewId) => {
+  const r = (reviewMap[boardId] || []).find(x => x.id === reviewId);
+  if (!r) return;
+  if (!confirm('이 리뷰를 삭제할까요? 삭제하면 되돌릴 수 없습니다.')) return;
+  try {
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'reviews', reviewId));
+    const statsRef = doc(db, 'reviewStats', r.productId);
+    const st = await getDoc(statsRef);
+    if (st.exists()) batch.set(statsRef, statsAfter(st.data(), -1, -r.rating));
+    await batch.commit();
+    reviewMap[boardId] = reviewMap[boardId].filter(x => x.id !== reviewId);
+    refreshReviewBtn(boardId);
+    renderReviewModalList(boardId);
+  } catch (e) { alert('삭제 실패: ' + e.message); }
+};
+
 window.showUrlImageModal = (boardId, type) => {
   const url = urlImageMap[boardId + '_' + type];
   if (!url) return alert('등록된 URL을 찾을 수 없습니다.');
@@ -1014,7 +1122,7 @@ async function loadRecentOrders() {
   orderFrontier = { boards: null, jjjj: null };
 
   resultEl.innerHTML = `<div class="table-wrap"><table><thead>
-    <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>현금영수증URL</th><th>IP</th><th>시안</th><th>제작상황</th></tr>
+    <tr><th>상태</th><th></th><th>주문서</th><th>첨부파일</th><th>날짜</th><th>작성자</th><th>연락처</th><th>배송지</th><th>운송장URL</th><th>카드전표URL</th><th>현금영수증URL</th><th>IP</th><th>시안</th><th>제작상황</th><th>리뷰</th></tr>
     </thead><tbody id="orders-body"></tbody></table></div>
     <div id="orders-more-wrap"><button id="orders-more-btn" onclick="loadMoreOrders()" style="margin-top:8px; background:#e2e8f0; color:#1e293b; padding:8px 16px; font-size:13px;">최근 5건 불러오기</button></div>`;
 }
@@ -1054,7 +1162,7 @@ window.loadMoreOrders = async () => {
     } else {
       moreWrap.innerHTML = '';
       if (body.children.length === 0) {
-        body.innerHTML = '<tr><td colspan="14" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제/모바일/모바일무통장/접수에러)이 없습니다.</td></tr>';
+        body.innerHTML = '<tr><td colspan="15" style="text-align:center; color:#94a3b8;">표시할 주문(무통장/카드결제/모바일/모바일무통장/접수에러)이 없습니다.</td></tr>';
       }
     }
   } catch (e) {
@@ -1070,7 +1178,7 @@ async function buildOrderRows(items) {
 
   // 아래 4가지 조회는 서로 결과에 의존하지 않으므로(카드전표 조회에 필요한 status는 이미
   // top-level 문서에 있음), 순차로 기다리지 않고 한 번에 동시에 시작해서 왕복 횟수를 줄입니다.
-  const [adminPrivates, rawPrivates, hanjoolSnaps, cardSnaps, cashSnaps] = await Promise.all([
+  const [adminPrivates, rawPrivates, hanjoolSnaps, cardSnaps, cashSnaps, reviewSnaps] = await Promise.all([
     Promise.all(items.map(it => it.col === "boards" ? fetchPrivate(it.doc.id) : Promise.resolve({}))),
     Promise.all(items.map(it => fetchPrivateRef(it.doc.id, it.col))),
     // jjjj(재주문)에는 hanjool 서브컬렉션 보안규칙이 없어서(재주문건은 재첨부 기능 대상이 아님)
@@ -1086,6 +1194,10 @@ async function buildOrderRows(items) {
     // 고객이 신청하지 않아도 관리자가 미리 URL을 등록해둘 수 있도록 하기 위함입니다.
     Promise.all(items.map(it =>
       it.doc.data().status === '무통장' ? getDoc(doc(db, "cashReceipt1", it.doc.id)) : Promise.resolve(null)
+    )),
+    // 사진 리뷰(reviews) - 주문ID로 조회. 실패해도 목록이 멈추지 않도록 빈 결과로 대체합니다.
+    Promise.all(items.map(it =>
+      getDocs(query(collection(db, "reviews"), where("orderId", "==", it.doc.id))).catch(() => ({ docs: [] }))
     ))
   ]);
   // 세금계산서(segum1) 매칭은 더 이상 여기서 자동 조회하지 않습니다.
@@ -1248,6 +1360,10 @@ async function buildOrderRows(items) {
     const existingMemo = (typeof rawPriv.productionMemo === 'string') ? rawPriv.productionMemo : '';
     const memoCell = `<div class="memo-box"><textarea id="memo-${d.id}" maxlength="${PRODUCTION_MEMO_MAX}" placeholder="제작상황 (고객 조회화면에 표시)">${escapeHtml(existingMemo)}</textarea><div><button onclick="saveProductionMemo('${d.id}')">저장</button><span id="memo-msg-${d.id}" class="memo-saved"></span></div></div>`;
 
+    reviewMap[d.id] = reviewSnaps[idx].docs.map(x => ({ id: x.id, ...x.data() }));
+    reviewMap[d.id].orderLabel = author;
+    const reviewCell = reviewBtnHtml(d.id);
+
     rows.push(`<tr${it.isJajoo ? ' style="background:#fff7ed;"' : ''}>
       <td>${statusCellHtml}<br>${taxIconCell}</td>
       <td><input type="checkbox" onchange="toggleSelect(this, '${d.id}', '${authorEsc}')"></td>
@@ -1266,6 +1382,7 @@ async function buildOrderRows(items) {
       <td><button onclick="showIpModal('${(data.ip || '').replace(/'/g, "\\'")}')" style="padding:5px 10px; font-size:11px; background:#334155; color:white; border:none; border-radius:6px; cursor:pointer;">IP</button></td>
       <td>${sianDoneCell}</td>
       <td>${memoCell}</td>
+      <td id="rv-cell-${d.id}">${reviewCell}</td>
     </tr>`);
   });
 

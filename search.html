@@ -149,7 +149,7 @@
 </script>
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const $ = (id) => document.getElementById(id);
@@ -378,23 +378,11 @@
         return !isBankTransfer;
     }
 
-    // ---- 리뷰 저장 전용 프로젝트 (01my.html 이용후기가 읽는 ecogr-636c6 와 동일) ----
-    // 주문 데이터(board-291e3)와는 다른 프로젝트라, 리뷰는 별도 앱으로 연결해서 저장합니다.
-    const reviewApp = initializeApp({
-        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
-        authDomain: "ecogr-636c6.firebaseapp.com",
-        projectId: "ecogr-636c6",
-        storageBucket: "ecogr-636c6.firebasestorage.app",
-        messagingSenderId: "95745358447",
-        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
-    }, "reviewApp");
-    const reviewDb = getFirestore(reviewApp);
-    const reviewAuth = getAuth(reviewApp);
-    async function ensureReviewLogin() {
-        if (reviewAuth.currentUser) return reviewAuth.currentUser;
-        const cred = await signInAnonymously(reviewAuth);
-        return cred.user;
-    }
+    // ---- 리뷰 저장: 주문과 같은 board-291e3 프로젝트 (reviews, reviewStats 컬렉션) ----
+    // 별도 프로젝트/별도 로그인 없이, 위에서 이미 로그인된 익명 계정으로 저장합니다.
+    // 보안은 Firestore 규칙(reviews / reviewStats)에서 검증합니다.
+    const reviewDb = db;
+    async function ensureReviewLogin() { return ensureAnonymousLogin(); }
 
     // ---- 방문자 익명 로그인 (현금영수증 신청/파일재업로드 등에서 uid 필요) ----
     const auth = getAuth(app);
@@ -707,18 +695,6 @@
         else { $('rv-preview').style.display = 'none'; }
     });
 
-    // 상품 문서에 캐시된 리뷰 통계(reviewStats)를 함께 올려줍니다. (권한이 없으면 조용히 건너뜀 — 01my가 필요하면 다시 계산합니다)
-    async function bumpReviewStats(productId, rating) {
-        try {
-            const ref = doc(reviewDb, 'products', productId);
-            const snap = await getDoc(ref);
-            const st = snap.exists() ? snap.data().reviewStats : null;
-            if (!st || !(st.count >= 0)) return;
-            const count = st.count + 1, sum = (st.sum || 0) + rating;
-            await updateDoc(ref, { reviewStats: { count, sum, avg: sum / count } });
-        } catch (e) { console.warn('리뷰 통계 갱신 건너뜀:', e); }
-    }
-
     $('rv-submit').addEventListener('click', async () => {
         if (rvBusy) return;
         const data = dlRegistry[rvKey];
@@ -741,14 +717,22 @@
             const productId = await resolveProductId({ productId: data.productId, itemName: data.itemName });
             if (!productId) throw new Error('구입하신 제품을 확인하지 못했습니다. 고객센터로 문의해주세요.');
             const photoUrl = await uploadFileToR2(rvFile, data.author || '리뷰');
-            const ref = doc(collection(reviewDb, 'reviews'));
-            await setDoc(ref, {
+            // 리뷰 문서 ID = 주문ID_상품번호 → 같은 주문 상품에는 리뷰 1개만 (규칙에서도 강제)
+            const reviewId = `${data.orderId}_${data.idx}`;
+            const reviewRef = doc(reviewDb, 'reviews', reviewId);
+            const statsRef = doc(reviewDb, 'reviewStats', productId);
+            let prev = { count: 0, sum: 0 };
+            try { const ps = await getDoc(statsRef); if (ps.exists()) prev = ps.data(); } catch (e) { /* 첫 리뷰 */ }
+            const count = (prev.count || 0) + 1, sum = (prev.sum || 0) + rvRating;
+            const batch = writeBatch(reviewDb);
+            batch.set(reviewRef, {
                 productId, rating: rvRating, content, name: data.author || '',
                 images: [photoUrl], createdAt: serverTimestamp(),
                 orderId: data.orderId, itemIdx: data.idx, uid: user ? user.uid : '', source: 'search'
             });
+            batch.set(statsRef, { count, sum, avg: sum / count, lastReviewId: reviewId });
+            await batch.commit();
             localStorage.setItem(reviewFlagKey(data.orderId, data.idx), '1');
-            bumpReviewStats(productId, rvRating);
             unlockOriginalButtons(rvKey);
             rvBusy = false;
             closeReviewModal();
