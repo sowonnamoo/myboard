@@ -727,6 +727,16 @@
 
 <script src="shipping.js"></script>
 <script>
+// 장바구니 제목 표시용: 시안 편집기에서 담긴 상품은 이름이 "명함 (실제상품명)" 형태로 저장되어 있어서,
+// 앞의 "명함 ( )" 껍데기를 빼고, 남은 괄호도 모두 띄어쓰기로 바꿔 실제 상품명만 보여준다.
+// (저장된 값은 그대로 두고 화면에만 적용)
+function displayItemName(name){
+    let t = String(name == null ? '' : name);
+    const m = t.match(/^명함\s*\((.*)\)\s*$/);
+    if(m) t = m[1];
+    return t.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 // 장바구니(cart) 저장소 — 원래 localStorage를 썼는데, 도메인당 5~10MB 한도라
 // 아직 R2에 안 올라간 원본 이미지(SVG/고해상도 JPEG data URL)를 여러 개 담으면
 // 금방 한도를 넘겨버려서 "용량이 너무 커서 저장 실패" 오류가 났음. 한도가 훨씬
@@ -1004,7 +1014,7 @@ function render(){
                 <div class="item-no">No.${String(index + 1).padStart(2, '0')}</div>
                 <div class="item-body">
                     <div class="item-top">
-                        <div class="item-name">${item.item}</div>
+                        <div class="item-name">${displayItemName(item.item)}</div>
                         <div class="item-qty">${item.qty}개${item.count && item.count != 1 ? ` × ${item.count}건` : ''}</div>
                     </div>
                     ${detailLines ? `<div class="item-detail">${detailLines}</div>` : ''}
