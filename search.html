@@ -80,6 +80,7 @@
         #paid-modal .pd-card { background: #fff; width: 100%; max-width: 420px; max-height: 94vh; overflow-y: auto; border-radius: 16px; padding: 20px; }
         #paid-modal .pd-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin: 12px 0 4px; }
         #paid-modal .pd-input { width: 100%; border: 1px solid #e1e6ea; border-radius: 10px; padding: 11px 12px; font-size: 14px; background: #fff; outline: none; }
+        #paid-modal .pd-input[readonly] { background: #f1f5f9; color: #475569; cursor: not-allowed; }
         #paid-modal .pd-input:focus { border-color: #2657a6; box-shadow: 0 0 0 3px rgba(38,87,166,.12); }
         #paid-modal .pd-price { margin-top: 14px; padding: 12px; border-radius: 10px; background: #f1f5f9; text-align: center; font-size: 16px; font-weight: 800; color: #142230; }
         #paid-modal .pd-notice { margin-top: 10px; padding: 11px 12px; border-radius: 10px; background: #fbeae9; color: #d64545; font-size: 12.5px; font-weight: 700; line-height: 1.6; }
@@ -895,6 +896,8 @@
         $('pd-name').value = String(g.author || '').replace(/[\s()]/g, '');
         $('pd-phone').value = String(g.phone || '').replace(/[^0-9]/g, '').slice(0, 11);
         $('pd-product').textContent = g.itemName || '선택하신 제품';
+        // 주문자 정보로 채워진 성함/핸드폰번호는 수정할 수 없게 잠급니다. (값이 비어 있으면 입력할 수 있게 둠)
+        ['pd-name', 'pd-phone'].forEach(id => { const el = $(id); el.readOnly = !!el.value; });
         ['pd-refund-bank', 'pd-refund-holder', 'pd-refund-account'].forEach(id => { $(id).value = ''; });
         closePaidBank();
         $('paid-modal').classList.add('open');
