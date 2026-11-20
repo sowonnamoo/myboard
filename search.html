@@ -149,7 +149,7 @@
 </script>
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, query, where, limit, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const $ = (id) => document.getElementById(id);
@@ -624,7 +624,14 @@
 
     async function hasReviewFor(data) {
         if (localStorage.getItem(reviewFlagKey(data.orderId, data.idx)) === '1') return true;
-        const snap = await getDocs(query(collection(db, 'reviews'), where('orderId', '==', data.orderId), where('itemIdx', '==', data.idx)));
+        // 익명 로그인이 끝난 뒤에 조회 (규칙이 로그인 사용자만 허용하는 경우 대비)
+        try { await ensureAnonymousLogin(); } catch (e) { /* 로그인 실패해도 조회는 시도 */ }
+        const snap = await getDocs(query(
+            collection(db, 'reviews'),
+            where('orderId', '==', String(data.orderId)),
+            where('itemIdx', '==', Number(data.idx) || 0),
+            limit(1)
+        ));
         if (snap.empty) return false;
         localStorage.setItem(reviewFlagKey(data.orderId, data.idx), '1');
         return true;
@@ -639,7 +646,11 @@
         if (!data || !data.svgUrl) return;
         let reviewed = false;
         try { reviewed = await hasReviewFor(data); }
-        catch (e) { console.error(e); alert('리뷰 작성 여부를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.'); return; }
+        catch (e) {
+            // 작성 여부를 서버에서 확인하지 못해도 막다른 길이 되지 않도록, 리뷰 작성 안내로 이어줍니다.
+            console.error('리뷰 작성 여부 확인 실패:', e && e.code, e && e.message, e);
+            reviewed = false;
+        }
         if (!reviewed) { openReviewPrompt(key); return; }
         unlockOriginalButtons(key);
         await window.downloadAttached(data.svgUrl);
