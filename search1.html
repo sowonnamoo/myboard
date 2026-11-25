@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <!-- 이름·전화번호·주소 등 개인 주문정보가 노출되는 페이지라 검색엔진에 안 걸리게 막음 -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet">
+    <script>
+        // 검색/수집 봇이 접속하면 이 아래의 페이지 로딩(조회 화면, 스크립트)을 중단합니다.
+        // robots 메타태그를 무시하거나 JS를 실행하는 봇까지 최대한 막기 위한 보조 장치입니다.
+        // (일반 사용자 기기 이름에 우연히 걸리지 않도록 정확한 봇 이름만 검사합니다.)
+        (function () {
+            var botUA = /\b(googlebot|google-inspectiontool|adsbot-google|bingbot|bingpreview|msnbot|yeti|naverbot|daumoa|slurp|duckduckbot|baiduspider|yandexbot|applebot|sogou|facebookexternalhit|twitterbot|ia_archiver|semrushbot|ahrefsbot|mj12bot|dotbot|petalbot|crawler|spider)\b/i;
+            if (botUA.test(navigator.userAgent || '')) { window.stop(); }
+        })();
+    </script>
+    <title>주문 조회</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <style>
+        body{ -webkit-touch-callout: none; }
+
+        /* ---------- 시안보기 모달 (같은 페이지 안에서 열림) ---------- */
+        .sian-modal{
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(10,14,18,0.92);
+            z-index:1000;
+            align-items:center;
+            justify-content:center;
+            padding:24px;
+            cursor:zoom-out;
+        }
+        .sian-modal.active{ display:flex; }
+        .sian-modal img{
+            max-width:100%;
+            max-height:100%;
+            display:block;
+            cursor:default;
+        }
+        .sian-modal-close{
+            position:fixed;
+            top:18px; right:20px;
+            background:rgba(255,255,255,0.12);
+            color:#fff;
+            border:1px solid rgba(255,255,255,0.25);
+            border-radius:8px;
+            padding:8px 14px;
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+        }
+        .sian-modal-close:hover{ background:rgba(255,255,255,0.2); }
+        /* 시안/원본 다운로드 버튼 + 주의사항 말풍선 */
+        .dl-btn { border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; color: #fff; background: #2563eb; border: 0; cursor: pointer; }
+        .dl-btn.orig { background: #7c3aed; }
+        .dl-btn.orig.locked { background: #a78bfa; }
+        .dl-btn[disabled] { background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; }
+        .tip { position: relative; display: inline-block; }
+        .tip .tip-box { display: none; position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 30; width: 230px; padding: 8px 10px; border-radius: 8px;
+            background: #1e293b; color: #fff; font-size: 11px; line-height: 1.45; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,.2); pointer-events: none; }
+        .tip:hover .tip-box, .tip:focus-within .tip-box { display: block; }
+        /* 사진 리뷰 작성창 */
+        #review-prompt { position: fixed; inset: 0; z-index: 99; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+        #review-prompt.open { display: flex; }
+        #review-prompt .rp-card { background: #fff; width: 100%; max-width: 360px; border-radius: 16px; padding: 22px 20px 18px; text-align: center; }
+        #review-modal { position: fixed; inset: 0; z-index: 100; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+        #review-modal.open { display: flex; }
+        #review-modal .rv-card { background: #fff; width: 100%; max-width: 440px; max-height: 92vh; overflow-y: auto; border-radius: 16px; padding: 20px; }
+        #review-modal .rv-star { font-size: 30px; line-height: 1; color: #cbd5e1; background: none; border: 0; cursor: pointer; padding: 0 2px; }
+        #review-modal .rv-star.on { color: #f59e0b; }
+
+        /* 원본즉시다운로드(유료) 버튼 / 결제창 (cart.html 결제 버튼 스타일 이식) */
+        .dl-btn.paid { background: #dc2626; }
+        #paid-modal { position: fixed; inset: 0; z-index: 101; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+        #paid-modal.open { display: flex; }
+        #paid-modal .pd-card { background: #fff; width: 100%; max-width: 420px; max-height: 94vh; overflow-y: auto; border-radius: 16px; padding: 20px; }
+        #paid-modal .pd-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin: 12px 0 4px; }
+        #paid-modal .pd-input { width: 100%; border: 1px solid #e1e6ea; border-radius: 10px; padding: 11px 12px; font-size: 14px; background: #fff; outline: none; }
+        #paid-modal .pd-input[readonly] { background: #f1f5f9; color: #475569; cursor: not-allowed; }
+        #paid-modal .pd-input:focus { border-color: #2657a6; box-shadow: 0 0 0 3px rgba(38,87,166,.12); }
+        #paid-modal .pd-price { margin-top: 14px; padding: 12px; border-radius: 10px; background: #f1f5f9; text-align: center; font-size: 16px; font-weight: 800; color: #142230; }
+        #paid-modal .pd-notice { margin-top: 10px; padding: 11px 12px; border-radius: 10px; background: #fbeae9; color: #d64545; font-size: 12.5px; font-weight: 700; line-height: 1.6; }
+        #paid-modal .pd-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+        #paid-modal .pd-pay { width: 100%; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; background: #2657a6; color: #fff; border: 0; transition: background .15s; }
+        #paid-modal .pd-pay:hover { background: #1d4685; }
+        #paid-modal .pd-bank, #paid-modal .pd-transfer { width: 100%; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; background: #fff; color: #142230; border: 1.5px solid #e1e6ea; transition: border-color .15s, background .15s; }
+        #paid-modal .pd-bank:hover, #paid-modal .pd-transfer:hover { border-color: #142230; background: #f7f9fa; }
+        #paid-modal .pd-bank.armed { background: #d64545; color: #fff; border-color: #d64545; }
+        #paid-modal .pd-bank.armed:hover { background: #d64545; filter: brightness(.92); }
+        #paid-modal button:disabled { opacity: .6; cursor: not-allowed; }
+        #paid-modal .pd-refund { display: none; padding: 14px; border: 1.5px solid #e1e6ea; border-radius: 10px; background: #f7f9fa; }
+        #paid-modal .pd-refund.open { display: block; }
+        #paid-modal .pd-row { display: flex; gap: 10px; }
+        #paid-modal .pd-row > div { flex: 1; min-width: 0; }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-blue-50 p-4 sm:p-6" oncontextmenu="return false;">
+
+    <!-- 시안보기 모달 -->
+    <div class="sian-modal" id="sian-modal" onclick="closeSianImage()">
+        <button type="button" class="sian-modal-close" onclick="event.stopPropagation(); closeSianImage()">닫기 ✕</button>
+        <img id="sian-modal-img" src="" alt="시안 이미지" onclick="event.stopPropagation()">
+    </div>
+
+    <!-- 카드전표 / 현금영수증 전표 이미지 모달 -->
+    <div id="receipt-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4" onclick="closeReceiptModal()">
+        <div class="bg-white rounded-2xl shadow-lg max-w-[92vw] max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 shrink-0">
+                <span id="receipt-modal-title" class="font-bold text-slate-800 text-sm sm:text-base"></span>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="receipt-print-btn" onclick="printReceiptImage()"
+                        class="bg-slate-600 hover:bg-slate-700 active:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold">인쇄하기</button>
+                    <button type="button" id="receipt-download-btn" onclick="downloadReceiptImage()"
+                        class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold">이미지 다운로드</button>
+                    <button type="button" onclick="closeReceiptModal()" class="text-slate-500 hover:text-slate-800 text-2xl leading-none px-2" aria-label="닫기">&times;</button>
+                </div>
+            </div>
+            <div class="p-4 overflow-auto flex justify-center items-start">
+                <img id="receipt-modal-img" src="" alt="전표 이미지" class="max-w-full h-auto">
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-2xl mx-auto">
+        <!-- 이전 페이지로 돌아가기 -->
+        <button type="button" id="back-btn" onclick="goBack()"
+            class="inline-flex items-center gap-3 mb-4 min-h-[56px] bg-white hover:bg-slate-50 active:scale-[0.98] transition border border-slate-300 text-slate-900 font-bold text-lg sm:text-xl px-6 py-3.5 rounded-2xl shadow-md shadow-slate-200/80 focus:outline-none focus:ring-4 focus:ring-blue-100">
+            <svg class="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            이전 페이지로
+        </button>
+
+        <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
+            <div class="flex items-center gap-3 mb-1">
+                <h2 class="text-lg sm:text-xl font-bold text-slate-900">주문 내역 조회</h2>
+            </div>
+
+            <div class="mb-5 text-xs sm:text-sm text-slate-400">
+                * 구입완료건 조회 / 제작상황
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2.5">
+                <input type="text" id="search-name" autocomplete="off"
+                    class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:flex-grow-[2]"
+                    placeholder="이름 입력">
+
+                <input type="text" id="search-phone" maxlength="4" inputmode="numeric" autocomplete="off"
+                    class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44"
+                    placeholder="전화번호 뒤 4자리">
+
+                <button type="button" id="search-btn"
+                    class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
+            </div>
+        </div>
+
+        <div id="results" class="space-y-4"></div>
+    </div>
+
+<script>
+    // 이전 페이지로 돌아가기: 방문 기록이 있으면 뒤로, 팝업/새 창으로 열렸으면 창 닫기,
+    // 둘 다 아니면(주소창으로 바로 접속 등) 주문 게시판 첫 화면으로 이동
+    function goBack() {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else if (window.opener) {
+            window.close();
+        } else {
+            window.location.href = 'https://sowonnamoo.github.io/myboard/';
+        }
+    }
+</script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    const $ = (id) => document.getElementById(id);
+    const SITE = 'https://sowonnamoo.github.io';
+    const BOARD_BASE = SITE + '/myboard/';
+
+    // ---------------- 조회 대상 제한 ----------------
+    // 이 페이지는 cart.html(장바구니)로 접수·저장된 주문만 조회합니다.
+    // 다른 경로(index1 직접 접수, 재주문 등)로 접수된 주문은 이름·전화번호가 맞아도 보이지 않고,
+    // 주문이 없는 경우와 똑같이 "찾을 수 없음"으로 처리됩니다(블라인드).
+    // 다시 모든 주문을 보이게 하려면 false 로 바꾸세요.
+    const ONLY_CART_ORDERS = true;
+    // cart.html 이 저장한 주문만 가진 특징: fromCart 표시 + 상품 목록(items)
+    function isCartOrder(data) {
+        return !!data && data.fromCart === true && Array.isArray(data.items) && data.items.length > 0;
+    }
+
+    // 시안(jpg)·원본(svg)은 링크 대신 "다운로드 버튼"으로 보여줍니다.
+    function fileExtOf(url, label) {
+        const pick = (str) => {
+            const m = String(str || '').split(/[?#]/)[0].match(/\.([a-z0-9]+)$/i);
+            return m ? m[1].toLowerCase() : '';
+        };
+        let ext = pick(label);
+        if (!ext) {
+            try {
+                const u = new URL(url);
+                ext = pick(u.searchParams.get('name')) || pick(u.pathname);
+            } catch (e) { ext = pick(url); }
+        }
+        return ext;
+    }
+    // 파일 목록을 시안(jpg) / 원본(svg) / 그 외로 나눕니다. (같은 종류가 여러 개면 첫 번째만 버튼으로 사용)
+    function splitDesignFiles(list) {
+        let sian = null, svg = null;
+        const others = [];
+        (list || []).forEach(f => {
+            if (!f || !safeUrl(f.url)) return;
+            const ext = fileExtOf(f.url, f.label);
+            if (ext === 'jpg' || ext === 'jpeg') { if (!sian) sian = f; }
+            else if (ext === 'svg') { if (!svg) svg = f; }
+            else others.push(f);
+        });
+        return { sian, svg, others };
+    }
+
+    // ---------------- 공통 유틸 ----------------
+    // 주문 데이터(이름/상품명/주소 등)는 고객이 직접 입력한 값이라, 화면에 넣기 전에 반드시 이스케이프합니다.
+    function esc(v) {
+        return String(v ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    // http(s) 주소만 허용 (javascript: 등 차단)
+    function safeUrl(u) {
+        return /^https?:\/\//i.test(String(u || '')) ? String(u) : '';
+    }
+    function stripWon(v) { return String(v ?? '').replace(/원\s*$/, ''); }
+
+    // 우클릭(및 모바일 길게 누르기 메뉴) 방지 — 개인 주문정보라 최소한의 방어
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    window.openPopup = (url) => {
+        const u = safeUrl(url);
+        if (!u) return;
+        window.open(u, '_blank', 'width=590,height=830,scrollbars=yes');
+    };
+
+    // ---------------- 시안보기 모달 ----------------
+    // 1차 이미지(R2 등)가 삭제되어 로드 실패하면 fallbackUrl(카페24)로 자동 대체
+    window.viewSianImage = (url, fallbackUrl) => {
+        const primary = safeUrl(url) || safeUrl(fallbackUrl);
+        if (!primary) return;
+        const fb = safeUrl(fallbackUrl);
+        const img = $('sian-modal-img');
+        img.onerror = () => {
+            if (fb && img.src !== fb) {
+                img.onerror = null;
+                img.src = fb;
+            } else {
+                img.onerror = null;
+            }
+        };
+        img.src = primary;
+        $('sian-modal').classList.add('active');
+    };
+    window.closeSianImage = () => {
+        $('sian-modal').classList.remove('active');
+        $('sian-modal-img').src = '';
+        $('sian-modal-img').onerror = null;
+    };
+
+    // ---------------- 카드전표 / 현금영수증 전표 이미지 모달 ----------------
+    window.openReceiptModal = (url, title) => {
+        const safe = safeUrl(url);
+        if (!safe) return;
+        const modal = $('receipt-modal');
+        $('receipt-modal-img').src = safe;
+        $('receipt-modal-title').textContent = title || '전표';
+        modal.dataset.url = safe;
+        modal.dataset.title = title || '전표';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeReceiptModal = () => {
+        const modal = $('receipt-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        $('receipt-modal-img').src = '';
+        document.body.style.overflow = '';
+    };
+
+    window.downloadReceiptImage = async () => {
+        const modal = $('receipt-modal');
+        const url = modal.dataset.url;
+        if (!url) return;
+        const btn = $('receipt-download-btn');
+        const originalText = btn.textContent;
+
+        // 클릭 시점(동기)에 빈 새 탭을 미리 열어둠 — fetch 실패 시 현재 화면이 사라지지 않고
+        // 이 탭에 이미지를 띄울 수 있게 하기 위함
+        const preOpenedTab = window.open('', '_blank');
+
+        try {
+            btn.textContent = '다운로드 중...';
+            btn.disabled = true;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('이미지를 불러오지 못했습니다.');
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const ext = (blob.type && blob.type.split('/')[1]) ? blob.type.split('/')[1].replace('jpeg', 'jpg') : (url.split('.').pop().split('?')[0] || 'jpg');
+
+            if (preOpenedTab) preOpenedTab.close();
+
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `${modal.dataset.title || '전표'}_${Date.now()}.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch (e) {
+            if (preOpenedTab) {
+                preOpenedTab.location.href = url;
+            } else {
+                alert('팝업이 차단되어 새 창을 열 수 없습니다. 브라우저의 팝업 차단을 해제한 뒤 다시 시도해주세요.');
+            }
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    };
+
+    window.printReceiptImage = () => {
+        const modal = $('receipt-modal');
+        const url = modal.dataset.url;
+        if (!url) return;
+        const title = modal.dataset.title || '전표';
+
+        const printWin = window.open('', '_blank', 'width=800,height=1000');
+        if (!printWin) {
+            alert('팝업이 차단되어 인쇄창을 열 수 없습니다. 팝업 차단을 해제해주세요.');
+            return;
+        }
+        // 문자열을 HTML로 써넣지 않고 DOM으로 구성 (주소/제목이 마크업으로 해석되지 않도록)
+        const pd = printWin.document;
+        pd.title = title;
+        const style = pd.createElement('style');
+        style.textContent = '@media print { @page { margin: 0; } } html, body { margin: 0; padding: 0; } img { display: block; max-width: 100%; height: auto; margin: 0 auto; }';
+        pd.head.appendChild(style);
+        const img = pd.createElement('img');
+        img.alt = title;
+        img.onload = () => { printWin.focus(); printWin.print(); };
+        img.onerror = () => {
+            alert('이미지를 불러오지 못해 인쇄할 수 없습니다.');
+            printWin.close();
+        };
+        img.src = url;
+        pd.body.appendChild(img);
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.closeSianImage();
+            window.closeReceiptModal();
+        }
+    });
+
+    // ---------------- Firebase (index1 / index5 와 동일한 board-291e3 프로젝트) ----------------
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+        authDomain: "board-291e3.firebaseapp.com",
+        projectId: "board-291e3",
+        storageBucket: "board-291e3.firebasestorage.app",
+        messagingSenderId: "25881766316",
+        appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ---- 개인정보 조회키(secretId) 계산 — app.js / index5 와 반드시 동일한 방식 ----
+    // boards/{id}, jjjj/{id} 공개 문서에는 phone/address/message가 없고 private/{secretId} 문서에만 있어서,
+    // 이름+뒷4자리로 secretId를 정확히 계산해낸 사람만 그 문서를 읽을 수 있습니다.
+    async function sha256Hex(text) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    function normalizeName(name) { return String(name || "").trim(); }
+    function normalizePhoneLast4(phone) { return String(phone || "").replace(/[^0-9]/g, "").slice(-4); }
+    async function computeSecretId(boardId, author, phone) {
+        return sha256Hex(`${boardId}::${normalizeName(author)}::${normalizePhoneLast4(phone)}`);
+    }
+
+    // ---- 세금계산서/현금영수증 상호배타 판별용 ID (segum.html / app.js 와 동일) ----
+    function normalizePhoneFull(phone) { return String(phone || "").replace(/[^0-9]/g, ""); }
+    async function computeSegumId(name, phone) {
+        return sha256Hex(`segum::${normalizeName(name)}::${normalizePhoneFull(phone)}`);
+    }
+    function segumBlocksCash(segumSnap, boardId, isBankTransfer) {
+        if (!segumSnap || !segumSnap.exists()) return false;
+        const sd = segumSnap.data() || {};
+        if (Array.isArray(sd.boardIds) && sd.boardIds.length > 0) return sd.boardIds.includes(boardId);
+        // boardIds 기록이 없는 예전 문서: '무통장' 주문은 막지 않음
+        return !isBankTransfer;
+    }
+
+    // ---- 리뷰 저장: 주문과 같은 board-291e3 프로젝트 (reviews, reviewStats 컬렉션) ----
+    // 별도 프로젝트/별도 로그인 없이, 위에서 이미 로그인된 익명 계정으로 저장합니다.
+    // 보안은 Firestore 규칙(reviews / reviewStats)에서 검증합니다.
+    const reviewDb = db;
+    async function ensureReviewLogin() { return ensureAnonymousLogin(); }
+
+    // ---- 방문자 익명 로그인 (현금영수증 신청/파일재업로드 등에서 uid 필요) ----
+    const auth = getAuth(app);
+    let resolveAuthReady;
+    const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            resolveAuthReady(user);
+        } else {
+            signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+        }
+    });
+    // 익명 로그인이 실패해도 영원히 멈추지 않도록 10초 후 오류 처리
+    function ensureAnonymousLogin() {
+        return Promise.race([
+            authReadyPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('익명 로그인 시간 초과')), 10000))
+        ]);
+    }
+
+    // ---------------- 세금계산서 / 현금영수증 / 카드전표 버튼 ----------------
+    window.openSegumPageFor = (name, phone, boardId) => {
+        const url = `${BOARD_BASE}segum?name=${encodeURIComponent(name || '')}&phone=${encodeURIComponent(phone || '')}&boardId=${encodeURIComponent(boardId || '')}`;
+        window.open(url, '_blank', 'width=501,height=765,scrollbars=yes');
+    };
+
+    // 이름+전화번호로 계산되는 secretId(private 문서)를 직접 읽어 신청/등록 상태를 확인하므로
+    // 어느 기기에서 열어도 최신 상태가 보입니다.
+    window.openCashPageFor = async (boardId, secretId, isJajoo, name, phone, isBankTransfer) => {
+        if (!boardId || !name || !phone) {
+            alert('주문 정보를 찾을 수 없습니다.');
+            return;
+        }
+        const col = isJajoo ? 'jjjj' : 'boards';
+
+        // 1. 세금계산서가 이미 등록된 이름+전화번호면 현금영수증 신청 자체를 막습니다.
+        try {
+            const segumId = await computeSegumId(name, phone);
+            const segumSnap = await getDoc(doc(db, "segum1", segumId));
+            if (segumBlocksCash(segumSnap, boardId, isBankTransfer)) {
+                alert('이미 세금계산서 신청이 등록되셔서 현금영수증 신청은 되지 않습니다.');
+                return;
+            }
+        } catch (e) {
+            alert('확인 중 오류가 발생했습니다: ' + e.message);
+            return;
+        }
+
+        // 2. 신청/등록 상태를 private 문서에서 최신으로 확인
+        const privateRef = doc(db, col, boardId, "private", secretId);
+        let privateData = {};
+        try {
+            const privSnap = await getDoc(privateRef);
+            if (privSnap.exists()) privateData = privSnap.data();
+        } catch (e) {
+            alert('확인 중 오류가 발생했습니다: ' + e.message);
+            return;
+        }
+
+        if (privateData.cashFileUrl) {
+            window.openReceiptModal(privateData.cashFileUrl, '현금영수증');
+            return;
+        }
+        if (privateData.cashApplied) {
+            alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
+            return;
+        }
+
+        // 3. 최초 신청: 발행희망번호(사업자번호 또는 전화번호) 입력받기
+        const cashNumber = prompt('현금영수증 발행희망 번호를 입력해주세요.\n(사업자등록번호 또는 전화번호 중 1개)');
+        if (!cashNumber || !cashNumber.trim()) return;
+
+        try {
+            const user = await ensureAnonymousLogin();
+            // 관리자 대시보드(quick_check.html)가 그대로 쓰는 컬렉션
+            await setDoc(doc(db, "cashReceipt1", boardId), {
+                boardId, author: name, cashNumber: cashNumber.trim(),
+                fileUrl: '', createdAt: serverTimestamp(), uid: user.uid
+            });
+            // 다른 기기에서도 "이미 신청됨"을 확인할 수 있게 private 문서에도 기록
+            await updateDoc(privateRef, {
+                cashApplied: true, cashNumber: cashNumber.trim()
+            }).catch(() => {});
+            // segum.html 이 "이미 현금영수증 신청됨"을 확인할 수 있게 이름+전화번호 기반으로도 기록
+            const cashSecretId = await computeSegumId(name, phone);
+            await setDoc(doc(db, "cashSecret", cashSecretId), {
+                boardId, createdAt: serverTimestamp()
+            }, { merge: true });
+            const segumBtnNow = $('segum-btn-' + boardId);
+            if (segumBtnNow) segumBtnNow.style.display = 'none';
+            alert('현금영수증이 신청되셨습니다.\n택배 발송후 1~2일후 본 버튼을 다시 눌러주시면 우클릭 다운로드 가능합니다.');
+        } catch (e) {
+            alert('신청 중 오류가 발생했습니다: ' + e.message);
+        }
+    };
+
+    // 관리자가 등록한 카드전표 URL이 private 문서에 저장되므로 기기와 무관하게 읽을 수 있습니다.
+    window.openCardPageFor = async (boardId, secretId, isJajoo) => {
+        if (!boardId) {
+            alert('주문 정보를 찾을 수 없습니다.');
+            return;
+        }
+        try {
+            const col = isJajoo ? 'jjjj' : 'boards';
+            const privSnap = await getDoc(doc(db, col, boardId, "private", secretId));
+            if (privSnap.exists() && privSnap.data().cardFileUrl) {
+                window.openReceiptModal(privSnap.data().cardFileUrl, '카드전표');
+            } else {
+                alert('택배물 발송후 등록됩니다.');
+            }
+        } catch (e) {
+            alert('택배물 발송후 등록됩니다.');
+        }
+    };
+
+    // 이 주문의 현금영수증이 이미 신청돼 있으면 세금계산서 버튼을, 이 이름+전화번호로 세금계산서가
+    // 이미 등록돼 있으면 현금영수증 버튼을 숨깁니다. (신청 여부는 조회 때 함께 불러온 private 필드로 판단)
+    async function syncTaxCashButtons(d) {
+        const segumBtn = $('segum-btn-' + d.id);
+        const cashBtn = $('cash-btn-' + d.id);
+        if (segumBtn && (d.cashApplied || d.cashFileUrl)) {
+            segumBtn.style.display = 'none';
+        }
+        if (cashBtn) {
+            try {
+                const segumId = await computeSegumId(d.author, d.phone);
+                const segumSnap = await getDoc(doc(db, "segum1", segumId));
+                if (segumBlocksCash(segumSnap, d.id, d.status === '무통장')) cashBtn.style.display = 'none';
+            } catch (e) { /* 조회 실패해도 버튼은 그대로 둠 */ }
+        }
+    }
+
+    // ---------------- 제품바로가기 (장바구니로 접수된 상품) → 구매했던 상품 페이지 찾기 ----------------
+    // 아이템에 productId가 있으면 그 상품 페이지로, 없으면 헤더 메뉴 데이터에서 상품명이 겹치는 항목을 찾아 연결합니다.
+    const HEADER_URL = SITE + '/myjs/includes/header';
+    // 못 찾았을 때 가는 홈 — success2.html(/myjs/success2)의 "index.html"과 같은 주소
+    const HOME_URL = SITE + '/myjs/index.html';
+    let cachedMenuData = null;
+
+    function extractMenuData(headerText) {
+        const startMarker = 'const menuData = [';
+        const startIdx = headerText.indexOf(startMarker);
+        if (startIdx === -1) return [];
+        let i = startIdx + startMarker.length - 1;
+        let depth = 0;
+        for (; i < headerText.length; i++) {
+            if (headerText[i] === '[') depth++;
+            else if (headerText[i] === ']') { depth--; if (depth === 0) { i++; break; } }
+        }
+        const arrayText = headerText.slice(startIdx + startMarker.length - 1, i);
+        try { return JSON.parse(arrayText); } catch (e) { console.error('menuData 파싱 실패:', e); return []; }
+    }
+    async function loadMenuData() {
+        if (cachedMenuData) return cachedMenuData;
+        try {
+            const res = await fetch(HEADER_URL);
+            cachedMenuData = extractMenuData(await res.text());
+        } catch (e) {
+            console.error('헤더 메뉴 데이터를 불러오지 못했습니다:', e);
+            cachedMenuData = [];
+        }
+        return cachedMenuData;
+    }
+    function flattenMenu(items) {
+        let out = [];
+        (items || []).forEach(it => {
+            if (it.children && it.children.length) out = out.concat(flattenMenu(it.children));
+            else if (it.url && it.url !== '#') out.push({ leaf: it.name, url: it.url });
+        });
+        return out;
+    }
+    function guessProductUrl(itemName, flatList) {
+        if (!itemName) return null;
+        const candidates = flatList.filter(f => f.leaf && itemName.includes(f.leaf));
+        if (candidates.length === 0) return null;
+        candidates.sort((a, b) => b.leaf.length - a.leaf.length); // 가장 구체적인(이름이 긴) 것
+        return candidates[0].url;
+    }
+    function toAbsoluteUrl(url) {
+        if (!url) return null;
+        return url.startsWith('http') ? url : SITE + url;
+    }
+    // 장바구니 접수 때 저장해 둔 제품 페이지 주소(items[].productUrl)는 이 사이트 주소일 때만 사용
+    // 제품(구입) 페이지로 인정하는 도메인. 구입 페이지가 다른 도메인이면 여기에 추가하세요.
+    // 예) ['sowonnamoo.github.io', 'www.내도메인.com']
+    const PRODUCT_PAGE_HOSTS = ['sowonnamoo.github.io'];
+    function safeProductUrl(u) {
+        try {
+            if (!u) return '';
+            const x = new URL(u, location.href);
+            if (!/^https?:$/.test(x.protocol)) return '';
+            return (PRODUCT_PAGE_HOSTS.includes(x.hostname) || x.hostname === location.hostname) ? x.href : '';
+        } catch (e) { return ''; }
+    }
+    // success2.html(주문완료 화면) 하단 "구입했던 제품 페이지로 이동"과 같은 규칙:
+    //  0) 주문에 저장된 제품 페이지 주소(productUrl) 그대로
+    //  1) productId 가 있으면 /myjs/products/{productId}
+    //  2) 없으면 헤더 메뉴에서 상품명이 겹치는 항목의 주소
+    //  3) 그래도 못 찾으면 홈
+    async function resolveProductUrl(item) {
+        const saved = safeProductUrl(item.productUrl);
+        if (saved) return saved;
+        if (item.productId) return `${SITE}/myjs/products/${encodeURIComponent(item.productId)}`;
+        const flat = flattenMenu(await loadMenuData());
+        return toAbsoluteUrl(guessProductUrl(item.itemName, flat)) || HOME_URL;
+    }
+
+    const productGoRegistry = {};
+    let productGoSeq = 0;
+    window.productGoClick = async (key) => {
+        const data = productGoRegistry[key];
+        if (!data) return;
+        const productUrl = await resolveProductUrl(data);
+        window.open(productUrl, '_blank');
+    };
+
+    // ---------------- 시안/원본 다운로드 버튼 + 사진 리뷰 ----------------
+    const ORIGINAL_NOTICE = '고해상도 jpg원본은 근시일내 삭제되며 사진리뷰 작성후 다운받을수 있습니다. (용량이 적은파일만 다운 가능)';
+    const dlRegistry = {};
+    let dlSeq = 0;
+    const reviewFlagKey = (orderId, idx) => `rv_done_${orderId}_${idx}`;
+
+    async function resolveProductId(item) {
+        if (item.productId) return String(item.productId);
+        const flat = flattenMenu(await loadMenuData());
+        const url = toAbsoluteUrl(guessProductUrl(item.itemName, flat)) || '';
+        const m = url.match(/\/products\/([^/?#]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    // 관리자(quick_check)에서 삭제 처리한 파일 주소 목록 (boards.deletedFileUrls)
+    function isFileDeleted(d, f) {
+        return !!(f && f.url && Array.isArray(d.deletedFileUrls) && d.deletedFileUrls.includes(f.url));
+    }
+
+    // sian: {url, label} 또는 null (고해상도 jpg).  deleted / sianDeleted: 관리자가 그 jpg 를 삭제 표시했거나 원본 삭제 처리한 경우
+    // 예전의 "시안 다운로드"·svg 원본 버튼은 없애고, 고해상도 jpg원본 다운로드 (무료)/(유료) 두 버튼만 그립니다. (svg 인자는 호환용으로 남김)
+    function designDownloadButtons(d, idx, product, sian, svg, deleted, sianDeleted) {
+        if (!sian) return '';
+        const key = `dl_${dlSeq++}`;
+        dlRegistry[key] = {
+            orderId: d.id, idx, author: d.author || '', phone: d.phone || '',
+            sianLabel: sian.label || '',
+            productId: product.productId || '', itemName: product.itemName || '',
+            sianUrl: safeUrl(sian.url),
+            // 운송장이 등록되어 "출고완료/운송장보기" 버튼이 활성화된 주문만 true (아래 isShipped 참고)
+            shipped: !!safeUrl(d.trackingUrl || d.woonso1)
+        };
+        // jpg 가 삭제된 경우: 무료/유료 다운로드 버튼을 둘 다 아예 그리지 않습니다.
+        if (deleted || sianDeleted) return '';
+        const reviewed = localStorage.getItem(reviewFlagKey(d.id, idx)) === '1';
+        const freeBtn = `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(sian.url))}" class="dl-btn orig${reviewed ? '' : ' locked'}">고해상도 jpg원본 다운로드 (무료)</button><span class="tip-box">${ORIGINAL_NOTICE}</span></span>`;
+        // 유료: 후기/출고 조건 없이 결제하면 바로 받는 버튼
+        const paidBtn = `<button type="button" data-act="dl-paid" data-key="${key}" class="dl-btn paid">고해상도 jpg원본 다운로드 (유료)</button>`;
+        return `<div class="flex items-center gap-2 mt-2 flex-wrap">${freeBtn}${paidBtn}</div>`;
+    }
+
+    // 화면에 그린 뒤, 실제로 파일이 지워졌는지(404/410) 확인해 버튼을 비활성화합니다.
+    // (확인 자체가 막히면(CORS/네트워크) 알 수 없으므로 버튼은 그대로 둡니다.)
+    async function checkDeletedFiles(root) {
+        const btns = [...root.querySelectorAll('button[data-check-url]:not([disabled])')];
+        await Promise.all(btns.map(async (b) => {
+            try {
+                const res = await fetch(b.dataset.checkUrl, { method: 'HEAD' });
+                if (res.status === 404 || res.status === 410) {
+                    if (b.dataset.act === 'dl-orig') {
+                        // 실제로 원본 파일이 지워진 경우: 무료/유료 원본 버튼을 둘 다 숨김
+                        const wrap = b.closest('.tip') || b;
+                        const row = wrap.parentElement;
+                        wrap.style.display = 'none';
+                        if (row) row.querySelectorAll('[data-act="dl-paid"]').forEach(x => { x.style.display = 'none'; });
+                        return;
+                    }
+                    b.disabled = true;
+                    const tip = b.parentElement && b.parentElement.querySelector('.tip-box');
+                    if (tip) tip.textContent = '파일이 삭제되어 다운로드할 수 없습니다.';
+                }
+            } catch (e) { /* 확인 불가 → 그대로 */ }
+        }));
+    }
+
+    // 이 브라우저에서 해당 상품의 리뷰를 이미 작성했는지만 확인합니다. (서버 조회 없음)
+    function hasReviewFor(data) {
+        return localStorage.getItem(reviewFlagKey(data.orderId, data.idx)) === '1';
+    }
+
+    function unlockOriginalButtons(key) {
+        document.querySelectorAll(`button[data-act="dl-orig"][data-key="${key}"]`).forEach(b => b.classList.remove('locked'));
+    }
+
+    // 운송장이 등록되지 않은(출고 전) 주문은 리뷰 작성/원본 다운로드를 막고 안내합니다.
+    const NOT_SHIPPED_NOTICE = '제품 실 수령후 리뷰작성과 원본파일다운로드 가능합니다.';
+    function isShipped(data) { return !!(data && data.shipped); }
+
+    window.downloadOriginal = async (key, btn) => {
+        const data = dlRegistry[key];
+        if (!data || !data.sianUrl) return;
+        if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
+        if (!hasReviewFor(data)) { openReviewPrompt(key); return; }
+        unlockOriginalButtons(key);
+        await window.downloadAttached(data.sianUrl);
+    };
+
+    // ---- 안내창: "사진 리뷰를 작성하시면 다운받으실 수 있습니다." → [리뷰작성하기] 누르면 작성창 ----
+    let rpKey = null;
+    function openReviewPrompt(key) {
+        if (!isShipped(dlRegistry[key])) { alert(NOT_SHIPPED_NOTICE); return; }
+        rpKey = key;
+        $('review-prompt').classList.add('open');
+    }
+    function closeReviewPrompt() { $('review-prompt').classList.remove('open'); }
+    $('rp-write').addEventListener('click', () => {
+        const key = rpKey;
+        closeReviewPrompt();
+        if (key) openReviewModal(key);
+    });
+    $('rp-close').addEventListener('click', closeReviewPrompt);
+    $('review-prompt').addEventListener('click', (e) => { if (e.target.id === 'review-prompt') closeReviewPrompt(); });
+
+    // ---- 사진 리뷰 작성창 (01my 이용후기에 표시되는 reviews 컬렉션에 저장) ----
+    let rvKey = null, rvRating = 0, rvFile = null, rvBusy = false;
+
+    function paintStars() {
+        document.querySelectorAll('#review-modal .rv-star').forEach(b => b.classList.toggle('on', Number(b.dataset.v) <= rvRating));
+    }
+    function openReviewModal(key) {
+        const data = dlRegistry[key];
+        if (!data) return;
+        if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
+        rvKey = key; rvRating = 0; rvFile = null;
+        $('rv-product').textContent = data.itemName || '구입하신 제품';
+        $('rv-content').value = '';
+        $('rv-file').value = '';
+        $('rv-preview').style.display = 'none';
+        $('rv-preview').removeAttribute('src');
+        $('rv-submit').disabled = false;
+        $('rv-submit').textContent = '리뷰 등록하고 원본 받기';
+        paintStars();
+        $('review-modal').classList.add('open');
+    }
+    function closeReviewModal() { if (!rvBusy) $('review-modal').classList.remove('open'); }
+
+    document.querySelectorAll('#review-modal .rv-star').forEach(b => b.addEventListener('click', () => { rvRating = Number(b.dataset.v); paintStars(); }));
+    $('rv-cancel').addEventListener('click', closeReviewModal);
+    $('review-modal').addEventListener('click', (e) => { if (e.target.id === 'review-modal') closeReviewModal(); });
+    $('rv-file').addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) { rvFile = null; $('rv-preview').style.display = 'none'; return; }
+        if (!/^image\//.test(f.type) && !/\.(jpe?g|png|webp|gif|heic)$/i.test(f.name)) { alert('사진 파일만 올릴 수 있습니다.'); e.target.value = ''; rvFile = null; return; }
+        if (f.size > 10 * 1024 * 1024) { alert('사진 용량은 10MB 이하로 올려주세요.'); e.target.value = ''; rvFile = null; return; }
+        rvFile = f;
+        if (/^image\/(jpeg|png|webp|gif)$/.test(f.type)) { $('rv-preview').src = URL.createObjectURL(f); $('rv-preview').style.display = 'block'; }
+        else { $('rv-preview').style.display = 'none'; }
+    });
+
+    $('rv-submit').addEventListener('click', async () => {
+        if (rvBusy) return;
+        const data = dlRegistry[rvKey];
+        if (!data) return;
+        if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
+        const content = $('rv-content').value.trim();
+        if (!rvRating) { alert('별점을 선택해주세요.'); return; }
+        if (content.length < 10) { alert('리뷰 내용을 10자 이상 작성해주세요.'); $('rv-content').focus(); return; }
+        if (!rvFile) { alert('사진 리뷰를 위해 제품 사진을 1장 올려주세요.'); return; }
+
+        rvBusy = true;
+        $('rv-submit').disabled = true;
+        $('rv-submit').textContent = '등록 중...';
+        try {
+            let user;
+            try { user = await ensureReviewLogin(); }
+            catch (authErr) {
+                console.error('리뷰 저장용 로그인 실패:', authErr && authErr.code, authErr);
+                throw new Error('리뷰 저장용 익명 로그인에 실패했습니다. (' + ((authErr && authErr.code) || '알 수 없는 오류') + ')');
+            }
+            const productId = await resolveProductId({ productId: data.productId, itemName: data.itemName });
+            if (!productId) throw new Error('구입하신 제품을 확인하지 못했습니다. 고객센터로 문의해주세요.');
+            const photoUrl = await uploadFileToR2(rvFile, data.author || '리뷰');
+            // 리뷰 문서 ID = 주문ID_상품번호 → 같은 주문 상품에는 리뷰 1개만 (규칙에서도 강제)
+            const reviewId = `${data.orderId}_${data.idx}`;
+            const reviewRef = doc(reviewDb, 'reviews', reviewId);
+            const statsRef = doc(reviewDb, 'reviewStats', productId);
+            let prev = { count: 0, sum: 0 };
+            try { const ps = await getDoc(statsRef); if (ps.exists()) prev = ps.data(); } catch (e) { /* 첫 리뷰 */ }
+            const count = (prev.count || 0) + 1, sum = (prev.sum || 0) + rvRating;
+            const batch = writeBatch(reviewDb);
+            batch.set(reviewRef, {
+                productId, rating: rvRating, content, name: data.author || '',
+                images: [photoUrl], createdAt: serverTimestamp(),
+                orderId: data.orderId, itemIdx: data.idx, uid: user ? user.uid : '', source: 'search'
+            });
+            batch.set(statsRef, { count, sum, avg: sum / count, lastReviewId: reviewId });
+            await batch.commit();
+            localStorage.setItem(reviewFlagKey(data.orderId, data.idx), '1');
+            unlockOriginalButtons(rvKey);
+            rvBusy = false;
+            closeReviewModal();
+            alert('소중한 리뷰 감사합니다!\n고해상도 jpg원본 다운로드를 시작합니다.');
+            if (data.sianUrl) await window.downloadAttached(data.sianUrl);
+        } catch (e) {
+            console.error(e);
+            rvBusy = false;
+            $('rv-submit').disabled = false;
+            $('rv-submit').textContent = '리뷰 등록하고 원본 받기';
+            alert('리뷰 등록 중 오류가 발생했습니다: ' + (e && e.message ? e.message : e));
+        }
+    });
+
+
+    // ---------------- 원본즉시다운로드(유료) ----------------
+    // cart.html 의 카드결제 / 무통장 입금 / 계좌이체(pc) 결제 방식을 그대로 가져온 것입니다.
+    // 결제가 끝나면 cart 주문과 같은 모양(boards + private + adminOrders)으로 저장되어
+    // 서치/관리자 화면에 주문내역이 남고, 거래명세서/세금계산서/현금영수증 등을 발행할 수 있습니다.
+    const PAID_PRICE = 30000;
+    const PAID_DAYS = 10;
+    const WORKER_CARD = "https://proud-math-2d41.ecogr.workers.dev/";
+    const PAID_STATUSES = ['카드결제', '무통장', '모바일무통장']; // 이 상태일 때만 원본 다운로드 가능
+
+    // 결제 기록(cards1) 전용 프로젝트: cart.html / app.js 의 paymentLogApp 과 동일 (ecogr-636c6)
+    const paymentLogApp = initializeApp({
+        apiKey: "AIzaSyBzHogA2iaUQqOOsNVL55stsdMH8lCQ4Ek",
+        authDomain: "ecogr-636c6.firebaseapp.com",
+        projectId: "ecogr-636c6",
+        storageBucket: "ecogr-636c6.firebasestorage.app",
+        messagingSenderId: "95745358447",
+        appId: "1:95745358447:web:94cde53f6b36e6be95eb9a"
+    }, "paymentLogApp");
+    const paymentDb = getFirestore(paymentLogApp);
+    async function logCardPayment(record) {
+        try { await addDoc(collection(paymentDb, "cards1"), JSON.parse(JSON.stringify(record))); }
+        catch (e) { console.error("cards1 기록 실패(결제 자체는 성공):", e); }
+    }
+    async function fetchClientIp() {
+        try { const r = await fetch('https://api.ipify.org?format=json'); return (await r.json()).ip || ''; }
+        catch (e) { return ''; }
+    }
+    function isMobileDevice() { return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent); }
+
+    // 결제된 주문 저장 (cart.html 의 saveSecureOrder 와 같은 구조)
+    async function saveInstantOriginalOrder(o) {
+        try {
+            const user = await ensureAnonymousLogin();
+            const boardRef = doc(collection(db, "boards"));
+            const boardId = boardRef.id;
+            const secretId = await computeSecretId(boardId, o.name, o.phone);
+            const fileObj = { url: o.fileUrl, filename: o.fileLabel || '' };
+            const items = [{
+                item: `${o.itemName || '제품'} (원본다운로드)`,   // 제품명 먼저, 끝에 (원본다운로드) — 어드민/파이어베이스에서 구분용
+                srcItemName: o.itemName || '',
+                qty: 1, count: 1, price: PAID_PRICE,
+                instantOriginal: true,
+                originalImageUrls: [fileObj]
+            }];
+            const ip = await fetchClientIp();
+            await setDoc(boardRef, {
+                author: o.name,
+                productName: items[0].item,
+                quantity: '1개',
+                size: '원본파일',
+                price: `${PAID_PRICE}원`,
+                file1Url: o.fileUrl, file2Url: null,
+                ip, uid: user.uid,
+                createdAt: new Date(),
+                isDeleted: false,
+                status: o.status,
+                fromCart: true,
+                paymentId: o.paymentId || '',
+                items, originalFiles: [fileObj],
+                instantOriginal: true,
+                srcOrderId: o.srcOrderId || '', srcItemIdx: o.srcItemIdx ?? 0
+            });
+            const refundMessage = o.refundAccount ? `[환불계좌] ${o.refundBank} ${o.refundAccount} (예금주: ${o.refundHolder || ''})` : '';
+            const address = '원본즉시다운로드(배송없음)';
+            await setDoc(doc(db, "boards", boardId, "private", secretId), {
+                phone: o.phone, address, message: refundMessage, uid: user.uid
+            });
+            await setDoc(doc(db, "adminOrders", boardId), {
+                phone: o.phone, address, message: refundMessage, uid: user.uid
+            });
+            return true;
+        } catch (e) {
+            console.error("원본즉시다운로드 주문 저장 실패:", e);
+            return false;
+        }
+    }
+
+    let paidCtx = null, paidBusy = false, paidBankOpen = false;
+
+    function setPaidBusy(b) {
+        paidBusy = b;
+        ['pd-card', 'pd-bank', 'pd-transfer', 'pd-close'].forEach(id => { const el = $(id); if (el) el.disabled = b; });
+    }
+    function openPaidBank() {
+        paidBankOpen = true;
+        $('pd-refund').classList.add('open');
+        const b = $('pd-bank');
+        b.textContent = '무통장 구입';
+        b.classList.add('armed');
+        $('pd-refund').after(b);            // 버튼을 환불계좌 입력창 아래로
+        $('pd-refund-bank').focus();
+    }
+    function closePaidBank() {
+        paidBankOpen = false;
+        const box = $('pd-refund'), b = $('pd-bank');
+        box.classList.remove('open');
+        b.textContent = '무통장 입금';
+        b.classList.remove('armed');
+        box.before(b);                      // 버튼을 다시 입력창 위로
+    }
+
+    window.openPaidDownload = (key) => {
+        const g = dlRegistry[key];
+        if (!g || !g.sianUrl) return;
+        paidCtx = { srcOrderId: g.orderId, srcItemIdx: g.idx, itemName: g.itemName, fileUrl: g.sianUrl, fileLabel: g.sianLabel };
+        $('pd-name').value = String(g.author || '').replace(/[\s()]/g, '');
+        $('pd-phone').value = String(g.phone || '').replace(/[^0-9]/g, '').slice(0, 11);
+        $('pd-product').textContent = g.itemName || '선택하신 제품';
+        // 주문자 정보로 채워진 성함/핸드폰번호는 수정할 수 없게 잠급니다. (값이 비어 있으면 입력할 수 있게 둠)
+        ['pd-name', 'pd-phone'].forEach(id => { const el = $(id); el.readOnly = !!el.value; });
+        ['pd-refund-bank', 'pd-refund-holder', 'pd-refund-account'].forEach(id => { $(id).value = ''; });
+        closePaidBank();
+        $('paid-modal').classList.add('open');
+    };
+    function closePaidModal() { if (!paidBusy) $('paid-modal').classList.remove('open'); }
+    $('pd-close').addEventListener('click', closePaidModal);
+    $('paid-modal').addEventListener('click', (e) => { if (e.target.id === 'paid-modal') closePaidModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePaidModal(); });
+    $('pd-name').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[\s()]/g, ''); });
+    $('pd-phone').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11); });
+    $('pd-refund-account').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9-]/g, ''); });
+    if (isMobileDevice()) $('pd-transfer').style.display = 'none';   // 모바일은 무통장 입금 버튼을 사용 (cart 와 동일)
+
+    function readPaidForm() {
+        const name = $('pd-name').value.trim();
+        const phone = $('pd-phone').value.replace(/[^0-9]/g, '');
+        if (!name) { alert('성함을 입력해주세요.'); $('pd-name').focus(); return null; }
+        if (phone.length !== 11) {
+            alert('핸드폰번호를 11자리 숫자로 정확히 입력해주세요.\n(예: 01012345678)');
+            $('pd-phone').focus();
+            return null;
+        }
+        return { name, phone };
+    }
+
+    // 조회창의 이름/뒷4자리가 방금 결제한 정보와 같으면 목록을 새로 불러와 새 주문이 바로 보이게 합니다.
+    function refreshSearchIfSame(form) {
+        const n = $('search-name').value.trim().replace(/[\s()]/g, '');
+        if (n === form.name && $('search-phone').value.trim() === form.phone.slice(-4)) $('search-btn').click();
+    }
+
+    // 카드결제 / 계좌이체(pc): PortOne 결제 → 주문 저장 → 원본 자동 다운로드
+    async function paidWithPortOne(type, payMethod) {
+        if (paidBusy || !paidCtx) return;
+        const form = readPaidForm();
+        if (!form) return;
+        closePaidBank();
+        const btn = $(payMethod === 'CARD' ? 'pd-card' : 'pd-transfer');
+        const originalText = btn.textContent;
+        setPaidBusy(true);
+        let paid = false;
+        try {
+            btn.textContent = '결제창 준비 중...';
+            const cfg = await (await fetch(WORKER_CARD)).json();
+            const channelKey = payMethod === 'TRANSFER' ? (cfg.CHANNEL_KEY_TRANSFER || cfg.CHANNEL_KEY_CARD) : cfg.CHANNEL_KEY_CARD;
+            const paymentId = 'PAY_' + Date.now();
+            const response = await PortOne.requestPayment({
+                storeId: cfg.STORE_ID, channelKey, paymentId,
+                orderName: '원본즉시다운로드', totalAmount: PAID_PRICE, currency: 'KRW', payMethod,
+                customer: { name: form.name, phoneNumber: form.phone },
+                windowType: { pc: 'IFRAME', mobile: 'POPUP' }
+            });
+            if (response.code != null) { alert('결제 실패: ' + response.message); return; }
+            paid = true;
+            await logCardPayment({
+                paymentId, tno: response.pgTxId || response.txId, amount: PAID_PRICE,
+                phone: localStorage.getItem('userPhone') || '정보없음', payMethod,
+                status: '결제완료', createdAt: new Date().toISOString(), fullData: response
+            });
+            const saved = await saveInstantOriginalOrder({
+                ...paidCtx, ...form, paymentId,
+                status: type === '계좌이체' ? '무통장' : '카드결제'
+            });
+            if (!saved) {
+                alert('결제는 완료되었으나 주문 저장 중 오류가 발생했습니다.\n결제번호: ' + paymentId + '\n이 번호를 관리자에게 알려주세요. (다시 결제하지 마세요)');
+            }
+            const url = paidCtx.fileUrl;
+            setPaidBusy(false);
+            closePaidModal();
+            alert('결제가 완료되었습니다.\n원본파일 다운로드를 시작합니다.\n\n※ 파일원본은 10일후 삭제됩니다.\n(이후에도 \'주문 내역 조회\'에서 10일 이내에 다시 받으실 수 있습니다.)');
+            await window.downloadAttached(url);
+            if (saved) refreshSearchIfSame(form);
+        } catch (e) {
+            console.error(e);
+            alert(paid ? '결제 후 처리 중 오류가 발생했습니다. 고객센터로 문의해주세요.' : (type + ' 준비 중 오류가 발생했습니다.\n' + (e.message || '서버 연결을 확인하세요.')));
+        } finally {
+            btn.textContent = originalText;
+            setPaidBusy(false);
+        }
+    }
+
+    // 무통장 입금: 첫 클릭은 환불계좌 입력란만 열고, 입력 후 다시 누르면 접수 (입금 확인 후 다운로드 가능)
+    async function paidWithBank() {
+        if (paidBusy || !paidCtx) return;
+        if (!paidBankOpen) { openPaidBank(); return; }
+        const form = readPaidForm();
+        if (!form) return;
+        const refundBank = $('pd-refund-bank').value.trim();
+        const refundHolder = $('pd-refund-holder').value.trim();
+        const refundAccount = $('pd-refund-account').value.trim();
+        if (refundBank.length < 2) { alert('환불받으실 은행명을 입력해주세요.'); $('pd-refund-bank').focus(); return; }
+        if (refundHolder.length < 2) { alert('예금주명을 입력해주세요.'); $('pd-refund-holder').focus(); return; }
+        if (refundAccount.replace(/-/g, '').length < 8) { alert('환불계좌번호를 정확히 입력해주세요. (숫자 8자리 이상)'); $('pd-refund-account').focus(); return; }
+
+        const btn = $('pd-bank');
+        const originalText = btn.textContent;
+        setPaidBusy(true);
+        try {
+            btn.textContent = '주문 저장 중...';
+            const saved = await saveInstantOriginalOrder({
+                ...paidCtx, ...form, paymentId: 'BANK_' + Date.now(),
+                status: '모바일', refundBank, refundHolder, refundAccount
+            });
+            if (!saved) { alert('주문 저장 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요. (무통장입금은 아직 접수되지 않았습니다)'); return; }
+            setPaidBusy(false);
+            closePaidModal();
+            alert('주문이 접수되었습니다.\n\n입금계좌 : 농협 352-0130-9995-53 최대환\n입금금액 : ' + PAID_PRICE.toLocaleString() + '원\n\n입금 확인 후 \'주문 내역 조회\'에서 원본즉시다운로드 버튼으로 받으실 수 있습니다.\n※ 파일원본은 10일후 삭제됩니다.');
+            refreshSearchIfSame(form);
+        } catch (e) {
+            console.error(e);
+            alert('무통장입금 주문 처리 중 오류가 발생했습니다.\n' + (e.message || '서버 연결을 확인하세요.'));
+        } finally {
+            btn.textContent = paidBankOpen ? '무통장 구입' : '무통장 입금';
+            setPaidBusy(false);
+        }
+    }
+    $('pd-card').addEventListener('click', () => paidWithPortOne('카드결제', 'CARD'));
+    $('pd-transfer').addEventListener('click', () => paidWithPortOne('계좌이체', 'TRANSFER'));
+    $('pd-bank').addEventListener('click', paidWithBank);
+
+    // ---------------- 조회 ----------------
+    $('search-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('search-btn').click(); });
+    $('search-phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('search-btn').click(); });
+    $('search-phone').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); });
+
+    $('search-btn').addEventListener('click', async () => {
+        // 봇 방지: 이름/뒷4자리를 10회 이상 틀리면 3시간 동안 조회를 막습니다. (index5 와 동일)
+        const blockUntil = localStorage.getItem('searchBlockUntil');
+        const nowTime = new Date().getTime();
+        if (blockUntil && nowTime < parseInt(blockUntil)) {
+            const remainingSec = Math.ceil((parseInt(blockUntil) - nowTime) / 1000);
+            const min = Math.floor(remainingSec / 60);
+            const sec = remainingSec % 60;
+            alert(`너무 많이 틀려 ${min}분 ${sec}초 동안 조회가 제한됩니다.`);
+            return;
+        }
+
+        const name = $('search-name').value.trim();
+        const phone = $('search-phone').value.trim();
+        const resultsDiv = $('results');
+
+        function registerFail() {
+            const failCount = parseInt(localStorage.getItem('searchFailCount') || '0') + 1;
+            if (failCount >= 10) {
+                localStorage.setItem('searchBlockUntil', (nowTime + (3 * 60 * 60 * 1000)).toString());
+                localStorage.setItem('searchFailCount', '0');
+                alert("이름/전화번호를 10회 틀려 3시간 동안 조회가 제한됩니다.");
+            } else {
+                localStorage.setItem('searchFailCount', failCount.toString());
+            }
+        }
+
+        if (!name || !/^\d{4}$/.test(phone)) {
+            registerFail();
+            alert("이름과 전화번호 뒷 4자리를 정확히 입력해주세요.");
+            return;
+        }
+
+        resultsDiv.innerHTML = '<div class="text-sm text-slate-500 px-1">조회 중...</div>';
+
+        try {
+            try { await ensureAnonymousLogin(); } catch (e) { /* 로그인 실패해도 조회는 시도 */ }
+
+            // 접수 때 이름의 공백/괄호는 제거되어 저장되므로, 입력값 그대로와 제거한 값 둘 다 시도합니다.
+            const nameVariants = [...new Set([name, name.replace(/[\s()]/g, '')].filter(Boolean))];
+
+            // 1. 이름으로 공개 문서만 먼저 조회 (공개 문서에는 개인정보가 없습니다)
+            const candidates = [];
+            for (const v of nameVariants) {
+                const [snapBoards, snapJjjj] = await Promise.all([
+                    getDocs(query(collection(db, "boards"), where("author", "==", v))),
+                    // 재주문(jjjj)은 장바구니 경로가 아니므로 ONLY_CART_ORDERS 일 때는 조회 자체를 하지 않음
+                    ONLY_CART_ORDERS ? Promise.resolve({ docs: [] }) : getDocs(query(collection(db, "jjjj"), where("author", "==", v)))
+                ]);
+                snapBoards.docs.forEach(d => {
+                    // 장바구니 이외 경로 주문은 개인정보 문서(private)를 읽어보기 전에 여기서 걸러냄
+                    if (ONLY_CART_ORDERS && !isCartOrder(d.data())) return;
+                    candidates.push({ data: d.data(), id: d.id, isJajoo: false, col: "boards", nameUsed: v });
+                });
+                snapJjjj.docs.forEach(d => candidates.push({ data: d.data(), id: d.id, isJajoo: true, col: "jjjj", nameUsed: v }));
+            }
+
+            // 2. 각 후보에 대해 이름+뒷4자리로 secretId를 계산하고, 그 private 문서가 실제로 존재하는지로 본인 여부를 검증
+            const verified = await Promise.all(candidates.map(async (c) => {
+                const secretId = await computeSecretId(c.id, c.nameUsed, phone);
+                const privateSnap = await getDoc(doc(db, c.col, c.id, "private", secretId));
+                if (!privateSnap.exists()) return null;
+                return { ...c.data, ...privateSnap.data(), id: c.id, isJajoo: c.isJajoo, secretId };
+            }));
+
+            // 상태가 '대기'(접수전/결제확인중)인 건은 표시하지 않음
+            const seen = new Set();
+            const filteredData = verified.filter(Boolean).filter(d => d.status !== '대기').filter(d => {
+                if (seen.has(d.id)) return false;
+                seen.add(d.id);
+                return true;
+            });
+
+            if (filteredData.length === 0) {
+                registerFail();
+                resultsDiv.innerHTML = '<div class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-5">해당하는 주문 정보를 찾을 수 없습니다. / 미 결제건은 조회되지 않습니다.'
+                    + '</div>';
+                return;
+            }
+
+            localStorage.setItem('searchFailCount', '0');
+
+            filteredData.sort((a, b) => {
+                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                return dateB - dateA;
+            });
+
+            resultsDiv.innerHTML = filteredData.map(renderOrderCard).join('');
+
+            // 세금계산서 ↔ 현금영수증 상호배타 상태를 화면에 반영
+            filteredData.forEach(d => { syncTaxCashButtons(d); });
+            checkDeletedFiles(resultsDiv);
+        } catch (error) {
+            console.error(error);
+            resultsDiv.innerHTML = '<div class="text-sm text-red-600 bg-white border border-red-100 rounded-2xl p-5">조회 중 오류가 발생했습니다. 다시 시도해주세요.</div>';
+        }
+    });
+
+    // ---------------- 주문 카드 렌더링 ----------------
+    // 접수 7일이 지난 주문은 기본적으로 접어두고, 최근(7일 이내) 주문만 펼쳐서 보여줍니다.
+    const ORDER_COLLAPSE_DAYS = 7;
+
+    function wrapCollapsible(fullHtml, isRecent, cardId, summaryLabel) {
+        if (isRecent) return fullHtml;
+        return `
+        <div class="mb-4">
+            <button type="button" data-act="toggle" data-target="${esc(cardId)}"
+                class="w-full text-left bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600 flex justify-between items-center gap-2">
+                <span class="truncate">${esc(summaryLabel)}</span>
+                <span id="${esc(cardId)}_arrow" class="shrink-0 text-blue-600 font-semibold">▾ 펼쳐보기</span>
+            </button>
+            <div id="${esc(cardId)}" style="display:none;">${fullHtml}</div>
+        </div>`;
+    }
+
+    // 하단 버튼(거래명세서/세금계산서/...) 한 개를 그립니다. 비활성이면 눌리지 않는 회색 버튼으로 그립니다.
+    function chip({ id = '', label, enabled, act = '', data = {}, title = '', tone = '' }) {
+        const attrs = Object.entries(data).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
+        const base = 'border px-2.5 py-1.5 text-xs rounded-lg font-semibold transition';
+        const idAttr = id ? `id="${esc(id)}"` : '';
+        const titleAttr = title ? `title="${esc(title)}"` : '';
+        if (!enabled) {
+            return `<button type="button" ${idAttr} disabled ${titleAttr} class="${base} bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed">${label}</button>`;
+        }
+        const color = tone === 'red'
+            ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+            : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50';
+        return `<button type="button" ${idAttr} data-act="${act}" ${attrs} ${titleAttr} class="${base} ${color}">${label}</button>`;
+    }
+
+    // 상품 옵션 어디에든 "부자재"가 들어 있으면 시안이 없는 상품이라 시안보기 버튼을 숨깁니다.
+    // 상품명/용지/편집/후가공/옵션 등 어느 항목에 담겨 있어도 잡도록 글자 항목을 모두 검사하되,
+    // 시안 이미지 주소와 원본 파일 목록은 파일명에 우연히 들어간 글자로 오판하지 않도록 제외합니다.
+    const BUJAJAE_SKIP_KEYS = ['compositeImage', 'compositeImageFallback', 'originalImageUrls', 'originalImages'];
+    function hasBujajae(it) {
+        return Object.entries(it || {}).some(([k, v]) => {
+            if (BUJAJAE_SKIP_KEYS.includes(k)) return false;
+            let text = '';
+            if (typeof v === 'string') text = v;
+            else if (v && typeof v === 'object') { try { text = JSON.stringify(v); } catch (e) { text = ''; } }
+            else return false;
+            if (/^https?:\/\//i.test(text)) return false;
+            return text.replace(/\s/g, '').includes('부자재');
+        });
+    }
+
+    function renderItemRows(d, designNo, unpaid) {
+        return d.items.map((it, idx) => {
+            const priceNumber = Number(String(it.price).replace(/[^0-9.-]/g, '')) || 0;
+            const qtyLabel = `${it.qty || 1}개${it.count && it.count != 1 ? ` × ${it.count}건` : ''}`;
+            // R2 시안(compositeImage)을 1차로, 로드 실패하면 compositeImageFallback 또는 카페24 경로로 대체
+            const cafe24Url = `https://sowonnamoo1005.cafe24.com/1/${designNo}${d.items.length > 1 ? `_${idx + 1}` : ''}.jpg`;
+            const primary = safeUrl(it.compositeImage);
+            const fallback = safeUrl(it.compositeImageFallback) || cafe24Url;
+
+            const sianBtn = hasBujajae(it) ? '' : `<button type="button" data-act="sian" data-url="${esc(primary)}" data-fb="${esc(fallback)}" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">시안보기</button>`;
+
+            // 시안(jpg)/원본(svg) 다운로드 버튼 — 이 상품에 업로드된 파일 기준
+            const itemFiles = (Array.isArray(it.originalImageUrls) ? it.originalImageUrls : [])
+                .map(f => (typeof f === 'string') ? { url: f, label: '' } : { url: f && f.url, label: (f && f.filename) || '' });
+            const { sian: fSian, svg: fSvg } = splitDesignFiles(itemFiles);
+            const dlButtons = designDownloadButtons(d, idx, { productId: it.productId || '', itemName: it.item || '' }, fSian, fSvg, !!(it.originalDeleted || d.originalDeleted) || isFileDeleted(d, fSian), isFileDeleted(d, fSian));
+
+            const detailBits = [
+                (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
+                it.paper ? `용지: ${it.paper}` : '',
+                it.ink ? `인쇄면: ${it.ink}` : '',
+                it.finishings ? `후가공: ${it.finishings}` : '',
+                it.weight ? `무게: ${it.weight}` : ''
+            ].filter(Boolean).join(' · ');
+
+            return `
+            <div class="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2.5 mt-1.5">
+                <div class="font-medium text-slate-800">${esc(it.item || '상품')} · ${esc(qtyLabel)} · ${priceNumber.toLocaleString()}원</div>
+                ${detailBits ? `<div class="text-slate-500 mt-1">${esc(detailBits)}</div>` : ''}
+                ${sianBtn ? `<div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}</div>` : ''}
+                ${dlButtons}
+            </div>`;
+        }).join('');
+    }
+
+    // 원본즉시다운로드(유료) 주문: 시안보기/제품바로가기 없이 원본 다운로드 버튼만 보여줍니다.
+    // 결제완료(카드결제/무통장/모바일무통장) 상태이고 접수 후 10일 이내일 때만 받을 수 있습니다.
+    function renderInstantBlock(d, dateObj) {
+        const it = (d.items && d.items[0]) || {};
+        const f = Array.isArray(it.originalImageUrls) && it.originalImageUrls[0] ? it.originalImageUrls[0] : null;
+        const url = f ? safeUrl(f.url) : '';
+        const instJpg = ['jpg', 'jpeg'].includes(fileExtOf(url, f ? f.filename : ''));
+        const instLabel = instJpg ? '고해상도 jpg원본 다운로드 (유료)' : '(수정가능)원본파일 다운로드 (유료)';
+        const paid = PAID_STATUSES.includes(d.status);
+        const expireAt = new Date(dateObj.getTime() + PAID_DAYS * 24 * 60 * 60 * 1000);
+        const expireStr = `${expireAt.getFullYear()}년 ${expireAt.getMonth() + 1}월 ${expireAt.getDate()}일`;
+        const expired = Date.now() > expireAt.getTime();
+        const deleted = !!(it.originalDeleted || d.originalDeleted) || isFileDeleted(d, f);
+
+        let disabled = false, tip = `${expireStr}까지 다운로드할 수 있습니다.`;
+        if (!url) { disabled = true; tip = '파일 정보를 찾을 수 없습니다. 고객센터로 문의해주세요.'; }
+        else if (deleted || expired) { disabled = true; tip = '다운로드 가능기간(10일)이 지나 원본파일이 삭제되었습니다.'; }
+        else if (!paid) { disabled = true; tip = '입금 확인 후 다운로드할 수 있습니다.'; }
+
+        const checkAttr = disabled ? '' : `data-check-url="${esc(url)}"`;
+        return `
+            <div class="mt-2"><span class="font-semibold">대상 제품:</span> ${esc(it.srcItemName || it.item || '-')}</div>
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+                <span class="tip"><button type="button" data-act="dl-instant" data-url="${esc(url)}" data-expire="${expireAt.getTime()}" ${checkAttr} ${disabled ? 'disabled' : ''} class="dl-btn paid">${instLabel}</button><span class="tip-box">${esc(tip)}</span></span>
+            </div>
+            <div class="mt-2 text-xs font-bold text-red-600">※ 주의사항: 파일원본은 10일후 삭제됩니다. (${esc(expireStr)}까지)</div>`;
+    }
+
+    function renderOrderCard(d) {
+        const dateObj = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt);
+        const phoneFull = (d.phone || '').replace(/[^0-9]/g, '');
+        const phonePrefix = phoneFull.slice(0, -4); // 뒷4자리(=조회 비밀번호)가 이미지번호로 노출되지 않도록 제외
+        const yy = dateObj.getFullYear().toString().slice(-2);
+        const mm = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const dd = dateObj.getDate().toString().padStart(2, '0');
+        const hh = dateObj.getHours().toString().padStart(2, '0');
+        const mi = dateObj.getMinutes().toString().padStart(2, '0');
+        const designNo = d.imgCode || `${phonePrefix}${yy}${mm}${dd}${hh}${mi}`;
+        const dateStr = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일`;
+
+        const st = d.status;
+        const isPending = st === '대기';
+        const isBankTransfer = st === '무통장';
+        const isCardPay = st === '카드결제';
+        // '모바일': 결제 없이 접수된 입금 확인 전 상태 / '모바일무통장': 관리자가 입금 확인 후 전환한 상태
+        const isMobilePending = st === '모바일';
+        const isMobileBank = st === '모바일무통장';
+        const unpaid = isPending || isMobilePending;
+        const isCartItems = Array.isArray(d.items) && d.items.length > 0; // 장바구니(cart)로 접수된 주문
+        const isInstant = d.instantOriginal === true;                      // 원본즉시다운로드(유료) 주문
+        const trackingUrl = safeUrl(d.trackingUrl || d.woonso1);
+
+        let statusLabel = isInstant ? (unpaid ? '(입금확인중)' : '(결제완료)')
+            : (isPending || isMobilePending) ? '(접수전/결제확인중)'
+            : (st === '접수에러') ? '(제작보류)' : '(접수완료)';
+        let statusExtra = '';
+        if (!isPending && st !== '접수에러' && !isInstant) {
+            if (trackingUrl) statusExtra = '<span class="text-red-600 font-bold"> _출고완료</span>';
+            else if (d.sian === 'done') statusExtra = '<span class="text-yellow-600 font-bold"> _인쇄중</span>';
+        }
+        const statusText = (isMobilePending || isMobileBank) ? '무통장' : (st || '-');
+
+        // 영수증/전표 파라미터 (장바구니 주문도 productName/quantity/size/price 가 합쳐져 저장되어 있어 동일하게 사용)
+        const receiptParams = new URLSearchParams({
+            product: d.productName || '상품명 없음', size: d.size || '0', qty: d.quantity || '0',
+            price: d.price || '0', date: `작성일: ${dateStr}`, bizType: '기술서비스', bizItem: '광고, 대행'
+        }).toString();
+
+        // ---- 상단 우측 버튼 (일반 접수 주문만) ----
+        let topButtons = '';
+        if (!isCartItems) {
+            topButtons = (!d.isJajoo && d.sian !== 'done')
+                ? `<button type="button" data-act="approve" data-url="${esc(`${BOARD_BASE}index2?autoId=${d.id}&key=${d.secretId}`)}" class="bg-yellow-500 text-white px-5 py-2 rounded-lg font-bold text-sm">인쇄승인대기중</button>`
+                : `<button type="button" data-act="popup" data-url="${esc(`${BOARD_BASE}photo1.html?designNo=${designNo}`)}" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold text-sm">확정시안</button>`;
+            if (!d.isJajoo) {
+                const reorderName = `${d.author}님 (${d.productName || '상품명'}/${d.quantity || '0'}/${d.size || '0'}) ${stripWon(d.price || '0')}원`;
+                const reorderUrl = `${BOARD_BASE}index3.html?productName=${encodeURIComponent(reorderName)}&imgCode=${encodeURIComponent(designNo)}`;
+                topButtons += `<button type="button" data-act="popup" data-url="${esc(reorderUrl)}" class="bg-black text-white px-5 py-2 rounded-lg font-bold text-sm">재구입</button>`;
+            }
+        }
+
+        // ---- 첨부파일 ----
+        // jpg(시안)/svg(원본)는 버튼으로, 나머지 파일은 링크로 보여줍니다.
+        // 장바구니 주문은 상품별 카드 안에 버튼이 있으므로 여기서는 나머지 파일 링크만 보여줍니다.
+        const fileList = (Array.isArray(d.originalFiles) && d.originalFiles.length)
+            ? d.originalFiles.map(f => ({ url: f.url, label: f.filename, named: true }))
+            : [d.file1Url, d.file2Url].filter(Boolean).map(u => ({ url: u, label: '', named: false }));
+        const { sian: topSian, svg: topSvg, others: visibleFiles } = splitDesignFiles(fileList);
+        const fileLinks = visibleFiles.map((f, i) =>
+            `<a href="#" data-act="download" data-url="${esc(f.url)}" ${f.url === d.file1Url ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.named && f.label ? f.label : `파일 ${i + 1}`)}</a>`
+        ).join('');
+        const topDlButtons = isCartItems ? '' : designDownloadButtons(d, 0, { productId: d.productId || '', itemName: d.productName || '' }, topSian, topSvg, !!d.originalDeleted || isFileDeleted(d, topSian), isFileDeleted(d, topSian));
+
+        // ---- 무통장 입금 안내 (입금 확인 전) ----
+        const bankNotice = (isPending || isMobilePending) ? `
+            <div class="mt-3 text-sm font-bold text-red-600 bg-red-50 p-3 rounded-lg">
+                이 계좌번호로 입금해주세요.<br>
+                무통장입금 결제지연시 주문은 삭제됩니다.<br>
+                <span class="inline-flex items-center gap-2 mt-1">
+                    *무통장 계좌 : 농협 352-0130-9995-53 최대환
+                    <button type="button" data-act="copy" data-text="352-0130-9995-53" class="border border-red-300 bg-white text-red-600 text-xs px-2 py-0.5 rounded hover:bg-red-100">복사</button>
+                </span>
+            </div>` : '';
+
+        // ---- 하단 버튼들 ----
+        const chips = [
+            chip({ label: '거래명세서', enabled: !unpaid, act: 'popup', data: { url: `${BOARD_BASE}print2.html?${receiptParams}` } }),
+            chip({
+                id: `segum-btn-${d.id}`, label: '세금계산서', enabled: !isPending && !isCardPay, act: 'segum',
+                data: { name: d.author, phone: d.phone, id: d.id },
+                title: isCardPay ? '카드결제 건은 카드전표를 이용해주세요.' : ''
+            }),
+            chip({
+                id: `cash-btn-${d.id}`, label: '현금영수증',
+                enabled: !(isPending || isCardPay || isMobilePending || isMobileBank || (d.isJajoo && !isBankTransfer)),
+                act: 'cash',
+                data: { id: d.id, secret: d.secretId, jajoo: d.isJajoo ? '1' : '0', name: d.author, phone: d.phone, bank: isBankTransfer ? '1' : '0' },
+                title: (isMobilePending || isMobileBank) ? '모바일 계좌이체 건은 현금영수증 신청이 불가합니다. 세금계산서를 이용해주세요.'
+                    : (d.isJajoo && !isBankTransfer) ? '재주문 건은 고객센터로 문의해주세요.'
+                    : (isCardPay ? '카드결제 건은 카드전표를 이용해주세요.' : '')
+            }),
+            chip({ label: '간이영수증', enabled: !unpaid, act: 'popup', data: { url: `${BOARD_BASE}print3.html?${receiptParams}` } }),
+            chip({
+                id: `card-btn-${d.id}`, label: '카드전표',
+                enabled: !(isPending || isBankTransfer || isMobilePending || isMobileBank || (d.isJajoo && !isCardPay)),
+                act: 'card', data: { id: d.id, secret: d.secretId, jajoo: d.isJajoo ? '1' : '0' },
+                title: (d.isJajoo && !isCardPay) ? '재주문 건은 고객센터로 문의해주세요.'
+                    : (isBankTransfer || isMobileBank) ? '무통장 입금 건은 세금계산서/현금영수증을 이용해주세요.' : ''
+            }),
+            // 원본즉시다운로드 주문은 배송이 없으므로 운송장 버튼을 그리지 않습니다.
+            isInstant ? '' : chip({
+                label: trackingUrl ? '출고완료/운송장보기' : '운송장', enabled: !!trackingUrl,
+                act: 'popup', data: { url: trackingUrl }, tone: 'red'
+            }),
+            (isPending || isMobilePending)
+                ? `<button type="button" data-act="delete" data-id="${esc(d.id)}" data-jajoo="${d.isJajoo ? '1' : '0'}" class="border px-2.5 py-1.5 text-xs rounded-lg font-semibold bg-slate-500 border-slate-500 text-white hover:bg-slate-700">주문삭제</button>`
+                : ''
+        ].join('');
+
+        // ---- 본문 ----
+        const bg = isCartItems ? 'bg-blue-50 border-blue-100' : (d.isJajoo ? 'bg-orange-50 border-slate-200' : 'bg-white border-slate-200');
+        const title = isInstant ? '⚡ 원본즉시다운로드'
+            : isCartItems
+            ? '🛒 주문내역'
+            : `${d.isJajoo ? '📦 재주문_결제즉시 제작시작건_ ' : ''}${esc(d.productName || '상품명 없음')}`;
+
+        const gridExtra = isCartItems ? '' : `
+            <div><span class="font-semibold">수량:</span> ${esc(d.quantity || '-')}</div>
+            <div><span class="font-semibold">사이즈:</span> ${esc(d.size || '-')}</div>`;
+
+        const itemsBlock = isInstant ? renderInstantBlock(d, dateObj)
+            : isCartItems
+            ? `<div class="mt-2"><span class="font-semibold">주문 상품:</span>${renderItemRows(d, designNo, unpaid)}</div>`
+            : '';
+
+        // 장바구니 무통장 입금 주문은 환불계좌가 메시지 칸에 "[환불계좌] 은행명 계좌번호" 형태로 저장되므로,
+        // 별도 "환불계좌" 줄로 분리해서 보여주고 메시지 줄에는 나머지 내용만 보여준다.
+        const rawMessage = String(d.message || '');
+        const refundMatch = rawMessage.match(/\[환불계좌\]\s*([^\n]*)/);
+        let refundText = refundMatch ? refundMatch[1].trim() : '';
+        // 예금주는 "(예금주: 홍길동)" 형태로 같이 저장되므로 따로 떼어 별도 줄로 보여준다. (예전 주문은 예금주 없음)
+        const holderMatch = refundText.match(/\(예금주:\s*([^)]*)\)\s*$/);
+        const refundHolder = holderMatch ? holderMatch[1].trim() : '';
+        if (holderMatch) refundText = refundText.replace(holderMatch[0], '').trim();
+
+        // 제작상황: 관리자가 남긴 메모(private 문서의 productionMemo)가 있을 때만 표시합니다.
+        // 메모가 없거나 공백뿐이면 "제작상황" 글자를 포함해 아무것도 나오지 않습니다.
+        const productionMemo = (typeof d.productionMemo === 'string') ? d.productionMemo.trim() : '';
+        const memoBlock = productionMemo ? `
+                <div class="mb-3 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-3">
+                    <div class="text-xs font-bold text-amber-700 mb-1">제작상황</div>
+                    <div class="text-sm text-slate-800 whitespace-pre-line break-words">${esc(productionMemo)}</div>
+                </div>` : '';
+
+        const cardHtml = `
+        <div class="${bg} border p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
+            <div class="text-sm font-bold text-blue-700 mb-2">📅 작성일 : ${esc(dateStr)}</div>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                <div class="min-w-0">
+                    <h2 class="font-bold text-lg mb-2 break-words">${title}</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-slate-700">
+                        <div><span class="font-semibold">작성자:</span> ${esc(d.author)}</div>
+                        <div><span class="font-semibold">상태:</span> ${esc(statusText)} <span class="text-blue-600 font-bold">${statusLabel}${statusExtra}</span></div>
+                        <div><span class="font-semibold">${isCartItems ? '총 금액' : '가격'}:</span> ${d.price ? esc(stripWon(d.price)) : '-'}원</div>
+                        ${gridExtra}
+                        <div><span class="font-semibold">전화번호:</span> ${esc(d.phone || '-')}</div>
+                    </div>
+                </div>
+                ${topButtons ? `<div class="flex flex-row sm:flex-col gap-2 flex-wrap shrink-0">${topButtons}</div>` : ''}
+            </div>
+
+            <div class="mt-3 text-sm text-slate-600 border-t border-slate-200 pt-3">
+                ${memoBlock}
+                ${isInstant ? '' : `<div><span class="font-semibold">배송지:</span> ${esc(d.address || '-')}</div>`}
+                ${refundText ? `<div><span class="font-semibold">환불계좌:</span> ${esc(refundText)}${refundHolder ? ` <span class="font-semibold ml-2">예금주:</span> ${esc(refundHolder)}` : ''}</div>` : ''}
+                ${itemsBlock}
+
+                ${(fileLinks || topDlButtons) ? `
+                <div class="mt-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-semibold">첨부파일:</span>
+                        ${fileLinks}
+                    </div>
+                    ${topDlButtons}
+                </div>` : ''}
+
+                ${bankNotice}
+
+                <div class="mt-4 flex gap-2 flex-wrap">${chips}</div>
+            </div>
+        </div>`;
+
+        const daysSince = (Date.now() - dateObj.getTime()) / (1000 * 60 * 60 * 24);
+        const isRecent = !isNaN(daysSince) && daysSince <= ORDER_COLLAPSE_DAYS;
+        const summary = `${d.author || '-'} · ${dateStr} · ${isInstant ? '원본즉시다운로드' : isCartItems ? `장바구니 주문(${d.items.length}건)` : (d.productName || '상품명 없음')} · ${stripWon(d.price || 0)}원`;
+        return wrapCollapsible(cardHtml, isRecent, `card_${d.id}`, summary);
+    }
+
+    // ---------------- 결과 영역 클릭 처리 (버튼마다 onclick 문자열을 쓰지 않고 data 속성으로 처리) ----------------
+    window.toggleOrderCard = (id) => {
+        const el = $(id);
+        const arrow = $(id + '_arrow');
+        if (!el) return;
+        const opening = el.style.display === 'none';
+        el.style.display = opening ? 'block' : 'none';
+        if (arrow) arrow.textContent = opening ? '▴ 접기' : '▾ 펼쳐보기';
+    };
+
+    $('results').addEventListener('click', (e) => {
+        const el = e.target.closest('[data-act]');
+        if (!el || el.disabled) return;
+        const ds = el.dataset;
+        if (el.tagName === 'A') e.preventDefault();
+
+        switch (ds.act) {
+            case 'popup': window.openPopup(ds.url); break;
+            case 'approve': {
+                const u = safeUrl(ds.url);
+                if (u) window.open(u, '_blank', 'width=864,height=1000,scrollbars=yes');
+                break;
+            }
+            case 'sian': window.viewSianImage(ds.url, ds.fb); break;
+            case 'download': window.downloadAttached(ds.url); break;
+            case 'dl-orig': window.downloadOriginal(ds.key, el); break;
+            case 'dl-paid': window.openPaidDownload(ds.key); break;
+            case 'dl-instant': {
+                if (ds.expire && Date.now() > Number(ds.expire)) { alert('다운로드 가능기간(10일)이 지나 원본파일이 삭제되었습니다.'); break; }
+                window.downloadAttached(ds.url);
+                break;
+            }
+            case 'segum': window.openSegumPageFor(ds.name, ds.phone, ds.id); break;
+            case 'cash': window.openCashPageFor(ds.id, ds.secret, ds.jajoo === '1', ds.name, ds.phone, ds.bank === '1'); break;
+            case 'card': window.openCardPageFor(ds.id, ds.secret, ds.jajoo === '1'); break;
+            case 'reupload': window.triggerFileReupload(el); break;
+            case 'delete': window.deleteOrder(ds.id, ds.jajoo === '1'); break;
+            case 'toggle': window.toggleOrderCard(ds.target); break;
+            case 'copy':
+                navigator.clipboard.writeText(ds.text || '').then(() => alert('계좌번호가 복사되었습니다.'));
+                break;
+        }
+    });
+
+    // ---------------- 파일 다운로드 / 재업로드 ----------------
+    // R2 주소(?name=작성자_타임스탬프_원본파일명)에서 원본 파일명을 뽑아 그 이름 그대로 저장합니다.
+    window.downloadAttached = async (url) => {
+        const safe = safeUrl(url);
+        if (!safe) return;
+        let filename = 'download';
+        try {
+            const name = new URL(safe).searchParams.get('name') || 'download';
+            filename = (name.match(/^.*?_\d{13}_(.+)$/) || [])[1] || name;
+        } catch (e) {}
+        try {
+            const res = await fetch(safe);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        } catch (e) {
+            console.error('다운로드 실패, 새 창으로 대체:', e);
+            window.open(safe, '_blank');
+        }
+    };
+
+    // app.js 의 uploadToR2 와 같은 방식(확장자 검사, 고유 파일명)이되 File 객체를 바로 받습니다.
+    function uploadFileToR2(file, authorName) {
+        return new Promise((resolve, reject) => {
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp', 'xlsx', 'ppt', 'pptx']; // 반드시 소문자
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!allowedExtensions.includes(ext)) {
+                reject(new Error("허용되지 않는 파일 형식입니다."));
+                return;
+            }
+            const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+            const WORKER_URL = "https://r2.ecogr.workers.dev/";
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", `${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, true);
+            xhr.setRequestHeader("Content-Type", file.type);
+            xhr.setRequestHeader("X-File-Size", file.size);
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        resolve(JSON.parse(xhr.responseText).url);
+                    } catch (e) {
+                        reject(new Error("업로드 응답을 처리하지 못했습니다."));
+                    }
+                } else {
+                    reject(new Error("업로드 실패: " + xhr.statusText));
+                }
+            };
+            xhr.onerror = () => reject(new Error("업로드 중 네트워크 오류가 발생했습니다."));
+            xhr.send(file);
+        });
+    }
+
+    // 접수에러 상태에서 '파일재업로드' 클릭 시: 바로 파일선택창을 띄우고, 고른 파일을 R2에 올린 뒤
+    // 해당 주문의 file1Url을 새 파일로 교체합니다.
+    window.triggerFileReupload = function (btn) {
+        if (!btn || btn.disabled) return;
+
+        const docId = btn.dataset.docId;
+        const col = btn.dataset.col;
+        const authorName = btn.dataset.author || '재업로드';
+
+        const tempInput = document.createElement('input');
+        tempInput.type = 'file';
+        tempInput.style.display = 'none';
+        document.body.appendChild(tempInput);
+
+        tempInput.addEventListener('change', async () => {
+            const file = tempInput.files && tempInput.files[0];
+            if (!file) { document.body.removeChild(tempInput); return; }
+
+            const MAX_SIZE = 500 * 1024 * 1024;
+            if (file.size > MAX_SIZE) {
+                alert("⚠️ 파일 용량이 500MB를 넘습니다. 500MB 미만의 파일로 다시 접수해주세요.");
+                document.body.removeChild(tempInput);
+                return;
+            }
+            if (!confirm('선택한 파일로 다시 접수하시겠습니까?')) {
+                document.body.removeChild(tempInput);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.textContent = '업로드 중...';
+
+            try {
+                await ensureAnonymousLogin();
+                const newUrl = await uploadFileToR2(file, authorName);
+
+                await updateDoc(doc(db, col, docId), {
+                    file1Url: newUrl,
+                    reuploadedAt: new Date()
+                });
+
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} `
+                    + `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                btn.textContent = `수정파일 접수완료(${timeStr})`;
+                btn.classList.remove('bg-red-600', 'hover:bg-red-700', 'border-red-700', 'opacity-50');
+                btn.classList.add('bg-slate-400', 'border-slate-400');
+                btn.disabled = true;
+
+                const msgEl = $('reupload-msg-' + docId);
+                if (msgEl) msgEl.classList.add('hidden');
+
+                const fileLink = $('file1-link-' + docId);
+                if (fileLink) {
+                    fileLink.dataset.url = newUrl;
+                }
+            } catch (e) {
+                if (e.code === 'permission-denied') {
+                    alert('본인이 작성한 글만 파일을 재업로드할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)');
+                } else {
+                    alert('재업로드 중 오류가 발생했습니다: ' + e.message);
+                }
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.textContent = '파일재업로드';
+            } finally {
+                document.body.removeChild(tempInput);
+            }
+        });
+
+        tempInput.click();
+    };
+
+    // ---------------- 주문삭제 (입금 확인 전 '대기'/'모바일' 건만 버튼이 보입니다) ----------------
+    window.deleteOrder = async (docId, isJajoo) => {
+        if (!confirm("정말로 이 주문을 삭제하시겠습니까?")) return;
+        try {
+            await ensureAnonymousLogin();
+            await deleteDoc(doc(db, isJajoo ? "jjjj" : "boards", docId));
+            alert("삭제되었습니다.");
+            $('search-btn').click();
+        } catch (error) {
+            console.error("삭제 실패:", error);
+            if (error.code === 'permission-denied') {
+                alert("본인이 작성한 글만 삭제할 수 있습니다. (다른 기기/브라우저에서 작성한 글이거나, 브라우저 데이터를 지운 경우 본인 글로 인식되지 않을 수 있습니다.)");
+            } else {
+                alert("삭제 중 오류가 발생했습니다.");
+            }
+        }
+    };
+</script>
+<div id="review-prompt" role="dialog" aria-modal="true" aria-labelledby="rp-title">
+    <div class="rp-card">
+        <div class="text-3xl">📷</div>
+        <h2 id="rp-title" class="text-base font-bold text-slate-800 mt-2">사진 리뷰를 작성하시면<br>다운받으실 수 있습니다.</h2>
+        <p class="text-xs text-slate-500 mt-2">원본파일은 근시일내 삭제되며, 용량이 적은 파일만 다운받을 수 있습니다.</p>
+        <div class="mt-5 flex gap-2">
+            <button type="button" id="rp-close" class="flex-1 px-4 py-2.5 text-sm rounded-lg border border-slate-300 text-slate-600 bg-white">닫기</button>
+            <button type="button" id="rp-write" class="flex-1 px-4 py-2.5 text-sm rounded-lg bg-violet-600 text-white font-bold">리뷰작성하기</button>
+        </div>
+    </div>
+</div>
+<div id="review-modal" role="dialog" aria-modal="true" aria-labelledby="rv-title">
+    <div class="rv-card">
+        <div class="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800">🎁 리뷰이벤트중 : 베스트리뷰 선정되시면 신세계 상품권 5만원을 발송해 드립니다.</div>
+        <h2 id="rv-title" class="text-base font-bold text-slate-800">사진 리뷰 작성</h2>
+        <p class="text-xs text-slate-500 mt-1">구입하신 <b id="rv-product" class="text-slate-700"></b> 에 대한 리뷰입니다. 작성하신 리뷰는 해당 제품 페이지의 이용후기에 등록되며, 등록 후 고해상도 jpg원본을 다운로드할 수 있습니다.</p>
+        <div class="mt-4">
+            <div class="text-xs font-semibold text-slate-600 mb-1">별점</div>
+            <div>
+                <button type="button" class="rv-star" data-v="1" aria-label="1점">★</button><button type="button" class="rv-star" data-v="2" aria-label="2점">★</button><button type="button" class="rv-star" data-v="3" aria-label="3점">★</button><button type="button" class="rv-star" data-v="4" aria-label="4점">★</button><button type="button" class="rv-star" data-v="5" aria-label="5점">★</button>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label for="rv-content" class="text-xs font-semibold text-slate-600">리뷰 내용 (10자 이상)</label>
+            <textarea id="rv-content" rows="4" maxlength="1000" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" placeholder="제품은 어떠셨나요? 품질, 배송, 만족도 등을 자유롭게 남겨주세요."></textarea>
+        </div>
+        <div class="mt-3">
+            <label for="rv-file" class="text-xs font-semibold text-slate-600">제품 사진 (필수, 1장 · 10MB 이하)</label>
+            <input id="rv-file" type="file" accept="image/*" class="mt-1 block w-full text-xs">
+            <img id="rv-preview" alt="리뷰 사진 미리보기" style="display:none; max-width:100%; max-height:200px; margin-top:8px; border-radius:8px; border:1px solid #e2e8f0;">
+        </div>
+        <div class="mt-4 flex gap-2 justify-end">
+            <button type="button" id="rv-cancel" class="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-600 bg-white">취소</button>
+            <button type="button" id="rv-submit" class="px-4 py-2 text-sm rounded-lg bg-violet-600 text-white font-bold">리뷰 등록하고 원본 받기</button>
+        </div>
+    </div>
+</div>
+<div id="paid-modal" role="dialog" aria-modal="true" aria-labelledby="pd-title">
+    <div class="pd-card">
+        <div class="flex items-start justify-between gap-3">
+            <h2 id="pd-title" class="text-base font-bold text-slate-800">고해상도 jpg원본 다운로드 <span class="text-red-600">(유료)</span></h2>
+            <button type="button" id="pd-close" class="text-slate-500 hover:text-slate-800 text-2xl leading-none px-1" aria-label="닫기">&times;</button>
+        </div>
+        <p class="text-xs text-slate-500 mt-1">대상 제품 : <b id="pd-product" class="text-slate-700"></b></p>
+
+        <div class="pd-price">결제금액 : 30,000원</div>
+        <div class="pd-notice">⚠ 주의사항<br>파일원본은 10일후 삭제됩니다.<br><span style="font-weight:500">결제가 완료되면 원본파일이 자동으로 다운로드됩니다. (무통장 입금은 입금 확인 후 다운로드할 수 있습니다.)</span></div>
+
+        <label class="pd-label" for="pd-name">성함 <span class="text-red-600">*</span></label>
+        <input id="pd-name" class="pd-input" type="text" maxlength="20" autocomplete="off" placeholder="성함">
+        <label class="pd-label" for="pd-phone">핸드폰번호 <span class="text-red-600">*</span></label>
+        <input id="pd-phone" class="pd-input" type="text" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="01012345678 (11자리)">
+
+        <div class="pd-actions">
+            <button type="button" id="pd-card" class="pd-pay">카드결제</button>
+            <button type="button" id="pd-bank" class="pd-bank">무통장 입금</button>
+            <div id="pd-refund" class="pd-refund">
+                <p class="text-xs font-bold text-slate-800 mb-2">접수 오류 시 환불계좌번호 입력 <span class="text-red-600">(필수)</span></p>
+                <div class="pd-row">
+                    <div>
+                        <label class="pd-label" style="margin-top:0" for="pd-refund-bank">은행명 입력 <span class="text-red-600">*</span></label>
+                        <input id="pd-refund-bank" class="pd-input" type="text" maxlength="20" autocomplete="off" placeholder="예: 국민은행">
+                    </div>
+                    <div>
+                        <label class="pd-label" style="margin-top:0" for="pd-refund-holder">예금주 입력 <span class="text-red-600">*</span></label>
+                        <input id="pd-refund-holder" class="pd-input" type="text" maxlength="20" autocomplete="off" placeholder="예: 홍길동">
+                    </div>
+                </div>
+                <label class="pd-label" for="pd-refund-account">계좌번호 입력 <span class="text-red-600">*</span></label>
+                <input id="pd-refund-account" class="pd-input" type="text" inputmode="numeric" maxlength="30" autocomplete="off" placeholder="예: 123-456-789012">
+                <p class="text-xs text-slate-500 mt-2">입력하신 뒤 아래 빨간 <b>무통장 구입</b> 버튼을 눌러주세요.</p>
+            </div>
+            <button type="button" id="pd-transfer" class="pd-transfer">계좌이체(pc)</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
