@@ -589,7 +589,18 @@
         if (!url) return null;
         return url.startsWith('http') ? url : SITE + url;
     }
+    // 장바구니 접수 때 저장해 둔 제품 페이지 주소(items[].productUrl)는 이 사이트 주소일 때만 사용
+    function safeProductUrl(u) {
+        try {
+            if (!u) return '';
+            const x = new URL(u, location.href);
+            if (!/^https?:$/.test(x.protocol)) return '';
+            return (x.hostname === 'sowonnamoo.github.io' || x.hostname === location.hostname) ? x.href : '';
+        } catch (e) { return ''; }
+    }
     async function resolveProductUrl(item) {
+        const saved = safeProductUrl(item.productUrl);
+        if (saved) return saved;                       // 구입했던 제품 페이지 주소 그대로
         if (item.productId) return `${SITE}/myjs/products/${encodeURIComponent(item.productId)}`;
         const flat = flattenMenu(await loadMenuData());
         return toAbsoluteUrl(guessProductUrl(item.itemName, flat)) || DEFAULT_PRODUCT_URL;
@@ -1199,7 +1210,7 @@
 
             // 구매했던 상품 페이지로 바로가기 (productId가 없는 예전 주문은 상품명으로 상품 페이지를 추정)
             const goKey = `pg_${productGoSeq++}`;
-            productGoRegistry[goKey] = { productId: it.productId || '', itemName: it.item || '' };
+            productGoRegistry[goKey] = { productId: it.productId || '', itemName: it.item || '', productUrl: it.productUrl || '' };
             const productGoBtn = `<button type="button" data-act="product-go" data-key="${goKey}" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">제품바로가기</button>`;
 
             // 시안(jpg)/원본(svg) 다운로드 버튼 — 이 상품에 업로드된 파일 기준
