@@ -616,7 +616,7 @@
     };
 
     // ---------------- 시안/원본 다운로드 버튼 + 사진 리뷰 ----------------
-    const ORIGINAL_NOTICE = '원본파일은 근시일내 삭제되며 사진리뷰 작성후 다운받을수 있습니다. (용량이 적은파일만 다운 가능)';
+    const ORIGINAL_NOTICE = '고해상도 jpg원본은 근시일내 삭제되며 사진리뷰 작성후 다운받을수 있습니다. (용량이 적은파일만 다운 가능)';
     const dlRegistry = {};
     let dlSeq = 0;
     const reviewFlagKey = (orderId, idx) => `rv_done_${orderId}_${idx}`;
@@ -634,33 +634,26 @@
         return !!(f && f.url && Array.isArray(d.deletedFileUrls) && d.deletedFileUrls.includes(f.url));
     }
 
-    // sian / svg: {url, label} 또는 null.  deleted: 관리자가 파일을 삭제 표시한 경우
-    // sianDeleted: 시안(jpg) 파일이 삭제된 경우 시안 다운로드 버튼을 숨김 (관리자 quick_check 의 삭제 버튼이 기록)
+    // sian: {url, label} 또는 null (고해상도 jpg).  deleted / sianDeleted: 관리자가 그 jpg 를 삭제 표시했거나 원본 삭제 처리한 경우
+    // 예전의 "시안 다운로드"·svg 원본 버튼은 없애고, 고해상도 jpg원본 다운로드 (무료)/(유료) 두 버튼만 그립니다. (svg 인자는 호환용으로 남김)
     function designDownloadButtons(d, idx, product, sian, svg, deleted, sianDeleted) {
-        if (!sian && !svg) return '';
+        if (!sian) return '';
         const key = `dl_${dlSeq++}`;
         dlRegistry[key] = {
             orderId: d.id, idx, author: d.author || '', phone: d.phone || '',
-            svgLabel: svg ? (svg.label || '') : '',
+            sianLabel: sian.label || '',
             productId: product.productId || '', itemName: product.itemName || '',
-            sianUrl: sian ? safeUrl(sian.url) : '', svgUrl: svg ? safeUrl(svg.url) : '',
+            sianUrl: safeUrl(sian.url),
             // 운송장이 등록되어 "출고완료/운송장보기" 버튼이 활성화된 주문만 true (아래 isShipped 참고)
             shipped: !!safeUrl(d.trackingUrl || d.woonso1)
         };
+        // jpg 가 삭제된 경우: 무료/유료 다운로드 버튼을 둘 다 아예 그리지 않습니다.
+        if (deleted || sianDeleted) return '';
         const reviewed = localStorage.getItem(reviewFlagKey(d.id, idx)) === '1';
-        const sianBtn = (sian && !sianDeleted)
-            ? `<button type="button" data-act="dl-sian" data-key="${key}" data-check-url="${esc(safeUrl(sian.url))}" ${deleted ? 'disabled' : ''} class="dl-btn">시안 다운로드</button>`
-            : '';
-        // 원본(svg)이 삭제된 경우: 무료/유료 원본 다운로드 버튼을 둘 다 아예 그리지 않습니다.
-        const svgBtn = (svg && !deleted)
-            ? `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(svg.url))}" ${deleted ? 'disabled' : ''} class="dl-btn orig${reviewed ? '' : ' locked'}">(수정가능)원본파일 다운로드 (무료)</button><span class="tip-box">${deleted ? '파일이 삭제되어 다운로드할 수 없습니다.' : ORIGINAL_NOTICE}</span></span>`
-            : '';
-        // 원본즉시다운로드(유료): 후기/출고 조건 없이 결제하면 바로 받는 버튼 (원본 파일이 있을 때만)
-        const paidBtn = (svg && !deleted)
-            ? `<button type="button" data-act="dl-paid" data-key="${key}" ${deleted ? 'disabled' : ''} class="dl-btn paid">(수정가능)원본파일 다운로드 (유료)</button>`
-            : '';
-        if (!sianBtn && !svgBtn && !paidBtn) return '';
-        return `<div class="flex items-center gap-2 mt-2 flex-wrap">${sianBtn}${svgBtn}${paidBtn}</div>`;
+        const freeBtn = `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(sian.url))}" class="dl-btn orig${reviewed ? '' : ' locked'}">고해상도 jpg원본 다운로드 (무료)</button><span class="tip-box">${ORIGINAL_NOTICE}</span></span>`;
+        // 유료: 후기/출고 조건 없이 결제하면 바로 받는 버튼
+        const paidBtn = `<button type="button" data-act="dl-paid" data-key="${key}" class="dl-btn paid">고해상도 jpg원본 다운로드 (유료)</button>`;
+        return `<div class="flex items-center gap-2 mt-2 flex-wrap">${freeBtn}${paidBtn}</div>`;
     }
 
     // 화면에 그린 뒤, 실제로 파일이 지워졌는지(404/410) 확인해 버튼을 비활성화합니다.
@@ -702,11 +695,11 @@
 
     window.downloadOriginal = async (key, btn) => {
         const data = dlRegistry[key];
-        if (!data || !data.svgUrl) return;
+        if (!data || !data.sianUrl) return;
         if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
         if (!hasReviewFor(data)) { openReviewPrompt(key); return; }
         unlockOriginalButtons(key);
-        await window.downloadAttached(data.svgUrl);
+        await window.downloadAttached(data.sianUrl);
     };
 
     // ---- 안내창: "사진 리뷰를 작성하시면 다운받으실 수 있습니다." → [리뷰작성하기] 누르면 작성창 ----
@@ -803,8 +796,8 @@
             unlockOriginalButtons(rvKey);
             rvBusy = false;
             closeReviewModal();
-            alert('소중한 리뷰 감사합니다!\n원본(수정가능)파일 다운로드를 시작합니다.');
-            if (data.svgUrl) await window.downloadAttached(data.svgUrl);
+            alert('소중한 리뷰 감사합니다!\n고해상도 jpg원본 다운로드를 시작합니다.');
+            if (data.sianUrl) await window.downloadAttached(data.sianUrl);
         } catch (e) {
             console.error(e);
             rvBusy = false;
@@ -918,8 +911,8 @@
 
     window.openPaidDownload = (key) => {
         const g = dlRegistry[key];
-        if (!g || !g.svgUrl) return;
-        paidCtx = { srcOrderId: g.orderId, srcItemIdx: g.idx, itemName: g.itemName, fileUrl: g.svgUrl, fileLabel: g.svgLabel };
+        if (!g || !g.sianUrl) return;
+        paidCtx = { srcOrderId: g.orderId, srcItemIdx: g.idx, itemName: g.itemName, fileUrl: g.sianUrl, fileLabel: g.sianLabel };
         $('pd-name').value = String(g.author || '').replace(/[\s()]/g, '');
         $('pd-phone').value = String(g.phone || '').replace(/[^0-9]/g, '').slice(0, 11);
         $('pd-product').textContent = g.itemName || '선택하신 제품';
@@ -1217,7 +1210,7 @@
             const itemFiles = (Array.isArray(it.originalImageUrls) ? it.originalImageUrls : [])
                 .map(f => (typeof f === 'string') ? { url: f, label: '' } : { url: f && f.url, label: (f && f.filename) || '' });
             const { sian: fSian, svg: fSvg } = splitDesignFiles(itemFiles);
-            const dlButtons = designDownloadButtons(d, idx, { productId: it.productId || '', itemName: it.item || '' }, fSian, fSvg, !!(it.originalDeleted || d.originalDeleted) || isFileDeleted(d, fSvg), isFileDeleted(d, fSian));
+            const dlButtons = designDownloadButtons(d, idx, { productId: it.productId || '', itemName: it.item || '' }, fSian, fSvg, !!(it.originalDeleted || d.originalDeleted) || isFileDeleted(d, fSian), isFileDeleted(d, fSian));
 
             const detailBits = [
                 (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
@@ -1243,6 +1236,8 @@
         const it = (d.items && d.items[0]) || {};
         const f = Array.isArray(it.originalImageUrls) && it.originalImageUrls[0] ? it.originalImageUrls[0] : null;
         const url = f ? safeUrl(f.url) : '';
+        const instJpg = ['jpg', 'jpeg'].includes(fileExtOf(url, f ? f.filename : ''));
+        const instLabel = instJpg ? '고해상도 jpg원본 다운로드 (유료)' : '(수정가능)원본파일 다운로드 (유료)';
         const paid = PAID_STATUSES.includes(d.status);
         const expireAt = new Date(dateObj.getTime() + PAID_DAYS * 24 * 60 * 60 * 1000);
         const expireStr = `${expireAt.getFullYear()}년 ${expireAt.getMonth() + 1}월 ${expireAt.getDate()}일`;
@@ -1258,7 +1253,7 @@
         return `
             <div class="mt-2"><span class="font-semibold">대상 제품:</span> ${esc(it.srcItemName || it.item || '-')}</div>
             <div class="flex items-center gap-2 mt-2 flex-wrap">
-                <span class="tip"><button type="button" data-act="dl-instant" data-url="${esc(url)}" data-expire="${expireAt.getTime()}" ${checkAttr} ${disabled ? 'disabled' : ''} class="dl-btn paid">(수정가능)원본파일 다운로드 (유료)</button><span class="tip-box">${esc(tip)}</span></span>
+                <span class="tip"><button type="button" data-act="dl-instant" data-url="${esc(url)}" data-expire="${expireAt.getTime()}" ${checkAttr} ${disabled ? 'disabled' : ''} class="dl-btn paid">${instLabel}</button><span class="tip-box">${esc(tip)}</span></span>
             </div>
             <div class="mt-2 text-xs font-bold text-red-600">※ 주의사항: 파일원본은 10일후 삭제됩니다. (${esc(expireStr)}까지)</div>`;
     }
@@ -1326,7 +1321,7 @@
         const fileLinks = visibleFiles.map((f, i) =>
             `<a href="#" data-act="download" data-url="${esc(f.url)}" ${f.url === d.file1Url ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.named && f.label ? f.label : `파일 ${i + 1}`)}</a>`
         ).join('');
-        const topDlButtons = isCartItems ? '' : designDownloadButtons(d, 0, { productId: d.productId || '', itemName: d.productName || '' }, topSian, topSvg, !!d.originalDeleted || isFileDeleted(d, topSvg), isFileDeleted(d, topSian));
+        const topDlButtons = isCartItems ? '' : designDownloadButtons(d, 0, { productId: d.productId || '', itemName: d.productName || '' }, topSian, topSvg, !!d.originalDeleted || isFileDeleted(d, topSian), isFileDeleted(d, topSian));
 
         // ---- 무통장 입금 안내 (입금 확인 전) ----
         const bankNotice = (isPending || isMobilePending) ? `
@@ -1479,7 +1474,6 @@
             case 'sian': window.viewSianImage(ds.url, ds.fb); break;
             case 'product-go': window.productGoClick(ds.key); break;
             case 'download': window.downloadAttached(ds.url); break;
-            case 'dl-sian': { const g = dlRegistry[ds.key]; if (g && g.sianUrl) window.downloadAttached(g.sianUrl); break; }
             case 'dl-orig': window.downloadOriginal(ds.key, el); break;
             case 'dl-paid': window.openPaidDownload(ds.key); break;
             case 'dl-instant': {
@@ -1666,7 +1660,7 @@
     <div class="rv-card">
         <div class="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800">🎁 리뷰이벤트중 : 베스트리뷰 선정되시면 신세계 상품권 5만원을 발송해 드립니다.</div>
         <h2 id="rv-title" class="text-base font-bold text-slate-800">사진 리뷰 작성</h2>
-        <p class="text-xs text-slate-500 mt-1">구입하신 <b id="rv-product" class="text-slate-700"></b> 에 대한 리뷰입니다. 작성하신 리뷰는 해당 제품 페이지의 이용후기에 등록되며, 등록 후 원본(수정가능)파일을 다운로드할 수 있습니다.</p>
+        <p class="text-xs text-slate-500 mt-1">구입하신 <b id="rv-product" class="text-slate-700"></b> 에 대한 리뷰입니다. 작성하신 리뷰는 해당 제품 페이지의 이용후기에 등록되며, 등록 후 고해상도 jpg원본을 다운로드할 수 있습니다.</p>
         <div class="mt-4">
             <div class="text-xs font-semibold text-slate-600 mb-1">별점</div>
             <div>
@@ -1691,7 +1685,7 @@
 <div id="paid-modal" role="dialog" aria-modal="true" aria-labelledby="pd-title">
     <div class="pd-card">
         <div class="flex items-start justify-between gap-3">
-            <h2 id="pd-title" class="text-base font-bold text-slate-800">원본즉시다운로드 <span class="text-red-600">(유료)</span></h2>
+            <h2 id="pd-title" class="text-base font-bold text-slate-800">고해상도 jpg원본 다운로드 <span class="text-red-600">(유료)</span></h2>
             <button type="button" id="pd-close" class="text-slate-500 hover:text-slate-800 text-2xl leading-none px-1" aria-label="닫기">&times;</button>
         </div>
         <p class="text-xs text-slate-500 mt-1">대상 제품 : <b id="pd-product" class="text-slate-700"></b></p>
