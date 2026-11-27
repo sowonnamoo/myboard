@@ -19,6 +19,7 @@
     <title>주문 조회</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body{ -webkit-touch-callout: none; }
 
@@ -207,18 +208,19 @@
         }
         return ext;
     }
-    // 파일 목록을 시안(jpg) / 원본(svg) / 그 외로 나눕니다. (같은 종류가 여러 개면 첫 번째만 버튼으로 사용)
+    // 파일 목록을 시안(jpg) / 원본(svg) / 그 외로 나눕니다. (sian=첫 jpg, sians=모든 jpg → 여러 장이면 zip 으로 받음)
     function splitDesignFiles(list) {
         let sian = null, svg = null;
+        const sians = [];   // 모든 jpg (같은 주소는 한 번만)
         const others = [];
         (list || []).forEach(f => {
             if (!f || !safeUrl(f.url)) return;
             const ext = fileExtOf(f.url, f.label);
-            if (ext === 'jpg' || ext === 'jpeg') { if (!sian) sian = f; }
+            if (ext === 'jpg' || ext === 'jpeg') { if (!sian) sian = f; if (!sians.some(x => x.url === f.url)) sians.push(f); }
             else if (ext === 'svg') { if (!svg) svg = f; }
             else others.push(f);
         });
-        return { sian, svg, others };
+        return { sian, svg, sians, others };
     }
 
     // ---------------- 공통 유틸 ----------------
@@ -625,7 +627,7 @@
     };
 
     // ---------------- 시안/원본 다운로드 버튼 + 사진 리뷰 ----------------
-    const ORIGINAL_NOTICE = '고해상도 jpg원본은 근시일내 삭제되며 사진리뷰 작성후 다운받을수 있습니다. (용량이 적은파일만 다운 가능)';
+    const ORIGINAL_NOTICE = '고해상도 jpg원본은 근시일내 삭제되며 사진리뷰 작성후 다운받을수 있습니다. 여러 장이면 zip 파일 하나로 받아집니다. (용량이 적은파일만 다운 가능)';
     const dlRegistry = {};
     let dlSeq = 0;
     const reviewFlagKey = (orderId, idx) => `rv_done_${orderId}_${idx}`;
@@ -645,21 +647,27 @@
 
     // sian: {url, label} 또는 null (고해상도 jpg).  deleted / sianDeleted: 관리자가 그 jpg 를 삭제 표시했거나 원본 삭제 처리한 경우
     // 예전의 "시안 다운로드"·svg 원본 버튼은 없애고, 고해상도 jpg원본 다운로드 (무료)/(유료) 두 버튼만 그립니다. (svg 인자는 호환용으로 남김)
-    function designDownloadButtons(d, idx, product, sian, svg, deleted, sianDeleted) {
+    function designDownloadButtons(d, idx, product, sian, svg, deleted, sianDeleted, jpgList) {
         if (!sian) return '';
+        // 이 상품에 접수된 jpg 전체 (관리자가 삭제 처리한 파일은 제외). 2장 이상이면 zip 한 파일로 받습니다.
+        const jpgs = (Array.isArray(jpgList) && jpgList.length ? jpgList : [sian])
+            .filter(f => f && safeUrl(f.url) && !isFileDeleted(d, f))
+            .map(f => ({ url: safeUrl(f.url), label: f.label || '' }));
         const key = `dl_${dlSeq++}`;
         dlRegistry[key] = {
             orderId: d.id, idx, author: d.author || '', phone: d.phone || '',
-            sianLabel: sian.label || '',
+            sianLabel: jpgs[0] ? jpgs[0].label : '',
             productId: product.productId || '', itemName: product.itemName || '',
-            sianUrl: safeUrl(sian.url),
+            sianUrl: jpgs[0] ? jpgs[0].url : '',
+            jpgs,
+            zipName: `고해상도jpg원본_${product.itemName || '주문'}`,
             // 운송장이 등록되어 "출고완료/운송장보기" 버튼이 활성화된 주문만 true (아래 isShipped 참고)
             shipped: !!safeUrl(d.trackingUrl || d.woonso1)
         };
         // jpg 가 삭제된 경우: 무료/유료 다운로드 버튼을 둘 다 아예 그리지 않습니다.
-        if (deleted || sianDeleted) return '';
+        if (deleted || sianDeleted || !jpgs.length) return '';
         const reviewed = localStorage.getItem(reviewFlagKey(d.id, idx)) === '1';
-        const freeBtn = `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(safeUrl(sian.url))}" class="dl-btn orig${reviewed ? '' : ' locked'}">고해상도 jpg원본 다운로드 (무료)</button><span class="tip-box">${ORIGINAL_NOTICE}</span></span>`;
+        const freeBtn = `<span class="tip"><button type="button" data-act="dl-orig" data-key="${key}" data-check-url="${esc(jpgs[0].url)}" class="dl-btn orig${reviewed ? '' : ' locked'}">고해상도 jpg원본 다운로드 (무료)</button><span class="tip-box">${ORIGINAL_NOTICE}</span></span>`;
         // 유료: 후기/출고 조건 없이 결제하면 바로 받는 버튼
         const paidBtn = `<button type="button" data-act="dl-paid" data-key="${key}" class="dl-btn paid">고해상도 jpg원본 다운로드 (유료)</button>`;
         return `<div class="flex items-center gap-2 mt-2 flex-wrap">${freeBtn}${paidBtn}</div>`;
@@ -704,11 +712,19 @@
 
     window.downloadOriginal = async (key, btn) => {
         const data = dlRegistry[key];
-        if (!data || !data.sianUrl) return;
+        if (!data || !(data.jpgs && data.jpgs.length)) return;
         if (!isShipped(data)) { alert(NOT_SHIPPED_NOTICE); return; }
         if (!hasReviewFor(data)) { openReviewPrompt(key); return; }
         unlockOriginalButtons(key);
-        await window.downloadAttached(data.sianUrl);
+        // 여러 장이면 zip 한 파일로 받습니다. (압축하는 동안 버튼에 진행 상황 표시)
+        const many = data.jpgs.length > 1 && btn;
+        const orig = many ? btn.textContent : '';
+        if (many) btn.disabled = true;
+        try {
+            await window.downloadDesignFiles(data, many ? (done, total) => { btn.textContent = `압축 중 (${done}/${total})`; } : null);
+        } finally {
+            if (many) { btn.disabled = false; btn.textContent = orig; }
+        }
     };
 
     // ---- 안내창: "사진 리뷰를 작성하시면 다운받으실 수 있습니다." → [리뷰작성하기] 누르면 작성창 ----
@@ -806,7 +822,7 @@
             rvBusy = false;
             closeReviewModal();
             alert('소중한 리뷰 감사합니다!\n고해상도 jpg원본 다운로드를 시작합니다.');
-            if (data.sianUrl) await window.downloadAttached(data.sianUrl);
+            await window.downloadDesignFiles(data);
         } catch (e) {
             console.error(e);
             rvBusy = false;
@@ -853,13 +869,15 @@
             const boardRef = doc(collection(db, "boards"));
             const boardId = boardRef.id;
             const secretId = await computeSecretId(boardId, o.name, o.phone);
-            const fileObj = { url: o.fileUrl, filename: o.fileLabel || '' };
+            // 결제한 파일 전체를 저장 (여러 장이면 조회 화면/관리자 화면에서도 전부 받을 수 있게)
+            const fileObjs = (Array.isArray(o.files) && o.files.length ? o.files : [{ url: o.fileUrl, label: o.fileLabel }])
+                .map(f => ({ url: f.url, filename: f.label || f.filename || '' }));
             const items = [{
                 item: `${o.itemName || '제품'} (원본다운로드)`,   // 제품명 먼저, 끝에 (원본다운로드) — 어드민/파이어베이스에서 구분용
                 srcItemName: o.itemName || '',
                 qty: 1, count: 1, price: PAID_PRICE,
                 instantOriginal: true,
-                originalImageUrls: [fileObj]
+                originalImageUrls: fileObjs
             }];
             const ip = await fetchClientIp();
             await setDoc(boardRef, {
@@ -868,14 +886,14 @@
                 quantity: '1개',
                 size: '원본파일',
                 price: `${PAID_PRICE}원`,
-                file1Url: o.fileUrl, file2Url: null,
+                file1Url: fileObjs[0].url, file2Url: null,
                 ip, uid: user.uid,
                 createdAt: new Date(),
                 isDeleted: false,
                 status: o.status,
                 fromCart: true,
                 paymentId: o.paymentId || '',
-                items, originalFiles: [fileObj],
+                items, originalFiles: fileObjs,
                 instantOriginal: true,
                 srcOrderId: o.srcOrderId || '', srcItemIdx: o.srcItemIdx ?? 0
             });
@@ -920,8 +938,8 @@
 
     window.openPaidDownload = (key) => {
         const g = dlRegistry[key];
-        if (!g || !g.sianUrl) return;
-        paidCtx = { srcOrderId: g.orderId, srcItemIdx: g.idx, itemName: g.itemName, fileUrl: g.sianUrl, fileLabel: g.sianLabel };
+        if (!g || !(g.jpgs && g.jpgs.length)) return;
+        paidCtx = { srcOrderId: g.orderId, srcItemIdx: g.idx, itemName: g.itemName, fileUrl: g.sianUrl, fileLabel: g.sianLabel, files: g.jpgs, zipName: g.zipName };
         $('pd-name').value = String(g.author || '').replace(/[\s()]/g, '');
         $('pd-phone').value = String(g.phone || '').replace(/[^0-9]/g, '').slice(0, 11);
         $('pd-product').textContent = g.itemName || '선택하신 제품';
@@ -993,11 +1011,12 @@
             if (!saved) {
                 alert('결제는 완료되었으나 주문 저장 중 오류가 발생했습니다.\n결제번호: ' + paymentId + '\n이 번호를 관리자에게 알려주세요. (다시 결제하지 마세요)');
             }
-            const url = paidCtx.fileUrl;
+            const dlFiles = paidCtx.files;
+            const dlZip = paidCtx.zipName;
             setPaidBusy(false);
             closePaidModal();
             alert('결제가 완료되었습니다.\n원본파일 다운로드를 시작합니다.\n\n※ 파일원본은 10일후 삭제됩니다.\n(이후에도 \'주문 내역 조회\'에서 10일 이내에 다시 받으실 수 있습니다.)');
-            await window.downloadAttached(url);
+            await window.downloadFilesAsZip(dlFiles, dlZip);   // 여러 장이면 zip, 한 장이면 jpg
             if (saved) refreshSearchIfSame(form);
         } catch (e) {
             console.error(e);
@@ -1213,8 +1232,8 @@
             // 시안(jpg)/원본(svg) 다운로드 버튼 — 이 상품에 업로드된 파일 기준
             const itemFiles = (Array.isArray(it.originalImageUrls) ? it.originalImageUrls : [])
                 .map(f => (typeof f === 'string') ? { url: f, label: '' } : { url: f && f.url, label: (f && f.filename) || '' });
-            const { sian: fSian, svg: fSvg } = splitDesignFiles(itemFiles);
-            const dlButtons = designDownloadButtons(d, idx, { productId: it.productId || '', itemName: it.item || '' }, fSian, fSvg, !!(it.originalDeleted || d.originalDeleted) || isFileDeleted(d, fSian), isFileDeleted(d, fSian));
+            const { sian: fSian, svg: fSvg, sians: fSians } = splitDesignFiles(itemFiles);
+            const dlButtons = designDownloadButtons(d, idx, { productId: it.productId || '', itemName: it.item || '' }, fSian, fSvg, !!(it.originalDeleted || d.originalDeleted), false, fSians);
 
             const detailBits = [
                 (it.width && it.height) ? `${it.width}×${it.height}mm` : '',
@@ -1240,6 +1259,17 @@
         const it = (d.items && d.items[0]) || {};
         const f = Array.isArray(it.originalImageUrls) && it.originalImageUrls[0] ? it.originalImageUrls[0] : null;
         const url = f ? safeUrl(f.url) : '';
+        // 결제한 파일이 여러 장이면 zip 한 파일로 받도록 목록을 등록
+        const instFiles = (Array.isArray(it.originalImageUrls) ? it.originalImageUrls : [])
+            .map(x => (typeof x === 'string') ? { url: x, label: '' } : { url: x && x.url, label: (x && x.filename) || '' })
+            .filter(x => safeUrl(x.url) && !isFileDeleted(d, x))
+            .map(x => ({ url: safeUrl(x.url), label: x.label }));
+        let instKeyAttr = '';
+        if (instFiles.length > 1) {
+            const ik = `dl_${dlSeq++}`;
+            dlRegistry[ik] = { jpgs: instFiles, zipName: `고해상도jpg원본_${it.srcItemName || it.item || '주문'}` };
+            instKeyAttr = `data-key="${ik}"`;
+        }
         const instJpg = ['jpg', 'jpeg'].includes(fileExtOf(url, f ? f.filename : ''));
         const instLabel = instJpg ? '고해상도 jpg원본 다운로드 (유료)' : '(수정가능)원본파일 다운로드 (유료)';
         const paid = PAID_STATUSES.includes(d.status);
@@ -1257,7 +1287,7 @@
         return `
             <div class="mt-2"><span class="font-semibold">대상 제품:</span> ${esc(it.srcItemName || it.item || '-')}</div>
             <div class="flex items-center gap-2 mt-2 flex-wrap">
-                <span class="tip"><button type="button" data-act="dl-instant" data-url="${esc(url)}" data-expire="${expireAt.getTime()}" ${checkAttr} ${disabled ? 'disabled' : ''} class="dl-btn paid">${instLabel}</button><span class="tip-box">${esc(tip)}</span></span>
+                <span class="tip"><button type="button" data-act="dl-instant" data-url="${esc(url)}" ${instKeyAttr} data-expire="${expireAt.getTime()}" ${checkAttr} ${disabled ? 'disabled' : ''} class="dl-btn paid">${instLabel}</button><span class="tip-box">${esc(tip)}</span></span>
             </div>
             <div class="mt-2 text-xs font-bold text-red-600">※ 주의사항: 파일원본은 10일후 삭제됩니다. (${esc(expireStr)}까지)</div>`;
     }
@@ -1321,11 +1351,11 @@
         const fileList = (Array.isArray(d.originalFiles) && d.originalFiles.length)
             ? d.originalFiles.map(f => ({ url: f.url, label: f.filename, named: true }))
             : [d.file1Url, d.file2Url].filter(Boolean).map(u => ({ url: u, label: '', named: false }));
-        const { sian: topSian, svg: topSvg, others: visibleFiles } = splitDesignFiles(fileList);
+        const { sian: topSian, svg: topSvg, sians: topSians, others: visibleFiles } = splitDesignFiles(fileList);
         const fileLinks = visibleFiles.map((f, i) =>
             `<a href="#" data-act="download" data-url="${esc(f.url)}" ${f.url === d.file1Url ? `id="file1-link-${esc(d.id)}"` : ''} class="text-blue-500 underline text-xs break-all">${esc(f.named && f.label ? f.label : `파일 ${i + 1}`)}</a>`
         ).join('');
-        const topDlButtons = isCartItems ? '' : designDownloadButtons(d, 0, { productId: d.productId || '', itemName: d.productName || '' }, topSian, topSvg, !!d.originalDeleted || isFileDeleted(d, topSian), isFileDeleted(d, topSian));
+        const topDlButtons = isCartItems ? '' : designDownloadButtons(d, 0, { productId: d.productId || '', itemName: d.productName || '' }, topSian, topSvg, !!d.originalDeleted, false, topSians);
 
         // ---- 무통장 입금 안내 (입금 확인 전) ----
         const bankNotice = (isPending || isMobilePending) ? `
@@ -1481,7 +1511,9 @@
             case 'dl-paid': window.openPaidDownload(ds.key); break;
             case 'dl-instant': {
                 if (ds.expire && Date.now() > Number(ds.expire)) { alert('다운로드 가능기간(10일)이 지나 원본파일이 삭제되었습니다.'); break; }
-                window.downloadAttached(ds.url);
+                const g = ds.key ? dlRegistry[ds.key] : null;
+                if (g && g.jpgs && g.jpgs.length > 1) window.downloadFilesAsZip(g.jpgs, g.zipName);   // 여러 장 → zip
+                else window.downloadAttached(ds.url);
                 break;
             }
             case 'segum': window.openSegumPageFor(ds.name, ds.phone, ds.id); break;
@@ -1521,6 +1553,77 @@
             console.error('다운로드 실패, 새 창으로 대체:', e);
             window.open(safe, '_blank');
         }
+    };
+
+    // ---------------- 여러 장 → zip 한 파일로 다운로드 ----------------
+    // 업로드된 jpg 가 2장 이상이면 zip 으로 묶어서 받고, 1장이면 그대로 받습니다.
+    function fileNameFromUrl(url, fallback) {
+        let filename = fallback || 'download';
+        try {
+            const name = new URL(url).searchParams.get('name') || '';
+            if (name) filename = (name.match(/^.*?_\d{13}_(.+)$/) || [])[1] || name;
+        } catch (e) {}
+        return filename;
+    }
+    // files: [{url, label}], zipName: 저장할 zip 이름(확장자 제외 가능), onProgress(done, total): 선택
+    window.downloadFilesAsZip = async (files, zipName, onProgress) => {
+        const list = (files || [])
+            .map(f => ({ url: safeUrl(f && f.url), label: (f && f.label) || '' }))
+            .filter(f => f.url);
+        if (!list.length) return false;
+        if (list.length === 1) { await window.downloadAttached(list[0].url); return true; }
+        if (typeof JSZip === 'undefined') {
+            alert('압축 기능을 불러오지 못했습니다.\n새로고침 후 다시 시도해주세요.');
+            return false;
+        }
+        const zip = new JSZip();
+        const used = new Set();
+        const failed = [];
+        let added = 0;
+        for (let i = 0; i < list.length; i++) {
+            const f = list[i];
+            try {
+                const res = await fetch(f.url);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const blob = await res.blob();
+                const name = fileNameFromUrl(f.url, f.label || `image_${i + 1}.jpg`).replace(/[\\/]/g, '_');
+                const dot = name.lastIndexOf('.');
+                const base = dot > 0 ? name.slice(0, dot) : name;
+                const ext = dot > 0 ? name.slice(dot) : '';
+                let finalName = name, n = 2;
+                while (used.has(finalName.toLowerCase())) finalName = `${base} (${n++})${ext}`;   // 같은 이름이면 (2), (3)… 를 붙임
+                used.add(finalName.toLowerCase());
+                zip.file(finalName, blob);
+                added++;
+            } catch (e) {
+                console.error('zip 에 넣을 파일을 불러오지 못했습니다:', f.url, e);
+                failed.push(i + 1);
+            }
+            if (onProgress) onProgress(i + 1, list.length);
+        }
+        if (!added) {
+            alert('파일을 불러오지 못해 다운로드할 수 없습니다.\n잠시 후 다시 시도해주세요.');
+            return false;
+        }
+        // jpg 는 이미 압축된 파일이라 STORE(무압축)로 묶는 게 훨씬 빠릅니다.
+        const out = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+        const safeName = String(zipName || '고해상도jpg원본').replace(/[\\/:*?"<>|]/g, '_').replace(/\.zip$/i, '') + '.zip';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(out);
+        a.download = safeName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        if (failed.length) alert(`일부 파일(${failed.join(', ')}번째)은 불러오지 못해 zip 에서 빠졌습니다.\n고객센터로 문의해주세요.`);
+        return true;
+    };
+    // 이 상품의 jpg 전체를 받습니다. (여러 장 → zip, 한 장 → jpg)
+    window.downloadDesignFiles = async (data, onProgress) => {
+        const files = (data && data.jpgs && data.jpgs.length) ? data.jpgs
+            : (data && data.sianUrl ? [{ url: data.sianUrl, label: data.sianLabel }] : []);
+        if (!files.length) return false;
+        return window.downloadFilesAsZip(files, data.zipName, onProgress);
     };
 
     // app.js 의 uploadToR2 와 같은 방식(확장자 검사, 고유 파일명)이되 File 객체를 바로 받습니다.
