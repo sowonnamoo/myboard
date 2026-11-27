@@ -293,7 +293,7 @@ window.downloadOrderSheet = (boardId) => {
   URL.revokeObjectURL(url);
 };
 
-// 첨부파일1, 첨부파일2, 주문서(메모장)를 "주문자이름/" 폴더 하나로 묶은 ZIP 한 개로 받습니다.
+// 접수된 모든 첨부파일(건수만큼 전부), 시안보여주기파일, 재첨부 파일, 주문서(메모장)를 "주문자이름/" 폴더 하나로 묶은 ZIP 한 개로 받습니다.
 // (원본 파일명을 그대로 사용하므로 확장자가 바뀌지 않습니다)
 window.downloadAllAsZip = async (boardId) => {
   const o = orderSheetDataMap[boardId];
@@ -331,30 +331,55 @@ window.downloadAllAsZip = async (boardId) => {
     const sheetFileName = `${sheetPhoneDigits || '0000000'}${sheetDateCode}.txt`;
     folder.file(sheetFileName, "\ufeff" + sheetContent);
 
-    // 2) 첨부파일1, 2, 재첨부 파일들을 원본 이름 그대로 내려받아 추가
+    // 2) 접수된 모든 파일(상품이 여러 건이면 건수만큼 전부) + 시안보여주기파일 + 재첨부 파일을 원본 이름 그대로 추가
+    //    - 장바구니 주문은 originalFiles(cartFiles) 전체를 넣음 (예전에는 첫 파일 1개만 들어갔음)
+    //    - 관리자가 삭제 처리한 파일, 같은 주소의 중복 파일은 제외
+    const deletedSet = new Set(files.deletedUrls || []);
+    const compositeUrls = new Set((files.composites || []).map(c => c.url));
     const toAdd = [];
-    if (files.file1Url) toAdd.push({ url: files.file1Url, fallback: '첨부파일1' });
-    if (files.file2Url) toAdd.push({ url: files.file2Url, fallback: '첨부파일2' });
+    const addFile = (url, fallback, forcedName) => {
+      if (!url || deletedSet.has(url) || toAdd.some(t => t.url === url)) return;
+      toAdd.push({ url, fallback, forcedName });
+    };
+    const cartList = files.cartFiles || [];
+    if (cartList.length) {
+      cartList.forEach((f, i) => { if (!compositeUrls.has(f.url)) addFile(f.url, `첨부파일${i + 1}`); });
+    } else {
+      addFile(files.file1Url, '첨부파일1');
+      addFile(files.file2Url, '첨부파일2');
+    }
+    (files.composites || []).forEach((c, i, arr) => {
+      addFile(c.url, `시안보여주기파일${i + 1}`, `시안보여주기파일${arr.length > 1 ? i + 1 : ''}.jpg`);
+    });
     hanjoolItems.forEach((item, i) => {
-      toAdd.push({ url: item.fileUrl, fallback: `재첨부${hanjoolItems.length > 1 ? i + 1 : ''}` });
+      addFile(item.fileUrl, `재첨부${hanjoolItems.length > 1 ? i + 1 : ''}`);
     });
 
     const usedNames = new Set([sheetFileName]);
-    for (const { url, fallback } of toAdd) {
-      let name = fallback;
-      try {
-        const q = new URL(url).searchParams.get('name') || '';
-        const m = q.match(/^.*?_\d{13}_(.+)$/);
-        name = (m && m[1]) || q || fallback;
-      } catch (e) {}
+    const failed = [];   // 불러오지 못한 파일 (나머지 파일로 ZIP 은 계속 만듦)
+    let done = 0;
+    for (const { url, fallback, forcedName } of toAdd) {
+      let name = forcedName || fallback;
+      if (!forcedName) {
+        try {
+          const q = new URL(url).searchParams.get('name') || '';
+          const m = q.match(/^.*?_\d{13}_(.+)$/);
+          name = (m && m[1]) || q || fallback;
+        } catch (e) {}
+      }
       while (usedNames.has(name)) {
         name = `(1)${name}`;
       }
       usedNames.add(name);
 
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`${fallback} 다운로드 실패 (HTTP ${res.status})`);
-      folder.file(name, await res.blob());
+      let blob = null;
+      try {
+        const res = await fetch(url);
+        if (res.ok) blob = await res.blob();
+      } catch (e) { console.error('ZIP 에 넣을 파일을 불러오지 못했습니다:', url, e); }
+      if (blob) folder.file(name, blob); else failed.push(name);
+      done++;
+      if (btn) btn.textContent = `압축 중 (${done}/${toAdd.length})`;
     }
 
     const zipBlob = await zip.generateAsync({ type: 'blob' });
@@ -366,6 +391,7 @@ window.downloadAllAsZip = async (boardId) => {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(zipUrl), 1000);
+    if (failed.length) alert('일부 파일은 불러오지 못해 ZIP 에서 빠졌습니다:\n' + failed.join('\n'));
   } catch (e) {
     alert('ZIP 생성 중 오류가 발생했습니다: ' + e.message);
   } finally {
@@ -990,6 +1016,53 @@ window.deleteCartFile = async (boardId, idx) => {
   }
 };
 
+// 이 주문의 첨부파일 전체 삭제 (개별 삭제 버튼들을 한 번에 실행)
+//  - 접수 파일(장바구니: originalFiles 전체 / 일반: 첨부파일1·2): R2 삭제 + 장바구니는 boards.deletedFileUrls 기록(고객 조회 화면의 다운로드 버튼 숨김)
+//  - 재첨부 파일(hanjool): R2 삭제 + 문서 삭제, 모두 지우면 fileLocked 해제
+//  - 시안보여주기파일(items[].compositeImage)은 개별 삭제 버튼이 없으므로 건드리지 않음
+window.deleteAllAttachedFiles = async (boardId) => {
+  const files = attachedFileMap[boardId] || {};
+  const deletedSet = new Set(files.deletedUrls || []);
+  const cartTargets = (files.cartFiles || []).filter(f => f && f.url && !deletedSet.has(f.url));
+  const slotUrls = (files.cartFiles || []).length ? [] : [files.file1Url, files.file2Url].filter(Boolean);
+  const hanjoolTargets = hanjoolMap[boardId] || [];
+  const total = cartTargets.length + slotUrls.length + hanjoolTargets.length;
+  if (!total) return alert("삭제할 첨부파일이 없습니다.");
+  if (!confirm(`이 주문의 첨부파일을 전체 삭제하시겠습니까?\n\n- 접수 파일 ${cartTargets.length + slotUrls.length}개\n- 재첨부 파일 ${hanjoolTargets.length}개\n\nR2 파일이 삭제되고 고객 화면의 다운로드 버튼(무료/유료)도 사라집니다.\n삭제한 파일은 복구할 수 없습니다.`)) return;
+  try {
+    const col = orderColMap[boardId] || "boards";
+    const patch = {};
+
+    // 1) 접수 파일
+    const cartUrls = cartTargets.map(f => f.url);
+    await Promise.all([...cartUrls, ...slotUrls].map(u => deleteFromR2(u)));
+    if (cartUrls.length) {
+      patch.deletedFileUrls = arrayUnion(...cartUrls);
+      if (cartUrls.includes(files.file1Url)) patch.file1Url = deleteField();
+      if (cartUrls.includes(files.file2Url)) patch.file2Url = deleteField();
+    }
+    if (slotUrls.includes(files.file1Url)) patch.file1Url = deleteField();
+    if (slotUrls.includes(files.file2Url)) patch.file2Url = deleteField();
+    if (Object.keys(patch).length) await updateDoc(doc(db, col, boardId), patch);
+    if (cartUrls.length && files.srcOrderId) {
+      await updateDoc(doc(db, "boards", files.srcOrderId), { deletedFileUrls: arrayUnion(...cartUrls) }).catch(e => console.error('원래 주문 표시 실패:', e));
+    }
+
+    // 2) 재첨부 파일
+    if (hanjoolTargets.length) {
+      await Promise.all(hanjoolTargets.map(h => h.fileUrl ? deleteFromR2(h.fileUrl) : null));
+      for (const h of hanjoolTargets) await deleteDoc(doc(db, col, boardId, "hanjool", h.id));
+      const remain = await getDocs(collection(db, col, boardId, "hanjool"));
+      if (remain.empty) {
+        await updateDoc(doc(db, col, boardId), { fileLocked: false, sianRefreshedAt: serverTimestamp() });
+      }
+    }
+    loadRecentOrders();
+  } catch (e) {
+    alert("삭제 실패: " + e.message);
+  }
+};
+
 // 고객이 재첨부한 파일 삭제 (R2 파일 + hanjool 문서). 마지막 재첨부 파일까지 지우면
 // 자동으로 fileLocked를 해제해서 고객이 다시 첨부할 수 있게 함.
 window.deleteHanjoolFile = async (boardId, memoId) => {
@@ -1339,7 +1412,7 @@ async function buildOrderRows(items) {
     // 원본 첨부파일(접수 시 boards.file1Url/file2Url) + 재첨부 파일(hanjool) 목록으로 다운로드/삭제 버튼 구성
     const cartFiles = (data.fromCart === true && Array.isArray(data.originalFiles)) ? data.originalFiles.filter(f => f && f.url) : [];
     const deletedUrls = Array.isArray(data.deletedFileUrls) ? data.deletedFileUrls : [];
-    attachedFileMap[d.id] = { file1Url: data.file1Url || '', file2Url: data.file2Url || '', cartFiles, srcOrderId: data.srcOrderId || '' };
+    attachedFileMap[d.id] = { file1Url: data.file1Url || '', file2Url: data.file2Url || '', cartFiles, srcOrderId: data.srcOrderId || '', deletedUrls, composites: [] };
     const hanjoolItems = hanjoolSnaps[idx].docs.map(hd => ({ id: hd.id, fileUrl: hd.data().fileUrl || '' })).filter(it => it.fileUrl);
     hanjoolMap[d.id] = hanjoolItems;
 
@@ -1362,6 +1435,7 @@ async function buildOrderRows(items) {
         if (found) found.idx = fi; else compositeList.push({ url: f.url, idx: fi });
       }
     });
+    attachedFileMap[d.id].composites = compositeList.map(c => ({ url: c.url }));   // 전체 ZIP 에서 사용
 
     let attachHtml = '';
     if (it.isJajoo && data.imgCode) {
@@ -1404,6 +1478,15 @@ async function buildOrderRows(items) {
       const label = hanjoolItems.length > 1 ? `재첨부${i + 1}` : '재첨부';
       attachHtml += `<div class="file-row">🔁 <a href="#" data-url="${item.fileUrl}" onclick="downloadAttached(this.dataset.url); return false;">${label} 다운로드</a> <button class="small-btn" onclick="deleteHanjoolFile('${d.id}','${item.id}')">삭제</button></div>`;
     });
+    // 이 주문의 첨부파일을 한 번에 지우는 버튼 (위의 개별 삭제 버튼이 있는 파일 전부: 접수 파일 + 재첨부 파일)
+    {
+      const liveCart = cartFiles.filter(f => !deletedUrls.includes(f.url)).length;
+      const liveSlots = cartFiles.length ? 0 : ((data.file1Url ? 1 : 0) + (data.file2Url ? 1 : 0));
+      const allCount = liveCart + liveSlots + hanjoolItems.length;
+      if (allCount > 0) {
+        attachHtml += `<div class="file-row"><button class="small-btn" style="background:#b91c1c;" onclick="deleteAllAttachedFiles('${d.id}')">🗑 이 주문 첨부 전체삭제 (${allCount})</button></div>`;
+      }
+    }
     // app2.js의 자동 재업로드 감지(checkImageRefreshAndCleanup)는 cafe24가
     // Last-Modified/ETag 헤더를 CORS로 내려줄 때만 동작하고, 대부분의 정적 서버는
     // 이 헤더를 막고 있어서 조용히 실패합니다. 그래서 여기 수동 버튼을 항상 노출해서
