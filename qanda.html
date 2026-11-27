@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <!-- 이름·문의 내용이 노출되는 페이지라 검색엔진에 안 걸리게 막음 (search.html 과 동일) -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet">
+    <script>
+        // 검색/수집 봇이 접속하면 페이지 로딩을 중단합니다. (정확한 봇 이름만 검사)
+        (function () {
+            var botUA = /\b(googlebot|google-inspectiontool|adsbot-google|bingbot|bingpreview|msnbot|yeti|naverbot|daumoa|slurp|duckduckbot|baiduspider|yandexbot|applebot|sogou|facebookexternalhit|twitterbot|ia_archiver|semrushbot|ahrefsbot|mj12bot|dotbot|petalbot|crawler|spider)\b/i;
+            if (botUA.test(navigator.userAgent || '')) { window.stop(); }
+        })();
+    </script>
+    <title>질문답변</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 키보드로 이동할 때 어디에 있는지 보이게 */
+        :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .qa-chevron { transform: rotate(180deg); }
+        .qa-chevron { transition: transform .15s; }
+        @media (prefers-reduced-motion: reduce) { .qa-chevron { transition: none; } }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-blue-50 p-4 sm:p-6">
+
+<div class="max-w-2xl mx-auto">
+
+    <button type="button" id="back-btn"
+        class="inline-flex items-center gap-3 mb-4 min-h-[56px] bg-white hover:bg-slate-50 active:scale-[0.98] transition border border-slate-300 text-slate-900 font-bold text-lg px-6 py-3.5 rounded-2xl shadow-sm">
+        <svg class="w-7 h-7 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        이전 페이지로
+    </button>
+
+    <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
+        <h1 class="text-lg sm:text-xl font-bold text-slate-900 mb-1">질문답변</h1>
+        <p class="text-xs sm:text-sm text-slate-500 mb-5">질문은 작성하신 분만 볼 수 있어요. 이름과 휴대폰 번호 뒤 4자리로 답변을 확인하세요.</p>
+
+        <!-- 탭 -->
+        <div class="grid grid-cols-2 gap-2 mb-6" role="tablist" aria-label="질문답변 메뉴">
+            <button type="button" role="tab" id="tab-write" aria-selected="true" aria-controls="panel-write"
+                class="tab-btn py-3 rounded-xl font-semibold text-sm border transition">질문 남기기</button>
+            <button type="button" role="tab" id="tab-search" aria-selected="false" aria-controls="panel-search"
+                class="tab-btn py-3 rounded-xl font-semibold text-sm border transition">내 질문 확인</button>
+        </div>
+
+        <!-- 질문 작성 -->
+        <section id="panel-write" role="tabpanel" aria-labelledby="tab-write">
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5 mb-2.5">
+                <div class="sm:col-span-3">
+                    <label for="w-name" class="block text-xs font-semibold text-slate-600 mb-1">성함</label>
+                    <input type="text" id="w-name" maxlength="20" autocomplete="off"
+                        class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm"
+                        placeholder="예) 홍길동">
+                </div>
+                <div class="sm:col-span-2">
+                    <label for="w-pw" class="block text-xs font-semibold text-slate-600 mb-1">휴대폰 번호 뒤 4자리</label>
+                    <input type="text" id="w-pw" maxlength="4" inputmode="numeric" autocomplete="off"
+                        class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm"
+                        placeholder="예) 1234">
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">이 4자리가 조회 비밀번호예요. 질문을 확인할 때 꼭 필요하니 기억해 주세요.</p>
+
+            <label for="w-title" class="block text-xs font-semibold text-slate-600 mb-1">제목</label>
+            <input type="text" id="w-title" maxlength="100" autocomplete="off"
+                class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm mb-3"
+                placeholder="궁금한 내용을 짧게 적어 주세요">
+
+            <label for="w-content" class="block text-xs font-semibold text-slate-600 mb-1">내용</label>
+            <textarea id="w-content" rows="7" maxlength="3000"
+                class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm mb-1 resize-y"
+                placeholder="주문하신 제품이 있다면 제품명과 함께 적어 주시면 더 빨리 답변드릴 수 있어요."></textarea>
+            <div class="text-right text-xs text-slate-400 mb-3"><span id="w-count">0</span> / 3000</div>
+
+            <div class="mb-1 text-xs font-semibold text-slate-600">첨부파일</div>
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+                <label for="w-file"
+                    class="inline-flex items-center cursor-pointer bg-slate-100 hover:bg-slate-200 transition text-slate-800 px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200">
+                    파일 선택
+                </label>
+                <input type="file" id="w-file" class="sr-only" multiple
+                    accept=".jpg,.jpeg,.png,.pdf,.ai,.psd,.zip,.hwp,.eps,.gif,.heic,.webp,.xlsx,.ppt,.pptx">
+                <span class="text-xs text-slate-500">3개까지, 파일당 5MB 미만</span>
+            </div>
+            <ul id="w-files" class="space-y-1.5 mb-4"></ul>
+
+            <button type="button" id="w-submit"
+                class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition text-white px-6 py-3.5 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">질문 등록</button>
+            <p id="w-msg" class="text-sm mt-3 hidden" role="status" aria-live="polite"></p>
+        </section>
+
+        <!-- 내 질문 확인 -->
+        <section id="panel-search" role="tabpanel" aria-labelledby="tab-search" class="hidden">
+            <div class="flex flex-col sm:flex-row gap-2.5">
+                <input type="text" id="s-name" autocomplete="off" aria-label="이름"
+                    class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:flex-grow-[2]"
+                    placeholder="이름 입력">
+                <input type="text" id="s-pw" maxlength="4" inputmode="numeric" autocomplete="off" aria-label="휴대폰 번호 뒤 4자리"
+                    class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44"
+                    placeholder="전화번호 뒤 4자리">
+                <button type="button" id="s-btn"
+                    class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="results" class="space-y-4" aria-live="polite"></div>
+</div>
+
+<script>
+    // 이전 페이지로: 방문 기록이 있으면 뒤로, 팝업이면 닫기, 둘 다 아니면 주문 게시판 첫 화면으로
+    document.getElementById('back-btn').addEventListener('click', function () {
+        if (window.history.length > 1) window.history.back();
+        else if (window.opener) window.close();
+        else window.location.href = 'https://sowonnamoo.github.io/myboard/';
+    });
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const $ = (id) => document.getElementById(id);
+
+// ================= 설정 =================
+const MAX_FILES = 3;                         // 첨부 가능한 개수
+const MAX_FILE_SIZE = 5 * 1024 * 1024;       // 파일 하나당 5MB 미만
+const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp', 'xlsx', 'ppt', 'pptx']; // 소문자
+const WORKER_URL = "https://r2.ecogr.workers.dev/";   // 주문 파일 업로드와 같은 R2 업로드 주소
+const SUBMIT_COOLDOWN_MS = 30 * 1000;        // 연속 등록 방지(30초)
+
+// ================= Firebase (주문 조회와 같은 board-291e3 프로젝트) =================
+// 저장 구조 (주문의 boards / private / adminOrders 와 같은 방식)
+//  qanda/{id}                       공개 문서: 이름, 작성일만 (제목/내용/파일은 없음)
+//  qanda/{id}/private/{secretId}    질문 본문: 제목, 내용, 첨부파일, 답변(answer, answeredAt, answered)
+//                                   secretId = sha256(id::이름::뒤4자리) → 이름+뒤4자리를 아는 사람만 읽을 수 있음
+//  qandaAdmin/{id}                  관리자용 복사본: 질문 내용 + secretId (관리자가 답변을 달 때 사용)
+const firebaseConfig = {
+    apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
+    authDomain: "board-291e3.firebaseapp.com",
+    projectId: "board-291e3",
+    storageBucket: "board-291e3.firebasestorage.app",
+    messagingSenderId: "25881766316",
+    appId: "1:25881766316:web:c03e118cf26d3fff11b209"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// 방문자 익명 로그인 (uid 필요)
+const auth = getAuth(app);
+let resolveAuthReady;
+const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+onAuthStateChanged(auth, (user) => {
+    if (user) resolveAuthReady(user);
+    else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
+});
+function ensureAnonymousLogin() {
+    return Promise.race([
+        authReadyPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('익명 로그인 시간 초과')), 10000))
+    ]);
+}
+
+// ================= 공통 유틸 =================
+function esc(v) {
+    return String(v ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function safeUrl(u) { return /^https?:\/\//i.test(String(u || '')) ? String(u) : ''; }
+async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+// 이름의 공백/괄호는 제거해서 저장 (주문 조회와 같은 규칙)
+function normalizeName(name) { return String(name || "").trim().replace(/[\s()]/g, ''); }
+async function computeSecretId(id, author, last4) { return sha256Hex(`${id}::${String(author || '').trim()}::${last4}`); }
+function toDate(v) {
+    if (!v) return null;
+    if (typeof v.toDate === 'function') return v.toDate();
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+}
+function fmtDate(v) {
+    const d = toDate(v);
+    if (!d) return '-';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function fmtSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n >= 1024 * 1024) return (Math.floor(n / 1024 / 1024 * 10) / 10).toFixed(1) + 'MB';   // 내림: 5MB 바로 아래 파일이 5.0MB 로 보이지 않게
+    return Math.max(1, Math.round(n / 1024)) + 'KB';
+}
+function fileNameFromUrl(url, fallback) {
+    try {
+        const name = new URL(url).searchParams.get('name') || '';
+        if (name) return (name.match(/^.*?_\d{13}_(.+)$/) || [])[1] || name;
+    } catch (e) {}
+    return fallback || '첨부파일';
+}
+function setMsg(el, text, kind) {
+    el.textContent = text || '';
+    el.className = 'text-sm mt-3 ' + (text ? '' : 'hidden') + ' ' +
+        (kind === 'error' ? 'text-red-600' : kind === 'ok' ? 'text-emerald-700' : 'text-slate-600');
+}
+
+// ================= 탭 =================
+function showTab(which) {
+    const write = which === 'write';
+    $('panel-write').classList.toggle('hidden', !write);
+    $('panel-search').classList.toggle('hidden', write);
+    [['tab-write', write], ['tab-search', !write]].forEach(([id, on]) => {
+        const b = $(id);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.className = 'tab-btn py-3 rounded-xl font-semibold text-sm border transition ' +
+            (on ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50');
+    });
+    if (write) $('results').innerHTML = '';
+}
+$('tab-write').addEventListener('click', () => showTab('write'));
+$('tab-search').addEventListener('click', () => showTab('search'));
+showTab('write');
+
+// ================= 질문 작성 =================
+let selectedFiles = [];
+
+$('w-pw').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4); });
+$('w-content').addEventListener('input', (e) => { $('w-count').textContent = e.target.value.length; });
+
+function renderSelectedFiles() {
+    $('w-files').innerHTML = selectedFiles.map((f, i) => `
+        <li class="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            <span class="min-w-0 truncate">${esc(f.name)} <span class="text-slate-400">(${fmtSize(f.size)})</span></span>
+            <button type="button" data-remove="${i}" class="shrink-0 text-slate-500 hover:text-red-600 font-semibold px-2" aria-label="${esc(f.name)} 빼기">빼기</button>
+        </li>`).join('');
+}
+$('w-files').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-remove]');
+    if (!b) return;
+    selectedFiles.splice(Number(b.dataset.remove), 1);
+    renderSelectedFiles();
+});
+$('w-file').addEventListener('change', (e) => {
+    const problems = [];
+    for (const f of Array.from(e.target.files || [])) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!ALLOWED_EXT.includes(ext)) { problems.push(`${f.name}: 올릴 수 없는 파일 형식이에요.`); continue; }
+        if (f.size >= MAX_FILE_SIZE) { problems.push(`${f.name}: 5MB 미만 파일만 올릴 수 있어요. (${fmtSize(f.size)})`); continue; }
+        if (selectedFiles.some(x => x.name === f.name && x.size === f.size)) continue;   // 같은 파일 중복 선택 방지
+        if (selectedFiles.length >= MAX_FILES) { problems.push(`첨부파일은 ${MAX_FILES}개까지 올릴 수 있어요.`); break; }
+        selectedFiles.push(f);
+    }
+    e.target.value = '';   // 같은 파일을 다시 고를 수 있게 초기화
+    renderSelectedFiles();
+    setMsg($('w-msg'), problems.join('\n'), problems.length ? 'error' : '');
+    $('w-msg').style.whiteSpace = 'pre-line';
+});
+
+function uploadFileToR2(file, authorName, onProgress) {
+    return new Promise((resolve, reject) => {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!ALLOWED_EXT.includes(ext)) return reject(new Error(`${file.name}: 올릴 수 없는 파일 형식이에요.`));
+        if (file.size >= MAX_FILE_SIZE) return reject(new Error(`${file.name}: 5MB 미만 파일만 올릴 수 있어요.`));
+        const uniqueFileName = `${authorName}_${Date.now()}_${file.name}`;
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", `${WORKER_URL}?name=${encodeURIComponent(uniqueFileName)}`, true);
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+        xhr.setRequestHeader("X-File-Size", file.size);
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round(e.loaded / e.total * 100)); };
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try { resolve(JSON.parse(xhr.responseText).url); }
+                catch (e) { reject(new Error("업로드 응답을 처리하지 못했어요.")); }
+            } else {
+                reject(new Error(`파일 올리기에 실패했어요. (${file.name})`));
+            }
+        };
+        xhr.onerror = () => reject(new Error("파일을 올리는 중 네트워크 오류가 났어요."));
+        xhr.send(file);
+    });
+}
+
+$('w-submit').addEventListener('click', async () => {
+    const btn = $('w-submit');
+    const msg = $('w-msg');
+    msg.style.whiteSpace = 'normal';
+
+    const name = normalizeName($('w-name').value);
+    const pw = $('w-pw').value.trim();
+    const title = $('w-title').value.trim();
+    const content = $('w-content').value.trim();
+
+    if (!name) { setMsg(msg, '성함을 입력해 주세요.', 'error'); $('w-name').focus(); return; }
+    if (!/^\d{4}$/.test(pw)) { setMsg(msg, '휴대폰 번호 뒤 4자리를 숫자 4개로 입력해 주세요.', 'error'); $('w-pw').focus(); return; }
+    if (!title) { setMsg(msg, '제목을 입력해 주세요.', 'error'); $('w-title').focus(); return; }
+    if (!content) { setMsg(msg, '내용을 입력해 주세요.', 'error'); $('w-content').focus(); return; }
+
+    const last = parseInt(localStorage.getItem('qaLastSubmit') || '0', 10);
+    const wait = SUBMIT_COOLDOWN_MS - (Date.now() - last);
+    if (wait > 0) { setMsg(msg, `잠시 후 다시 등록해 주세요. (${Math.ceil(wait / 1000)}초)`, 'error'); return; }
+
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    try {
+        setMsg(msg, '등록 준비 중...', '');
+        const user = await ensureAnonymousLogin();
+
+        // 1) 첨부파일 올리기 (한 개씩)
+        const files = [];
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const f = selectedFiles[i];
+            const url = await uploadFileToR2(f, name, (pct) => {
+                btn.textContent = `파일 올리는 중 (${i + 1}/${selectedFiles.length}) ${pct}%`;
+            });
+            files.push({ url, name: f.name, size: f.size });
+        }
+        btn.textContent = '질문 저장 중...';
+
+        // 2) 질문 저장
+        const boardRef = doc(collection(db, "qanda"));
+        const id = boardRef.id;
+        const secretId = await computeSecretId(id, name, pw);
+        const createdAt = new Date();
+
+        await setDoc(boardRef, { author: name, createdAt, uid: user.uid, isDeleted: false });
+        await setDoc(doc(db, "qanda", id, "private", secretId), {
+            title, content, files, answer: '', answered: false, createdAt, uid: user.uid
+        });
+        await setDoc(doc(db, "qandaAdmin", id), {
+            author: name, title, content, files, secretId, answered: false, createdAt, uid: user.uid
+        });
+
+        localStorage.setItem('qaLastSubmit', String(Date.now()));
+        $('w-title').value = ''; $('w-content').value = ''; $('w-count').textContent = '0';
+        selectedFiles = []; renderSelectedFiles();
+        setMsg(msg, '질문이 등록됐어요. 답변이 달리면 "내 질문 확인"에서 볼 수 있어요.', 'ok');
+
+        // 방금 쓴 이름/번호로 바로 조회해서 등록된 것을 확인할 수 있게 함
+        $('s-name').value = name; $('s-pw').value = pw;
+        showTab('search');
+        $('s-btn').click();
+    } catch (e) {
+        console.error('질문 등록 실패:', e);
+        const denied = e && (e.code === 'permission-denied' || /permission/i.test(e.message || ''));
+        setMsg(msg, denied ? '등록 권한이 없어요. 관리자에게 문의해 주세요.' : ('등록하지 못했어요: ' + (e.message || '알 수 없는 오류')), 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+    }
+});
+
+// ================= 내 질문 확인 =================
+$('s-pw').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4); });
+$('s-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('s-btn').click(); });
+$('s-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('s-btn').click(); });
+
+function filesHtml(files) {
+    const list = (Array.isArray(files) ? files : []).filter(f => f && safeUrl(f.url));
+    if (!list.length) return '';
+    return `<div class="mt-3"><div class="text-xs font-semibold text-slate-500 mb-1.5">첨부파일</div><ul class="space-y-1.5">` +
+        list.map(f => {
+            const name = f.name || fileNameFromUrl(f.url);
+            return `<li class="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
+                <span class="min-w-0 truncate">${esc(name)}${f.size ? ` <span class="text-slate-400">(${fmtSize(f.size)})</span>` : ''}</span>
+                <button type="button" data-dl="${esc(safeUrl(f.url))}" data-name="${esc(name)}" class="shrink-0 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-semibold px-3 py-1.5 rounded-lg text-xs">받기</button>
+            </li>`;
+        }).join('') + `</ul></div>`;
+}
+
+function questionCardHtml(q, open) {
+    const answered = !!q.answered && String(q.answer || '').trim() !== '';
+    const badge = answered
+        ? '<span class="shrink-0 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">답변 완료</span>'
+        : '<span class="shrink-0 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">답변 대기</span>';
+    const answerBlock = answered
+        ? `<div class="mt-4 rounded-xl bg-blue-50 border border-blue-100 p-4">
+               <div class="text-xs font-semibold text-blue-700 mb-1.5">답변${q.answeredAt ? ' · ' + esc(fmtDate(q.answeredAt)) : ''}</div>
+               <div class="text-sm text-slate-800 whitespace-pre-wrap break-words">${esc(q.answer)}</div>
+           </div>`
+        : `<div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-500">답변을 준비하고 있어요. 확인되는 대로 이 화면에 표시돼요.</div>`;
+    return `
+    <details class="bg-white border border-slate-200 rounded-2xl shadow-sm" ${open ? 'open' : ''}>
+        <summary class="flex items-center justify-between gap-3 p-4 sm:p-5">
+            <div class="min-w-0">
+                <div class="font-bold text-slate-900 truncate">${esc(q.title)}</div>
+                <div class="text-xs text-slate-400 mt-0.5">${esc(q.author)} · ${esc(fmtDate(q.createdAt))}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                ${badge}
+                <svg class="qa-chevron w-5 h-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+        </summary>
+        <div class="px-4 sm:px-5 pb-5 border-t border-slate-100 pt-4">
+            <div class="text-sm text-slate-800 whitespace-pre-wrap break-words">${esc(q.content)}</div>
+            ${filesHtml(q.files)}
+            ${answerBlock}
+        </div>
+    </details>`;
+}
+
+$('s-btn').addEventListener('click', async () => {
+    // 봇 방지: 이름/뒤4자리를 10회 틀리면 3시간 동안 조회를 막습니다. (주문 조회와 같은 방식)
+    const blockUntil = localStorage.getItem('qaBlockUntil');
+    const nowTime = Date.now();
+    if (blockUntil && nowTime < parseInt(blockUntil, 10)) {
+        const remainingSec = Math.ceil((parseInt(blockUntil, 10) - nowTime) / 1000);
+        alert(`너무 많이 틀려 ${Math.floor(remainingSec / 60)}분 ${remainingSec % 60}초 동안 조회가 제한돼요.`);
+        return;
+    }
+    function registerFail() {
+        const failCount = parseInt(localStorage.getItem('qaFailCount') || '0', 10) + 1;
+        if (failCount >= 10) {
+            localStorage.setItem('qaBlockUntil', String(nowTime + 3 * 60 * 60 * 1000));
+            localStorage.setItem('qaFailCount', '0');
+            alert('이름/전화번호를 10회 틀려 3시간 동안 조회가 제한돼요.');
+        } else {
+            localStorage.setItem('qaFailCount', String(failCount));
+        }
+    }
+
+    const name = $('s-name').value.trim();
+    const pw = $('s-pw').value.trim();
+    const resultsDiv = $('results');
+
+    if (!name || !/^\d{4}$/.test(pw)) {
+        registerFail();
+        alert('이름과 전화번호 뒤 4자리를 정확히 입력해 주세요.');
+        return;
+    }
+
+    resultsDiv.innerHTML = '<div class="text-sm text-slate-500 px-1">조회 중...</div>';
+    try {
+        try { await ensureAnonymousLogin(); } catch (e) { /* 로그인 실패해도 조회는 시도 */ }
+
+        // 1. 이름으로 공개 문서만 먼저 조회 (공개 문서에는 질문 내용이 없어요)
+        const variants = [...new Set([name, normalizeName(name)].filter(Boolean))];
+        const candidates = [];
+        for (const v of variants) {
+            const snap = await getDocs(query(collection(db, "qanda"), where("author", "==", v)));
+            snap.docs.forEach(d => { if (d.data().isDeleted !== true) candidates.push({ id: d.id, nameUsed: v }); });
+        }
+
+        // 2. 이름+뒤4자리로 secretId를 계산해, 그 문서가 실제로 있으면 본인 질문
+        const verified = await Promise.all(candidates.map(async (c) => {
+            const secretId = await computeSecretId(c.id, c.nameUsed, pw);
+            const snap = await getDoc(doc(db, "qanda", c.id, "private", secretId));
+            if (!snap.exists()) return null;
+            return { ...snap.data(), id: c.id, author: c.nameUsed };
+        }));
+
+        const seen = new Set();
+        const list = verified.filter(Boolean).filter(q => (seen.has(q.id) ? false : (seen.add(q.id), true)));
+        list.sort((a, b) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0));
+
+        if (!list.length) {
+            registerFail();
+            resultsDiv.innerHTML = '<div class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-5">해당하는 질문을 찾을 수 없어요. 이름과 휴대폰 번호 뒤 4자리를 다시 확인해 주세요.</div>';
+            return;
+        }
+        localStorage.setItem('qaFailCount', '0');
+        resultsDiv.innerHTML =
+            `<div class="text-sm text-slate-500 px-1">질문 ${list.length}건</div>` +
+            list.map((q, i) => questionCardHtml(q, list.length === 1 || i === 0)).join('');
+    } catch (e) {
+        console.error('질문 조회 실패:', e);
+        resultsDiv.innerHTML = '<div class="text-sm text-red-600 bg-white border border-red-200 rounded-2xl p-5">조회하지 못했어요. 잠시 후 다시 시도해 주세요.</div>';
+    }
+});
+
+// 첨부파일 받기 (같은 주소는 새 탭으로 열리는 대신 파일로 저장되게 시도, 막히면 새 탭으로 열기)
+$('results').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-dl]');
+    if (!b) return;
+    const url = safeUrl(b.dataset.dl);
+    if (!url) return;
+    const name = b.dataset.name || '첨부파일';
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (err) {
+        window.open(url, '_blank', 'noopener');
+    }
+});
+</script>
+</body>
+</html>
