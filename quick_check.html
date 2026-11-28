@@ -119,6 +119,7 @@
   <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:10px;">
     <p style="margin:0 0 10px; font-size:14px;">선택된 주문: <b id="selected-name">없음</b></p>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button onclick="openQaModal('all')" style="background:#0ea5e9;">💬 질문답변<span id="qa-btn-count"></span></button>
       <button onclick="updateStatus('대기')" style="background:#64748b;">대기</button>
       <button onclick="updateStatus('무통장')" style="background:#059669;">무통장</button>
       <button onclick="updateStatus('모바일무통장')" style="background:#0d9488;">모바일무통장(입금확인)</button>
@@ -130,7 +131,6 @@
       <button onclick="window.open('seghyn1.html', 'seghyn1', 'width=900,height=800')" style="background:#ca8a04;">🧾 세금/현금 신청내역</button>
       <button onclick="bulkFixErrorOrders()" style="background:#0891b2;">🔁 접수에러→대기 일괄전환</button>
       <button onclick="downloadSettlementExcel()" style="background:#16a34a;">📊 정산내역</button>
-      <button onclick="openQaModal('all')" style="background:#0ea5e9;">💬 질문답변<span id="qa-btn-count"></span></button>
     </div>
   </div>
 </div>
