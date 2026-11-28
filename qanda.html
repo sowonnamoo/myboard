@@ -124,6 +124,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -153,7 +154,36 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 로그인 없이 누구나 질문을 쓰고 조회할 수 있습니다. (Firestore 규칙에서 qanda / qandaAdmin 을 열어둔 상태가 필요)
+// 방문자 익명 로그인 — 질문 "등록"(Firestore 규칙의 request.auth != null)에만 필요합니다.
+// 질문 조회와 IP 차단 확인은 로그인 없이 됩니다. 페이지를 열면 미리 로그인해 두고, 등록할 때 확인합니다.
+const auth = getAuth(app);
+let authError = null;
+let resolveAuthReady;
+const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
+onAuthStateChanged(auth, (user) => {
+    if (user) resolveAuthReady(user);
+    else signInAnonymously(auth).catch((e) => { authError = e; console.error("익명 로그인 실패:", e); });
+});
+// 로그인이 끝나면 사용자 반환. 로그인 자체가 실패하면 기다리지 않고 바로 실패 원인을 돌려줌(그 외엔 10초 뒤 시간 초과).
+function ensureAnonymousLogin() {
+    return new Promise((resolve, reject) => {
+        const started = Date.now();
+        const timer = setInterval(() => {
+            if (authError) { clearInterval(timer); reject(authError); }
+            else if (Date.now() - started > 10000) { clearInterval(timer); reject(new Error('auth-timeout')); }
+        }, 300);
+        authReadyPromise.then((u) => { clearInterval(timer); resolve(u); });
+    });
+}
+// 로그인 실패 원인을 이용자/관리자가 알아볼 수 있는 문장으로
+function authFailText(e) {
+    const code = (e && e.code) || '';
+    if (location.protocol === 'file:') return '저장한 파일을 직접 열면 로그인이 되지 않아요. 사이트 주소(https://…)로 열어서 등록해 주세요.';
+    if (code === 'auth/unauthorized-domain') return '이 사이트 주소(' + location.hostname + ')가 Firebase 승인 도메인에 없어요. 콘솔 → Authentication → 설정 → 승인된 도메인에 추가해 주세요.';
+    if (code === 'auth/operation-not-allowed') return 'Firebase 콘솔에서 익명 로그인이 꺼져 있어요. Authentication → 로그인 방법에서 "익명"을 사용 설정해 주세요.';
+    if (code === 'auth/network-request-failed') return '네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
+    return '로그인 연결이 늦어지고 있어요. 새로고침한 뒤 다시 시도해 주세요.' + (code ? ' (' + code + ')' : '');
+}
 
 // ================= 공통 유틸 =================
 function esc(v) {
@@ -326,6 +356,9 @@ $('w-submit').addEventListener('click', async () => {
     const originalLabel = btn.textContent;
     try {
         setMsg(msg, '등록 준비 중...', '');
+        let user;
+        try { user = await ensureAnonymousLogin(); }
+        catch (e) { setMsg(msg, authFailText(e), 'error'); return; }
         const ip = await clientIpPromise;
         if (ipBlocked || await isIpBlocked(ip)) { applyBlockedState(); return; }
 
@@ -346,12 +379,12 @@ $('w-submit').addEventListener('click', async () => {
         const secretId = await computeSecretId(id, name, pw);
         const createdAt = new Date();
 
-        await setDoc(boardRef, { author: name, createdAt, isDeleted: false });
+        await setDoc(boardRef, { author: name, createdAt, uid: user.uid, isDeleted: false });
         await setDoc(doc(db, "qanda", id, "private", secretId), {
-            title, content, files, answer: '', answered: false, createdAt
+            title, content, files, answer: '', answered: false, createdAt, uid: user.uid
         });
         await setDoc(doc(db, "qandaAdmin", id), {
-            author: name, title, content, files, secretId, answered: false, createdAt, ip
+            author: name, title, content, files, secretId, answered: false, createdAt, uid: user.uid, ip
         });
 
         localStorage.setItem('qaLastSubmit', String(Date.now()));
