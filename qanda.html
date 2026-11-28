@@ -38,7 +38,7 @@
 
     <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-5 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/70 mb-6">
         <h1 class="text-lg sm:text-xl font-bold text-slate-900 mb-1">질문답변</h1>
-        <p class="text-xs sm:text-sm text-slate-500 mb-5">질문은 작성하신 분만 볼 수 있어요. 이름과 휴대폰 번호 뒤 4자리로 답변을 확인하세요.</p>
+        <p class="text-xs sm:text-sm text-slate-500 mb-5">질문은 작성하신 분만 볼 수 있어요. 이름과 비밀번호로 답변을 확인하세요.</p>
 
         <!-- 탭 -->
         <div class="grid grid-cols-2 gap-2 mb-6" role="tablist" aria-label="질문답변 메뉴">
@@ -58,13 +58,13 @@
                         placeholder="예) 홍길동">
                 </div>
                 <div class="sm:col-span-2">
-                    <label for="w-pw" class="block text-xs font-semibold text-slate-600 mb-1">휴대폰 번호 뒤 4자리</label>
-                    <input type="text" id="w-pw" maxlength="4" inputmode="numeric" autocomplete="off"
+                    <label for="w-pw" class="block text-xs font-semibold text-slate-600 mb-1">비밀번호 (5자)</label>
+                    <input type="text" id="w-pw" maxlength="5" autocomplete="off" autocapitalize="off" spellcheck="false"
                         class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm"
-                        placeholder="예) 1234">
+                        placeholder="영문/숫자 5자">
                 </div>
             </div>
-            <p class="text-xs text-slate-400 mb-4">이 4자리가 조회 비밀번호예요. 질문을 확인할 때 꼭 필요하니 기억해 주세요.</p>
+            <p class="text-xs text-slate-400 mb-4">영문·숫자 5자로 정해 주세요. 질문을 확인할 때 꼭 필요하니 기억해 주세요.</p>
 
             <label for="w-title" class="block text-xs font-semibold text-slate-600 mb-1">제목</label>
             <input type="text" id="w-title" maxlength="100" autocomplete="off"
@@ -100,9 +100,9 @@
                 <input type="text" id="s-name" autocomplete="off" aria-label="이름"
                     class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:flex-grow-[2]"
                     placeholder="이름 입력">
-                <input type="text" id="s-pw" maxlength="4" inputmode="numeric" autocomplete="off" aria-label="휴대폰 번호 뒤 4자리"
+                <input type="text" id="s-pw" maxlength="5" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="비밀번호 5자"
                     class="w-full border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition p-3 rounded-xl text-sm sm:w-44"
-                    placeholder="전화번호 뒤 4자리">
+                    placeholder="비밀번호 5자">
                 <button type="button" id="s-btn"
                     class="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-sm shadow-blue-200">조회</button>
             </div>
@@ -124,11 +124,12 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, query, where, getDocs, getDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const $ = (id) => document.getElementById(id);
 
 // ================= 설정 =================
+const PW_LENGTH = 5;                         // 비밀번호 글자 수 (영문/숫자 5자)
+const PW_PATTERN = /^[A-Za-z0-9]{5}$/;
 const MAX_FILES = 3;                         // 첨부 가능한 개수
 const MAX_FILE_SIZE = 5 * 1024 * 1024;       // 파일 하나당 5MB 미만
 const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'pdf', 'ai', 'psd', 'zip', 'hwp', 'eps', 'gif', 'heic', 'webp', 'xlsx', 'ppt', 'pptx']; // 소문자
@@ -139,7 +140,7 @@ const SUBMIT_COOLDOWN_MS = 30 * 1000;        // 연속 등록 방지(30초)
 // 저장 구조 (주문의 boards / private / adminOrders 와 같은 방식)
 //  qanda/{id}                       공개 문서: 이름, 작성일만 (제목/내용/파일은 없음)
 //  qanda/{id}/private/{secretId}    질문 본문: 제목, 내용, 첨부파일, 답변(answer, answeredAt, answered)
-//                                   secretId = sha256(id::이름::뒤4자리) → 이름+뒤4자리를 아는 사람만 읽을 수 있음
+//                                   secretId = sha256(id::이름::비밀번호) → 이름+비밀번호를 아는 사람만 읽을 수 있음
 //  qandaAdmin/{id}                  관리자용 복사본: 질문 내용 + secretId + 작성자 IP (관리자가 답변/IP 차단할 때 사용)
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
@@ -152,20 +153,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 방문자 익명 로그인 (uid 필요)
-const auth = getAuth(app);
-let resolveAuthReady;
-const authReadyPromise = new Promise((resolve) => { resolveAuthReady = resolve; });
-onAuthStateChanged(auth, (user) => {
-    if (user) resolveAuthReady(user);
-    else signInAnonymously(auth).catch((e) => console.error("익명 로그인 실패:", e));
-});
-function ensureAnonymousLogin() {
-    return Promise.race([
-        authReadyPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('익명 로그인 시간 초과')), 10000))
-    ]);
-}
+// 로그인 없이 누구나 질문을 쓰고 조회할 수 있습니다. (Firestore 규칙에서 qanda / qandaAdmin 을 열어둔 상태가 필요)
 
 // ================= 공통 유틸 =================
 function esc(v) {
@@ -180,7 +168,7 @@ async function sha256Hex(text) {
 }
 // 이름의 공백/괄호는 제거해서 저장 (주문 조회와 같은 규칙)
 function normalizeName(name) { return String(name || "").trim().replace(/[\s()]/g, ''); }
-async function computeSecretId(id, author, last4) { return sha256Hex(`${id}::${String(author || '').trim()}::${last4}`); }
+async function computeSecretId(id, author, password) { return sha256Hex(`${id}::${String(author || '').trim()}::${password}`); }
 function toDate(v) {
     if (!v) return null;
     if (typeof v.toDate === 'function') return v.toDate();
@@ -237,7 +225,7 @@ function applyBlockedState() {
     setMsg($('w-msg'), BLOCKED_TEXT, 'error');
 }
 // 페이지를 열 때 미리 확인해서, 차단된 IP 면 등록 버튼을 막아 둠
-ensureAnonymousLogin().catch(() => {}).then(() => clientIpPromise).then(isIpBlocked).then((b) => { if (b) applyBlockedState(); });
+clientIpPromise.then(isIpBlocked).then((b) => { if (b) applyBlockedState(); });
 
 // ================= 탭 =================
 function showTab(which) {
@@ -259,7 +247,7 @@ showTab('write');
 // ================= 질문 작성 =================
 let selectedFiles = [];
 
-$('w-pw').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4); });
+$('w-pw').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, PW_LENGTH); });
 $('w-content').addEventListener('input', (e) => { $('w-count').textContent = e.target.value.length; });
 
 function renderSelectedFiles() {
@@ -326,7 +314,7 @@ $('w-submit').addEventListener('click', async () => {
     const content = $('w-content').value.trim();
 
     if (!name) { setMsg(msg, '성함을 입력해 주세요.', 'error'); $('w-name').focus(); return; }
-    if (!/^\d{4}$/.test(pw)) { setMsg(msg, '휴대폰 번호 뒤 4자리를 숫자 4개로 입력해 주세요.', 'error'); $('w-pw').focus(); return; }
+    if (!PW_PATTERN.test(pw)) { setMsg(msg, '비밀번호를 영문/숫자 5자로 입력해 주세요.', 'error'); $('w-pw').focus(); return; }
     if (!title) { setMsg(msg, '제목을 입력해 주세요.', 'error'); $('w-title').focus(); return; }
     if (!content) { setMsg(msg, '내용을 입력해 주세요.', 'error'); $('w-content').focus(); return; }
 
@@ -338,7 +326,6 @@ $('w-submit').addEventListener('click', async () => {
     const originalLabel = btn.textContent;
     try {
         setMsg(msg, '등록 준비 중...', '');
-        const user = await ensureAnonymousLogin();
         const ip = await clientIpPromise;
         if (ipBlocked || await isIpBlocked(ip)) { applyBlockedState(); return; }
 
@@ -359,12 +346,12 @@ $('w-submit').addEventListener('click', async () => {
         const secretId = await computeSecretId(id, name, pw);
         const createdAt = new Date();
 
-        await setDoc(boardRef, { author: name, createdAt, uid: user.uid, isDeleted: false });
+        await setDoc(boardRef, { author: name, createdAt, isDeleted: false });
         await setDoc(doc(db, "qanda", id, "private", secretId), {
-            title, content, files, answer: '', answered: false, createdAt, uid: user.uid
+            title, content, files, answer: '', answered: false, createdAt
         });
         await setDoc(doc(db, "qandaAdmin", id), {
-            author: name, title, content, files, secretId, answered: false, createdAt, uid: user.uid, ip
+            author: name, title, content, files, secretId, answered: false, createdAt, ip
         });
 
         localStorage.setItem('qaLastSubmit', String(Date.now()));
@@ -387,7 +374,7 @@ $('w-submit').addEventListener('click', async () => {
 });
 
 // ================= 내 질문 확인 =================
-$('s-pw').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4); });
+$('s-pw').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, PW_LENGTH); });
 $('s-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('s-btn').click(); });
 $('s-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('s-btn').click(); });
 
@@ -436,7 +423,7 @@ function questionCardHtml(q, open) {
 }
 
 $('s-btn').addEventListener('click', async () => {
-    // 봇 방지: 이름/뒤4자리를 10회 틀리면 3시간 동안 조회를 막습니다. (주문 조회와 같은 방식)
+    // 봇 방지: 이름/비밀번호를 10회 틀리면 3시간 동안 조회를 막습니다. (주문 조회와 같은 방식)
     const blockUntil = localStorage.getItem('qaBlockUntil');
     const nowTime = Date.now();
     if (blockUntil && nowTime < parseInt(blockUntil, 10)) {
@@ -449,7 +436,7 @@ $('s-btn').addEventListener('click', async () => {
         if (failCount >= 10) {
             localStorage.setItem('qaBlockUntil', String(nowTime + 3 * 60 * 60 * 1000));
             localStorage.setItem('qaFailCount', '0');
-            alert('이름/전화번호를 10회 틀려 3시간 동안 조회가 제한돼요.');
+            alert('이름/비밀번호를 10회 틀려 3시간 동안 조회가 제한돼요.');
         } else {
             localStorage.setItem('qaFailCount', String(failCount));
         }
@@ -459,15 +446,14 @@ $('s-btn').addEventListener('click', async () => {
     const pw = $('s-pw').value.trim();
     const resultsDiv = $('results');
 
-    if (!name || !/^\d{4}$/.test(pw)) {
+    if (!name || !PW_PATTERN.test(pw)) {
         registerFail();
-        alert('이름과 전화번호 뒤 4자리를 정확히 입력해 주세요.');
+        alert('이름과 비밀번호 5자를 정확히 입력해 주세요.');
         return;
     }
 
     resultsDiv.innerHTML = '<div class="text-sm text-slate-500 px-1">조회 중...</div>';
     try {
-        try { await ensureAnonymousLogin(); } catch (e) { /* 로그인 실패해도 조회는 시도 */ }
 
         // 1. 이름으로 공개 문서만 먼저 조회 (공개 문서에는 질문 내용이 없어요)
         const variants = [...new Set([name, normalizeName(name)].filter(Boolean))];
@@ -477,7 +463,7 @@ $('s-btn').addEventListener('click', async () => {
             snap.docs.forEach(d => { if (d.data().isDeleted !== true) candidates.push({ id: d.id, nameUsed: v }); });
         }
 
-        // 2. 이름+뒤4자리로 secretId를 계산해, 그 문서가 실제로 있으면 본인 질문
+        // 2. 이름+비밀번호로 secretId를 계산해, 그 문서가 실제로 있으면 본인 질문
         const verified = await Promise.all(candidates.map(async (c) => {
             const secretId = await computeSecretId(c.id, c.nameUsed, pw);
             const snap = await getDoc(doc(db, "qanda", c.id, "private", secretId));
@@ -491,7 +477,7 @@ $('s-btn').addEventListener('click', async () => {
 
         if (!list.length) {
             registerFail();
-            resultsDiv.innerHTML = '<div class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-5">해당하는 질문을 찾을 수 없어요. 이름과 휴대폰 번호 뒤 4자리를 다시 확인해 주세요.</div>';
+            resultsDiv.innerHTML = '<div class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-5">해당하는 질문을 찾을 수 없어요. 이름과 비밀번호를 다시 확인해 주세요.</div>';
             return;
         }
         localStorage.setItem('qaFailCount', '0');
