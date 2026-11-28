@@ -140,7 +140,7 @@ const SUBMIT_COOLDOWN_MS = 30 * 1000;        // 연속 등록 방지(30초)
 //  qanda/{id}                       공개 문서: 이름, 작성일만 (제목/내용/파일은 없음)
 //  qanda/{id}/private/{secretId}    질문 본문: 제목, 내용, 첨부파일, 답변(answer, answeredAt, answered)
 //                                   secretId = sha256(id::이름::뒤4자리) → 이름+뒤4자리를 아는 사람만 읽을 수 있음
-//  qandaAdmin/{id}                  관리자용 복사본: 질문 내용 + secretId (관리자가 답변을 달 때 사용)
+//  qandaAdmin/{id}                  관리자용 복사본: 질문 내용 + secretId + 작성자 IP (관리자가 답변/IP 차단할 때 사용)
 const firebaseConfig = {
     apiKey: "AIzaSyDU8d6ShVNtgLYEQZeyms88G-TDNnRd2aA",
     authDomain: "board-291e3.firebaseapp.com",
@@ -210,6 +210,34 @@ function setMsg(el, text, kind) {
     el.className = 'text-sm mt-3 ' + (text ? '' : 'hidden') + ' ' +
         (kind === 'error' ? 'text-red-600' : kind === 'ok' ? 'text-emerald-700' : 'text-slate-600');
 }
+
+// ================= IP 확인 / 차단 =================
+// 관리자 화면(quick_check)의 "IP 차단"이 blocked_ips 컬렉션(문서ID = IP)에 넣은 IP는 질문을 등록할 수 없습니다.
+// IP 는 관리자용 문서(qandaAdmin)에만 저장돼서 관리자만 봅니다.
+async function fetchClientIp() {
+    try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 4000);
+        const r = await fetch('https://api.ipify.org?format=json', { signal: ctrl.signal });
+        clearTimeout(timer);
+        return (await r.json()).ip || '';
+    } catch (e) { return ''; }   // 광고차단 등으로 IP 를 못 가져와도 등록은 막지 않음
+}
+const clientIpPromise = fetchClientIp();
+async function isIpBlocked(ip) {
+    if (!ip) return false;
+    try { return (await getDoc(doc(db, "blocked_ips", ip))).exists(); }
+    catch (e) { return false; }  // 확인에 실패하면 정상 이용자를 막지 않도록 통과
+}
+let ipBlocked = false;
+const BLOCKED_TEXT = '현재 접속 환경에서는 질문을 등록할 수 없어요.';
+function applyBlockedState() {
+    ipBlocked = true;
+    $('w-submit').disabled = true;
+    setMsg($('w-msg'), BLOCKED_TEXT, 'error');
+}
+// 페이지를 열 때 미리 확인해서, 차단된 IP 면 등록 버튼을 막아 둠
+ensureAnonymousLogin().catch(() => {}).then(() => clientIpPromise).then(isIpBlocked).then((b) => { if (b) applyBlockedState(); });
 
 // ================= 탭 =================
 function showTab(which) {
@@ -311,6 +339,8 @@ $('w-submit').addEventListener('click', async () => {
     try {
         setMsg(msg, '등록 준비 중...', '');
         const user = await ensureAnonymousLogin();
+        const ip = await clientIpPromise;
+        if (ipBlocked || await isIpBlocked(ip)) { applyBlockedState(); return; }
 
         // 1) 첨부파일 올리기 (한 개씩)
         const files = [];
@@ -334,7 +364,7 @@ $('w-submit').addEventListener('click', async () => {
             title, content, files, answer: '', answered: false, createdAt, uid: user.uid
         });
         await setDoc(doc(db, "qandaAdmin", id), {
-            author: name, title, content, files, secretId, answered: false, createdAt, uid: user.uid
+            author: name, title, content, files, secretId, answered: false, createdAt, uid: user.uid, ip
         });
 
         localStorage.setItem('qaLastSubmit', String(Date.now()));

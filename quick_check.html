@@ -30,7 +30,7 @@
   .memo-saved { font-size:11px; color:#166534; white-space:nowrap; }
   #loginBox { display:block; }
   #listBox { display:none; }
-  #ip-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:999; }
+  #ip-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:1100; }
   #ip-modal-box { background:#fff; border-radius:10px; padding:20px; width:100%; max-width:280px; box-shadow:0 10px 30px rgba(0,0,0,0.2); }
   #ip-modal-value { display:block; width:100%; text-align:left; font-family:monospace; font-size:14px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:10px 12px; margin:8px 0 6px; cursor:pointer; word-break:break-all; }
   #ip-modal-copied { display:none; font-size:12px; color:#166534; text-align:center; margin-bottom:8px; }
@@ -97,6 +97,8 @@
   .qa-btn-edit { background:#0d9488; }
   .qa-btn-plain { background:#fff; color:#334155; border:1px solid #cbd5e1; }
   .qa-btn-danger { background:#dc2626; }
+  .qa-ip { padding:1px 8px; font-size:11px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; border-radius:6px; font-family:monospace; font-weight:normal; }
+  .qa-ip-none { color:#cbd5e1; }
 </style>
 </head>
 <body>
@@ -1741,7 +1743,8 @@ function qaCardHtml(x) {
   return `<div class="qa-card">` +
     `<div class="qa-card-head"><div class="qa-title">${qaEsc(x.title || '(제목 없음)')}</div>` +
     `<span class="qa-st ${done ? 'done' : 'open'}">${done ? '답변 완료' : '답변 대기'}</span></div>` +
-    `<div class="qa-meta">${qaEsc(x.author || '-')} · ${qaEsc(qaFmtDate(x.createdAt))}</div>` +
+    `<div class="qa-meta">${qaEsc(x.author || '-')} · ${qaEsc(qaFmtDate(x.createdAt))} · ` +
+      (x.ip ? `<button type="button" class="qa-ip" data-ip="${qaEsc(x.ip)}" title="눌러서 IP 복사 / 차단">IP ${qaEsc(x.ip)}</button>` : '<span class="qa-ip-none">IP 없음</span>') + `</div>` +
     `<div class="qa-content">${qaEsc(x.content || '')}</div>` +
     qaFilesHtml(x.files) + answerArea + `</div>`;
 }
@@ -1817,6 +1820,8 @@ qaListEl.addEventListener('input', (e) => {
   if (e.target.matches('textarea[data-id]')) qaDrafts[e.target.dataset.id] = e.target.value;
 });
 qaListEl.addEventListener('click', async (e) => {
+  const ipBtn = e.target.closest('[data-ip]');
+  if (ipBtn) { window.showIpModal(ipBtn.dataset.ip); return; }   // 기존 IP 복사/차단 창
   const dl = e.target.closest('[data-dl]');
   if (dl) { window.downloadAttached(dl.dataset.dl, dl.dataset.name); return; }
   const b = e.target.closest('button[data-act]');
